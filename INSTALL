@@ -1,0 +1,23 @@
+This is OiL 0.3.4 alpha release.
+
+* Installation
+  ------------
+  Building OiL on a Unix system should be very easy:
+
+        1. Read "config" and edit it to suit your platform and needs.
+        2. Do "make".
+        3. If you want to install OiL in an "official" place in your system,
+           then do "make install". The official place and the way to install
+           files are defined in "config". You may have to be root to do this.
+
+  Building OiL on a Windows system may be very similar with NMAKE utility:
+
+        1. Read "config.win32" and edit it to suit your platform and needs.
+           To build the dynamic link libraries, you should uncomment the
+           lines described in "config.win32", but define the correct compiler
+           parameter to use the allocation library suited to your application.
+        2. Do "NMAKE /f Makefile.win32".
+        3. If you want to install OiL in an "official" place in your system,
+           then do "NMAKE /f install". The official place and the way to
+           install files are defined in "config.win32".
+
