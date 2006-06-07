@@ -35,10 +35,6 @@ local pack         = pack
 local string = require "string"
 local table  = require "table"
 
------------------------------
-local debug = require "debug"
------------------------------
-
 module "oil.ir"                                                                 --[[VERBOSE]] local verbose = require "oil.verbose"
 
 local OrderedSet = require "loop.collection.OrderedSet"
