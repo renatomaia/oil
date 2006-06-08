@@ -1,11 +1,10 @@
 local tostring = tostring
 local type     = type
-local debug_flag = true
 
 local string = require "string"
 local math   = require "math"
 
-local Verbose = require "loop.debug.Verbose"
+local Verbose   = require "loop.debug.Verbose"
 local Inspector = require "loop.debug.Inspector"
 
 --------------------------------------------------------------------------------
@@ -30,7 +29,7 @@ local verbose = Verbose{
 		--
 		-- architectural levels
 		--
-		{"server","client","debug"},       -- API level
+		{"server","client"},       -- API level
 		{"proxy","manager"},       -- object level
 		{"invoke","orb"},          -- ORB level
 		{"iiop","ior","giop"},     -- protocol level
@@ -57,14 +56,6 @@ function verbose.custom:idl(def)
 	viewer:write(def)
 end
 
-function verbose.custom:debug(msg)
-	local output  = self.viewer.output
-	if not msg then msg = 'nil' end 
-	output:write(msg, "\n")
-	if debug_flag then
-		Inspector:breakpoint(4)
-	end
-end
 --------------------------------------------------------------------------------
 
 local pos
@@ -133,3 +124,8 @@ function verbose.custom:unmarshal(tcode, value, buffer)
 		output:write("\n", format_rawdata(buffer:getdata(), buffer.cursor))
 	end
 end
+
+--------------------------------------------------------------------------------
+
+function verbose.inspect:debug() Inspector:breakpoint(4) end
+verbose:flag("debug", true)
