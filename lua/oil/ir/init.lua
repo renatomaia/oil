@@ -98,7 +98,7 @@ local InterfaceDef            = oo.class({}, IDLType, Contained, Container)
 -- Implementation
 --
 local function construct(obj, class, history)
-	for _, super in ipairs(pack(oo.superclass(class))) do
+	for _, super in oo.supers(class) do
 		construct(obj, super, history)
 	end
 	if not history[class] then
