@@ -34,14 +34,13 @@ local pack         = pack
 
 local string = require "string"
 local table  = require "table"
+local oo         = require "oil.oo"
 
-module "oil.ir"                                                                 --[[VERBOSE]] local verbose = require "oil.verbose"
+module ("oil.ir", oo.class )                                                  --[[VERBOSE]] local verbose = require "oil.verbose"
 
 local OrderedSet = require "loop.collection.OrderedSet"
-local oo         = require "oil.oo"
 local assert     = require "oil.assert"
 local idl        = require "oil.idl"
-local proxy      = require "oil.proxy"
 local manager    = require "oil.manager"
 local iridl      = require "oil.ir.idl"
 
@@ -98,7 +97,7 @@ local InterfaceDef            = oo.class({}, IDLType, Contained, Container)
 -- Implementation
 --
 local function construct(obj, class, history)
-	for _, super in oo.supers(class) do
+	for _, super in ipairs({oo.superclass(class)}) do
 		construct(obj, super, history)
 	end
 	if not history[class] then
@@ -124,7 +123,7 @@ end
 --
 -- Implementation
 --
-local function createrepid(name, version)                                       --[[VERBOSE]] verbose.ir_classes{"creating new repository ID from ", name, " ", version}
+local function createrepid(name, version)                                       --[[VERBOSE]] verbose:ir_classes("creating new repository ID from ", name, " ", version)
 	return string.format("IDL:%s:%s",
 	                     string.sub(string.gsub(name, "::", "/"), 2),
 	                     version)
@@ -132,9 +131,9 @@ end
 
 function Contained:constructor()
 	local repository = self.containing_repository
-	local defined_in = self.defined_in                                            --[[VERBOSE]] verbose.ir_classes({"constructing contained object ", self.name, " inside ", defined_in and defined_in.name, " (", self.repID, ")"}, true)
+	local defined_in = self.defined_in                                            --[[VERBOSE]] verbose:ir_classes(true, "constructing contained object ", self.name, " inside ", defined_in and defined_in.name, " (", self.repID, ")")
 	
-	if not defined_in then                                                        --[[VERBOSE]] verbose.ir_classes "contained object defines no container, repository containment assumed"
+	if not defined_in then                                                        --[[VERBOSE]] verbose:ir_classes "contained object defines no container, repository containment assumed"
 		self.defined_in = repository
 		defined_in = repository
 	end
@@ -142,45 +141,45 @@ function Contained:constructor()
 
 	assert.type(repository, "table", "repository object")
 	assert.type(defined_in, "table", "container object")
-	assert.type(self.name, "string", "contained object name")                     --[[VERBOSE]] verbose.ir_classes({"attempt to construct parent object ", defined_in.name}, true)
+	assert.type(self.name, "string", "contained object name")                     --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct parent object ", defined_in.name)
 	
-	repository:newobject(defined_in)                                              --[[VERBOSE]] verbose.ir_classes()
+	repository:newobject(defined_in)                                              --[[VERBOSE]] verbose:ir_classes()
 
 	if not oo.instanceof(defined_in, Container) then
-		assert.ilegal(defined_in, "container", "BAD_PARAM")
+		assert.illegal(defined_in, "container", "BAD_PARAM")
 	elseif defined_in.containing_repository ~= repository then
-		assert.ilegal(defined_in,
+		assert.illegal(defined_in,
 		              "container, repository does not match",
 		              "BAD_PARAM")
 	end
 
 	if self.repID then self:_set_id(self.repID) end
 
-	return self:move(self.defined_in, self.name, self.version)                    --[[VERBOSE]] , verbose.ir_classes()
+	return self:move(self.defined_in, self.name, self.version)                    --[[VERBOSE]] , verbose:ir_classes()
 end
 
 function Contained:updatename()
-	self.absolute_name = self.defined_in.absolute_name.."::"..self.name           --[[VERBOSE]] verbose.ir_classes({"updating contained object's absolute name to ", self.absolute_name}, true)
+	self.absolute_name = self.defined_in.absolute_name.."::"..self.name           --[[VERBOSE]] verbose:ir_classes(true, "updating contained object's absolute name to ", self.absolute_name)
 	if not self.repID then
 		self:_set_id(createrepid(self.absolute_name, self.version))
 	end
-	if self.definitions and oo.instanceof(self, Container) then                   --[[VERBOSE]] verbose.ir_classes("updating members absolute names", true)
+	if self.definitions and oo.instanceof(self, Container) then                   --[[VERBOSE]] verbose:ir_classes(true, "updating members absolute names")
 		for name, member in pairs(self.definitions) do
 			if type(name) == "string" and oo.instanceof(member, Contained) then
 				member:updatename()
 			end
-		end                                                                         --[[VERBOSE]] verbose.ir_classes()
-	end                                                                           --[[VERBOSE]] verbose.ir_classes()
+		end                                                                         --[[VERBOSE]] verbose:ir_classes()
+	end                                                                           --[[VERBOSE]] verbose:ir_classes()
 end
 
 --
 -- Attributes
 --
-function Contained:_set_id(id)                                                  --[[VERBOSE]] verbose.ir_classes{"setting contained object repID to ", id}
+function Contained:_set_id(id)                                                  --[[VERBOSE]] verbose:ir_classes("setting contained object repID to ", id)
 	local ifaces = self.containing_repository.ifaces
 	if id ~= self.repID then
 		if ifaces[id] then
-			assert.ilegal(id, "repository ID, already exists", "BAD_PARAM", 2)
+			assert.illegal(id, "repository ID, already exists", "BAD_PARAM", 2)
 		end
 		if self.repID then ifaces[self.repID] = nil end
 		self.repID = id
@@ -189,24 +188,24 @@ function Contained:_set_id(id)                                                  
 	ifaces[id] = self
 end
 
-function Contained:_set_name(name)                                              --[[VERBOSE]] verbose.ir_classes({"setting contained object name to ", name}, true)
+function Contained:_set_name(name)                                              --[[VERBOSE]] verbose:ir_classes(true, "setting contained object name to ", name)
 	local definitions = self.defined_in.definitions
 	if name ~= self.name then
 		if definitions[name] then
-			assert.ilegal(name, "contained name, name clash", "BAD_PARAM", 1)
+			assert.illegal(name, "contained name, name clash", "BAD_PARAM", 1)
 		end
 		definitions[self.name] = nil
 		self.name = name
 	end
 	definitions[name] = self
-	self:updatename()                                                             --[[VERBOSE]] verbose.ir_classes()
+	self:updatename()                                                             --[[VERBOSE]] verbose:ir_classes()
 end
 
 --
 -- Operations
 --
 local ContainedDescription = iridl.Contained.definitions.Description
-function Contained:describe()                                                   --[[VERBOSE]] verbose.ir_classes{"describing contained object ", self.name}
+function Contained:describe()                                                   --[[VERBOSE]] verbose:ir_classes("describing contained object ", self.name)
 	local description = self:get_description()
 	description.name       = self.name
 	description.id         = self.repID
@@ -221,20 +220,20 @@ end
 --function Contained:within() -- TODO:[maia] This op is described in specs but
 --end                         --             is not listed in IR IDL!
 
-function Contained:move(new_container, new_name, new_version)                   --[[VERBOSE]] verbose.ir_classes({"moving contained object into container ", new_container.name}, true)
+function Contained:move(new_container, new_name, new_version)                   --[[VERBOSE]] verbose:ir_classes(true, "moving contained object into container ", new_container.name)
 	if new_container.containing_repository ~= self.containing_repository then
-		assert.ilegal(new_container, "container", "BAD_PARAM", 4)
+		assert.illegal(new_container, "container", "BAD_PARAM", 4)
 	end
 	local oldcontained = new_container.definitions[new_name]
 	if oldcontained and oldcontained ~= self then
-		assert.ilegal(new_name, "contained name, already exists", "BAD_PARAM", 3)
+		assert.illegal(new_name, "contained name, already exists", "BAD_PARAM", 3)
 	end
 	if self.defined_in then
-		self.defined_in.definitions[self.name] = nil                                --[[VERBOSE]] verbose.ir_classes{"contained object removed from old container ", self.defined_in.name}
+		self.defined_in.definitions[self.name] = nil                                --[[VERBOSE]] verbose:ir_classes("contained object removed from old container ", self.defined_in.name)
 	end
 	self.defined_in = new_container
 	self.version = new_version
-	self:_set_name(new_name)                                                      --[[VERBOSE]] verbose.ir_classes()
+	self:_set_name(new_name)                                                      --[[VERBOSE]] verbose:ir_classes()
 end
 
 --------------------------------------------------------------------------------
@@ -242,24 +241,24 @@ end
 --
 -- Implementation
 --
-function Container:constructor()                                                --[[VERBOSE]] verbose.ir_classes("constructing container object", true)
+function Container:constructor()                                                --[[VERBOSE]] verbose:ir_classes(true, "constructing container object")
 	if self.definitions then
 		local repository = self.containing_repository
 		for field, member in pairs(self.definitions) do
-			if type(field) == "string" and not string.find(field, "^_") then          --[[VERBOSE]] verbose.ir_classes({"attempt to construct member object ", type(member) == "table" and member.name or member}, true)
-				repository:newobject(member)                                            --[[VERBOSE]] verbose.ir_classes()
+			if type(field) == "string" and not string.find(field, "^_") then          --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct member object ", type(member) == "table" and member.name or member)
+				repository:newobject(member)                                            --[[VERBOSE]] verbose:ir_classes()
 			end
 		end
 	else
 		self.definitions = {}
-	end                                                                           --[[VERBOSE]] verbose.ir_classes()
+	end                                                                           --[[VERBOSE]] verbose:ir_classes()
 end
 
 --
 -- Read interface
 --
 
-function Container:lookup(search_name)                                          --[[VERBOSE]] verbose.ir_classes({ "searching for name ", search_name }, true)
+function Container:lookup(search_name)                                          --[[VERBOSE]] verbose:ir_classes(true, "searching for name ", search_name)
 	local scope
 	if string.find(search_name, "^::") then
 		scope = self.containing_repository
@@ -267,14 +266,14 @@ function Container:lookup(search_name)                                          
 		scope = self
 		search_name = "::"..search_name
 	end
-	for nextscope in string.gmatch(search_name, "::([%w][_%w]*)") do               --[[VERBOSE]] verbose.ir_classes{"looking name ", nextscope, " in scope ", scope and scope.name} if not scope then verbose.ir_classes "scope not found!" elseif not scope.definitions then verbose.ir_classes "invalid scope!" end
+	for nextscope in string.gmatch(search_name, "::([%w][_%w]*)") do               --[[VERBOSE]] verbose:ir_classes("looking name ", nextscope, " in scope ", scope and scope.name) if not scope then verbose:ir_classes "scope not found!" elseif not scope.definitions then verbose:ir_classes "invalid scope!" end
 		if not scope or not scope.definitions then return nil end
 		scope = scope.definitions[nextscope]
 	end
-	return scope                                                                  --[[VERBOSE]] , verbose.ir_classes()
+	return scope                                                                  --[[VERBOSE]] , verbose:ir_classes()
 end
 
-function Container:contents(limit_type, exclude_inherited, max_returned_objs)   --[[VERBOSE]] verbose.ir_classes({"returing up to ", max_returned_objs, " contents of kind ", limit_type}, true)
+function Container:contents(limit_type, exclude_inherited, max_returned_objs)   --[[VERBOSE]] verbose:ir_classes(true, "returing up to ", max_returned_objs, " contents of kind ", limit_type)
 	-- TODO:[maia] finish implementation
 	if not contents then contents = {} end
 	for name, member in pairs(self.definitions)	do
@@ -282,16 +281,16 @@ function Container:contents(limit_type, exclude_inherited, max_returned_objs)   
 			type(name) == "string" and
 			(limit_type == "dk_all" or member.def_kind == limit_type)
 		then
-			if max_returned_objs == 0 then break end                                  --[[VERBOSE]] verbose.ir_classes{"including member ", member.name}
+			if max_returned_objs == 0 then break end                                  --[[VERBOSE]] verbose:ir_classes("including member ", member.name)
 			table.insert(contents, member)
 			max_returned_objs = max_returned_objs - 1
 		end
 	end
-	return contents, max_returned_objs                                            --[[VERBOSE]] , verbose.ir_classes()
+	return contents, max_returned_objs                                            --[[VERBOSE]] , verbose:ir_classes()
 end
 
 function Container:lookup_name(search_name, levels_to_search,
-                               limit_type, exclude_inherited)
+																limit_type, exclude_inherited)
 	-- TODO:[maia] finish implementation
 	if not results then results = {} end
 	for name, member in pairs(self.definitions)	do
@@ -307,7 +306,7 @@ end
 
 local ContainerDescription = iridl.Container.definitions.Description
 function Container:describe_contents(limit_type, exclude_inherited,
-                                     max_returned_objs)                         --[[VERBOSE]] verbose.ir_classes("describing contents", true)
+																		max_returned_objs)                         --[[VERBOSE]] verbose:ir_classes(true, "describing contents")
 	local contents = self:contents(limit_type,
 	                               exclude_inherited,
 	                               max_returned_objs)
@@ -319,7 +318,7 @@ function Container:describe_contents(limit_type, exclude_inherited,
 		}, ContainerDescription)
 	end
 	
-	return contents                                                               --[[VERBOSE]] , verbose.ir_classes()
+	return contents                                                               --[[VERBOSE]] , verbose:ir_classes()
 end
 
 --
@@ -455,7 +454,7 @@ end
 
 --------------------------------------------------------------------------------
 
-function IDLType:constructor()                                                  --[[VERBOSE]] verbose.ir_classes "constructing IDL type object"
+function IDLType:constructor()                                                  --[[VERBOSE]] verbose:ir_classes "constructing IDL type object"
 	if not self.type then self.type = self end
 end
 
@@ -471,7 +470,7 @@ function ObjectRef:constructor()
 	if self.repID ~= ObjectRef.repID then
 		assert.raise{ "INTERNAL", minor_code_value = 0,
 			reason = "IRObject",
-			message = "ilegal Object type, use interface definition instead",
+			message = "illegal Object type, use interface definition instead",
 		}
 	end
 end
@@ -501,16 +500,16 @@ PrimitiveDef(idl.string  ).kind = "pk_string"
 ArrayDef.def_kind = "dk_Array"
 ArrayDef._type = "array"
 
-function ArrayDef:constructor()                                                 --[[VERBOSE]] verbose.ir_classes("constructing ArrayDef object", true)
-	if not self.element_type_def then                                             --[[VERBOSE]] verbose.ir_classes("attempt to construct element type object", true)
-		self.containing_repository:newobject(self.elementtype)                      --[[VERBOSE]] verbose.ir_classes()
-		self:_set_element_type_def(self.elementtype)                                --[[VERBOSE]] verbose.ir_classes()
+function ArrayDef:constructor()                                                 --[[VERBOSE]] verbose:ir_classes(true, "constructing ArrayDef object")
+	if not self.element_type_def then                                             --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct element type object")
+		self.containing_repository:newobject(self.elementtype)                      --[[VERBOSE]] verbose:ir_classes()
+		self:_set_element_type_def(self.elementtype)                                --[[VERBOSE]] verbose:ir_classes()
 	end
 end
 
 function ArrayDef:_get_element_type() return self.elementtype end
 
-function ArrayDef:_set_element_type_def(type_def)                               --[[VERBOSE]] verbose.ir_classes "setting sequence/array element type"
+function ArrayDef:_set_element_type_def(type_def)                               --[[VERBOSE]] verbose:ir_classes "setting sequence/array element type"
 	self.element_type_def = type_def
 	self.elementtype = type_def.type
 end
@@ -520,11 +519,11 @@ end
 SequenceDef.def_kind = "dk_Sequence"
 SequenceDef._type = "sequence"
 
-function SequenceDef:constructor()                                              --[[VERBOSE]] verbose.ir_classes("constructing SequenceDef object", true)
-	if not self.element_type_def then                                             --[[VERBOSE]] verbose.ir_classes("attempt to construct element type object", true)
-		self.containing_repository:newobject(self.elementtype)                     --[[VERBOSE]] verbose.ir_classes()
+function SequenceDef:constructor()                                              --[[VERBOSE]] verbose:ir_classes(true, "constructing SequenceDef object")
+	if not self.element_type_def then                                             --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct element type object")
+		self.containing_repository:newobject(self.elementtype)                     --[[VERBOSE]] verbose:ir_classes()
 		self:_set_element_type_def(self.elementtype)
-	end                                                                           --[[VERBOSE]] verbose.ir_classes()
+	end                                                                           --[[VERBOSE]] verbose:ir_classes()
 end
 
 SequenceDef._get_element_type = ArrayDef._get_element_type
@@ -545,31 +544,31 @@ StringDef._get_bound = SequenceDef._get_bound
 AttributeDef.def_kind = "dk_Attribute"
 AttributeDef._type = "attribute"
 
-function AttributeDef:get_description()                                         --[[VERBOSE]] verbose.ir_classes "creating attribute description"
+function AttributeDef:get_description()                                         --[[VERBOSE]] verbose:ir_classes "creating attribute description"
 	return setmetatable({
 		type = self.type,
 		mode = self.mode,
 	}, iridl.AttributeDescription)
 end
 
-function AttributeDef:constructor()                                             --[[VERBOSE]] verbose.ir_classes("constructing AttributeDef object", true)
+function AttributeDef:constructor()                                             --[[VERBOSE]] verbose:ir_classes(true, "constructing AttributeDef object")
 	if not self.mode then
 		self.mode = (self.readonly and "ATTR_READONLY" or "ATTR_NORMAL")
 	end
-	if not self.type_def then                                                     --[[VERBOSE]] verbose.ir_classes("attempt to construct element type object", true)
-		self.containing_repository:newobject(self.type)                             --[[VERBOSE]] verbose.ir_classes()
+	if not self.type_def then                                                     --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct element type object")
+		self.containing_repository:newobject(self.type)                             --[[VERBOSE]] verbose:ir_classes()
 		self:_set_type_def(self.type)
 	end
 	
-	self.defined_in.members[self.name] = self	                                    --[[VERBOSE]] verbose.ir_classes()
+	self.defined_in.members[self.name] = self	                                    --[[VERBOSE]] verbose:ir_classes()
 end
 
-function AttributeDef:_set_mode(value)                                          --[[VERBOSE]] verbose.ir_classes "setting attribute mode"
+function AttributeDef:_set_mode(value)                                          --[[VERBOSE]] verbose:ir_classes "setting attribute mode"
 	self.mode = value
 	self.readonly = (value == "ATTR_READONLY")
 end
 
-function AttributeDef:_set_type_def(type_def)                                   --[[VERBOSE]] verbose.ir_classes "setting attribute type"
+function AttributeDef:_set_type_def(type_def)                                   --[[VERBOSE]] verbose:ir_classes "setting attribute type"
 	self.type_def = type_def
 	self.type = type_def.type
 end
@@ -583,7 +582,7 @@ OperationDef.parameters = Empty
 OperationDef.exceptions = Empty
 OperationDef.result = idl.void
 
-function OperationDef:get_description()                                         --[[VERBOSE]] verbose.ir_classes "creating operation description"
+function OperationDef:get_description()                                         --[[VERBOSE]] verbose:ir_classes "creating operation description"
 	local exceptions = {}
 	for index, except in ipairs(self.exceptions) do
 		exceptions[index] = except:describe().value
@@ -597,42 +596,42 @@ function OperationDef:get_description()                                         
 	}, iridl.OperationDescription)
 end
 
-function OperationDef:constructor()                                             --[[VERBOSE]] verbose.ir_classes("constructing OperationDef object", true)
+function OperationDef:constructor()                                             --[[VERBOSE]] verbose:ir_classes(true, "constructing OperationDef object")
 	if not self.mode then
 		self.mode = (self.oneway and "OP_ONEWAY" or "OP_NORMAL")
 	end
 	local repository = self.containing_repository
 	for _, param in ipairs(self.parameters) do
-		if not param.type_def then                                                  --[[VERBOSE]] verbose.ir_classes("attempt to construct parameter ", _, " type object", true)
-			repository:newobject(param.type)                                          --[[VERBOSE]] verbose.ir_classes()
+		if not param.type_def then                                                  --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct parameter ", _, " type object")
+			repository:newobject(param.type)                                          --[[VERBOSE]] verbose:ir_classes()
 			param.type_def = param.type
 		end
 	end
-	for _, except in ipairs(self.exceptions) do                                   --[[VERBOSE]] verbose.ir_classes("attempt to construct raised exception ", except.name, " type object", true)
-		repository:newobject(except)                                                --[[VERBOSE]] verbose.ir_classes()
+	for _, except in ipairs(self.exceptions) do                                   --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct raised exception ", except.name, " type object")
+		repository:newobject(except)                                                --[[VERBOSE]] verbose:ir_classes()
 	end
-	if not self.result_def then                                                   --[[VERBOSE]] verbose.ir_classes("attempt to construct result type object", true)
-		repository:newobject(self.result)                                           --[[VERBOSE]] verbose.ir_classes()
+	if not self.result_def then                                                   --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct result type object")
+		repository:newobject(self.result)                                           --[[VERBOSE]] verbose:ir_classes()
 		self:_set_result_def(self.result)
 	end
 	self:_set_params(self.parameters)
 	self:_set_exceptions(self.exceptions)
 
-	self.defined_in.members[self.name] = self	                                    --[[VERBOSE]] verbose.ir_classes()
+	self.defined_in.members[self.name] = self	                                    --[[VERBOSE]] verbose:ir_classes()
 end
 
-function OperationDef:_set_mode(value)                                          --[[VERBOSE]] verbose.ir_classes "setting operation mode"
+function OperationDef:_set_mode(value)                                          --[[VERBOSE]] verbose:ir_classes "setting operation mode"
 	self.mode = value
 	self.oneway = (value == "OP_ONEWAY")
 end
 
-function OperationDef:_set_result_def(type_def)                                 --[[VERBOSE]] verbose.ir_classes "setting operation result type"
+function OperationDef:_set_result_def(type_def)                                 --[[VERBOSE]] verbose:ir_classes "setting operation result type"
 	self.result_def = type_def
 	self.result = type_def.type
 end
 
 function OperationDef:_get_params() return self.parameters end
-function OperationDef:_set_params(parameters)                                   --[[VERBOSE]] verbose.ir_classes "setting operation parameters"
+function OperationDef:_set_params(parameters)                                   --[[VERBOSE]] verbose:ir_classes "setting operation parameters"
 	local inputs = {}
 	local outputs = {}
 	if self.result and self.result ~= idl.void then
@@ -648,7 +647,7 @@ function OperationDef:_set_params(parameters)                                   
 			table.insert(inputs, param.type)
 			table.insert(outputs, param.type)
 		else
-			assert.ilegal(param.mode, "operation parameter mode")
+			assert.illegal(param.mode, "operation parameter mode")
 		end
 	end
 	self.parameters = parameters
@@ -656,7 +655,7 @@ function OperationDef:_set_params(parameters)                                   
 	self.outputs = outputs
 end
 
-function OperationDef:_set_exceptions(excepts)                                  --[[VERBOSE]] verbose.ir_classes "setting operation raised exceptions"
+function OperationDef:_set_exceptions(excepts)                                  --[[VERBOSE]] verbose:ir_classes "setting operation raised exceptions"
 	for _, except in ipairs(excepts) do
 		excepts[except.repID] = except
 	end
@@ -668,7 +667,7 @@ end
 TypedefDef.def_kind = "dk_Typedef"
 TypedefDef._type = "typedef"
 
-function TypedefDef:get_description()                                           --[[VERBOSE]] verbose.ir_classes "creating type definition description"
+function TypedefDef:get_description()                                           --[[VERBOSE]] verbose:ir_classes "creating type definition description"
 	return setmetatable({ type = self.type }, iridl.TypeDescription)
 end
 
@@ -677,15 +676,15 @@ end
 StructDef.def_kind = "dk_Struct"
 StructDef._type = "struct"
 
-function StructDef:constructor()                                                --[[VERBOSE]] verbose.ir_classes("constructing StructDef object", true)
+function StructDef:constructor()                                                --[[VERBOSE]] verbose:ir_classes(true, "constructing StructDef object")
 	local repository = self.containing_repository
 	for _, field in ipairs(self.fields) do
-		if not field.type_def then                                                  --[[VERBOSE]] verbose.ir_classes("attempt to construct struct field type object", true)
-			repository:newobject(field.type)                                          --[[VERBOSE]] verbose.ir_classes()
+		if not field.type_def then                                                  --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct struct field type object")
+			repository:newobject(field.type)                                          --[[VERBOSE]] verbose:ir_classes()
 			field.type_def = field.type
 		end
 	end
-	self:_set_members(self.fields)                                                --[[VERBOSE]] verbose.ir_classes()
+	self:_set_members(self.fields)                                                --[[VERBOSE]] verbose:ir_classes()
 end
 
 StructDef._set_type_def = AttributeDef._set_type_def
@@ -704,16 +703,16 @@ UnionDef.def_kind = "dk_Union"
 UnionDef._type = "union"
 UnionDef.default = -1
 
-function UnionDef:constructor()                                                 --[[VERBOSE]] verbose.ir_classes("constructing UnionDef object", true)
+function UnionDef:constructor()                                                 --[[VERBOSE]] verbose:ir_classes(true, "constructing UnionDef object")
 	local repository = self.containing_repository
-	if not self.discriminator_type_def then                                       --[[VERBOSE]] verbose.ir_classes("attempt to construct switch type object", true)
-		repository:newobject(self.switch)                                           --[[VERBOSE]] verbose.ir_classes()
+	if not self.discriminator_type_def then                                       --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct switch type object")
+		repository:newobject(self.switch)                                           --[[VERBOSE]] verbose:ir_classes()
 		self:_set_discriminator_type_def(self.switch)
 	end
 	if not self.members then
 		local members = {}
-		for index, option in ipairs(self.options) do                                --[[VERBOSE]] verbose.ir_classes({"attempt to construct option ", option.name, " type object"}, true)
-			repository:newobject(option.type)                                         --[[VERBOSE]] verbose.ir_classes()
+		for index, option in ipairs(self.options) do                                --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct option ", option.name, " type object")
+			repository:newobject(option.type)                                         --[[VERBOSE]] verbose:ir_classes()
 			members[index] = {
 				name = option.name,
 				label = setmetatable({option.label}, self.switch),
@@ -729,12 +728,12 @@ end
 
 function UnionDef:_get_discriminator_type() return self.switch end
 
-function UnionDef:_set_discriminator_type_def(type_def)                         --[[VERBOSE]] verbose.ir_classes "setting union discriminator type"
+function UnionDef:_set_discriminator_type_def(type_def)                         --[[VERBOSE]] verbose:ir_classes "setting union discriminator type"
 	self.discriminator_type_def = type_def
 	self.switch = type_def.type
 end
 
-function UnionDef:_set_members(members)                                         --[[VERBOSE]] verbose.ir_classes "setting union members"
+function UnionDef:_set_members(members)                                         --[[VERBOSE]] verbose:ir_classes "setting union members"
 	local options = {}
 	local selector = {}
 	local selection = {}
@@ -758,8 +757,8 @@ end
 EnumDef.def_kind = "dk_Enum"
 EnumDef._type = "enum"
 
-function EnumDef:constructor()                                                  --[[VERBOSE]] verbose.ir_classes("constructing EnumDef object", true)
-	self:_set_members(self.enumvalues)                                            --[[VERBOSE]] verbose.ir_classes()
+function EnumDef:constructor()                                                  --[[VERBOSE]] verbose:ir_classes(true, "constructing EnumDef object")
+	self:_set_members(self.enumvalues)                                            --[[VERBOSE]] verbose:ir_classes()
 end
 
 function EnumDef:_get_members() return self.enumvalues end
@@ -821,29 +820,29 @@ local Classes = {
 	Object     = ObjectRef,
 }
 function Repository:newobject(object)
-	if getmetatable(object) == nil then                                           --[[VERBOSE]] verbose.ir_classes "creating new IR object from IDL definition"
+	if getmetatable(object) == nil then                                           --[[VERBOSE]] verbose:ir_classes "creating new IR object from IDL definition"
 		object.containing_repository = self
 		return Classes[object._type](object)
 	elseif
 		object._is_a and
 		object:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0")
 	then
-		return proxy.interface(object)                                              --[[VERBOSE]] else verbose.ir_classes "object already is an IR object"
+		return self.proxy:interface(object)                                              --[[VERBOSE]] else verbose:ir_classes "object already is an IR object"
 	end
 end
 
-function Repository:__init(object)                                              --[[VERBOSE]] verbose.ir_classes("creating new repository", true)
+function Repository:__init(object)                                              --[[VERBOSE]] verbose:ir_classes(true, "creating new repository")
 	ObjectManager.__init(self, object)
 	object.containing_repository = object
-	return IRObject.__init(self, object)                                          --[[VERBOSE]] , verbose.ir_classes()
+	return IRObject.__init(self, object)                                          --[[VERBOSE]] , verbose:ir_classes()
 end
 
-function Repository:constructor()                                               --[[VERBOSE]] verbose.ir_classes("constructing Repository object", true)
+function Repository:constructor()                                               --[[VERBOSE]] verbose:ir_classes(true, "constructing Repository object")
 	for repID, iface in pairs(self.ifaces) do
 		if type(iface) == "table" and iface._type == "interface" then
 			self:newobject(iface)
 		end
-	end                                                                           --[[VERBOSE]] verbose.ir_classes()
+	end                                                                           --[[VERBOSE]] verbose:ir_classes()
 end
 
 function Repository:putiface(def)
@@ -853,13 +852,13 @@ function Repository:putiface(def)
 
 	local interface = rawget(self.ifaces, repID)
 	if interface ~= def then
-		if interface then                                                           --[[VERBOSE]] verbose.ir_manager{"replace definition of ", repID}
+		if interface then                                                           --[[VERBOSE]] verbose:ir_manager("replace definition of ", repID)
 			---- redefine interface members
 			--interface:update(def)
 			--
 			---- redefine interface class
 			--proxyclass = rawget(self.classes, repID)
-			--if proxyclass then                                                        --[[VERBOSE]] verbose.ir_manager{"replace proxy class of ", repID}
+			--if proxyclass then                                                        --[[VERBOSE]] verbose:ir_manager("replace proxy class of ", repID)
 			--	-- TODO: reset proxy class members, so new operation stubs will be created
 			--	local handlers = proxyclass._handlers
 			--	table.clear(proxyclass)
@@ -869,15 +868,15 @@ function Repository:putiface(def)
 			--	proxyclass.__index = proxy.Object.__index
 			--	proxyclass.__newindex = proxy.Object.__newindex
 			--end
-		else                                                                        --[[VERBOSE]] verbose.ir_manager({"register definition of ", repID}, true)
-			if getmetatable(def) then                                                 --[[VERBOSE]] verbose.ir_manager "remote or customized interface description"
+		else                                                                        --[[VERBOSE]] verbose:ir_manager(true, "register definition of ", repID)
+			if getmetatable(def) then                                                 --[[VERBOSE]] verbose:ir_manager "remote or customized interface description"
 				interface = def
 				self.ifaces[repID] = interface
-			else                                                                      --[[VERBOSE]] verbose.ir_manager "creating InterfaceDef from description"
+			else                                                                      --[[VERBOSE]] verbose:ir_manager "creating InterfaceDef from description"
 				def.containing_repository = self
 				if not def.defined_in then def.defined_in = self end
 				interface = InterfaceDef(def)
-			end                                                                       --[[VERBOSE]] verbose.ir_manager()
+			end                                                                       --[[VERBOSE]] verbose:ir_manager()
 		end
 	end
 	return interface
@@ -889,8 +888,8 @@ end
 
 function Repository:lookup(search_name)
 	local iface = Container.lookup(self, search_name)
-	if not iface and self.ir then                                                 --[[VERBOSE]] verbose.ir_classes("looking up name on remote IR", true)
-		iface = self.ir:lookup(search_name)                                         --[[VERBOSE]] verbose.ir_classes()
+	if not iface and self.ir then                                                 --[[VERBOSE]] verbose:ir_classes(true, "looking up name on remote IR")
+		iface = self.ir:lookup(search_name)                                         --[[VERBOSE]] verbose:ir_classes()
 		if iface then
 			iface = self:newobject(
 				iface:_narrow("IDL:omg.org/CORBA/InterfaceDef:1.0")
@@ -900,14 +899,14 @@ function Repository:lookup(search_name)
 	return iface
 end
 
-function Repository:lookup_id(search_id)                                        --[[VERBOSE]] verbose.ir_classes({"looking up of object with ir ", search_id}, true)
-	return self.ifaces[search_id]                                                 --[[VERBOSE]] , verbose.ir_classes()
+function Repository:lookup_id(search_id)                                        --[[VERBOSE]] verbose:ir_classes(true, "looking up of object with ir ", search_id)
+	return self.ifaces[search_id]                                                 --[[VERBOSE]] , verbose:ir_classes()
 end
 
 --function Repository:get_canonical_typecode(tc)
 --end
 
-function Repository:get_primitive(kind)                                         --[[VERBOSE]] verbose.ir_classes{"getting primitive ", kind}
+function Repository:get_primitive(kind)                                         --[[VERBOSE]] verbose:ir_classes("getting primitive ", kind)
 	return self.primitive[kind]
 end
 
@@ -954,7 +953,7 @@ end
 ModuleDef.def_kind = "dk_Module"
 ModuleDef._type = "module"
 
-function ModuleDef:get_description()                                            --[[VERBOSE]] verbose.ir_classes "creating module description"
+function ModuleDef:get_description()                                            --[[VERBOSE]] verbose:ir_classes "creating module description"
 	return setmetatable({}, iridl.ModuleDescription)
 end
 
@@ -963,7 +962,7 @@ end
 ExceptionDef.def_kind = "dk_Exception"
 ExceptionDef._type = "except"
 
-function ExceptionDef:get_description()                                         --[[VERBOSE]] verbose.ir_classes "creating exception description"
+function ExceptionDef:get_description()                                         --[[VERBOSE]] verbose:ir_classes "creating exception description"
 	return setmetatable({ type = self }, iridl.ExceptionDescription)
 end
 
@@ -971,8 +970,8 @@ function ExceptionDef:constructor()
 	self.type = self
 	local repository = self.containing_repository
 	for _, member in ipairs(self.members) do
-		if not member.type_def then                                                 --[[VERBOSE]] verbose.ir_classes("attempt to construct exception member type object", true)
-			repository:newobject(member.type)                                         --[[VERBOSE]] verbose.ir_classes()
+		if not member.type_def then                                                 --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct exception member type object")
+			repository:newobject(member.type)                                         --[[VERBOSE]] verbose:ir_classes()
 			member.type_def = member.type
 		end
 		member.type = member.type_def.type
@@ -988,7 +987,7 @@ InterfaceDef.base_interfaces = { {
 	members = Empty,
 } }
 
-function InterfaceDef:get_description()                                         --[[VERBOSE]] verbose.ir_classes "creating interface description"
+function InterfaceDef:get_description()                                         --[[VERBOSE]] verbose:ir_classes "creating interface description"
 	local bases = {}
 	for index, base in ipairs(self.base_interfaces) do
 		bases[index] = base.repID
@@ -996,17 +995,17 @@ function InterfaceDef:get_description()                                         
 	return setmetatable({ base_interfaces = bases }, iridl.InterfaceDescription)
 end
 
-function InterfaceDef:constructor()                                             --[[VERBOSE]] verbose.ir_classes({"constructing InterfaceDef type object"}, true)
+function InterfaceDef:constructor()                                             --[[VERBOSE]] verbose:ir_classes(true, "constructing InterfaceDef type object")
 	self.members = idl.InterfaceMemberList(self.members, self)
 	local repository = self.containing_repository
 	for _, member in pairs(self.members) do
-		if not member.attribute then                                                --[[VERBOSE]] verbose.ir_classes({"attempt to construct interface member ", member.name}, true)
-			repository:newobject(member)                                              --[[VERBOSE]] verbose.ir_classes()
+		if not member.attribute then                                                --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct interface member ", member.name)
+			repository:newobject(member)                                              --[[VERBOSE]] verbose:ir_classes()
 		end
 	end
-	for _, base in ipairs(self.base_interfaces) do                                --[[VERBOSE]] verbose.ir_classes({"attempt to construct base interface ", base.name, " type object"}, true)
-		repository:newobject(base)                                                  --[[VERBOSE]] verbose.ir_classes()
-	end                                                                           --[[VERBOSE]] verbose.ir_classes()
+	for _, base in ipairs(self.base_interfaces) do                                --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct base interface ", base.name, " type object")
+		repository:newobject(base)                                                  --[[VERBOSE]] verbose:ir_classes()
+	end                                                                           --[[VERBOSE]] verbose:ir_classes()
 end
 
 --
@@ -1022,27 +1021,27 @@ function InterfaceDef:is_a(interface_id)
 end
 
 local FullIfaceDescription = iridl.InterfaceDef.definitions.FullInterfaceDescription
-function InterfaceDef:describe_interface()                                      --[[VERBOSE]] verbose.ir_classes("describing interface ", true)
+function InterfaceDef:describe_interface()                                      --[[VERBOSE]] verbose:ir_classes(true, "describing interface ")
 	local operations = {}
 	local attributes = {}
 	local base_interfaces = {}
-	for _, base in ipairs(self.base_interfaces) do                                --[[VERBOSE]] verbose.ir_classes{"adding base interface ", base.absolute_name}
+	for _, base in ipairs(self.base_interfaces) do                                --[[VERBOSE]] verbose:ir_classes("adding base interface ", base.absolute_name)
 		table.insert(base_interfaces, base.repID)
 	end
 	local queue = OrderedSet{ self }
 	local iface = OrderedSet.firstkey
-	while queue[iface] do iface = queue[iface]                                    --[[VERBOSE]] verbose.ir_classes({"adding members from interface ", iface.absolute_name}, true)
+	while queue[iface] do iface = queue[iface]                                    --[[VERBOSE]] verbose:ir_classes(true, "adding members from interface ", iface.absolute_name)
 		for _, member in pairs(iface.members) do
-			if member._type == "attribute" then                                       --[[VERBOSE]] verbose.ir_classes({"adding attribute ", member.name}, true)
-				table.insert(attributes, member:describe().value)                       --[[VERBOSE]] verbose.ir_classes()
-			elseif member._type == "operation" and not member.attribute then          --[[VERBOSE]] verbose.ir_classes({"adding operation ", member.name}, true)
-				table.insert(operations, member:describe().value)                       --[[VERBOSE]] verbose.ir_classes()
+			if member._type == "attribute" then                                       --[[VERBOSE]] verbose:ir_classes(true, "adding attribute ", member.name)
+				table.insert(attributes, member:describe().value)                       --[[VERBOSE]] verbose:ir_classes()
+			elseif member._type == "operation" and not member.attribute then          --[[VERBOSE]] verbose:ir_classes(true, "adding operation ", member.name)
+				table.insert(operations, member:describe().value)                       --[[VERBOSE]] verbose:ir_classes()
 			end
-		end                                                                         --[[VERBOSE]] verbose.ir_classes()
+		end                                                                         --[[VERBOSE]] verbose:ir_classes()
 		for _, base in ipairs(iface.base_interfaces) do
 			if not queue:contains(base) then queue:enqueue(base) end
 		end
-	end                                                                           --[[VERBOSE]] verbose.ir_classes()
+	end                                                                           --[[VERBOSE]] verbose:ir_classes()
 	return setmetatable({
 		name = self.name,
 		id = self.id,
@@ -1079,8 +1078,8 @@ function InterfaceDef:create_attribute(id, name, version, type, mode)
 end
 
 function InterfaceDef:create_operation(id, name, version,
-                                       result, mode, params,
-                                       exceptions, contexts)
+																				result, mode, params,
+																				exceptions, contexts)
 	return OperationDef {
 		containing_repository = self.containing_repository,
 		defined_in = self,
@@ -1166,6 +1165,6 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function new(ifaces)                                                            --[[VERBOSE]] verbose.ir_classes({"instantiating new integrated IR with map ", ifaces}, true)
-	return Repository{ ifaces = ifaces }, iridl.Repository                        --[[VERBOSE]] , verbose.ir_classes()
+function new(self, ifaces)                                                            --[[VERBOSE]] verbose:ir_classes(true, "instantiating new integrated IR with map ", ifaces)
+	return Repository{ ifaces = ifaces, proxy = self.proxy  }, iridl.Repository                        --[[VERBOSE]] , verbose:ir_classes()
 end

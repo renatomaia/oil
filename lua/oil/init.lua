@@ -359,7 +359,7 @@ function newobject(object, interface, key)
 				assert.illegal(interface, "interface, unable to get definition")
 			end
 		else
-			interface = self.manager:putiface(interface)
+			interface = Manager:putiface(interface)
 		end
 	else
 		assert.type(interface, "idlinterface", "object interface")
