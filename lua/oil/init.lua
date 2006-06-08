@@ -43,6 +43,7 @@ local ipairs   = ipairs
 local tostring = tostring
 local require  = require
 local rawset   = rawset
+local print    = print
 
 local io = require "io"
 
@@ -54,26 +55,91 @@ local io = require "io"
 -- that currently are only supported as part of the internal implementation and
 -- therefore may change in the future.
 
-module "oil"
+module "oil"                                  
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
 
-local luaidl     = require "luaidl"
-local idl        = require "oil.idl"
-local idlparser  = require "oil.idl.compiler"
-local assert     = require "oil.assert"
-local ior        = require "oil.ior"
-local proxy      = require "oil.proxy"
-local orb        = require "oil.orb"
-                   require "oil.iiop"
-local manager    = require "oil.ir"
-local iridl      = require "oil.ir.idl"
+local luaidl  = require "luaidl"
+local idl     = require "oil.idl"
+local assert  = require "oil.assert"
+local ir      = require "oil.ir"
+local iridl   = require "oil.ir.idl"
+
+--------------------------------------------------------------------------------
+-- binding components (test)
+local arch = require "oil.arch.comm"
+
+
+local corba_codec         = require "oil.corba.Codec"
+local corba_protocol      = require "oil.corba.Protocol"
+local corba_iop           = require "oil.corba.InternetIOP"
+local corba_profile       = require "oil.corba.Profile"
+local corba_reference     = require "oil.corba.reference"
+
+local proxy             = require "oil.proxy"
+local channel_factory   = require "oil.ChannelFactory"
+local dispatcher        = require "oil.orb"
+local reference_handler = require "oil.ReferenceHandler"
+local manager           = require "oil.ir"
+local access_point      = require "oil.AccessPoint"
+
+local Factory_Codec             = arch.CodecType{ corba_codec }
+local Factory_Protocol          = arch.CORBAProtocolType{ corba_protocol }
+local Factory_IOP               = arch.IOPType{ corba_iop }
+local Factory_ReferenceResolver = arch.ReferenceResolverType{ corba_reference }
+local Factory_ProfileResolver   = arch.ProfileResolverType{ corba_profile }
+
+local Factory_Manager           = arch.ManagerType{ manager }
+local Factory_ReferenceHandler  = arch.ReferenceHandlerType{ reference_handler }
+local Factory_ChannelFactory    = arch.ChannelFactoryType{ channel_factory }
+local Factory_Dispatcher        = arch.DispatcherType{ dispatcher }
+local Factory_Proxy             = arch.ProxyType{ proxy }
+local Factory_Manager           = arch.ManagerType{ manager }
+local Factory_AccessPoint       = arch.AccessPointType{ access_point }
+
+----------------------------------------
+
+myProtocol = Factory_Protocol()
+myCodec = Factory_Codec()
+myIop = Factory_IOP()
+myProfileResolver = Factory_ProfileResolver()
+myReferenceResolver = Factory_ReferenceResolver()
+myAccessPoint = Factory_AccessPoint()
+
+myReferenceHandler = Factory_ReferenceHandler()
+myProxy = Factory_Proxy()
+myChannelFactory = Factory_ChannelFactory()
+myDispatcher = Factory_Dispatcher()
+myManager = Factory_Manager()
+
+----------------------------------------
+myProtocol.codec         = myCodec.codec
+myProtocol.iop           = myIop.iop
+myIop.protocolHelper     = myProtocol.protocolHelper
+myReferenceResolver.codec        = myCodec.codec
+myProfileResolver.codec = myCodec.codec
+
+myReferenceHandler.reference_resolver["corba"] = myReferenceResolver.resolver
+myReferenceHandler.profile_resolver["corba"] = myProfileResolver.resolver
+myReferenceResolver.profile_resolver = myProfileResolver.resolver
+
+myIop.channelFactory   = myChannelFactory.factory
+
+myProxy.protocol       = myProtocol.protocol
+myProxy.reference_handler      = myReferenceHandler.reference
+
+myManager.proxy = myProxy.proxy
+
+myDispatcher.protocol    = myProtocol.protocol
+myDispatcher.point       = myAccessPoint.point
+myDispatcher.reference_handler   = myReferenceHandler.reference
+
+myAccessPoint.protocol["corba"] = myProtocol.protocol
 
 --------------------------------------------------------------------------------
 -- Local module variables and functions ----------------------------------------
-
-Manager = manager.new()
+Manager = myManager:new()
 
 Manager:putiface(iridl.Repository             )
 Manager:putiface(iridl.Container              )
@@ -109,7 +175,50 @@ Manager:putiface(iridl.InterfaceAttrExtension )
 Manager:putiface(iridl.ValueMemberDef         )
 
 --------------------------------------------------------------------------------
+-- LuaIDL support
+--------------------------------------------------------------------------------
+local function createspec(def, history)
+	if not history[def] then
+		history[def] = def
+		local constructor = idl[def._type]
+		if type(constructor) == "table" then
+			history[def] = constructor
+		else
+			for key, value in pairs(def) do
+				if type(value) == "table" then
+					def[key] = createspec(value, history)
+				end
+			end
+			if type(constructor) == "function" then
+				history[def] = constructor(def)
+			end
+		end
+	end
+	return history[def]
+end
 
+local function addspec(def, history)
+	if not history[def] then
+		history[def] = true
+		if def._type == "interface" or def._type == "module" then
+			if def._type == "interface" then
+				Manager:putiface(def)
+			end
+			for _, member in pairs(def.definitions) do addspec(member, history) end
+		end
+	end
+end
+
+local function processLuaIDLoutput(...)
+	if arg[1] then
+		local created, added = {}, {}
+		for _, def in ipairs(arg) do
+			addspec(createspec(def, created), added)
+		end
+	else
+		assert.error(arg[2])
+	end
+end
 
 --------------------------------------------------------------------------------
 -- Default configuration for creation of the default ORB instance.
@@ -155,7 +264,7 @@ Config = {}
 --        ]]                                                                   .
 
 function loadidl(idlspec)
-  return idlparser.parse(idlspec,Manager)
+	return processLuaIDLoutput(luaidl.parse(idlspec))
 end
 
 --------------------------------------------------------------------------------
@@ -176,7 +285,7 @@ end
 -- @usage oil.loadidlfile("HelloWorld.idl", "/tmp/preprocessed.idl")           .
 
 function loadidlfile(filename, preprocessed)
-  return idlparser.parsefile(filename,Manager)
+	return processLuaIDLoutput(luaidl.parsefile(filename, preprocessed))
 end
 
 --------------------------------------------------------------------------------
@@ -241,6 +350,20 @@ function newobject(object, interface, key)
 			interface = Manager:lookup(interface) or interface
 		end
 	end
+	if Manager then
+		if type(interface) == "string" then
+			local iface = Manager:getiface(interface)
+			if iface then 
+				interface = iface
+			else 
+				assert.illegal(interface, "interface, unable to get definition")
+			end
+		else
+			interface = self.manager:putiface(interface)
+		end
+	else
+		assert.type(interface, "idlinterface", "object interface")
+	end
 	return init():object(object, interface, key)
 end
 
@@ -267,28 +390,28 @@ end
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 
 function newproxy(object, interface)
-	object = ior.decode(object)
+	object = myReferenceResolver:decode(object)   -- TODO[nogara]: find another way to call reference here
 	if not interface then
-		interface = object._type_id
+		interface = object._type_id  
 	end
 	
 	local class = Manager:getclass(interface)
+	verbose:debug(class)
 	if not class then
 		if Manager.lookup then
-			interface = Manager:lookup(interface)
+			interface = Manager:lookup(interface) 
 			if interface then
 				class = Manager:getclass(interface.repID)
 			end
 		end
 		if not class then
-			object = Manager:getclass("IDL:omg.org/CORBA/Object:1.0")(object)
+			object = Manager:getclass("IDL:omg.org/CORBA/Object:1.0")(object) 
 			object = object:_narrow()
 		end
 	end
-	if class then object = class(object) end
+	if class then object = class(object) end            
 
 	rawset(object, "_orb", init())
-	
 	return object
 end
 
@@ -360,7 +483,8 @@ function init(config)
 			then Manager = config.manager
 			else config.manager = Manager
 		end
-		MainORB, except = orb.init(config or Config)
+		-- TODO:[nogara] is a call directly to dispatcher1 the way to do it? 
+		MainORB, except = myDispatcher:init(config or Config)
 		if not MainORB then assert.error(except) end
 	end
 	return MainORB
@@ -425,7 +549,7 @@ function writeIOR(object, file)
 		file:close()
 		return true
 	end
-	return nil, "unable to write file"
+	assert.error("unable to write file '"..tostring(file).."'")
 end
 
 --------------------------------------------------------------------------------
@@ -440,5 +564,6 @@ function readIOR(filename)
 		file:close()
 		return ior
 	end
-	return nil, "unable to read file"
+	assert.error("unable to read from file '"..filename.."'")
 end
+

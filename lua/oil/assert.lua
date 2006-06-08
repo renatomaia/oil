@@ -28,7 +28,7 @@ function type(value, name, description, exception, minor)
 	if not ok then
 		raise({ exception or "INTERNAL", minor_code_value = minor or 0,
 			message = "invalid "..description.." ("..
-			          name.." expected, got "..luatype(value)..")",
+								name.." expected, got "..luatype(value)..")",
 			reason = "type",
 			element = description,
 			type = name,
@@ -37,10 +37,10 @@ function type(value, name, description, exception, minor)
 	end
 end
 
-function ilegal(value, description, exception, minor)
+function illegal(value, description, exception, minor)
 	raise({ exception or "INTERNAL", minor_code_value = minor or 0,
-		message = "ilegal "..description.." (got "..
-		          Viewer:tostring(value)..")",
+		message = "illegal "..description.." (got "..
+							Viewer:tostring(value)..")",
 		reason = "value",
 		element = description,
 		value = value,
@@ -54,8 +54,8 @@ end
 error = luaerror
 --local luaerror = _G.error
 --function error(exception, level)
---	if luatype(exception) ~= "string" then
---		exception = tostring(exception)
---	end
---	luaerror(exception, level and (level + 1) or 1)
+--  if luatype(exception) ~= "string" then
+--    exception = tostring(exception)
+--  end
+--  luaerror(exception, level and (level + 1) or 1)
 --end

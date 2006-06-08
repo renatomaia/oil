@@ -37,24 +37,24 @@
 local require = require
 local ipairs  = ipairs
 
-module "oil.tcode"                                                              --[[VERBOSE]] local verbose = require "oil.verbose"
+module "oil.corba.tcode"                                                              --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
 
 local assert  = require "oil.assert"
 local IDL     = require "oil.idl"
-local cdr     = require "oil.cdr"
+--local cdr     = require "oil.corba.codec"
 
 --------------------------------------------------------------------------------
 -- TypeCode information --------------------------------------------------------
 
 -- NOTE: Description of type code categories, which is defined by field type
---	empty  : no further parameters are necessary to specify the associated
+--  empty  : no further parameters are necessary to specify the associated
 --           type.
---	simple : parameters that specify the associated type are defined as a
+--  simple : parameters that specify the associated type are defined as a
 --           sequence of values.
---	complex: parameters that specify the associated type are defined as a
+--  complex: parameters that specify the associated type are defined as a
 --           structure defined in IDL that is stored in a encapsulated octet
 --           sequence (i.e. which endianess may differ).
 
@@ -184,36 +184,36 @@ local TypeCodeInfo = {
 --------------------------------------------------------------------------------
 -- TypeCode unmarshalling function ---------------------------------------------
 
-function unmarshall(buffer)                                                     --[[VERBOSE]] verbose.unmarshallOf(IDL.TypeCode, value, buffer)
+function unmarshall(buffer)                                                     --[[VERBOSE]] verbose:unmarshall(IDL.TypeCode, value, buffer)
 	local kind = buffer:ulong()
 	local tcinfo = TypeCodeInfo[kind]
 	
-	if tcinfo == nil then assert.ilegal(kind, "type code", "MARSHALL") end        --[[VERBOSE]] verbose.unmarshall{"TypeCode defines a ", tcinfo.name}
+	if tcinfo == nil then assert.illegal(kind, "type code", "MARSHALL") end        --[[VERBOSE]] verbose:unmarshall("TypeCode defines a ", tcinfo.name)
 	if tcinfo.unhandled then
-		assert.ilegal(tcinfo.name, "supported type code", "MARSHALL")
+		assert.illegal(tcinfo.name, "supported type code", "MARSHALL")
 	end
 	
 	if tcinfo.type == "simple" then
 		
 		-- NOTE: The string type is the only simple type being handled,
 		--       therefore parameters are ignored.
-		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose.unmarshall{"[parameter ", param.name, "]"}
+		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose:unmarshall("[parameter ", param.name, "]")
 			buffer:get(param.type)
 		end
 		
-	elseif tcinfo.type == "complex" then                                          --[[VERBOSE]] verbose.unmarshall{"[parameters encapsulation]"}
+	elseif tcinfo.type == "complex" then                                          --[[VERBOSE]] verbose:unmarshall("[parameters encapsulation]")
 		
 		local params = buffer:sequence(IDL.OctetSeq)
-		buffer = cdr.ReadBuffer(params, true)                                       --[[VERBOSE]] verbose.unmarshall{"[parameters values]"}
+		buffer = self.codec:newDecoder(params, true)
 		params = buffer:struct(tcinfo.parameters)
-		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose.unmarshall{"[mutable parameters values]"}
+		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose:unmarshall("[mutable parameters values]")
 			for _, param in ipairs{tcinfo.mutable(params)} do
 				params[param.name] = buffer:get(param.type)
 			end
-		end                                                                         --[[VERBOSE]] verbose.unmarshall() -- done
+		end                                                                         --[[VERBOSE]] verbose:unmarshall(false) -- done
 		return IDL[tcinfo.name](params)
 		
-	end                                                                           --[[VERBOSE]] verbose.unmarshall() -- done
+	end                                                                           --[[VERBOSE]] verbose:unmarshall(false) -- done
 	
 	return tcinfo.idl
 end
@@ -224,30 +224,30 @@ end
 local TypeCodes = { interface = 14 }
 for tcode, info in ipairs(TypeCodeInfo) do TypeCodes[info.name] = tcode end
 
-function marshall(buffer, value)                                                --[[VERBOSE]] verbose.marshallOf(IDL.TypeCode, value, buffer)
+function marshall(buffer, value)                                                --[[VERBOSE]] verbose:marshall(IDL.TypeCode, value, buffer)
 	local kind   = TypeCodes[value._type]
 	local tcinfo = TypeCodeInfo[kind]
 	
-	if not kind then assert.ilegal(value, "IDL type", "MARSHALL") end
+	if not kind then assert.illegal(value, "IDL type", "MARSHALL") end
 	
 	buffer:ulong(kind)
 	
 	if tcinfo.type == "simple" then
 		
-		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose.marshall{"[parameter ", param.name, "]"}
+		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose:marshall("[parameter ", param.name, "]")
 			buffer:put(value[param.name], param.type)
 		end
 		
 	elseif tcinfo.type == "complex" then
 		
-		local temp = cdr.WriteBuffer(true)                                          --[[VERBOSE]] verbose.marshall{"[parameters values]"}
+		local temp = self.codec:newEncoder(true)
 		temp:struct(value, tcinfo.parameters)
-		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose.marshall{"[mutable parameters values]"}
+		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose:marshall("[mutable parameters values]")
 			for _, param in ipairs{tcinfo.mutable(value)} do
 				temp:put(value[param.name], param.type)
 			end
-		end                                                                         --[[VERBOSE]] verbose.marshall{"[parameters encapsulation]"}
+		end                                                                         --[[VERBOSE]] verbose:marshall("[parameters encapsulation]")
 		buffer:sequence(temp:getdata(), IDL.OctetSeq)
 		
-	end                                                                           --[[VERBOSE]] verbose.marshall() -- done
+	end                                                                           --[[VERBOSE]] verbose:marshall(false) -- done
 end

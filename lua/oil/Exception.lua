@@ -2,7 +2,8 @@ local type         = type
 local error        = error
 local pairs        = pairs
 local tostring     = tostring
-local getmetatable = getmetatable                                               --[[VERBOSE]] local require = require
+local getmetatable = getmetatable                                               
+local require      = require
 
 local table = require "table"
 local debug = require "debug"

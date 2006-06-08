@@ -1,57 +1,70 @@
 local tostring = tostring
 local type     = type
+local debug_flag = true
 
 local string = require "string"
 local math   = require "math"
 
-local verbose = require "loop.debug.verbose"
+local Verbose = require "loop.debug.Verbose"
+local Inspector = require "loop.debug.Inspector"
 
-oil = oil or {}
-oil.verbose = verbose
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+local verbose = Verbose{
+	groups = {
+		--
+		-- aspect selections
+		--
+		ir        = {"ir_manager","ir_classes","ir_cache"},
+		orb       = {"servant","broker"},
+		iiop      = {"open","close","transport"},
+		open      = {"connect","listen"},
+		transport = {"send","receive"},
+		cdr       = {"marshal","unmarshal"},
+		idl       = {"null","void","short","long","ushort","ulong","float",
+		             "double","boolean","char","octet","any","TypeCode",
+		             "string","Object","struct","union","enum","sequence",
+		             "array","typedef","except","operation"},
+
+		--
+		-- architectural levels
+		--
+		{"server","client","debug"},       -- API level
+		{"proxy","manager"},       -- object level
+		{"invoke","orb"},          -- ORB level
+		{"iiop","ior","giop"},     -- protocol level
+		{"cdr","tcode"},           -- marshalling level
+		{"idl"},                   -- definition level
+	},
+}
+
 package.loaded["oil.verbose"] = verbose
-setfenv(1, verbose)
-
-Viewer.maxdepth = 2
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
---
--- aspect selections
---
-addgroup("ir"       , "ir_manager","ir_classes","ir_cache")
-
-addgroup("orb"      , "servant","broker")
-addgroup("iiop"     , "open","close","transport")
-addgroup("open"     , "connect","listen")
-addgroup("transport", "send","receive")
-addgroup("cdr"      , "marshall","unmarshall")
-addgroup("idl"      , "null","void","short","long","ushort","ulong","float",
-                      "double","boolean","char","octet","any","TypeCode",
-                      "string","Object","struct","union","enum","sequence",
-                      "array","typedef","except","operation")
---
--- architectural levels
---
-addgroup(1, "server","client")       -- API level
-addgroup(2, "proxy","manager")       -- object level
-addgroup(3, "invoke","orb")          -- ORB level
-addgroup(4, "iiop","ior","giop")     -- protocol level
-addgroup(5, "cdr","tcode")           -- marshalling level
-addgroup(6, "idl")                   -- definition level
+oil = oil or {}
+oil.verbose = package.loaded["oil.verbose"]
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function newIDL(kind, name, from, to)
-	if Flags[kind] then
-		write(kind, {"defining new ", kind, ": ", name,
-			from = from,
-			to   = to  ,
-		})
-	end
+function verbose.custom:idl(def)
+	local viewer  = self.viewer
+	local output  = self.viewer.output
+
+	output:write("defining new ", def._type)
+
+	if def.name then output:write(": ", tostring(def.name)) end
+	output:write("\ndefinition: ")
+	viewer:write(def)
 end
 
+function verbose.custom:debug(msg)
+	local output  = self.viewer.output
+	if not msg then msg = 'nil' end 
+	output:write(msg, "\n")
+	if debug_flag then
+		Inspector:breakpoint(4)
+	end
+end
 --------------------------------------------------------------------------------
 
 local pos
@@ -71,90 +84,52 @@ local function readable_hexa(char)
 	end
 	return (string.format(format, string.byte(char)))
 end
-function format_rawdata(rawdata, cursor)
+local function format_rawdata(rawdata, cursor)
 	count = 0
 	pos = cursor
-	return "\n"..string.gsub(rawdata, "(.)", readable_hexa)
+	return string.gsub(rawdata, "(.)", readable_hexa)
 end
 
-function marshallOf(tcode, value, buffer, final)
-	if Flags.marshall then
-		local rawdata = buffer:getdata()
-		local formated = ""
-		if type(Details) == "table" and Details.marshall or Details == true then
-			formated = format_rawdata(rawdata, buffer.cursor)
-		end
-		marshall{"marshall of ", tcode._type, " ",
-		         tcode.name or tcode.repID,
-		         value and " (got "..tostring(value)..")" or "",
-		         formated,
-			value = value,
-			--tcode = tcode,
-		}
-		if not final then addtab() end
+function verbose.custom:marshal(tcode, value, buffer)
+	if type(tcode) == "string" then return true end
+
+	local viewer  = self.viewer
+	local output  = self.viewer.output
+	local name = tcode.name or tcode.repID
+
+	output:write("marshal of ", tcode._type)
+	if name then
+		output:write(" ", name)
+	end
+	if value then
+		output:write(" (got ")
+		viewer:write(value)
+		output:write(")")
+	end
+
+	if self.flags.marshalstream then
+		output:write("\n", format_rawdata(buffer:getdata(), buffer.cursor))
 	end
 end
 
-function unmarshallOf(tcode, value, buffer, final)
-	if Flags.unmarshall then
-		local rawdata = buffer:getdata()
-		local formated = ""
-		if type(Details) == "table" and Details.unmarshall or Details == true then
-			formated = format_rawdata(rawdata, buffer.cursor)
-		end
-		unmarshall{"unmarshall of ", tcode._type, " ",
-		           tcode.name or tcode.repID or "",
-		           value and " (got "..tostring(value)..")" or "",
-		           formated,
-			value = value,
-			--tcode = tcode,
-		}
-		if not final then addtab() end
+function verbose.custom:unmarshal(tcode, value, buffer)
+	if type(tcode) == "string" then return true end
+
+	local viewer  = self.viewer
+	local output  = self.viewer.output
+	local name = tcode.name or tcode.repID
+
+	output:write("unmarshal of ", tcode._type)
+	if name then
+		output:write(" ", name)
 	end
-end
-
---------------------------------------------------------------------------------
-
-local GIOPMessageTypeName = {
-	[0] = "Request",
-	[1] = "Reply",
-	[2] = "CancelRequest",
-	[3] = "LocateRequest",
-	[4] = "LocateReply",
-	[5] = "CloseConnection",
-	[6] = "MessageError",
-	[7] = "Fragment",
-}
-
-function newMsg(message_type, giop_version)
-	if Flags.send then
-		send({"create GIOP 1.", giop_version, " ",
-		      GIOPMessageTypeName[message_type], " message"
-		}, true)
+	if value then
+		output:write(" (got ")
+		viewer:write(value)
+		output:write(")")
 	end
-end
 
-function newHead(giop, header, body)
-	if Flags.send then
-		send({"create GIOP ", giop.GIOP_version.major, ".", 
-		     giop.GIOP_version.minor, " header for ",
-		     GIOPMessageTypeName[giop.message_type],
-			giop   = giop,
-			header = header,
-			body   = body,
-		}, true)
-	end
-end
-
-function gotMsg(magic, version, order, message_type, message_size, stream)
-	if Flags.receive then
-		removetab()
-		receive{"got ", magic or "no message", " ",
-		        version and (version.major.."."..version.minor.." ") or " ",
-		        GIOPMessageTypeName[message_type],
-			order  = (order~=nil) and (order and "little" or "big").."-endian" or nil,
-			size   = message_size,
-			--stream = stream,
-		}
+	if self.flags.marshalstream then
+		output:write("\n", format_rawdata(buffer:getdata(), buffer.cursor))
 	end
 end

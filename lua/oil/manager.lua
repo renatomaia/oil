@@ -34,56 +34,56 @@ local setmetatable = setmetatable
 local require      = require
 local getmetatable = getmetatable
 local rawget       = rawget
+local print        = print
 
-local table = require "table" require "loop.utils"
+local table = require "table" require "loop.table"
+local oo          = require "oil.oo"
 
-module "oil.manager"                                                            --[[VERBOSE]] local verbose = require "oil.verbose"
+module ("oil.manager", oo.class)                                                --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
 
-local oo          = require "oil.oo"
 local assert      = require "oil.assert"
-local proxy       = require "oil.proxy"
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 ObjectManager = oo.class()
 
-local ObjectInterface = proxy.Object._iface
-
 function ObjectManager:__init(manager)
 	if not manager.ifaces then manager.ifaces = {} end -- maps repIDs to interfaces
+	self.proxy = manager.proxy
+	self.ObjectInterface = self.proxy:getObjectInterface() 
 	manager.classes = { -- maps repIDs to proxy classes
-		[ObjectInterface.repID] = proxy.class(ObjectInterface, manager),
+		[self.ObjectInterface.repID] = self.proxy:class(self.ObjectInterface, manager),
 	}
 	return oo.rawnew(self, manager)
 end
 
-function ObjectManager:getclass(repid)                                          --[[VERBOSE]] verbose.manager({"getting proxy class for ", repid}, true)
+function ObjectManager:getclass(repid)                                          --[[VERBOSE]] verbose:manager(true, "getting proxy class for ", repid)
 	local class = self.classes[repid]
-	if not class then                                                             --[[VERBOSE]] verbose.manager("attempt to create proxy class")
+	if not class then                                                             --[[VERBOSE]] verbose:manager("attempt to create proxy class")
 		local iface = self:getiface(repid)
-		if iface then                                                               --[[VERBOSE]] verbose.manager("creating managed proxy class", true)
-			class = proxy.class(iface, self)
-			self.classes[repid] = class                                               --[[VERBOSE]] verbose.manager()
+		if iface then                                                               --[[VERBOSE]] verbose:manager(true, "creating managed proxy class")
+			class = self.proxy:class(iface, self)
+			self.classes[repid] = class                                               --[[VERBOSE]] verbose:manager(false)
 		end
-	end                                                                           --[[VERBOSE]] verbose.manager()
+	end                                                                           --[[VERBOSE]] verbose:manager(false)
 	return class
 end
 
-function ObjectManager:getiface(repid)                                          --[[VERBOSE]] verbose.manager({"getting interface ", repid}, true)
+function ObjectManager:getiface(repid)                                          --[[VERBOSE]] verbose:manager(true, "getting interface ", repid)
 	local iface = self.ifaces[repid]
-	if not iface and self.ir then                                                 --[[VERBOSE]] verbose.manager("looking on remote IR", true)
-		iface = self.ir:lookup_id(repid)                                            --[[VERBOSE]] verbose.manager()
-		if iface then                                                               --[[VERBOSE]] verbose.manager("creating remote interface definition", true)
-			iface = proxy.interface(
+	if not iface and self.ir then                                                 --[[VERBOSE]] verbose:manager(true, "looking on remote IR")
+		iface = self.ir:lookup_id(repid)                                            --[[VERBOSE]] verbose:manager(false)
+		if iface then                                                               --[[VERBOSE]] verbose:manager(true, "creating remote interface definition")
+			iface = self.proxy:interface(
 				iface:_narrow("IDL:omg.org/CORBA/InterfaceDef:1.0")
-			)                                                                         --[[VERBOSE]] verbose.manager()
+			)                                                                         --[[VERBOSE]] verbose:manager(false)
 			self.ifaces[repid] = iface
 		end
-	end                                                                           --[[VERBOSE]] verbose.manager()
+	end                                                                           --[[VERBOSE]] verbose:manager(false)
 	return iface
 end
 
@@ -94,24 +94,25 @@ function ObjectManager:putiface(def)
 
 	local interface = rawget(self.ifaces, repID)
 	if interface ~= def then
-		if interface then                                                           --[[VERBOSE]] verbose.manager{"replace definition of ", repID}
+		if interface then                                                           --[[VERBOSE]] verbose:manager("replace definition of ", repID)
 			-- redefine interface members and class
 			table.clear(interface)
 			table.copy(def, interface)
 			setmetatable(interface, getmetatable(def))
 			
 			proxyclass = rawget(self.classes, repID)
-			if proxyclass then                                                        --[[VERBOSE]] verbose.manager{"replace proxy class of ", repID}
+			if proxyclass then                                                        --[[VERBOSE]] verbose:manager("replace proxy class of ", repID)
 				-- TODO: reset proxy class members, so new operation stubs will be created
 				local handlers = proxyclass._handlers
 				table.clear(proxyclass)
 				proxyclass._iface = interface
-				proxyclass._manager = self
+				proxyclass._imanager = self
 				proxyclass._handlers = handlers
+				-- TODO: [nogara] Are these direct references really necessary?
 				proxyclass.__index = proxy.Object.__index
 				proxyclass.__newindex = proxy.Object.__newindex
 			end
-		else                                                                        --[[VERBOSE]] verbose.manager{"register definition of ", repID}
+		else                                                                        --[[VERBOSE]] verbose:manager("register definition of ", repID)
 			interface = def
 			self.ifaces[repID] = interface
 		end
@@ -119,20 +120,19 @@ function ObjectManager:putiface(def)
 	return interface
 end
 
-local GenericProxy = oo.class()
 function ObjectManager:resolve(ior, iface)
 	local class
-	if type(iface) == "table" then                                                --[[VERBOSE]] verbose.manager("interface supplied for resolving object", true)
+	if type(iface) == "table" then                                                --[[VERBOSE]] verbose:manager(true, "interface supplied for resolving object")
 		iface = self:putiface(iface)
-		iface = iface.repID                                                         --[[VERBOSE]] verbose.manager()
-	end                                                                           --[[VERBOSE]] verbose.manager("retrieving proxy class to resolve object", true)
-	class = self:getclass(iface) or self:getclass(ior._type_id)                   --[[VERBOSE]] verbose.manager()
+		iface = iface.repID                                                         --[[VERBOSE]] verbose:manager(false)
+	end                                                                           --[[VERBOSE]] verbose:manager(true, "retrieving proxy class to resolve object")
+	class = self:getclass(iface) or self:getclass(ior._type_id)                   --[[VERBOSE]] verbose:manager(false)
 	if not class then
-		assert.ilegal(iface, "interface, unable to get definition", "MARSHALL")
+		assert.illegal(iface, "interface, unable to get definition", "MARSHALL")
 	end
 	return class(ior)
 end
 
-function new(ifaces)
+function new(self, ifaces)
 	return ObjectManager{ ifaces = ifaces }
 end

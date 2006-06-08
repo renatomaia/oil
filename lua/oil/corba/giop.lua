@@ -48,7 +48,7 @@
 
 local require = require
 
-module "oil.giop"
+module "oil.corba.giop"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
@@ -67,7 +67,7 @@ TaggedProfile = IDL.struct{
 	{name = "tag"         , type = IDL.ulong   },
 	{name = "profile_data", type = IDL.OctetSeq},
 }
-                  -- underscore character allows using IOR as proxy objects
+									-- underscore character allows using IOR as proxy objects
 IOR = IDL.struct{ -- because it avoids name clashes with object members.
 	{name = "_type_id" , type = IDL.string                 },
 	{name = "_profiles", type = IDL.sequence{TaggedProfile}},
@@ -149,8 +149,8 @@ SystemExceptionIDs = {
 
 GIOPHeaderSize = 12   -- TODO:[maia] Calculate from IDL specification
 GIOPMagicTag = "GIOP" -- TODO:[maia] Garantee that the string "GIOP" is
-                      --             encoded in ISO Latin-1 (8859.1).
-                      --             How can I do this in Lua?!
+											--             encoded in ISO Latin-1 (8859.1).
+											--             How can I do this in Lua?!
 
 GIOPHeader_v1_ = { -- Common message header for each GIOP version
 	[0] = IDL.struct{ -- GIOP 1.0
@@ -174,27 +174,36 @@ GIOPHeader_v1_[3] = GIOPHeader_v1_[1] -- GIOP 1.3, same as GIOP 1.1
 --------------------------------------------------------------------------------
 -- Message Header of GIOP Messages ---------------------------------------------
 
-RequestID         = 0
-ReplyID           = 1
-CancelRequestID   = 2
-LocateRequestID   = 3
-LocateReplyID     = 4
-CloseConnectionID = 5
-MessageErrorID    = 6
-FragmentID        = 7
+RequestID           = 0
+ReplyID             = 1
+CancelRequestID     = 2
+LocateRequestID     = 3
+LocateReplyID       = 4
+CloseConnectionID   = 5
+MessageErrorID      = 6
+FragmentID          = 7
+NegotiateSessionID  = 8
 
 --------------------------------------------------------------------------------
 
 MessageType = {
-	[RequestID        ] = "Request"        ,
-	[ReplyID          ] = "Reply"          ,
-	[CancelRequestID  ] = "CancelRequest"  ,
-	[LocateRequestID  ] = "LocateRequest"  ,
-	[LocateReplyID    ] = "LocateReply"    ,
-	[CloseConnectionID] = "CloseConnection",
-	[MessageErrorID   ] = "MessageError"   ,
-	[FragmentID       ] = "Fragment"       ,
+	[RequestID         ] = "Request"         ,
+	[ReplyID           ] = "Reply"           ,
+	[CancelRequestID   ] = "CancelRequest"   ,
+	[LocateRequestID   ] = "LocateRequest"   ,
+	[LocateReplyID     ] = "LocateReply"     ,
+	[CloseConnectionID ] = "CloseConnection" ,
+	[MessageErrorID    ] = "MessageError"    ,
+	[FragmentID        ] = "Fragment"        ,
+	[NegotiateSessionID] = "NegotiateSession",
 }
+
+
+--- GIOP 1.3.
+--MsgType_1_3 = IDL.enum{
+--      "Request", "Reply", "CancelRequest", "LocateRequest", "LocateReply",
+--      "CloseConnection", "MessageError", "Fragment", "NegotiateSession"
+--}
 
 --------------------------------------------------------------------------------
 
@@ -319,3 +328,8 @@ MessageHeader_v1_[2] = { -- GIOP 1.2
 --------------------------------------------------------------------------------
 
 MessageHeader_v1_[3] = MessageHeader_v1_[2] -- GIOP 1.3, same as GIOP 1.2
+
+--- related to negotiation of firewall transversal
+NegotiateSession_1_3 = IDL.struct{
+														{name="service_context", type = ServiceContextList },
+}

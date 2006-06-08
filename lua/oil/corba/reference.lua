@@ -35,22 +35,19 @@
 
 local require  = require
 local tonumber = tonumber
+local print = print
+local pairs = pairs
 
 local string   = require "string"
+local oo       = require "oil.oo"
 
-module "oil.ior"                                                                --[[VERBOSE]] local verbose = require "oil.verbose"
+module ("oil.corba.reference", oo.class)                                        --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
 
 local assert  = require "oil.assert"
 local IDL     = require "oil.idl"
-local cdr     = require "oil.cdr"
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-URLProtocols = {}
 
 --------------------------------------------------------------------------------
 -- String/byte conversions -----------------------------------------------------
@@ -80,39 +77,40 @@ end
 
 local Decoder = {}
 
-function Decoder.IOR(stream)                                                    --[[VERBOSE]] verbose.ior("using stringified IOR format", true)
-	local buffer = cdr.ReadBuffer(hexa2byte(stream), true)
-	return buffer:IOR()                                                           --[[VERBOSE]] , verbose.ior()
+function Decoder.IOR(reference, stream)                                         --[[VERBOSE]] verbose:ior(true, "using stringified IOR format")
+	local buffer = reference.codec:newDecoder(hexa2byte(stream), true)
+	local iortbl = buffer:IOR()
+	return iortbl                                                                 --[[VERBOSE]] , verbose:ior(false)
 end
 
-function Decoder.corbaloc(encoded)                                              --[[VERBOSE]] verbose.ior "using corbaloc IOR format"
-	for token, data in string.gmatch(encoded, "(%w*):([^,]*)") do                 --[[VERBOSE]] verbose.ior{"attempt to decote corbaloc with protocol '", token, "'"}
-		local protocol = URLProtocols[token]
-		if protocol then                                                            --[[VERBOSE]] verbose.ior({"using protocol '", token, "' to decode corbaloc"}, true)
+function Decoder.corbaloc(reference, encoded)                                   --[[VERBOSE]] verbose:ior "using corbaloc IOR format"
+	for token, data in string.gmatch(encoded, "(%w*):([^,]*)") do                 --[[VERBOSE]] verbose:ior("attempt to decode corbaloc with protocol '", token, "'")
+		if reference.profile_resolver then                                               --[[VERBOSE]] verbose:ior(true, "using protocol '", token, "' to decode corbaloc")
 			return {
 				_type_id = "IDL:omg.org/CORBA/Object:1.0",
-				_profiles = { protocol.decodeurl(data) },
-			}                                                                         --[[VERBOSE]] , verbose.ior()
+				-- TODO:[nogara] check this
+				_profiles = { reference.profile_resolver:decodeurl(data) },
+			}                                                                         --[[VERBOSE]] , verbose:ior(false)
 		end
 	end
-	assert.ilegal(encoded, "corbaloc, no supported protocol found", "INV_OBJREF")
+	assert.illegal(encoded, "corbaloc, no supported protocol found", "INV_OBJREF")
 end
 
 --------------------------------------------------------------------------------
 -- Coding ----------------------------------------------------------------------
 
-function decode(encoded)                                                        --[[VERBOSE]] verbose.ior("decode IOR", true)
-	assert.type(encoded, "string", "encoded IOR", "INV_OBJREF")
-	local token, stream = string.match(encoded, "^(%w+):(.+)$")                   --[[VERBOSE]] verbose.ior{"got ", token, " IOR format"}
+function decode(self, ...)                                                  --[[VERBOSE]] verbose:ior(true, "decode IOR")
+	assert.type(arg[1], "string", "encoded IOR", "INV_OBJREF")
+	local token, stream = string.match(arg[1], "^(%w+):(.+)$")                   --[[VERBOSE]] verbose:ior("got ", token, " IOR format")
 	local decoder = Decoder[token]
 	if not decoder then
-		assert.ilegal(token, "IOR format, currently not supported", "INV_OBJREF")
+		assert.illegal(token, "IOR format, currently not supported", "INV_OBJREF")
 	end
-	return decoder(stream)                                                        --[[VERBOSE]] , verbose.ior()
+	return decoder(self, stream)                                                        --[[VERBOSE]] , verbose:ior(false)
 end
 
-function encode(ior)                                                            --[[VERBOSE]] verbose.ior("encode IOR", true)
-	local buffer = cdr.WriteBuffer(true)
-	buffer:IOR(ior) -- marshall IOR
-	return "IOR:"..byte2hexa(buffer:getdata())                                    --[[VERBOSE]] , verbose.ior()
+function encode(self, ...)                                                            --[[VERBOSE]] verbose:ior(true, "encode IOR")
+	local buffer = self.codec:newEncoder(true)
+	buffer:IOR(arg[1]) -- marshall IOR
+	return "IOR:"..byte2hexa(buffer:getdata())                                    --[[VERBOSE]] , verbose:ior(false)
 end

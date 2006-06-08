@@ -102,12 +102,13 @@ local tonumber     = tonumber
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local require      = require
+local print        = print
 
 local math         = require "math"
 local string       = require "string"
 local table        = require "table"
 
-module "oil.cdr"                                                                --[[VERBOSE]] local verbose = require "oil.verbose"
+module "oil.corba.Codec"                                                        --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
@@ -116,8 +117,8 @@ local oo     = require "oil.oo"
 local assert = require "oil.assert"
 local bit    = require "oil.bit"
 local IDL    = require "oil.idl"
-local tcode  = require "oil.tcode"
-local giop   = require "oil.giop"
+local tcode  = require "oil.corba.tcode"
+local giop   = require "oil.corba.giop"
 
 --------------------------------------------------------------------------------
 -- Local module functions ------------------------------------------------------
@@ -138,7 +139,7 @@ end
 --------------------------------------------------------------------------------
 -- Unmarshalling buffer class --------------------------------------------------
 
-ReadBuffer = oo.class{
+local ReadBuffer = oo.class{
 	cursor    = 1  ,
 	endianess = '>', -- default write buffer endianess
 }
@@ -161,14 +162,14 @@ end
 function ReadBuffer:jump(shift)
 	self.cursor = self.cursor + shift
 	if self.cursor - 1 > string.len(self.data) then
-		assert.ilegal(self.data, "data stream, insufficient data", "MARSHALL")
+		assert.illegal(self.data, "data stream, insufficient data", "MARSHALL")
 	end
 end
 
 function ReadBuffer:get(idltype)
 	local unmarshall = self[idltype._type]
 	if not unmarshall then
-		assert.ilegal(idltype._type, "supported type", "MARSHALL")
+		assert.illegal(idltype._type, "supported type", "MARSHALL")
 	end
 	return unmarshall(self, idltype)
 end
@@ -179,7 +180,7 @@ end
 
 --------------------------------------------------------------------------------
 -- Unmarshalling functions -----------------------------------------------------
-                                                                                --[[VERBOSE]] local VERBOSE_NumberTypeCode = {s=IDL.short,l=IDL.long,S=IDL.ushort,L=IDL.ulong,f=IDL.float,d=IDL.double}
+																																								--[[VERBOSE]] local VERBOSE_NumberTypeCode = {s=IDL.short,l=IDL.long,S=IDL.ushort,L=IDL.ulong,f=IDL.float,d=IDL.double}
 local function numberunmarshaller(size, format)
 	local cursor
 	return function (self)
@@ -187,7 +188,7 @@ local function numberunmarshaller(size, format)
 		local cursor = self.cursor
 		self:jump(size)
 		local value = bit.unpack(self.endianess..format,
-		                         self.data, cursor)                                 --[[VERBOSE]] verbose.unmarshallOf(VERBOSE_NumberTypeCode[format], value, self, true)
+														self.data, cursor)                                 --[[VERBOSE]] verbose:unmarshall(VERBOSE_NumberTypeCode[format], value, self, true)
 		return value
 	end
 end
@@ -201,25 +202,25 @@ ReadBuffer.float    = numberunmarshaller(4, "f")
 ReadBuffer.double   = numberunmarshaller(8, "d")
 ReadBuffer.TypeCode = tcode.unmarshall
 
-function ReadBuffer:boolean()                                                   --[[VERBOSE]] verbose.unmarshallOf(IDL.boolean, nil, self)
-	return (self:octet() ~= 0)                                                    --[[VERBOSE]] , verbose.unmarshall()
+function ReadBuffer:boolean()                                                   --[[VERBOSE]] verbose:unmarshall(IDL.boolean, nil, self)
+	return (self:octet() ~= 0)                                                    --[[VERBOSE]] , verbose:unmarshall(false)
 end
 
 function ReadBuffer:char()
-	local value = string.sub(self.data, self.cursor, self.cursor)                 --[[VERBOSE]] verbose.unmarshallOf(IDL.char, value, self, true)
+	local value = string.sub(self.data, self.cursor, self.cursor)                 --[[VERBOSE]] verbose:unmarshall(IDL.char, value, self, true)
 	self:jump(1)
 	return value
 end
 
 function ReadBuffer:octet()
-	local value = bit.unpack("B", self.data, self.cursor)                         --[[VERBOSE]] verbose.unmarshallOf(IDL.octet, value, self, true)
+	local value = bit.unpack("B", self.data, self.cursor)                         --[[VERBOSE]] verbose:unmarshall(IDL.octet, value, self, true)
 	self:jump(1)
 	return value
 end
 
-function ReadBuffer:any()                                                       --[[VERBOSE]] verbose.unmarshallOf(IDL.any, nil, self)
-	local idltype = self:TypeCode()                                               --[[VERBOSE]] verbose.unmarshall{"got any of type ", idltype._type, " ", idltype.repID or ""}
-	local value = self:get(idltype)                                               --[[VERBOSE]] verbose.unmarshall()
+function ReadBuffer:any()                                                       --[[VERBOSE]] verbose:unmarshall(IDL.any, nil, self)
+	local idltype = self:TypeCode()                                               --[[VERBOSE]] verbose:unmarshall("got any of type ", idltype._type, " ", idltype.repID or "")
+	local value = self:get(idltype)                                               --[[VERBOSE]] verbose:unmarshall(false)
 	if type(value) == "table"
 		then value._anyval = value
 		else value = setmetatable({_anyval = value}, idltype)
@@ -227,31 +228,31 @@ function ReadBuffer:any()                                                       
 	return value
 end
 
-function ReadBuffer:Object(idltype)                                             --[[VERBOSE]] verbose.unmarshallOf(idltype, nil, self)
-	local ior = self:IOR()                                                        --[[VERBOSE]] verbose.unmarshall{"got ", ior._type_id, " object"} verbose.unmarshall()
+function ReadBuffer:Object(idltype)                                             --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
+	local ior = self:IOR()                                                        --[[VERBOSE]] verbose:unmarshall(false, "got ", ior._type_id, " object")
 	if ior._type_id ~= "" then
 		local object = self.object
-		if object and object._manager then                                          --[[VERBOSE]] verbose.unmarshall("recovering object from IOR by a object manager", true)
+		if object and object._manager then                                          --[[VERBOSE]] verbose:unmarshall(true, "recovering object from IOR by a object manager")
 			if idltype._type == "Object" then idltype = idltype.repID end
-			ior = object._manager:resolve(ior, idltype)                               --[[VERBOSE]] verbose.unmarshall()
+			ior = object._manager:resolve(ior, idltype)                               --[[VERBOSE]] verbose:unmarshall(false)
 		end
 		return ior
 	end
 end
 
-function ReadBuffer:struct(idltype)                                             --[[VERBOSE]] verbose.unmarshallOf(idltype, nil, self)
+function ReadBuffer:struct(idltype)                                             --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
 	local value = {}
-	for _, field in ipairs(idltype.fields) do                                     --[[VERBOSE]] verbose.unmarshall{"[field ", field.name, "]"}
+	for _, field in ipairs(idltype.fields) do                                     --[[VERBOSE]] verbose:unmarshall("[field ", field.name, "]")
 		value[field.name] = self:get(field.type)
-	end                                                                           --[[VERBOSE]] verbose.unmarshall()
+	end                                                                           --[[VERBOSE]] verbose:unmarshall(false)
 	return setmetatable(value, idltype)
 end
 
-function ReadBuffer:union(idltype)                                              --[[VERBOSE]] verbose.unmarshallOf(idltype, nil, self) verbose.unmarshall "[union switch]"
+function ReadBuffer:union(idltype)                                              --[[VERBOSE]] verbose:unmarshall(idltype, nil, self) verbose:unmarshall "[union switch]"
 	local switch = self:get(idltype.switch)
 	local option = idltype.selection[switch]
-	if option then                                                                --[[VERBOSE]] verbose.unmarshall "[union value]"
-		local value = self:get(option.type)                                         --[[VERBOSE]] verbose.unmarshall()
+	if option then                                                                --[[VERBOSE]] verbose:unmarshall "[union value]"
+		local value = self:get(option.type)                                         --[[VERBOSE]] verbose:unmarshall(false)
 		return setmetatable({
 			_switch = switch,
 			_value  = value,
@@ -262,68 +263,68 @@ function ReadBuffer:union(idltype)                                              
 	end
 end
 
-function ReadBuffer:enum(idltype)                                               --[[VERBOSE]] verbose.unmarshallOf(idltype, nil, self)
-	local value = self:ulong() + 1                                                --[[VERBOSE]] verbose.unmarshall()
+function ReadBuffer:enum(idltype)                                               --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
+	local value = self:ulong() + 1                                                --[[VERBOSE]] verbose:unmarshall(false)
 	if value > table.getn(idltype.enumvalues) then
-		assert.ilegal(value, "enumeration value", "MARSHAL")
+		assert.illegal(value, "enumeration value", "MARSHAL")
 	end
 	return idltype.enumvalues[value]
 end
 
-function ReadBuffer:string()                                                    --[[VERBOSE]] verbose.unmarshallOf(IDL.string, nil, self)
+function ReadBuffer:string()                                                    --[[VERBOSE]] verbose:unmarshall(IDL.string, nil, self)
 	local length = self:ulong()
 	local value = string.sub(self.data,
-	                         self.cursor, -- take out the \0
-	                         self.cursor + length - 2)                            --[[VERBOSE]] verbose.unmarshall{"string value is ", verbose.valueOf(value, "unmarshall")} verbose.unmarshall()
+														self.cursor, -- take out the \0
+														self.cursor + length - 2)                            --[[VERBOSE]] verbose:unmarshall(false, "string value is ", verbose:valueOf(value, "unmarshall"))
 	self:jump(length)
 	return value
 end
 
-function ReadBuffer:sequence(idltype)                                           --[[VERBOSE]] verbose.unmarshallOf(idltype, nil, self)
+function ReadBuffer:sequence(idltype)                                           --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
 	local length      = self:ulong()
 	local elementtype = idltype.elementtype
 	local value
 	if elementtype._type == "octet" or elementtype._type == "char" then
 		value = string.sub(self.data,
-		                   self.cursor,
-		                   self.cursor + length - 1)                                --[[VERBOSE]] verbose.unmarshall{"sequence value is ", verbose.valueOf(value, "unmarshall")}
+												self.cursor,
+												self.cursor + length - 1)                                --[[VERBOSE]] verbose:unmarshall("sequence value is ", verbose:valueOf(value, "unmarshall"))
 		self:jump(length)
 	else
 		value = setmetatable({ n = length }, idltype)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose.unmarshall{"[element ", i, "]"}
+		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshall("[element ", i, "]")
 			value[i] = self:get(elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose.unmarshall()
+	end                                                                           --[[VERBOSE]] verbose:unmarshall(false)
 	return value
 end
 
-function ReadBuffer:array(idltype)                                              --[[VERBOSE]] verbose.unmarshallOf(idltype, nil, self)
+function ReadBuffer:array(idltype)                                              --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
 	local length      = idltype.length
 	local elementtype = idltype.elementtype
 	local value
 	if elementtype._type == "octet" or elementtype._type == "char" then
 		value = string.sub(self.data,
-		                   self.cursor,
-		                   self.cursor + length - 1)                                --[[VERBOSE]] verbose.unmarshall{"array value is ", verbose.valueOf(value, "unmarshall")}
+												self.cursor,
+												self.cursor + length - 1)                                --[[VERBOSE]] verbose:unmarshall("array value is ", verbose:valueOf(value, "unmarshall"))
 		self:jump(length)
 	else
 		value = setmetatable({ n = length }, idltype)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose.unmarshall{"[element ", i, "]"}
+		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshall("[element ", i, "]")
 			value[i] = self:get(elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose.unmarshall()
+	end                                                                           --[[VERBOSE]] verbose:unmarshall(false)
 	return value
 end
 
-function ReadBuffer:typedef(idltype)                                            --[[VERBOSE]] verbose.unmarshallOf(idltype, nil, self)
-	return self:get(idltype.type)                                                 --[[VERBOSE]] , verbose.unmarshall()
+function ReadBuffer:typedef(idltype)                                            --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
+	return self:get(idltype.type)                                                 --[[VERBOSE]] , verbose:unmarshall(false)
 end
 
-function ReadBuffer:except(idltype)                                             --[[VERBOSE]] verbose.unmarshallOf(idltype, nil, self)
+function ReadBuffer:except(idltype)                                             --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
 	local value = {}
-	for _, field in ipairs(idltype.members) do                                    --[[VERBOSE]] verbose.marshall{"[member ", field.name, "]"}
+	for _, field in ipairs(idltype.members) do                                    --[[VERBOSE]] verbose:marshall("[member ", field.name, "]")
 		value[field.name] = self:get(field.type)
-	end                                                                           --[[VERBOSE]] verbose.unmarshall()
+	end                                                                           --[[VERBOSE]] verbose:unmarshall(false)
 	return setmetatable(value, idltype)
 end
 
@@ -341,7 +342,7 @@ ReadBuffer.interface = ReadBuffer.Object
 --------------------------------------------------------------------------------
 -- Unmarshalling buffer class --------------------------------------------------
 
-WriteBuffer = oo.class {
+local WriteBuffer = oo.class {
 	cursor = 1,
 	emptychar = '\255', -- character used in buffer alignment
 	endianess = '>',    -- TODO:[maia] use current platform native endianess
@@ -365,7 +366,7 @@ function WriteBuffer:__init(order, object)
 			endianess = '>',
 		})
 	end
-	assert.ilegal(order, "buffer order")
+	assert.illegal(order, "buffer order")
 end
 
 function WriteBuffer:shift(shift)
@@ -385,7 +386,7 @@ end
 function WriteBuffer:put(value, idltype)
 	local marshall = self[idltype._type]
 	if not marshall then
-		assert.ilegal(idltype._type, "supported type", "MARSHALL")
+		assert.illegal(idltype._type, "supported type", "MARSHALL")
 	end
 	return marshall(self, value, idltype)
 end
@@ -402,7 +403,7 @@ end
 -- Marshalling functions -------------------------------------------------------
 
 local function numbermarshaller(size, format)
-	return function (self, value)                                                 --[[VERBOSE]] verbose.marshallOf(VERBOSE_NumberTypeCode[format], value, self, true)
+	return function (self, value)                                                 --[[VERBOSE]] verbose:marshall(true, VERBOSE_NumberTypeCode[format], value, self)
 		assert.type(value, "number", "numeric value", "MARSHAL")
 		alignbuffer(self, size)
 		self:rawput(bit.pack(self.endianess..format, value))
@@ -418,22 +419,22 @@ WriteBuffer.float    = numbermarshaller(4, "f")
 WriteBuffer.double   = numbermarshaller(8, "d")
 WriteBuffer.TypeCode = tcode.marshall
 
-function WriteBuffer:boolean(value)                                             --[[VERBOSE]] verbose.marshallOf(IDL.boolean, nil, self)
+function WriteBuffer:boolean(value)                                             --[[VERBOSE]] verbose:marshall(IDL.boolean, nil, self)
 	if value
 		then self:octet(1)
 		else self:octet(0)
-	end                                                                           --[[VERBOSE]] verbose.marshall()
+	end                                                                           --[[VERBOSE]] verbose:marshall(false)
 end
 
-function WriteBuffer:char(value)                                                --[[VERBOSE]] verbose.marshallOf(IDL.char, value, self, true)
+function WriteBuffer:char(value)                                                --[[VERBOSE]] verbose:marshall(true, IDL.char, value, self)
 	assert.type(value, "string", "char value", "MARSHAL")
 	if string.len(value) ~= 1 then
-		assert.ilegal(value, "char value", "MARSHAL")
+		assert.illegal(value, "char value", "MARSHAL")
 	end
 	self:rawput(value)
 end
 
-function WriteBuffer:octet(value)                                               --[[VERBOSE]] verbose.marshallOf(IDL.octet, value, self, true)
+function WriteBuffer:octet(value)                                               --[[VERBOSE]] verbose:marshall(true, IDL.octet, value, self)
 	assert.type(value, "number", "octet value", "MARSHAL")
 	self:rawput(bit.pack("B", value))
 end
@@ -446,16 +447,16 @@ local DefaultMapping = {
 	string  = IDL.string,
 	boolean = IDL.boolean,
 }
-function WriteBuffer:any(value)                                                 --[[VERBOSE]] verbose.marshallOf(IDL.any, nil, self)
+function WriteBuffer:any(value)                                                 --[[VERBOSE]] verbose:marshall(IDL.any, nil, self)
 	local luatype = type(value)
 	local idltype = DefaultMapping[luatype]
 	if not idltype then
 		local metatable = getmetatable(value)
 		if metatable then
 			if IDL.istype(metatable) then
-				idltype = metatable                                                     --[[VERBOSE]] verbose.marshall{"value metatable is ", idltype._type}
+				idltype = metatable                                                     --[[VERBOSE]] verbose:marshall("value metatable is ", idltype._type)
 			elseif IDL.istype(metatable.__idltype) then
-				idltype = metatable.__idltype                                           --[[VERBOSE]] verbose.marshall{"metatable define type ", idltype._type}
+				idltype = metatable.__idltype                                           --[[VERBOSE]] verbose:marshall("metatable define type ", idltype._type)
 			end
 		end
 		if luatype == "table" then
@@ -465,13 +466,13 @@ function WriteBuffer:any(value)                                                 
 			if value._anyval ~= nil then
 				value = value._anyval
 			end
-		end                                                                         --[[VERBOSE]] else verbose.marshall{"using default map to ", idltype._type}
+		end                                                                         --[[VERBOSE]] else verbose:marshall("using default map to ", idltype._type)
 	end
 	if not idltype then
-		assert.ilegal(value, "any, unable to map into an IDL type", "MARSHAL")
-	end                                                                           --[[VERBOSE]] verbose.marshall "[type of any]"
-	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose.marshall "[value of any]"
-	self:put(value, idltype)                                                      --[[VERBOSE]] verbose.marshall()
+		assert.illegal(value, "any, unable to map into an IDL type", "MARSHAL")
+	end                                                                           --[[VERBOSE]] verbose:marshall "[type of any]"
+	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose:marshall "[value of any]"
+	self:put(value, idltype)                                                      --[[VERBOSE]] verbose:marshall(false)
 end
 
 local NullReference = { _type_id = "", _profiles = { n=0 } }
@@ -482,33 +483,33 @@ function WriteBuffer:Object(value, idltype)
 		assert.type(value, "table", "object reference", "MARSHAL")
 		if not value._type_id or not value._profiles then
 			local object = self.object
-			if object and object._orb then                                            --[[VERBOSE]] verbose.marshall("implicit servant creation", true)
+			if object and object._orb then                                            --[[VERBOSE]] verbose:marshall(true, "implicit servant creation")
 				if idltype._type == "Object" then idltype = idltype.repID end
-				value = object._orb:object(value, idltype)                              --[[VERBOSE]] verbose.marshall()
+				value = object._orb:object(value, idltype)                              --[[VERBOSE]] verbose:marshall(false)
 			else
-				assert.ilegal(value, "Object, unable to create from table", "MARHSALL")
+				assert.illegal(value, "Object, unable to create from table", "MARHSALL")
 			end
 		end
 	end
 	self:IOR(value)
 end
 
-function WriteBuffer:struct(value, idltype)                                     --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
+function WriteBuffer:struct(value, idltype)                                     --[[VERBOSE]] verbose:marshall(idltype, value, self)
 	assert.type(value, "table", "struct value", "MARSHAL")
-	for _, field in ipairs(idltype.fields) do
-		local val = value[field.name]                                               --[[VERBOSE]] verbose.marshall{"[field ", field.name, "]"}
+		for _, field in ipairs(idltype.fields) do
+		local val = value[field.name]                                               --[[VERBOSE]] verbose:marshall("[field ", field.name, "]")
 		-- TODO:[maia] Check out if fields can be Object references and
 		--             hold nil values.
 		if not val and field.type ~= IDL.boolean then
-			assert.ilegal(value,
-			              "struct value (no value for field "..field.name..")",
-			              "MARSHAL")
+			assert.illegal(value,
+										"struct value (no value for field "..field.name..")",
+										"MARSHAL")
 		end
 		self:put(val, field.type)
-	end                                                                           --[[VERBOSE]] verbose.marshall()
+	end                                                                           --[[VERBOSE]] verbose:marshall(false)
 end
 
-function WriteBuffer:union(value, idltype)                                      --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
+function WriteBuffer:union(value, idltype)                                      --[[VERBOSE]] verbose:marshall(idltype, value, self)
 	assert.type(value, "table", "union value", "MARSHAL")
 	local switch = value._switch
 	local unionvalue = value._value
@@ -527,11 +528,11 @@ function WriteBuffer:union(value, idltype)                                      
 			if switch == nil then
 				switch = idltype.options[idltype.default+1]
 				if switch == nil then
-					assert.ilegal(value, "union (no discriminator)", "MARSHAL")
+					assert.illegal(value, "union (no discriminator)", "MARSHAL")
 				end
 			end
 		end
-	end                                                                           --[[VERBOSE]] verbose.marshall "[union switch]"
+	end                                                                           --[[VERBOSE]] verbose:marshall "[union switch]"
 	self:put(switch, idltype.switch)
 	
 	local selection = idltype.selection[switch]
@@ -540,28 +541,28 @@ function WriteBuffer:union(value, idltype)                                      
 		if unionvalue == nil then
 			unionvalue = value[selection.name]
 			if unionvalue == nil then
-				assert.ilegal(value, "union (no value)", "MARSHAL")
+				assert.illegal(value, "union (no value)", "MARSHAL")
 			end
-		end                                                                         --[[VERBOSE]] verbose.marshall "[union value]"
+		end                                                                         --[[VERBOSE]] verbose:marshall "[union value]"
 		self:put(unionvalue, selection.type)
-	end                                                                           --[[VERBOSE]] verbose.marshall()
+	end                                                                           --[[VERBOSE]] verbose:marshall(false)
 end
 
-function WriteBuffer:enum(value, idltype)                                       --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
-if not idltype.labelvalue then verbose.Viewer:print(idltype) end
+function WriteBuffer:enum(value, idltype)                                       --[[VERBOSE]] verbose:marshall(idltype, value, self)
+	if not idltype.labelvalue then verbose.Viewer:print(idltype) end
 	value = tonumber(value) or idltype.labelvalue[value]
-	if not value then assert.ilegal(value, "enum value", "MARSHAL") end
-	self:ulong(value)                                                             --[[VERBOSE]] verbose.marshall()
+	if not value then assert.illegal(value, "enum value", "MARSHAL") end
+	self:ulong(value)                                                             --[[VERBOSE]] verbose:marshall(false)
 end
 
-function WriteBuffer:string(value)                                              --[[VERBOSE]] verbose.marshallOf(IDL.string, value, self)
+function WriteBuffer:string(value)                                              --[[VERBOSE]] verbose:marshall(IDL.string, value, self)
 	assert.type(value, "string", "string value", "MARSHAL")
 	self:ulong(string.len(value) + 1)
 	self:rawput(value)
-	self:rawput('\0')                                                             --[[VERBOSE]] verbose.marshall()
+	self:rawput('\0')                                                             --[[VERBOSE]] verbose:marshall(false)
 end
 
-function WriteBuffer:sequence(value, idltype)                                   --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
+function WriteBuffer:sequence(value, idltype)                                   --[[VERBOSE]] verbose:marshall(idltype, value, self)
 	local elementtype = idltype.elementtype
 	if
 		type(value) == "string" and
@@ -573,51 +574,69 @@ function WriteBuffer:sequence(value, idltype)                                   
 		assert.type(value, "table", "sequence value", "MARSHAL")
 		local size = table.getn(value)
 		self:ulong(size)
-		for i = 1, size do                                                          --[[VERBOSE]] verbose.marshall{"[element ", i, "]"}
+		for i = 1, size do                                                          --[[VERBOSE]] verbose:marshall("[element ", i, "]")
 			self:put(value[i], elementtype) 
 		end
-	end                                                                           --[[VERBOSE]] verbose.marshall()
+	end                                                                           --[[VERBOSE]] verbose:marshall(false)
 end
 
-function WriteBuffer:array(value, idltype)                                      --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
+function WriteBuffer:array(value, idltype)                                      --[[VERBOSE]] verbose:marshall(idltype, value, self)
 	local elementtype = idltype.elementtype
 	if
 		type(value) == "string" and
 		(elementtype == IDL.octet or elementtype == IDL.char)
 	then
 		if string.len(value) ~= idltype.length then
-			assert.ilegal(value, "array value (wrong length)", "MARSHAL")
+			assert.illegal(value, "array value (wrong length)", "MARSHAL")
 		end
 		self:rawput(value)
 	else
 		assert.type(value, "table", "array value", "MARSHAL")
 		if table.getn(value) ~= idltype.length then
-			assert.ilegal(value, "array value (wrong length)", "MARSHAL")
+			assert.illegal(value, "array value (wrong length)", "MARSHAL")
 		end
-		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose.marshall{"[element ", i, "]"}
+		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose:marshall("[element ", i, "]")
 			self:put(value[i], elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose.marshall()
+	end                                                                           --[[VERBOSE]] verbose:marshall(false)
 end
 
-function WriteBuffer:typedef(value, idltype)                                    --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
-	self:put(value, idltype.type)                                                 --[[VERBOSE]] verbose.marshall()
+function WriteBuffer:typedef(value, idltype)                                    --[[VERBOSE]] verbose:marshall(idltype, value, self)
+	self:put(value, idltype.type)                                                 --[[VERBOSE]] verbose:marshall(false)
 end
 
-function WriteBuffer:except(value, idltype)                                     --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
+function WriteBuffer:except(value, idltype)                                     --[[VERBOSE]] verbose:marshall(idltype, value, self)
 	assert.type(value, "table", "except value", "MARSHAL")
-	for _, field in ipairs(idltype.members) do                                    --[[VERBOSE]] verbose.marshall{"[member ", field.name, "]"}
+	for _, field in ipairs(idltype.members) do                                    --[[VERBOSE]] verbose:marshall("[member ", field.name, "]")
 		local val = value[field.name]
 		-- TODO:[maia] Check out if fields can be Object references and
 		--             hold nil values.
 		if not val and field.type ~= IDL.boolean then
-			assert.ilegal(value,
-			              "except value (no value for field "..field.name..")",
-			              "MARSHAL")
+			assert.illegal(value,
+										"except value (no value for field "..field.name..")",
+										"MARSHAL")
 		end
 		self:put(val, field.type)
-	end                                                                           --[[VERBOSE]] verbose.marshall()
+	end                                                                           --[[VERBOSE]] verbose:marshall(false)
 end
 
 function WriteBuffer:IOR(value) return self:struct(value, giop.IOR) end
 WriteBuffer.interface = WriteBuffer.Object
+
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function newEncoder(self, ...)
+	return WriteBuffer(...)
+end
+
+function newDecoder(self, stream, ...)
+	return ReadBuffer(stream, ...)
+end
+
+Codec = oo.class{}
+Codec.newEncoder = newEncoder
+Codec.newDecoder = newDecoder
+return Codec
