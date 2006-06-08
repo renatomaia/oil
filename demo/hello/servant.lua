@@ -1,6 +1,6 @@
 require "oil"                                   -- Load OiL package
 
-oil.verbose.level(3)
+oil.verbose:level(5)
 
 oil.loadidlfile("hello.idl")                    -- Load the interface from IDL file
 
@@ -16,10 +16,10 @@ hello = oil.newobject(hello, "Hello")           -- Create CORBA object
 
 local file = io.open("hello.ior", "w")
 if file then
-	file:write(hello:_ior())                      -- Write object ref. into file
+	file:write(hello:_getreference())                      -- Write object ref. into file
 	file:close()
 else
-	print(hello:_ior())                           -- Show object ref. on screen
+	print(hello:_getreference())                           -- Show object ref. on screen
 end
 
 print(oil.run())                                -- Start ORB main loop

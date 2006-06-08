@@ -1,11 +1,6 @@
-require "oil"
+require "oil.init_dummy"                           
 
 oil.verbose:level(5)
-
---------------------------------------------------------------------------------
--- Load the interface from IDL file --------------------------------------------
-
-oil.loadidlfile("hello.idl")
 
 --------------------------------------------------------------------------------
 -- Get object reference from file ----------------------------------------------
@@ -25,10 +20,7 @@ end
 
 local hello = oil.newproxy(ior, "Hello")
 
-print( hello:_is_a("IDL:Hello:1.0") )
 --------------------------------------------------------------------------------
--- Access remote CORBA object --------------------------------------------------
+-- Access remote object --------------------------------------------------
 
-hello.quiet = false
-for i = 1, 3 do print(hello:say_hello_to("world")) end
-print("Object already said hello "..hello.count.." times till now.")
+print(hello:say_hello_to("world"))
