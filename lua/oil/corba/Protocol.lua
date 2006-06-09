@@ -408,6 +408,7 @@ end
 -- Server functions
 --------------------------------------------------------------------------------
 
+
 local COMPLETED_YES   = 0
 local COMPLETED_NO    = 1
 local COMPLETED_MAYBE = 2
@@ -427,6 +428,8 @@ local SystemExceptionReply = {
 	reply_status    = "SYSTEM_EXCEPTION",
 }
 
+local ObjectOps = giop.ObjectOperations
+
 local ReturnTrue = { true }
 function handle(self, dispatcher, conn)
 	local except
@@ -436,10 +439,7 @@ function handle(self, dispatcher, conn)
 		if conn.pending[requestid] == nil then
 			conn.pending[requestid] = true
 			
-			-- TODO:[nogara] how to get the iface from the IR other than this way?
-			local object, objectops = dispatcher:getobject(header.object_key)
-			local iface = object._iface
-			local servant = object._servant -- TODO:[nogara] transfer this to dispatcher
+			local iface = self.manager:getiface(header.object_key)
 			if iface then
 				local member = iface.members[header.operation] or objectops[header.operation]
 				local params = { n = #member.inputs }

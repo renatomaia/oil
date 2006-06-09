@@ -63,72 +63,7 @@ local giop        = require "oil.corba.giop"
 
 local Protocols          = giop.Protocols
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-local function isbaseof(baseid, iface)
-	if iface.is_a then                                                            --[[VERBOSE]] verbose:servant(true, "executing interface is_a operation")
-		return iface:is_a(baseid)                                                   --[[VERBOSE]] , verbose:servant(false)
-	end                                                                           --[[VERBOSE]] verbose:servant(true, "checking if ", baseid, " is base of ", iface.repID)
-	
-	local data = { iface }
-	while table.getn(data) > 0 do
-		iface = table.remove(data)
-		if not data[iface] then                                                     --[[VERBOSE]] verbose:servant("reached interface ", iface.repID)
-			data[iface] = true
-			if iface.repID == baseid then
-				return true                                                             --[[VERBOSE]] , verbose:servant(false)
-			end
-			for _, base in ipairs(iface.base_interfaces) do
-				table.insert(data, base)
-			end
-		end
-	end                                                                           --[[VERBOSE]] verbose:servant(false)
-	
-	return false
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-local ObjectOps = giop.ObjectOperations
-
 Object = oo.class()
-
--- TODO:[maia] add basic operations for servants
-
-function Object:_is_a(repID)                                                    --[[VERBOSE]] verbose:servant(true, "verifying if object interface ", self._iface.repID, " is a ", repIDtrue )
-	return isbaseof(repID, self._iface)                                           --[[VERBOSE]] , verbose:servant(false)
-end
-
-function Object:_interface()                                                    --[[VERBOSE]] verbose:servant "retrieveing object interface"
-	local iface = self._iface
-	if getmetatable(iface)
-		then return iface
-		else assert.raise{ "INTF_REPOS", minor_code_value = 1,
-			reason = "interface",
-			iface = iface,
-		}
-	end
-end
-
-function Object:_non_existent()                                                 --[[VERBOSE]] verbose:servant "probing for object existency, returning false"
-	return false
-end
-
-function Object:_deactivate()
-	if self._orb then
-		self._orb.map[self._objectid] = nil
-		self._objectid = nil
-		self._orb = nil
-	else
-		assert.raise{ "ObjectNotActive",
-			reason = "deactivate",
-			servant = self._servant,
-			object = self,
-		}
-	end
-end
 
 function Object:__index(field)
 	local value = self._servant[field]
@@ -145,15 +80,13 @@ end
 
 local Dispatcher = oo.class()
 
-function Dispatcher:__init(orb, port, manager)
+function Dispatcher:__init(orb, port)
 	local dispatcher = {
 		map = {},
 		port = port,
-		manager = manager,
 		reference_resolver = orb.reference_resolver,
 	}
-	dispatcher._manager = dispatcher
-	dispatcher._orb = broker
+	dispatcher._orb = orb
 	return oo.rawnew(self, dispatcher)
 end
 
@@ -208,6 +141,7 @@ function Dispatcher:object(servant, interface, objid)
 	return object
 end
 
+-- TODO[nogara]: rewrite this part in order to get rid of any reference to a manager
 function Dispatcher:resolve(reference, iface)                                   --[[VERBOSE]] verbose:servant(true, "resolving reference to servant")
 	for tag, profile in ipairs(reference._profiles) do
 		local port, key = Protocols[profile.tag]
@@ -238,6 +172,9 @@ function Dispatcher:getreference(obj)                                           
 	return self.reference_resolver:encode(obj)                                   --[[VERBOSE]] , verbose:servant(false)
 end
 
+function Dispatcher:deactivate(obj)
+	self.map[obj._objectid] = nil
+end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -309,7 +246,7 @@ function init(self, args)
 		local port, except = self.point:listen(protocol, args)
 		-- local port = true
 		if port
-			then return Dispatcher(self, port, args.manager)                          --[[VERBOSE]] , verbose:dispatcher(false)
+			then return Dispatcher(self, port)                          --[[VERBOSE]] , verbose:dispatcher(false)
 			else return nil, except                                                   --[[VERBOSE]] , verbose:dispatcher(false)
 		end
 	else
