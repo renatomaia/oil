@@ -74,24 +74,21 @@ local arch = require "oil.arch.comm"
 local corba_codec         = require "oil.corba.Codec"
 local corba_protocol      = require "oil.corba.Protocol"
 local corba_iop           = require "oil.corba.InternetIOP"
-local corba_profile       = require "oil.corba.Profile"
 local corba_reference     = require "oil.corba.reference"
 
 local proxy             = require "oil.proxy"
 local channel_factory   = require "oil.ChannelFactory"
 local dispatcher        = require "oil.orb"
-local reference_handler = require "oil.ReferenceHandler"
 local manager           = require "oil.ir"
 local access_point      = require "oil.AccessPoint"
 
 local Factory_Codec             = arch.CodecType{ corba_codec }
 local Factory_Protocol          = arch.CORBAProtocolType{ corba_protocol }
 local Factory_IOP               = arch.IOPType{ corba_iop }
-local Factory_ReferenceResolver = arch.ReferenceResolverType{ corba_reference }
-local Factory_ProfileResolver   = arch.ProfileResolverType{ corba_profile }
+
+local Factory_Reference         = arch.ReferenceResolverType{ corba_reference }
 
 local Factory_Manager           = arch.ManagerType{ manager }
-local Factory_ReferenceHandler  = arch.ReferenceHandlerType{ reference_handler }
 local Factory_ChannelFactory    = arch.ChannelFactoryType{ channel_factory }
 local Factory_Dispatcher        = arch.DispatcherType{ dispatcher }
 local Factory_Proxy             = arch.ProxyType{ proxy }
@@ -103,11 +100,9 @@ local Factory_AccessPoint       = arch.AccessPointType{ access_point }
 myProtocol = Factory_Protocol()
 myCodec = Factory_Codec()
 myIop = Factory_IOP()
-myProfileResolver = Factory_ProfileResolver()
-myReferenceResolver = Factory_ReferenceResolver()
+myReferenceResolver = Factory_Reference()
 myAccessPoint = Factory_AccessPoint()
 
-myReferenceHandler = Factory_ReferenceHandler()
 myProxy = Factory_Proxy()
 myChannelFactory = Factory_ChannelFactory()
 myDispatcher = Factory_Dispatcher()
@@ -118,22 +113,17 @@ myProtocol.codec         = myCodec.codec
 myProtocol.iop           = myIop.iop
 myIop.protocolHelper     = myProtocol.protocolHelper
 myReferenceResolver.codec        = myCodec.codec
-myProfileResolver.codec = myCodec.codec
-
-myReferenceHandler.reference_resolver["corba"] = myReferenceResolver.resolver
-myReferenceHandler.profile_resolver["corba"] = myProfileResolver.resolver
-myReferenceResolver.profile_resolver = myProfileResolver.resolver
 
 myIop.channelFactory   = myChannelFactory.factory
 
 myProxy.protocol       = myProtocol.protocol
-myProxy.reference_handler      = myReferenceHandler.reference
+myProxy.reference_resolver      = myReferenceResolver.resolver
 
 myManager.proxy = myProxy.proxy
 
 myDispatcher.protocol    = myProtocol.protocol
 myDispatcher.point       = myAccessPoint.point
-myDispatcher.reference_handler   = myReferenceHandler.reference
+myDispatcher.reference_resolver = myReferenceResolver.resolver
 
 myAccessPoint.protocol["corba"] = myProtocol.protocol
 
@@ -396,7 +386,6 @@ function newproxy(object, interface)
 	end
 	
 	local class = Manager:getclass(interface)
-	verbose:debug(class)
 	if not class then
 		if Manager.lookup then
 			interface = Manager:lookup(interface) 

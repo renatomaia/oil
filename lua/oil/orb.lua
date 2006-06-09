@@ -150,7 +150,7 @@ function Dispatcher:__init(orb, port, manager)
 		map = {},
 		port = port,
 		manager = manager,
-		reference_handler = orb.reference_handler,
+		reference_resolver = orb.reference_resolver,
 	}
 	dispatcher._manager = dispatcher
 	dispatcher._orb = broker
@@ -191,7 +191,7 @@ function Dispatcher:object(servant, interface, objid)
 			end                                                                       --[[VERBOSE]] else verbose:servant "object is exported with same interface as before"
 		end                                                                         --[[VERBOSE]] verbose:servant(false)
 	else
-		local profile = self.reference_handler:encode_profile(self.port.host, 
+		local profile = self.reference_resolver:encode_profile(self.port.host, 
 		                                                      self.port.port, 
 																													objid)                --[[VERBOSE]] verbose:servant(true, "new object with id ", objid, " [iface: ", interface.repID, "]")
 		object = Object{
@@ -235,7 +235,7 @@ function Dispatcher:getobject(objid)
 end
 
 function Dispatcher:getreference(obj)                                                 --[[VERBOSE]] verbose:servant(true, "getting servant IOR")
-	return self.reference_handler:encode(obj)                                   --[[VERBOSE]] , verbose:servant(false)
+	return self.reference_resolver:encode(obj)                                   --[[VERBOSE]] , verbose:servant(false)
 end
 
 --------------------------------------------------------------------------------

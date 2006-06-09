@@ -12,43 +12,6 @@ local assert          = require "oil.assert"
 --------------------------------------------------------------------------------
 
 local components = Empty
-function decodeurl(data)
-	local temp, objectkey = string.match(data, "^([^/]*)/(.*)$")
-	if temp
-		then data = temp
-		else objectkey = "" -- TODO:[maia] is this correct?
-	end
-	local major, minor
-	major, minor, temp = string.match(data, "^(%d+).(%d+)@(.+)$")
-	if major and major ~= "1" then
-		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "IIOP version not supported, got "..major.."."..minor,
-			reason = "version",
-			protocol = "IIOP",
-			major = major,
-			minor = minor,
-		}
-	end
-	if temp then data = temp end
-	local host, port = string.match(data, "^([^:]+):(%d*)$")
-	if port then
-		port = tonumber(port)
-	else
-		port = 2809
-		if data == ""
-			then host = "*"
-			else host = data
-		end
-	end                                                                           --[[VERBOSE]] verbose:ior("got host ", host, ":", port, " and object key '", objectkey, "'")
-	return createprofile(self, {
-			host = host,
-			port = port,
-			object_key = objectkey,
-			components = components,
-		},
-		tonumber(minor)
-	)
-end
 
 function decode_profile(self, profile)
 	local profile_type = profile._type or "corba"                                 --[[VERBOSE]] verbose:ior("decoding profile type ", profile_type)

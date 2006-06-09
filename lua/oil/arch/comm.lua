@@ -68,21 +68,8 @@ ResolverType = component.Type{
 }
 
 --- Reference
-ReferenceHandlerType = component.Type{
-		reference = port.Facet,
-		reference_resolver = port.HashReceptacle,
-		profile_resolver   = port.HashReceptacle,
-}
-
 ReferenceResolverType = component.Type{
 		resolver = port.Facet,
-		codec = port.Receptacle,
-		-- optional receptacles
-		profile_resolver = port.Receptacle,
-}
-
-ProfileResolverType = component.Type{
-		resolver = port.Facet, 
 		codec = port.Receptacle,
 }
 

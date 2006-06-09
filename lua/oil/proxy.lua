@@ -114,7 +114,7 @@ function Object:__init(reference)
 	assert.type(reference, "table", "reference is not a table")                   --[[VERBOSE]] verbose:proxy("new proxy for ", self._iface.repID)
 	-- TODO[nogara]: for now, decode the reference here, but
 	--               is it the best place to do it?
-	self._decoded_profile = self._reference_handler:decode_profile( reference._profiles )
+	self._decoded_profile = self._reference_resolver:decode_profile( reference._profiles )
 	return oo.rawnew(self, reference)
 end
 
@@ -236,7 +236,7 @@ function class(self, interface, manager, orb)                                   
 		_manager = manager or false,
 		_orb = orb or false,
 		_protocol = self.protocol,
-		_reference_handler = self.reference_handler,
+		_reference_resolver = self.reference_resolver,
 		_handlers = {}, -- exception handlers
 		-- this is only necessary if OiL object model does not make copies of
 		-- inherited members (e.g. LOOP models like 'simple' or 'multiple')
