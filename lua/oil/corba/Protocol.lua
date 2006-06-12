@@ -40,7 +40,7 @@ local unpack      = unpack
 local table       = require "table"
 local oo          = require "oil.oo"
 
-module ("oil.corba.Protocol", oo.class)                                         --[[VERBOSE]] local verbose = require "oil.verbose"                                                     
+module "oil.corba.Protocol"                                         --[[VERBOSE]] local verbose = require "oil.verbose"                                                     
 
 local Exception          = require "oil.Exception"
 local giop               = require "oil.corba.giop"
@@ -101,10 +101,117 @@ local function sendsysex(conn, requestid, body)                                -
 end
 
 --------------------------------------------------------------------------------
+-- Connection implementation
+--------------------------------------------------------------------------------
+
+local OrderedSet      = require "loop.collection.OrderedSet"
+local Exception       = require "oil.Exception"
+local assert          = require "oil.assert"
+local giop            = require "oil.corba.giop"
+
+local Empty = {}
+
+-- protocol IIOP tag
+Tag = 0
+
+local Connection = oo.class()
+
+function Connection:__init()
+	self.replies = {}
+	self.receivers = {}
+	self.senders = OrderedSet()
+	return oo.rawnew(self)
+end
+
+function Connection:close()
+	self.socket:close()                                                           --[[VERBOSE]] verbose:close "connection socket closed"
+end
+
+function Connection:receive()
+
+	local socket = self.socket
+	local header, except = socket:receive(GIOPHeaderSize)         --[[VERBOSE]] verbose:receive(true, "read GIOP header from socket [error: ", except, "]")
+	if not header then
+		if except == "closed" then self:close() end         
+		return nil, Exception{ "COMM_FAILURE", minor_code_value = 0,
+			message = "unable to read from socket",
+			reason = except,
+			socket = socket,
+		}                                                                           --[[VERBOSE]] , verbose:receive(false)
+	end
+	
+	-- overwrite header with the structure unmarshalled
+	local size, type, buffer
+	size, type, header, buffer = unmarshallHeader(header)
+	
+	local stream
+	if size then                                                                  --[[VERBOSE]] verbose:receive(false)
+		stream, except = socket:receive(size)                                       --[[VERBOSE]] verbose:receive("read GIOP body from socket [error: ", except, "]")
+		if not stream then
+			if except == "closed" then self:close() end
+			return nil, Exception{ "COMM_FAILURE", minor_code_value = 0,
+				message = "unable to read from socket",
+				reason = except,
+				socket = socket,
+			}                                                                         
+		end
+	end
+	buffer.data = buffer.data..stream -- for alignment (Giop)
+	header = buffer:struct(header)
+	return type, header, buffer                                                   
+end
+
+function Connection:send(stream)           
+	--
+	-- Send data stream over the socket
+	--
+	local failures, success, except = 0                                           --[[VERBOSE]] verbose:send(true, "writing message into socket")
+	repeat
+		success, except = self.socket:send(stream)                                  --[[VERBOSE]] verbose:send("write GIOP message into socket [error: ", except, "]")
+		if not success then
+			if except == "closed" and self.host and failures < 1 then                 --[[VERBOSE]] verbose:send(true, "attempt to reconnect to ", self.host, ":", self.port)
+				failures = failures + 1
+				success, except = newsocket(self.host, self.port)
+				if success
+					then success, self.socket = false, success
+					else self:close()
+				end                                                                     --[[VERBOSE]] verbose:send(false)
+			else
+				except = Exception{ "COMM_FAILURE", minor_code_value = 0,
+					message = "unable to write into socket",
+					reason = except,
+					socket = socket,
+				}
+			end
+		end
+	until success or except                                                       --[[VERBOSE]] verbose:send(false)
+	
+	return success, except
+end
+
+--------------------------------------------------------------------------------
+-- Server connection management
+--------------------------------------------------------------------------------
+
+local PortConnection = oo.class({}, Connection)
+
+function PortConnection:__init()
+	self.senders = OrderedSet()
+end
+
+function PortConnection:close()
+	-- test whether still active
+	if self.port.connections:remove(self.socket) then                             --[[VERBOSE]] verbose:close "connection unregistered" verbose:close(true, "send close connection message")
+		return self:send(self.protocolHelper.CloseConnectionID)                                         --[[VERBOSE]] , verbose:close(false)
+	end
+end
+
+
+--------------------------------------------------------------------------------
 -- Client helper functions
 --------------------------------------------------------------------------------
 
-function unmarshallHeader( self, stream )
+function unmarshallHeader(self, stream )
 	local header
 
 -- TODO:[nogara] which is the object to send to the decoder?? 
@@ -243,7 +350,7 @@ ReplyObject = oo.class{}
 
 InvokeProtocol = oo.class{}
 
-function InvokeProtocol:call(reference, operation, ...)
+function InvokeProtocol:sendrequest(reference, operation, ...)
 	local params = operation.inputs
 	local expected = #params
 	if expected > 0 then
@@ -409,14 +516,16 @@ function InvokeProtocol:call(reference, operation, ...)
 			end -- request sending
 		end }
 	end -- connection test
-	return handleexception(self, except, operation, ...)
-
+	-- TODO:[nogara] see where we will handle the exception 
+	-- handleexception(self, except, operation, ...)
+	return true, result_object
 end
 
 --------------------------------------------------------------------------------
 -- Server functions
 --------------------------------------------------------------------------------
 
+ListenProtocol = oo.class{}
 
 local COMPLETED_YES   = 0
 local COMPLETED_NO    = 1
@@ -440,7 +549,7 @@ local SystemExceptionReply = {
 local ObjectOps = giop.ObjectOperations
 
 local ReturnTrue = { true }
-function handle(self, dispatcher, conn)
+function ListenProtocol:handle(self, dispatcher, conn)
 	local except
 	local msgtype, header, buffer = conn:receive()
 	if msgtype == RequestID then
@@ -448,7 +557,7 @@ function handle(self, dispatcher, conn)
 		if conn.pending[requestid] == nil then
 			conn.pending[requestid] = true
 			
-			local iface = self.manager:getiface(header.object_key)
+			local iface = self.objects:typeof(header.object_key)
 			if iface then
 				local member = iface.members[header.operation] or objectops[header.operation]
 				local params = { n = #member.inputs }
