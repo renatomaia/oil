@@ -231,12 +231,19 @@ verbose:debug( "createmessage" )
 
 end
 
+--------------------------------------------------------------------------------
+-- Reply object implementation
+--------------------------------------------------------------------------------
+
+ReplyObject = oo.class{}
 
 --------------------------------------------------------------------------------
 -- Client functions
 --------------------------------------------------------------------------------
 
-function call(self, reference, operation, ...)
+InvokeProtocol = oo.class{}
+
+function InvokeProtocol:call(reference, operation, ...)
 	local params = operation.inputs
 	local expected = #params
 	if expected > 0 then
@@ -245,7 +252,7 @@ function call(self, reference, operation, ...)
 										select("#", ...)
 		end
 	end
-	conn, except = self.iop:connect(reference)
+	conn, except = self.channels:create(reference)
 
 	if conn then
 		local request_id = requestid(conn)
@@ -277,131 +284,133 @@ function call(self, reference, operation, ...)
 			else scheduler.wake(conn.senders:dequeue())                               --[[VERBOSE]] verbose:send "thread waken for writting into socket"
 		end
 		
-		
-		if expected then
-			if operation.oneway then                                                  --[[VERBOSE]] verbose:invoke "no response expected"
-				return Empty                                                            --[[VERBOSE]] , verbose:invoke(false)
-			else
-				-- TODO:[maia] add proper support for colaborative multi-threading.
-				--             Caution! Avoid any sort of race conditions on the use
-				--             of sockets since collaborative multi-threading is used.
-				
-				local msgtype, header, stream
-				
-				local replies = conn.replies
-				local reply = replies[request_id]
-				if reply then                                                           --[[VERBOSE]] verbose:receive "returning stored reply"
-					replies[request_id] = nil
-					msgtype, header, buffer = unpack(reply)
-				else 
-					-- message still not received
-					repeat                                                                 
-					-- conn receive
-								msgtype, header, buffer = conn:receive()                                  
-						if
-							msgtype == nil or
-							msgtype == MessageErrorID or
-							msgtype == CloseConnectionID
-						then                                                                  
-							local package = { message, header, buffer, n=3 }
-							local routine
-							local receivers = conn.receivers
-							while next(receivers) do                                             
-								request_id, routine = next(receivers)
-								replies[request_id] = package
-								receivers[request_id] = nil
-								scheduler.wake(routine)
+		local reply_object = ReplyObject{ result = function() 
+			if expected then
+				if operation.oneway then                                                  --[[VERBOSE]] verbose:invoke "no response expected"
+					return Empty                                                            --[[VERBOSE]] , verbose:invoke(false)
+				else
+					-- TODO:[maia] add proper support for colaborative multi-threading.
+					--             Caution! Avoid any sort of race conditions on the use
+					--             of sockets since collaborative multi-threading is used.
+					
+					local msgtype, header, stream
+					
+					local replies = conn.replies
+					local reply = replies[request_id]
+					if reply then                                                           --[[VERBOSE]] verbose:receive "returning stored reply"
+						replies[request_id] = nil
+						msgtype, header, buffer = unpack(reply)
+					else 
+						-- message still not received
+						repeat                                                                 
+						-- conn receive
+									msgtype, header, buffer = conn:receive()                                  
+							if
+								msgtype == nil or
+								msgtype == MessageErrorID or
+								msgtype == CloseConnectionID
+							then                                                                  
+								local package = { message, header, buffer, n=3 }
+								local routine
+								local receivers = conn.receivers
+								while next(receivers) do                                             
+									request_id, routine = next(receivers)
+									replies[request_id] = package
+									receivers[request_id] = nil
+									scheduler.wake(routine)
+								end
+								conn:close()                                                         
+								break
 							end
-							conn:close()                                                         
-							break
-						end
-				
-						if header.request_id ~= request_id then                               
-							local routine = conn.receivers[header.request_id]
-							if routine then                                                    
-								scheduler.wake(routine)                                             
-								coroutine.yield(msgtype, header, buffer)
-							else                                                                 
-								replies[header.request_id] = { msgtype, header, buffer, n=3 }
+					
+							if header.request_id ~= request_id then                               
+								local routine = conn.receivers[header.request_id]
+								if routine then                                                    
+									scheduler.wake(routine)                                             
+									coroutine.yield(msgtype, header, buffer)
+								else                                                                 
+									replies[header.request_id] = { msgtype, header, buffer, n=3 }
+								end
+								msgtype, header, buffer = nil, nil, nil
 							end
-							msgtype, header, buffer = nil, nil, nil
-						end
-					until msgtype
-				end
-				
-				if msgtype == ReplyID then                                              --[[VERBOSE]] verbose:invoke "got a reply message"
-					local status = header.reply_status
-					if status == "NO_EXCEPTION" then                                      --[[VERBOSE]] verbose:invoke("successfull invokation, return results")
-						expected = { n = table.getn(operation.outputs) }
-						for index, output in ipairs(operation.outputs) do
-							expected[index] = buffer:get(output)
-						end                                                                 --[[VERBOSE]] verbose:invoke(false)
-						request_id, reply = next(conn.receivers)
-						if reply
-							then scheduler:register(reply)                                            
-							else conn.receiving = false                                           
-						end
-						return expected
-					elseif status == "USER_EXCEPTION" then                                --[[VERBOSE]] verbose:invoke("got user-defined exception")
-						local repId = buffer:string()                                       --[[VERBOSE]] verbose:invoke(false)
-						local exception = operation.exceptions[repId]
-						if exception then
-							except = Exception(buffer:except(exception))
+						until msgtype
+					end
+					
+					if msgtype == ReplyID then                                              --[[VERBOSE]] verbose:invoke "got a reply message"
+						local status = header.reply_status
+						if status == "NO_EXCEPTION" then                                      --[[VERBOSE]] verbose:invoke("successfull invokation, return results")
+							expected = { n = table.getn(operation.outputs) }
+							for index, output in ipairs(operation.outputs) do
+								expected[index] = buffer:get(output)
+							end                                                                 --[[VERBOSE]] verbose:invoke(false)
+							request_id, reply = next(conn.receivers)
+							if reply
+								then scheduler:register(reply)                                            
+								else conn.receiving = false                                           
+							end
+							return expected
+						elseif status == "USER_EXCEPTION" then                                --[[VERBOSE]] verbose:invoke("got user-defined exception")
+							local repId = buffer:string()                                       --[[VERBOSE]] verbose:invoke(false)
+							local exception = operation.exceptions[repId]
+							if exception then
+								except = Exception(buffer:except(exception))
+							else
+								except = Exception{ "UNKNOWN", minor_code_value = 0,
+									message = "unexpected user-defined exception, got "..repId,
+									reason = "exception",
+									exception = exception,
+								}
+							end
+						elseif status == "SYSTEM_EXCEPTION" then                              --[[VERBOSE]] verbose:invoke(true, "got system exception")
+							local exception = buffer:struct(SystemExceptionIDL)                 --[[VERBOSE]] verbose:invoke(false)
+							-- TODO:[maia] set its type to the proper SystemExcep.
+							exception[1] = exception.exception_id
+							except = Exception(exception)
+						elseif status == "LOCATION_FORWARD" then                              --[[VERBOSE]] verbose:invoke "got location forward notice"
+							-- TODISCUSS: aren't there parameters missing? 
+							return call(buffer:IOR(), operation, ...)
 						else
-							except = Exception{ "UNKNOWN", minor_code_value = 0,
-								message = "unexpected user-defined exception, got "..repId,
-								reason = "exception",
-								exception = exception,
+							--TODO:[maia] handle GIOP 1.2 reply status
+							except = Exception{ "INTERNAL", minor_code_value = 0,
+								message = "unsupported reply status, got "..status,
+								reason = "replystatus",
+								status = status,
 							}
 						end
-					elseif status == "SYSTEM_EXCEPTION" then                              --[[VERBOSE]] verbose:invoke(true, "got system exception")
-						local exception = buffer:struct(SystemExceptionIDL)                 --[[VERBOSE]] verbose:invoke(false)
-						-- TODO:[maia] set its type to the proper SystemExcep.
-						exception[1] = exception.exception_id
-						except = Exception(exception)
-					elseif status == "LOCATION_FORWARD" then                              --[[VERBOSE]] verbose:invoke "got location forward notice"
-						-- TODISCUSS: aren't there parameters missing? 
-						return call(buffer:IOR(), operation, ...)
-					else
-						--TODO:[maia] handle GIOP 1.2 reply status
-						except = Exception{ "INTERNAL", minor_code_value = 0,
-							message = "unsupported reply status, got "..status,
-							reason = "replystatus",
-							status = status,
+					elseif msgtype == CloseConnectionID then                                  
+						conn:close() -- TODO:[maia] only reissue if not reached some timeout
+						return call(self, operation, ...)
+					elseif msgtype == MessageErrorID then                                     
+						except = Exception{ "COMM_FAILURE", minor_code_value = 0,
+							message = "error in server message processing",
+							reason = "server",
 						}
+					elseif MessageType[msgtype] then                                          
+						except = Exception{ "INTERNAL", minor_code_value = 0,
+							message = "unexpected GIOP message, got "..MessageType[msgtype],
+							reason = "unexpected",
+							messageid = msgtype,
+						}
+					else
+						except = header
+						conn:close()
 					end
-				elseif msgtype == CloseConnectionID then                                  
-					conn:close() -- TODO:[maia] only reissue if not reached some timeout
-					return call(self, operation, ...)
-				elseif msgtype == MessageErrorID then                                     
-					except = Exception{ "COMM_FAILURE", minor_code_value = 0,
-						message = "error in server message processing",
-						reason = "server",
-					}
-				elseif MessageType[msgtype] then                                          
-					except = Exception{ "INTERNAL", minor_code_value = 0,
-						message = "unexpected GIOP message, got "..MessageType[msgtype],
-						reason = "unexpected",
-						messageid = msgtype,
-					}
-				else
-					except = header
-					conn:close()
-				end
 
-		-- TODO: [nogara] check if this should be here or before checking
-		-- the return type
-		-- wake threads after receiving?        
-				request_id, reply = next(conn.receivers)
-				if reply
-					then scheduler.wake(reply)                                            
-					else conn.receiving = false                                           
-				end
-				
-			end --[[ oneway test ]]                                                   
-		end -- request sending
+			-- TODO: [nogara] check if this should be here or before checking
+			-- the return type
+			-- wake threads after receiving?        
+					request_id, reply = next(conn.receivers)
+					if reply
+						then scheduler.wake(reply)                                            
+						else conn.receiving = false                                           
+					end
+					
+				end --[[ oneway test ]]                                                   
+			end -- request sending
+		end }
 	end -- connection test
 	return handleexception(self, except, operation, ...)
+
 end
 
 --------------------------------------------------------------------------------
@@ -684,3 +693,56 @@ function createPort(self, args)
 	end
 	return conn, except
 end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+local function isbaseof(baseid, iface)
+	if iface.is_a then                                                            --[[VERBOSE]] verbose:servant(true, "executing interface is_a operation")
+		return iface:is_a(baseid)                                                   --[[VERBOSE]] , verbose:servant(false)
+	end                                                                           --[[VERBOSE]] verbose:servant(true, "checking if ", baseid, " is base of ", iface.repID)
+	
+	local data = { iface }
+	while table.getn(data) > 0 do
+		iface = table.remove(data)
+		if not data[iface] then                                                     --[[VERBOSE]] verbose:servant("reached interface ", iface.repID)
+			data[iface] = true
+			if iface.repID == baseid then
+				return true                                                             --[[VERBOSE]] , verbose:servant(false)
+			end
+			for _, base in ipairs(iface.base_interfaces) do
+				table.insert(data, base)
+			end
+		end
+	end                                                                           --[[VERBOSE]] verbose:servant(false)
+	
+	return false
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+-- TODO:[maia] add basic operations for servants
+CorbaObject = oo.class({}, Object)
+
+function Object:_is_a(repID)                                                    --[[VERBOSE]] verbose:servant(true, "verifying if object interface ", self._iface.repID, " is a ", repIDtrue )
+	return isbaseof(repID, self._iface)                                           --[[VERBOSE]] , verbose:servant(false)
+end
+
+function Object:_interface()                                                    --[[VERBOSE]] verbose:servant "retrieveing object interface"
+	local iface = self._iface
+	if getmetatable(iface)
+		then return iface
+		else assert.raise{ "INTF_REPOS", minor_code_value = 1,
+			reason = "interface",
+			iface = iface,
+		}
+	end
+end
+
+function Object:_non_existent()                                                 --[[VERBOSE]] verbose:servant "probing for object existency, returning false"
+	return false
+end
+
+
+
