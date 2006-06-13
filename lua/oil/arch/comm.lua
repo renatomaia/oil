@@ -3,7 +3,6 @@ local port      = require "loop.component.base"
 
 module "oil.arch.comm"
 
-
 Protocol = component.Type{
 	channels = port.Receptacle,
 		-- channel create(<configs>)
@@ -47,38 +46,6 @@ TypedListenProtocol = component.Type({
 	objects = port.Receptacle,
 		-- interface typeof(objectid)
 }, ListenProtocol)
-
-
---[[ --old component model
-ProtocolType = component.Type{
-	protocol = port.Facet,
-		-- operations :
-		--  call(reference, operation, ...)
-		--  handle(reference, operation, ...)
-	
-	codec = port.Receptacle,
-		-- optional receptacles
-	channelFactory = port.Receptacle,
-	error_handling = port.Receptacle  
-}
-
-CORBAProtocolType = component.Type({
-	iop = port.Receptacle,
-	
-	protocolHelper = port.Facet, -- TODO: change this name! 
-		-- unmarshallHeader( stream ) 
-}, ProtocolType)
-
-IOPType = component.Type{
-	iop = port.Facet, 
-		-- operations
-		--  connect(reference)
-		--  listen(network_endpoint)
-	channelFactory = port.Receptacle,
-	protocolHelper = port.Receptacle, 
-}
---]]--
-
 
 CodecType = component.Type{
 	codec = port.Facet,
@@ -140,14 +107,6 @@ ClientBroker = component.Type{
 		-- proxy create(reference, protocol)
 }
 
---[[ --old component model
-ProxyType = component.Type{
-		proxy = port.Facet,
-		protocol = port.Receptacle,
-		reference_handler = port.Receptacle
-}
---]]--
-
 --- Object
 Acceptor = component.Type{
 	manager = port.Facet,
@@ -199,22 +158,6 @@ ServerBroker = component.Type{
 		-- textref referto(reference)
 }
 
---[[ -- old component model
-AccessPointType = component.Type{
-	point = port.Facet,
-		-- operations :
-		--  listen(args)
-	protocol = port.HashReceptacle, 
-}
-
-DispatcherType = component.Type{
-		acceptor = port.Facet,
-		point    = port.Receptacle,
-		protocol = port.Receptacle,
-		reference_handler = port.Receptacle,
-}
---]]--
-
 --- Interface
 
 TypeManager = component.Type{
@@ -226,15 +169,4 @@ TypeManager = component.Type{
 		-- def typeof(objectid)
 }
 
---[[ -- old component model
-ManagerType = component.Type{
-	manager = port.Facet,
-	proxy = port.Receptacle,
-	ir    = port.Receptacle,
-}
-InterfaceRepositoryType = component.Type{
-	ir = port.Facet,
-	proxy = port.Receptacle,
-}
---]]--
 -------------------------------------
