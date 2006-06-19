@@ -185,11 +185,11 @@ local function packpcall(success, ...)
 	end
 end
 
-local function dispatch(servant, method, params)
+local function dispatch_servant(servant, method, params)
 	return packpcall(pcall(method, servant, unpack(params)))
 end
 
-function Dispatcher:handle(object_key, operation, params)                       --[[VERBOSE]] verbose:dispatcher("object basic operation ", operation, " called")
+function Dispatcher:dispatch(object_key, operation, params)                       --[[VERBOSE]] verbose:dispatcher("object basic operation ", operation, " called")
 	local success, result
 	local object = self.map[object_key]
 	if object then
@@ -201,7 +201,7 @@ function Dispatcher:handle(object_key, operation, params)                       
 		end
 		local method = servant[operation]
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("operation implementation found [name: ", operation, "]") verbose:dispatcher(true, "get parameter values")
-			success, result = dispatch(servant, method, params)                       --[[VERBOSE]] verbose:dispatcher(false)
+			success, result = dispatch_servant(servant, method, params)                       --[[VERBOSE]] verbose:dispatcher(false)
 		elseif member.attribute then                                                --[[VERBOSE]] verbose:dispatcher(true, "got request for attribute ", member.attribute)
 			local result
 			if member.inputs[1] then 
