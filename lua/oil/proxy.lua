@@ -119,7 +119,7 @@ function Object:__init(reference)
 end
 
 function Object:__call(operation, ... )
-	return self.protocol:call(self, operation, ...)
+	return self.protocol:sendrequest(self, operation, ...)
 end
 
 function Object:__index(field)

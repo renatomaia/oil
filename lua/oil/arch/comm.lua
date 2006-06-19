@@ -3,7 +3,7 @@ local port      = require "loop.component.base"
 
 module "oil.arch.comm"
 
-Protocol = component.Type{
+ProtocolType = component.Type{
 	channels = port.Receptacle,
 		-- channel create(<configs>)
 	codec = port.Receptacle,
@@ -11,7 +11,7 @@ Protocol = component.Type{
 		-- decoder newdecoder()
 }
 
-InvokeProtocol = component.Type({
+InvokeProtocolType = component.Type({
 	invoker = port.Facet,
 		-- [reply] sendrequest(reference, operation, <parameters>)
 		-- 	reply = {
@@ -20,7 +20,7 @@ InvokeProtocol = component.Type({
 		-- 	}
 }, Protocol)
 
-ListenProtocol = component.Type({
+ListenProtocolType = component.Type({
 	listener = port.Facet,
 		-- channel getchannel(<configs>)
 		-- request getrequest(channel)
@@ -37,12 +37,12 @@ ListenProtocol = component.Type({
 		-- 
 }, Protocol)
 
-TypedInvokeProtocol = component.Type({
+TypedInvokeProtocolType = component.Type({
 	interfaces = port.Receptacle,
 		-- interface lookup(interfaceid)
 }, InvokeProtocol)
 
-TypedListenProtocol = component.Type({
+TypedListenProtocolType = component.Type({
 	objects = port.Receptacle,
 		-- interface typeof(objectid)
 }, ListenProtocol)
@@ -86,17 +86,17 @@ ReferenceResolverType = component.Type{
 }
 
 --- Invocation
-ProxyFactory = component.Type{
+ProxyFactoryType = component.Type{
 	proxies = port.Facet,
 		-- proxy create(reference, protocol)
 }
 
-TypedProxyFactory = component.Type({
+TypedProxyFactoryType = component.Type({
 	interfaces = port.Receptacle,
 		-- interface lookup(interfaceid)
 }, ProxyFactory)
 
-ClientBroker = component.Type{
+ClientBrokerType = component.Type{
 	proxies = port.Facet,
 		-- proxy create(textref)
 	reference = port.Receptacle,
@@ -108,7 +108,7 @@ ClientBroker = component.Type{
 }
 
 --- Object
-Acceptor = component.Type{
+AcceptorType = component.Type{
 	manager = port.Facet,
 		-- acceptall()
 		-- accept()
@@ -122,7 +122,7 @@ Acceptor = component.Type{
 		-- start(function, ...)
 }
 
-Dispatcher = component.Type{
+DispatcherType = component.Type{
 	registry = port.Facet,
 		-- register(id, object)
 		-- object unregister(id)
@@ -132,13 +132,13 @@ Dispatcher = component.Type{
 		-- start(function, ...)
 }
 
-TypedDispacher = component.Type({
+TypedDispacherType = component.Type({
 	objects = port.Receptacle,
   -- interface typeof(objid) 
 
 }, Dispatcher)
 
-ServerBroker = component.Type{
+ServerBrokerType = component.Type{
 	registry = port.Facet,
 		-- servant register(object, [id])
 		-- object unregister(servant)
@@ -160,7 +160,7 @@ ServerBroker = component.Type{
 
 --- Interface
 
-TypeManager = component.Type{
+TypeManagerType = component.Type{
 	registry = port.Facet,
 		-- update(typeid, def)
 		-- def lookup(typeid)

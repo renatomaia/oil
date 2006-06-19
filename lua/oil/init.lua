@@ -73,7 +73,6 @@ local arch = require "oil.arch.comm"
 
 local corba_codec         = require "oil.corba.Codec"
 local corba_protocol      = require "oil.corba.Protocol"
-local corba_iop           = require "oil.corba.InternetIOP"
 local corba_reference     = require "oil.corba.reference"
 
 local proxy             = require "oil.proxy"
@@ -83,8 +82,8 @@ local manager           = require "oil.ir"
 local access_point      = require "oil.AccessPoint"
 
 local Factory_Codec             = arch.CodecType{ corba_codec }
-local Factory_Protocol          = arch.CORBAProtocolType{ corba_protocol }
-local Factory_IOP               = arch.IOPType{ corba_iop }
+local Factory_InvokeProtocol    = arch.TypedInvokeProtocolType{ corba_protocol.InvokeProtocol }
+local Factory_ListenProtocol    = arch.TypedListenProtocolType{ corba_protocol.ListenProtocol }
 
 local Factory_Reference         = arch.ReferenceResolverType{ corba_reference }
 
