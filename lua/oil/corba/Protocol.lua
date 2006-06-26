@@ -551,7 +551,7 @@ local SystemExceptionReply = {
 local ObjectOps = giop.ObjectOperations
 
 local ReturnTrue = { true }
-function ListenProtocol:handle(self, dispatcher, conn)
+function ListenProtocol:getrequest(self, dispatcher, conn)
 	local except
 	local msgtype, header, buffer = conn:receive()
 	if msgtype == RequestID then

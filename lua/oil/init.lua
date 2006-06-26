@@ -94,8 +94,9 @@ local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
 local Factory_Acceptor          = arch.AcceptorType{ access_point }
 ----------------------------------------
 
-myProtocol = Factory_Protocol()
 myCodec = Factory_Codec()
+myInvokeProtocol = Factory_InvokeProtocol()
+myListenProtocol = Factory_ListenProtocol()
 myIop = Factory_IOP()
 myReferenceResolver = Factory_Reference()
 myAcceptor = Factory_AccessPoint()

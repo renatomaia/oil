@@ -132,11 +132,11 @@ DispatcherType = component.Type{
 		-- start(function, ...)
 }
 
-TypedDispacherType = component.Type({
+TypedDispatcherType = component.Type({
 	objects = port.Receptacle,
   -- interface typeof(objid) 
 
-}, Dispatcher)
+}, DispatcherType)
 
 ServerBrokerType = component.Type{
 	registry = port.Facet,
