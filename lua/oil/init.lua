@@ -97,9 +97,8 @@ local Factory_Acceptor          = arch.AcceptorType{ access_point }
 myCodec = Factory_Codec()
 myInvokeProtocol = Factory_InvokeProtocol()
 myListenProtocol = Factory_ListenProtocol()
-myIop = Factory_IOP()
 myReferenceResolver = Factory_Reference()
-myAcceptor = Factory_AccessPoint()
+myAcceptor = Factory_Acceptor()
 
 myProxy = Factory_Proxy()
 myChannelFactory = Factory_ChannelFactory()
@@ -108,11 +107,7 @@ myManager = Factory_Manager()
 
 ----------------------------------------
 myProtocol.codec         = myCodec.codec
-myProtocol.iop           = myIop.iop
-myIop.protocolHelper     = myProtocol.protocolHelper
 myReferenceResolver.codec        = myCodec.codec
-
-myIop.channelFactory   = myChannelFactory.factory
 
 myProxy.protocol       = myProtocol.protocol
 myProxy.reference_resolver      = myReferenceResolver.resolver

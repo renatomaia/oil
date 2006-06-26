@@ -18,7 +18,7 @@ InvokeProtocolType = component.Type({
 		-- 		success, <results or error> :result(),
 		-- 		boolean :probe()
 		-- 	}
-}, Protocol)
+}, ProtocolType)
 
 ListenProtocolType = component.Type({
 	listener = port.Facet,
@@ -35,17 +35,17 @@ ListenProtocolType = component.Type({
 		-- 		:reply(success, <results or error>)
 		-- 	}
 		-- 
-}, Protocol)
+}, ProtocolType)
 
 TypedInvokeProtocolType = component.Type({
 	interfaces = port.Receptacle,
 		-- interface lookup(interfaceid)
-}, InvokeProtocol)
+}, InvokeProtocolType)
 
 TypedListenProtocolType = component.Type({
 	objects = port.Receptacle,
 		-- interface typeof(objectid)
-}, ListenProtocol)
+}, ListenProtocolType)
 
 CodecType = component.Type{
 	codec = port.Facet,
@@ -94,7 +94,7 @@ ProxyFactoryType = component.Type{
 TypedProxyFactoryType = component.Type({
 	interfaces = port.Receptacle,
 		-- interface lookup(interfaceid)
-}, ProxyFactory)
+}, ProxyFactoryType)
 
 ClientBrokerType = component.Type{
 	proxies = port.Facet,
