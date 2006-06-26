@@ -688,13 +688,14 @@ function ListenProtocol:getrequest(self, dispatcher, conn)
 end
 
 
-function listen(self, args)
-	local portConnection, except = self.iop:listen(args.host, args.port)
+function getchannel(self, args)
+	local conn, except = self.channels:create(args.host, args.port)
 	if not except then
 		
 	else 
 		-- TODO:[nogara] treat this exception, in case the listen didn't went through
 	end
+
 	return portConnection, except
 end
 

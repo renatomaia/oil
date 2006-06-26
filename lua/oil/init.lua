@@ -85,10 +85,12 @@ local Factory_Codec             = arch.CodecType{ corba_codec }
 local Factory_InvokeProtocol    = arch.TypedInvokeProtocolType{ corba_protocol.InvokeProtocol }
 local Factory_ListenProtocol    = arch.TypedListenProtocolType{ corba_protocol.ListenProtocol }
 
+local Factory_PassiveChannelFactory  = arch.ChannelFactoryType{ channel_factory.PassiveChannelFactory }
+local Factory_ActiveChannelFactory  = arch.ChannelFactoryType{ channel_factory.ActiveChannelFactory }
+
 local Factory_Reference         = arch.ReferenceResolverType{ corba_reference }
 
 local Factory_Manager           = arch.TypeManagerType{ manager }
-local Factory_ChannelFactory    = arch.ChannelFactoryType{ channel_factory }
 local Factory_Dispatcher        = arch.TypedDispatcherType{ dispatcher }
 local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
 local Factory_Acceptor          = arch.AcceptorType{ access_point }
@@ -101,7 +103,8 @@ myReferenceResolver = Factory_Reference()
 myAcceptor = Factory_Acceptor()
 
 myProxy = Factory_Proxy()
-myChannelFactory = Factory_ChannelFactory()
+myPassiveChannelFactory = Factory_PassiveChannelFactory()
+myActiveChannelFactory = Factory_ActiveChannelFactory()
 myDispatcher = Factory_Dispatcher()
 myManager = Factory_Manager()
 

@@ -25,8 +25,7 @@ local function connect(self, port)
 	return socket:connect(self.host, port)
 end
 
-local ChannelCache = ObjectCache()
-function ChannelCache:retrieve(host)
+local function channelcache(self, host)
 	return ObjectCache{ host = host, retrieve = connect }
 end
 
@@ -34,7 +33,7 @@ CachedChannelFactory = oo.class()
 
 function CachedChannelFactory:__init(factory)
 	self = oo.rawnew(self, factory)
-	self.channels = ChannelCache(self.channels)
+	self.channels.retrieve = channelcache
 end
 
 function CachedChannelFactory:create(host, port)
