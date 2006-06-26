@@ -49,8 +49,7 @@ local function bindport(self, port)
 	return port
 end
 
-local PortCache = ObjectCache()
-function PortCache:retrieve(host)
+local function portcache(self, host)
 	return ObjectCache{ host = host, retrieve = bindport }
 end
 
@@ -58,7 +57,8 @@ PassiveChannelFactory = oo.class()
 
 function PassiveChannelFactory:__init(factory)
 	self = oo.rawnew(self, factory)
-	self.ports = PortCache(self.ports)
+	self.ports = ObjectCache(self.ports)
+	self.ports.retrieve = portcache
 end
 
 function PassiveChannelFactory:create(host, port)
