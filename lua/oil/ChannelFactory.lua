@@ -34,6 +34,7 @@ CachedChannelFactory = oo.class()
 function CachedChannelFactory:__init(factory)
 	self = oo.rawnew(self, factory)
 	self.channels.retrieve = channelcache
+	return self
 end
 
 function CachedChannelFactory:create(host, port)
@@ -58,6 +59,7 @@ function PassiveChannelFactory:__init(factory)
 	self = oo.rawnew(self, factory)
 	self.ports = ObjectCache(self.ports)
 	self.ports.retrieve = portcache
+	return self
 end
 
 function PassiveChannelFactory:create(host, port)
