@@ -75,7 +75,7 @@ local corba_codec         = require "oil.corba.Codec"
 local corba_protocol      = require "oil.corba.Protocol"
 local corba_reference     = require "oil.corba.reference"
 
-local proxy             = require "oil.proxy"
+local proxy             = require "oil.corba.proxy"
 local channel_factory   = require "oil.ChannelFactory"
 local dispatcher        = require "oil.orb"
 local manager           = require "oil.ir"
@@ -92,7 +92,8 @@ local Factory_Reference         = arch.ReferenceResolverType{ corba_reference }
 
 local Factory_Manager           = arch.TypeManagerType{ manager }
 local Factory_Dispatcher        = arch.TypedDispatcherType{ dispatcher }
-local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
+local Factory_ClientBroker      = arch.ClientBrokerType{ proxy }
+--local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
 local Factory_Acceptor          = arch.AcceptorType{ access_point }
 ----------------------------------------
 
@@ -102,7 +103,7 @@ myListenProtocol = Factory_ListenProtocol()
 myReferenceResolver = Factory_Reference()
 myAcceptor = Factory_Acceptor()
 
-myProxy = Factory_Proxy()
+myClientBroker = Factory_ClientBroker()
 myPassiveChannelFactory = Factory_PassiveChannel()
 myActiveChannelFactory = Factory_ActiveChannel()
 myDispatcher = Factory_Dispatcher()
@@ -114,8 +115,8 @@ myListenProtocol.codec         = myCodec.codec
 
 myReferenceResolver.codec        = myCodec.codec
 
-myProxy.protocol       = myProtocol.protocol
-myProxy.reference_resolver      = myReferenceResolver.resolver
+myClientBroker.protocol       = myProtocol.protocol
+myClientBroker.reference = myReferenceResolver.resolver
 
 myManager.proxy = myProxy.proxy
 
