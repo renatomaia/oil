@@ -1,4 +1,4 @@
--- $Id$
+- usando componente de referencia- $Id$
 --******************************************************************************
 -- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
 --******************************************************************************
@@ -60,11 +60,12 @@ module "oil"
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
 
-local luaidl  = require "luaidl"
-local idl     = require "oil.idl"
-local assert  = require "oil.assert"
-local ir      = require "oil.ir"
-local iridl   = require "oil.ir.idl"
+local luaidl    = require "luaidl"
+local idl       = require "oil.idl"
+local idlparser = require "oil.idl.compiler"
+local assert    = require "oil.assert"
+local ir        = require "oil.ir"
+local iridl     = require "oil.ir.idl"
 
 --------------------------------------------------------------------------------
 -- binding components (test)
@@ -163,51 +164,6 @@ Manager:putiface(iridl.OperationDef           )
 Manager:putiface(iridl.InterfaceAttrExtension )
 Manager:putiface(iridl.ValueMemberDef         )
 
---------------------------------------------------------------------------------
--- LuaIDL support
---------------------------------------------------------------------------------
-local function createspec(def, history)
-	if not history[def] then
-		history[def] = def
-		local constructor = idl[def._type]
-		if type(constructor) == "table" then
-			history[def] = constructor
-		else
-			for key, value in pairs(def) do
-				if type(value) == "table" then
-					def[key] = createspec(value, history)
-				end
-			end
-			if type(constructor) == "function" then
-				history[def] = constructor(def)
-			end
-		end
-	end
-	return history[def]
-end
-
-local function addspec(def, history)
-	if not history[def] then
-		history[def] = true
-		if def._type == "interface" or def._type == "module" then
-			if def._type == "interface" then
-				Manager:putiface(def)
-			end
-			for _, member in pairs(def.definitions) do addspec(member, history) end
-		end
-	end
-end
-
-local function processLuaIDLoutput(...)
-	if arg[1] then
-		local created, added = {}, {}
-		for _, def in ipairs(arg) do
-			addspec(createspec(def, created), added)
-		end
-	else
-		assert.error(arg[2])
-	end
-end
 
 --------------------------------------------------------------------------------
 -- Default configuration for creation of the default ORB instance.
@@ -253,7 +209,7 @@ Config = {}
 --        ]]                                                                   .
 
 function loadidl(idlspec)
-	return processLuaIDLoutput(luaidl.parse(idlspec))
+	return idlparser.parse(idlspec, Manager)
 end
 
 --------------------------------------------------------------------------------
@@ -274,7 +230,7 @@ end
 -- @usage oil.loadidlfile("HelloWorld.idl", "/tmp/preprocessed.idl")           .
 
 function loadidlfile(filename, preprocessed)
-	return processLuaIDLoutput(luaidl.parsefile(filename, preprocessed))
+	return idlparser.parsefile(filename, Manager)
 end
 
 --------------------------------------------------------------------------------

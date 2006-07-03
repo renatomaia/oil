@@ -111,10 +111,7 @@ Object = oo.class()
 Object._iface = { repID = "IDL:omg.org/CORBA/Object:1.0", members = {} }
 
 function Object:__init(reference)
-	assert.type(reference, "table", "reference is not a table")                   --[[VERBOSE]] verbose:proxy("new proxy for ", self._iface.repID)
-	-- TODO[nogara]: for now, decode the reference here, but
-	--               is it the best place to do it?
-	self._decoded_profile = self._reference_resolver:decode_profile( reference._profiles )
+	assert.type(reference, "table", "reference is not a table")                   --[[VERBOSE]] verbose:proxy("new proxy for ", reference._type_id)
 	return oo.rawnew(self, reference)
 end
 
@@ -130,12 +127,12 @@ function Object:__index(field)
 		if type(member) == "table" then
 			if member._type == "operation" then                                       --[[VERBOSE]] verbose:proxy("new stub function for operation ", field)
 				local function stub(self, ...)                                          --[[VERBOSE]] verbose:proxy("invoke operation ", field, " with ", select("#", ... ), " arguments")
-					return checkresults(self._protocol:call(self._decoded_profile, member, ...))
+					return checkresults(self._protocol:call(self.reference, member, ...))
 				end                                                                     
 				cache[field] = stub
 				return stub
 			elseif member._type == "attribute" then                                   --[[VERBOSE]] verbose:proxy("read attribute ", field)
-				return checkresults(self._protocol:call(self._decoded_profile, member.getter))
+				return checkresults(self._protocol:call(self.reference, member.getter))
 			else
 				assert.error("unsupported member kind, got "..tostring(member._type))
 			end
@@ -227,25 +224,8 @@ function Object:_narrow(iface)                                                  
 	return newclass(self)                                                         --[[VERBOSE]] , verbose:proxy(false)
 end
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function class(self, interface, manager, orb)                                   --[[VERBOSE]] verbose:proxy("new proxy class for ", interface.repID)
-	return oo.class({
-		_iface = interface,
-		_manager = manager or false,
-		_orb = orb or false,
-		_protocol = self.protocol,
-		_reference_resolver = self.reference_resolver,
-		_handlers = {}, -- exception handlers
-		-- this is only necessary if OiL object model does not make copies of
-		-- inherited members (e.g. LOOP models like 'simple' or 'multiple')
-		__index = Object.__index,
-		__newindex = Object.__newindex,
-	}, Object)
+function create(reference, protocol)
+  return Object{ reference = reference, 
+	               protocol = protocol,
+	}
 end
-
-function getObjectInterface(self)
-	return Object._iface
-end
-

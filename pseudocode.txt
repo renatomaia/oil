@@ -1,0 +1,6 @@
+Client:
+	- newproxy(referencia para objeto, interface)
+	- se houver interface, tenta obter a interface no repositorio de interfaces
+  - decodifica referencia para objeto
+
+	- retorna proxy criado
