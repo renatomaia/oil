@@ -224,8 +224,29 @@ function Object:_narrow(iface)                                                  
 	return newclass(self)                                                         --[[VERBOSE]] , verbose:proxy(false)
 end
 
-function create(reference, protocol)
+function create(self, reference, protocol, interfaceName)
+	if not interfaceName then
+		interfaceName = reference._type_id  
+	end
+	
+	local class
+	if self.interfaces then 
+		class = self.interfaces:getclass(interfaceName)
+		if not class then
+			local interface = self.interfaces:lookup(interfaceName) 
+			if interface then
+				class = self.interfaces:getclass(interface.repID)
+			end
+			if not class then
+				object = self.manager:getclass("IDL:omg.org/CORBA/Object:1.0")(object) 
+				object = object:_narrow()
+			end
+		end
+		if class then object = class(object) end            
+	end
+	rawset(object, "_orb", init())
   return Object{ reference = reference, 
 	               protocol = protocol,
 	}
+	return object
 end

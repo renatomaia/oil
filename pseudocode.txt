@@ -1,6 +1,10 @@
-Client:
+* criacao 
+ClientBroker:
 	- newproxy(referencia para objeto, interface)
-	- se houver interface, tenta obter a interface no repositorio de interfaces
   - decodifica referencia para objeto
-
+  - passa referencia decodificada para Proxy e nome da interface, se houver
+ProxyFactory/TypedProxyFactory
+	- se houver interface, tenta obter a interface no repositorio de interfaces
+  - a referencia decodificada deve estar pronta para ser passada ao protocolo, quando for feita uma chamada a um metodo qualquer
+	- guarda a referencia decodificada no proxy
 	- retorna proxy criado

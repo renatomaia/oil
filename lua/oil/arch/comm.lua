@@ -94,17 +94,18 @@ ProxyFactoryType = component.Type{
 TypedProxyFactoryType = component.Type({
 	interfaces = port.Receptacle,
 		-- interface lookup(interfaceid)
+		-- class getclass(interface)
 }, ProxyFactoryType)
 
 ClientBrokerType = component.Type{
 	proxies = port.Facet,
-		-- proxy create(textref)
+		-- proxy create(textref, interfaceName)
 	reference = port.Receptacle,
 		-- reference resolve(textref)
 	protocol = port.Receptacle,
 		-- [reply] sendrequest(reference, operation, <parameters>)
 	factory = port.Receptacle,
-		-- proxy create(reference, protocol)
+		-- proxy create(reference, protocol, interfaceName)
 }
 
 --- Object
