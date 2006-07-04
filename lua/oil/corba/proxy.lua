@@ -184,7 +184,6 @@ function Object:_non_existent()                                                 
 end
 
 function Object:_narrow(iface)                                                  --[[VERBOSE]] verbose:proxy(true, "narrowing proxy")
-	local manager = self._manager
 
 	if iface == nil then                                                          --[[VERBOSE]] verbose:proxy(true, "no interface suppied, getting object interface")
 		local result = self._protocol:call(self._decoded_profile, ObjectOps._interface)
@@ -200,15 +199,15 @@ function Object:_narrow(iface)                                                  
 	end
 	
 	local newclass
-	if manager then
+	if self.interfaces then
 		if type(iface) ~= "string" then                                             --[[VERBOSE]] verbose:proxy(true, "registering narrowing interface at object manager")
-			iface = manager:putiface(iface)
+			iface = self.interfaces:putiface(iface)
 			iface = iface.repID                                                       --[[VERBOSE]] verbose:proxy(false)
-		elseif manager.lookup then
-			local interface = manager:lookup(iface)
+		elseif self.interfaces.lookup then
+			local interface = self.interfaces:lookup(iface)
 			if interface then iface = interface.repID end
 		end
-		newclass = manager:getclass(iface)
+		newclass = self.interfaces:getclass(iface)
 		if not newclass then
 			assert.raise{ "INTERNAL", minor_code_value = 0,
 				reason = "interface",
@@ -228,7 +227,6 @@ function create(self, reference, protocol, interfaceName)
 	if not interfaceName then
 		interfaceName = reference._type_id  
 	end
-	
 	local class
 	if self.interfaces then 
 		class = self.interfaces:getclass(interfaceName)
@@ -242,11 +240,13 @@ function create(self, reference, protocol, interfaceName)
 				object = object:_narrow()
 			end
 		end
-		if class then object = class(object) end            
 	end
-	rawset(object, "_orb", init())
-  return Object{ reference = reference, 
-	               protocol = protocol,
-	}
+	local object
+	if class then 
+		object = Object{
+			_reference = reference,
+			_protocol = protocol,
+		}
+	end            
 	return object
 end
