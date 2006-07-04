@@ -50,7 +50,7 @@ local select       = select
 
 local oo      = require "oil.oo"
 
-module ("oil.proxy", oo.class )                                                 --[[VERBOSE]] local verbose = require "oil.verbose"
+module ("oil.corba.proxy", oo.class )                                                 --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
@@ -112,6 +112,9 @@ Object._iface = { repID = "IDL:omg.org/CORBA/Object:1.0", members = {} }
 
 function Object:__init(reference)
 	assert.type(reference, "table", "reference is not a table")                   --[[VERBOSE]] verbose:proxy("new proxy for ", reference._type_id)
+	for k, v in pairs( reference ) do
+		print(k,v)
+	end
 	return oo.rawnew(self, reference)
 end
 

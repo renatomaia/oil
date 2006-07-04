@@ -1,4 +1,4 @@
-- usando componente de referencia- $Id$
+-- $Id$
 --******************************************************************************
 -- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
 --******************************************************************************
@@ -77,6 +77,7 @@ local corba_protocol      = require "oil.corba.Protocol"
 local corba_reference     = require "oil.corba.reference"
 
 local proxy             = require "oil.corba.proxy"
+local client_broker     = require "oil.ClientBroker"
 local channel_factory   = require "oil.ChannelFactory"
 local dispatcher        = require "oil.orb"
 local manager           = require "oil.ir"
@@ -93,8 +94,8 @@ local Factory_Reference         = arch.ReferenceResolverType{ corba_reference }
 
 local Factory_Manager           = arch.TypeManagerType{ manager }
 local Factory_Dispatcher        = arch.TypedDispatcherType{ dispatcher }
-local Factory_ClientBroker      = arch.ClientBrokerType{ proxy }
---local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
+local Factory_ClientBroker      = arch.ClientBrokerType{ client_broker }
+local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
 local Factory_Acceptor          = arch.AcceptorType{ access_point }
 ----------------------------------------
 
@@ -105,6 +106,7 @@ myReferenceResolver = Factory_Reference()
 myAcceptor = Factory_Acceptor()
 
 myClientBroker = Factory_ClientBroker()
+myProxy = Factory_Proxy()
 myPassiveChannelFactory = Factory_PassiveChannel()
 myActiveChannelFactory = Factory_ActiveChannel()
 myDispatcher = Factory_Dispatcher()
@@ -116,16 +118,16 @@ myListenProtocol.codec         = myCodec.codec
 
 myReferenceResolver.codec        = myCodec.codec
 
-myClientBroker.protocol       = myProtocol.protocol
+myClientBroker.protocol       = myInvokeProtocol.protocol
 myClientBroker.reference = myReferenceResolver.resolver
 
 myManager.proxy = myProxy.proxy
 
-myDispatcher.protocol    = myProtocol.protocol
-myDispatcher.point       = myAccessPoint.point
-myDispatcher.reference_resolver = myReferenceResolver.resolver
+myDispatcher.protocol    = myListenProtocol.protocol
+--myDispatcher.point       = myAccessPoint.point
+--myDispatcher.reference_resolver = myReferenceResolver.resolver
 
-myAccessPoint.protocol["corba"] = myProtocol.protocol
+--myAccessPoint.protocol["corba"] = myProtocol.protocol
 
 --------------------------------------------------------------------------------
 -- Local module variables and functions ----------------------------------------
