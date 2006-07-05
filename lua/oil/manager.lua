@@ -54,10 +54,10 @@ ObjectManager = oo.class()
 function ObjectManager:__init(manager)
 	if not manager.ifaces then manager.ifaces = {} end -- maps repIDs to interfaces
 	self.proxy = manager.proxy
-	self.ObjectInterface = self.proxy:getObjectInterface() 
-	manager.classes = { -- maps repIDs to proxy classes
-		[self.ObjectInterface.repID] = self.proxy:class(self.ObjectInterface, manager),
-	}
+	--self.ObjectInterface = self.proxy:getObjectInterface() 
+	--manager.classes = { -- maps repIDs to proxy classes
+	--	[self.ObjectInterface.repID] = self.proxy:class(self.ObjectInterface, manager),
+	--}
 	return oo.rawnew(self, manager)
 end
 
