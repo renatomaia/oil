@@ -128,4 +128,4 @@ end
 --------------------------------------------------------------------------------
 
 function verbose.inspect:debug() Inspector:breakpoint(4) end
-verbose:flag("debug", true)
+--verbose:flag("debug", true)

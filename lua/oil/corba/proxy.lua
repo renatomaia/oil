@@ -92,10 +92,11 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local function checkresults(results, exception)                                 --[[VERBOSE]] verbose:proxy(false)
-	if results
-		then return unpack(results)
-		else return assert.error(exception)
+local function checkresults(result, reply)                                 --[[VERBOSE]] verbose:proxy(false)
+	if result then
+		return unpack(reply:result())
+	else
+		return assert.error(reply)
 	end
 end
 
@@ -130,12 +131,12 @@ function Object:__index(field)
 		if type(member) == "table" then
 			if member._type == "operation" then                                       --[[VERBOSE]] verbose:proxy("new stub function for operation ", field)
 				local function stub(self, ...)                                          --[[VERBOSE]] verbose:proxy("invoke operation ", field, " with ", select("#", ... ), " arguments")
-					return checkresults(self._protocol:call(self.reference, member, ...))
+					return checkresults(self._protocol:sendrequest(self._reference, member, ...))
 				end                                                                     
 				cache[field] = stub
 				return stub
 			elseif member._type == "attribute" then                                   --[[VERBOSE]] verbose:proxy("read attribute ", field)
-				return checkresults(self._protocol:call(self.reference, member.getter))
+				return checkresults(self._protocol:sendrequest(self._reference, member.getter))
 			else
 				assert.error("unsupported member kind, got "..tostring(member._type))
 			end
@@ -148,9 +149,11 @@ function Object:__newindex(field, value)
 		local member = self._iface.members[field]                                   --[[VERBOSE]] verbose:proxy(false)
 		if type(member) == "table" then
 			if member._type == "attribute" then                                       --[[VERBOSE]] verbose:proxy("write ", member.readonly and "readonly" or "", "attribute ", field)
-				if not member.readonly
-					then checkcall(self._protocol:call(self._reference, member.setter, value))
-					else assert.error("attempt to set read-only attribute "..field)
+				if not member.readonly then
+					print("changing member value")
+					checkcall(self._protocol:sendrequest(self._reference, member.setter, value))
+				else
+					assert.error("attempt to set read-only attribute "..field)
 				end
 			elseif member._type ~= "operation" then
 				assert.error("unsupported interface member type, got "..tostring(member._type))
@@ -169,7 +172,7 @@ for name, value in pairs(ObjectOps) do
 	if type(value) == "table" and value._type == "operation" then
 		local member = value                                                        --[[VERBOSE]] local VERBOSE_field = name
 		Object[name] = function(self, ...)                                          --[[VERBOSE]] verbose:proxy(true, "invoke operation ", VERBOSE_field, " with ", select( "#", ... ), " arguments")
-			return checkresults(self._protocol:invoke(self._reference, member, ...))
+			return checkresults(self._protocol:sendrequest(self._reference, member, ...))
 		end
 	end
 end
@@ -239,6 +242,7 @@ function create(self, reference, protocol, interfaceName)
 			local interface = self.interfaces:lookup(interfaceName) 
 			if interface then
 				class = Object{
+					_iface = interface,
 					_reference = reference,
 					_protocol = protocol,
 				}

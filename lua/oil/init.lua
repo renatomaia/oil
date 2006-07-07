@@ -114,7 +114,10 @@ myManager = Factory_Manager()
 
 ----------------------------------------
 myInvokeProtocol.codec         = myCodec.codec
+myInvokeProtocol.channels      = myActiveChannelFactory.factory
+
 myListenProtocol.codec         = myCodec.codec
+myListenProtocol.channels      = myPassiveChannelFactory.factory
 
 myReferenceResolver.codec        = myCodec.codec
 

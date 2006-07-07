@@ -25,7 +25,7 @@ end
 
 local hello = oil.newproxy(ior, "Hello")
 
-print( hello:_is_a("IDL:Hello:1.0") )
+--print( hello:_is_a("IDL:Hello:1.0") )
 --------------------------------------------------------------------------------
 -- Access remote CORBA object --------------------------------------------------
 
