@@ -226,14 +226,16 @@ function Object:_narrow(iface)                                                  
 	return newclass(self)                                                         --[[VERBOSE]] , verbose:proxy(false)
 end
 
+classes = {}
+
 function create(self, reference, protocol, interfaceName)
 	if not interfaceName then
 		interfaceName = reference._type_id  
 	end
 	local class
-	if self.interfaces then 
-		class = self.interfaces:getclass(interfaceName)
-		if not class then
+	class = self.classes[interfaceName]
+	if not class then
+		if self.interfaces then 
 			local interface = self.interfaces:lookup(interfaceName) 
 			if interface then
 				class = self.interfaces:getclass(interface.repID)

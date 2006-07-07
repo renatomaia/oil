@@ -100,7 +100,7 @@ end
 --------------------------------------------------------------------------------
 -- Coding ----------------------------------------------------------------------
 
-function decode(self, ...)                                                  --[[VERBOSE]] verbose:ior(true, "decode IOR")
+function resolve(self, ...)                                                  --[[VERBOSE]] verbose:ior(true, "decode IOR")
 	assert.type(arg[1], "string", "encoded IOR", "INV_OBJREF")
 	local token, stream = string.match(arg[1], "^(%w+):(.+)$")                   --[[VERBOSE]] verbose:ior("got ", token, " IOR format")
 	local decoder = Decoder[token]

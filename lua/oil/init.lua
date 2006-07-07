@@ -120,8 +120,7 @@ myReferenceResolver.codec        = myCodec.codec
 
 myClientBroker.protocol       = myInvokeProtocol.protocol
 myClientBroker.reference = myReferenceResolver.resolver
-
-myManager.proxy = myProxy.proxy
+myClientBroker.factory = myProxy.proxies
 
 myDispatcher.protocol    = myListenProtocol.protocol
 --myDispatcher.point       = myAccessPoint.point
@@ -337,28 +336,8 @@ end
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 
 function newproxy(object, interface)
-	object = myReferenceResolver:decode(object)   -- TODO[nogara]: find another way to call reference here
-	if not interface then
-		interface = object._type_id  
-	end
-	
-	local class = Manager:getclass(interface)
-	if not class then
-		if Manager.lookup then
-			interface = Manager:lookup(interface) 
-			if interface then
-				class = Manager:getclass(interface.repID)
-			end
-		end
-		if not class then
-			object = Manager:getclass("IDL:omg.org/CORBA/Object:1.0")(object) 
-			object = object:_narrow()
-		end
-	end
-	if class then object = class(object) end            
-
-	rawset(object, "_orb", init())
-	return object
+	local proxy = myClientBroker:newproxy(object,interface)
+	return proxy
 end
 
 --------------------------------------------------------------------------------
