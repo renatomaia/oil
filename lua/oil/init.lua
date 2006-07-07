@@ -78,6 +78,7 @@ local corba_reference     = require "oil.corba.reference"
 
 local proxy             = require "oil.corba.proxy"
 local client_broker     = require "oil.ClientBroker"
+local server_broker     = require "oil.ServerBroker"
 local channel_factory   = require "oil.ChannelFactory"
 local dispatcher        = require "oil.orb"
 local manager           = require "oil.ir"
@@ -93,8 +94,9 @@ local Factory_ActiveChannel     = arch.ChannelFactoryType{ channel_factory.Activ
 local Factory_Reference         = arch.ReferenceResolverType{ corba_reference }
 
 local Factory_Manager           = arch.TypeManagerType{ manager }
-local Factory_Dispatcher        = arch.TypedDispatcherType{ dispatcher }
 local Factory_ClientBroker      = arch.ClientBrokerType{ client_broker }
+local Factory_Dispatcher        = arch.TypedDispatcherType{ dispatcher }
+local Factory_ServerBroker      = arch.ServerBrokerType{ server_broker }
 local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
 local Factory_Acceptor          = arch.AcceptorType{ access_point }
 ----------------------------------------
@@ -110,6 +112,7 @@ myProxy = Factory_Proxy()
 myPassiveChannelFactory = Factory_PassiveChannel()
 myActiveChannelFactory = Factory_ActiveChannel()
 myDispatcher = Factory_Dispatcher()
+myServerBroker = Factory_ServerBroker()
 myManager = Factory_Manager()
 
 ----------------------------------------
@@ -128,9 +131,11 @@ myClientBroker.factory = myProxy.proxies
 myProxy.interfaces = myManager.registry
 
 myDispatcher.protocol    = myListenProtocol.protocol
---myDispatcher.point       = myAccessPoint.point
---myDispatcher.reference_resolver = myReferenceResolver.resolver
+myDispatcher.tasks       = myScheduler.tasks
+myDispatcher.objects     = myReferenceResolver.reference
 
+myServerBroker.ports = myAccessPoint.manager 
+myServerBroker.objectmap = myDispatcher.registry
 --myAccessPoint.protocol["corba"] = myProtocol.protocol
 
 --------------------------------------------------------------------------------

@@ -8,3 +8,6 @@ ProxyFactory/TypedProxyFactory
   - a referencia decodificada deve estar pronta para ser passada ao protocolo, quando for feita uma chamada a um metodo qualquer
 	- guarda a referencia decodificada no proxy
 	- retorna proxy criado
+
+ServerBroker:
+	- 
