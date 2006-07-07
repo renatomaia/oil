@@ -118,9 +118,11 @@ myListenProtocol.codec         = myCodec.codec
 
 myReferenceResolver.codec        = myCodec.codec
 
-myClientBroker.protocol       = myInvokeProtocol.protocol
+myClientBroker.protocol       = myInvokeProtocol.invoker
 myClientBroker.reference = myReferenceResolver.resolver
 myClientBroker.factory = myProxy.proxies
+
+myProxy.interfaces = myManager.registry
 
 myDispatcher.protocol    = myListenProtocol.protocol
 --myDispatcher.point       = myAccessPoint.point
@@ -130,40 +132,38 @@ myDispatcher.protocol    = myListenProtocol.protocol
 
 --------------------------------------------------------------------------------
 -- Local module variables and functions ----------------------------------------
-Manager = myManager:new()
-
-Manager:putiface(iridl.Repository             )
-Manager:putiface(iridl.Container              )
-Manager:putiface(iridl.ModuleDef              )
-Manager:putiface(iridl.ConstantDef            )
-Manager:putiface(iridl.IDLType                )
-Manager:putiface(iridl.StructDef              )
-Manager:putiface(iridl.UnionDef               )
-Manager:putiface(iridl.EnumDef                )
-Manager:putiface(iridl.AliasDef               )
-Manager:putiface(iridl.InterfaceDef           )
-Manager:putiface(iridl.ExceptionDef           )
-Manager:putiface(iridl.NativeDef              )
-Manager:putiface(iridl.ValueDef               )
-Manager:putiface(iridl.ValueBoxDef            )
-Manager:putiface(iridl.AbstractInterfaceDef   )
-Manager:putiface(iridl.LocalInterfaceDef      )
-Manager:putiface(iridl.ExtInterfaceDef        )
-Manager:putiface(iridl.ExtValueDef            )
-Manager:putiface(iridl.ExtAbstractInterfaceDef)
-Manager:putiface(iridl.ExtLocalInterfaceDef   )
-Manager:putiface(iridl.PrimitiveDef           )
-Manager:putiface(iridl.StringDef              )
-Manager:putiface(iridl.SequenceDef            )
-Manager:putiface(iridl.ArrayDef               )
-Manager:putiface(iridl.WstringDef             )
-Manager:putiface(iridl.FixedDef               )
-Manager:putiface(iridl.TypedefDef             )
-Manager:putiface(iridl.AttributeDef           )
-Manager:putiface(iridl.ExtAttributeDef        )
-Manager:putiface(iridl.OperationDef           )
-Manager:putiface(iridl.InterfaceAttrExtension )
-Manager:putiface(iridl.ValueMemberDef         )
+myManager:putiface(iridl.Repository             )
+myManager:putiface(iridl.Container              )
+myManager:putiface(iridl.ModuleDef              )
+myManager:putiface(iridl.ConstantDef            )
+myManager:putiface(iridl.IDLType                )
+myManager:putiface(iridl.StructDef              )
+myManager:putiface(iridl.UnionDef               )
+myManager:putiface(iridl.EnumDef                )
+myManager:putiface(iridl.AliasDef               )
+myManager:putiface(iridl.InterfaceDef           )
+myManager:putiface(iridl.ExceptionDef           )
+myManager:putiface(iridl.NativeDef              )
+myManager:putiface(iridl.ValueDef               )
+myManager:putiface(iridl.ValueBoxDef            )
+myManager:putiface(iridl.AbstractInterfaceDef   )
+myManager:putiface(iridl.LocalInterfaceDef      )
+myManager:putiface(iridl.ExtInterfaceDef        )
+myManager:putiface(iridl.ExtValueDef            )
+myManager:putiface(iridl.ExtAbstractInterfaceDef)
+myManager:putiface(iridl.ExtLocalInterfaceDef   )
+myManager:putiface(iridl.PrimitiveDef           )
+myManager:putiface(iridl.StringDef              )
+myManager:putiface(iridl.SequenceDef            )
+myManager:putiface(iridl.ArrayDef               )
+myManager:putiface(iridl.WstringDef             )
+myManager:putiface(iridl.FixedDef               )
+myManager:putiface(iridl.TypedefDef             )
+myManager:putiface(iridl.AttributeDef           )
+myManager:putiface(iridl.ExtAttributeDef        )
+myManager:putiface(iridl.OperationDef           )
+myManager:putiface(iridl.InterfaceAttrExtension )
+myManager:putiface(iridl.ValueMemberDef         )
 
 
 --------------------------------------------------------------------------------
@@ -210,7 +210,7 @@ Config = {}
 --        ]]                                                                   .
 
 function loadidl(idlspec)
-	return idlparser.parse(idlspec, Manager)
+	return idlparser.parse(idlspec, myManager)
 end
 
 --------------------------------------------------------------------------------
@@ -231,7 +231,7 @@ end
 -- @usage oil.loadidlfile("HelloWorld.idl", "/tmp/preprocessed.idl")           .
 
 function loadidlfile(filename, preprocessed)
-	return idlparser.parsefile(filename, Manager)
+	return idlparser.parsefile(filename, myManager)
 end
 
 --------------------------------------------------------------------------------
@@ -242,7 +242,7 @@ end
 local LocalIR
 function getLIR()
 	if not LocalIR then
-		LocalIR = init():object(Manager, "IDL:omg.org/CORBA/Repository:1.0")
+		LocalIR = init():object(myManager, "IDL:omg.org/CORBA/Repository:1.0")
 	end
 	return LocalIR
 end
@@ -253,7 +253,7 @@ end
 -- @return 1 proxy Proxy for the remote IR currently used.
 
 function getIR()
-	return Manager.ir
+	return myManager.ir
 end
 
 --------------------------------------------------------------------------------
@@ -265,7 +265,7 @@ end
 --                               "IDL:omg.org/CORBA/Repository:1.0"))          .
 
 function setIR(ir)
-	Manager.ir = ir
+	myManager.ir = ir
 end
 
 --------------------------------------------------------------------------------
@@ -337,6 +337,7 @@ end
 
 function newproxy(object, interface)
 	local proxy = myClientBroker:newproxy(object,interface)
+	print( "proxy ", proxy, "created" )
 	return proxy
 end
 

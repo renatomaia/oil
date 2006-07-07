@@ -31,12 +31,13 @@ local require      = require
 local getmetatable = getmetatable
 local rawget       = rawget
 local pack         = pack
+local print        = print
 
 local string = require "string"
 local table  = require "table"
 local oo         = require "oil.oo"
 
-module ("oil.ir", oo.class )                                                  --[[VERBOSE]] local verbose = require "oil.verbose"
+module "oil.ir"                                                  --[[VERBOSE]] local verbose = require "oil.verbose"
 
 local OrderedSet = require "loop.collection.OrderedSet"
 local assert     = require "oil.assert"
@@ -832,7 +833,8 @@ function Repository:newobject(object)
 end
 
 function Repository:__init(object)                                              --[[VERBOSE]] verbose:ir_classes(true, "creating new repository")
-	ObjectManager.__init(self, object)
+	object = object or {ifaces = ifaces}
+	ObjectManager.__init(self, object) 
 	object.containing_repository = object
 	return IRObject.__init(self, object)                                          --[[VERBOSE]] , verbose:ir_classes()
 end
@@ -1165,6 +1167,7 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function new(self, ifaces)                                                            --[[VERBOSE]] verbose:ir_classes(true, "instantiating new integrated IR with map ", ifaces)
-	return Repository{ ifaces = ifaces, proxy = self.proxy  }, iridl.Repository                        --[[VERBOSE]] , verbose:ir_classes()
-end
+return Repository
+--function new(self, ifaces)                                                            --[[VERBOSE]] verbose:ir_classes(true, "instantiating new integrated IR with map ", ifaces)
+--return Repository{ ifaces = ifaces }, iridl.Repository                        --[[VERBOSE]] , verbose:ir_classes()
+--end

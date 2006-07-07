@@ -149,7 +149,7 @@ function Object:__newindex(field, value)
 		if type(member) == "table" then
 			if member._type == "attribute" then                                       --[[VERBOSE]] verbose:proxy("write ", member.readonly and "readonly" or "", "attribute ", field)
 				if not member.readonly
-					then checkcall(self._protocol:call(self._decoded_profile, member.setter, value))
+					then checkcall(self._protocol:call(self._reference, member.setter, value))
 					else assert.error("attempt to set read-only attribute "..field)
 				end
 			elseif member._type ~= "operation" then
@@ -169,14 +169,14 @@ for name, value in pairs(ObjectOps) do
 	if type(value) == "table" and value._type == "operation" then
 		local member = value                                                        --[[VERBOSE]] local VERBOSE_field = name
 		Object[name] = function(self, ...)                                          --[[VERBOSE]] verbose:proxy(true, "invoke operation ", VERBOSE_field, " with ", select( "#", ... ), " arguments")
-			return checkresults(self._protocol:call(self._decoded_profile, member, ...))
+			return checkresults(self._protocol:invoke(self._reference, member, ...))
 		end
 	end
 end
 
 local member = ObjectOps._non_existent
 function Object:_non_existent()                                                 --[[VERBOSE]] verbose:proxy(true, "invoke operation _non_existent")
-	local results, exception = self._protocol:call(self._decoded_profile, member) --[[VERBOSE]] verbose:proxy(false)
+	local results, exception = self._protocol:call(self._reference, member) --[[VERBOSE]] verbose:proxy(false)
 	if results then
 		return results[1]
 	elseif exception.reason == "connect" or exception.reason == "closed" then
@@ -189,7 +189,7 @@ end
 function Object:_narrow(iface)                                                  --[[VERBOSE]] verbose:proxy(true, "narrowing proxy")
 
 	if iface == nil then                                                          --[[VERBOSE]] verbose:proxy(true, "no interface suppied, getting object interface")
-		local result = self._protocol:call(self._decoded_profile, ObjectOps._interface)
+		local result = self._protocol:call(self._reference, ObjectOps._interface)
 		if result and result[1] then
 			result = result[1]
 			iface = result:_get_id()
@@ -238,20 +238,19 @@ function create(self, reference, protocol, interfaceName)
 		if self.interfaces then 
 			local interface = self.interfaces:lookup(interfaceName) 
 			if interface then
-				class = self.interfaces:getclass(interface.repID)
+				class = Object{
+					_reference = reference,
+					_protocol = protocol,
+				}
+				self.classes[interfaceName] = class
 			end
 			if not class then
+				--TODO[nogara]: fix the narrow when the interface was not found
 				object = self.manager:getclass("IDL:omg.org/CORBA/Object:1.0")(object) 
 				object = object:_narrow()
 			end
 		end
+	else 
 	end
-	local object
-	if class then 
-		object = Object{
-			_reference = reference,
-			_protocol = protocol,
-		}
-	end            
-	return object
+	return class
 end

@@ -73,7 +73,7 @@ function ObjectManager:getclass(repid)                                          
 	return class
 end
 
-function ObjectManager:getiface(repid)                                          --[[VERBOSE]] verbose:manager(true, "getting interface ", repid)
+function ObjectManager:lookup(repid)                                          --[[VERBOSE]] verbose:manager(true, "getting interface ", repid)
 	local iface = self.ifaces[repid]
 	if not iface and self.ir then                                                 --[[VERBOSE]] verbose:manager(true, "looking on remote IR")
 		iface = self.ir:lookup_id(repid)                                            --[[VERBOSE]] verbose:manager(false)

@@ -10,6 +10,7 @@ module ("oil.ClientBroker", oo.class)                                       --[[
 
 function newproxy(self, ref, intfaceName)                                   --[[VERBOSE]] verbose:proxy("new proxy class for ", intfaceName)
 	local decodedReference = self.reference:resolve(ref)
+	print( self.protocol, "protocol")
 	local proxy = self.factory:create(decodedReference, self.protocol, intfaceName)
 	return proxy 
 end
