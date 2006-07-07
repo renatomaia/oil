@@ -339,8 +339,7 @@ end
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 
 function newproxy(object, interface)
-	local proxy = myClientBroker:newproxy(object,interface)
-	print( "proxy ", proxy, "created" )
+	local proxy = myClientBroker.proxies:newproxy(object,interface)
 	return proxy
 end
 

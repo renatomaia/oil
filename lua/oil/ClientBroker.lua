@@ -15,8 +15,3 @@ function newproxy(self, ref, intfaceName)                                   --[[
 	return proxy 
 end
 
-function getObjectInterface(self)
-	return Object._iface
-end
-
-
