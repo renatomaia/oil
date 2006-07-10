@@ -45,9 +45,8 @@ module "oil.corba.Protocol"                                         --[[VERBOSE]
 local Exception          = require "oil.Exception"
 local IDL                = require "oil.idl"
 local giop               = require "oil.corba.giop"
-local MapWithArrayOfKeys = require "loop.collection.MapWithArrayOfKeys"
-local OrderedSet         = require "loop.collection.OrderedSet"
-local socket             = require "oil.socket"
+local OrderedSet      = require "loop.collection.OrderedSet"
+local assert          = require "oil.assert"
 
 --------------------------------------------------------------------------------
 -- Local module variables 
@@ -104,13 +103,6 @@ end
 --------------------------------------------------------------------------------
 -- Connection implementation
 --------------------------------------------------------------------------------
-
-local OrderedSet      = require "loop.collection.OrderedSet"
-local Exception       = require "oil.Exception"
-local assert          = require "oil.assert"
-local giop            = require "oil.corba.giop"
-
-local Empty = {}
 
 -- protocol IIOP tag
 Tag = 0
@@ -704,108 +696,6 @@ function getchannel(self, args)
 	return portConnection, except
 end
 
---------------------------------------------------------------------------------
--- Port implementation
---------------------------------------------------------------------------------
-
-local Empty = {}
-local Port = oo.class()
-
-function Port:__init(port)
-	port.ready = OrderedSet() -- queue of ready connections
-	port.connections = MapWithArrayOfKeys()
-	port.connections:add(port.socket) -- first connection will always be the port
-	return oo.rawnew(self, port)
-end
-
-function Port:waitformore(timeout)
-	local ready = self.ready
-	if self.ready:empty() then
-		local connections = self.connections
-		local attempts = 0 -- how many attempts to select a socket?
-		local giveup = false
-		repeat
-			attempts = attempts + connections:size()                                  --[[VERBOSE]] verbose:listen("waiting for messages or more connections (", connections:size() - 1, ") [timeout: ", timeout, "]")
-			local selected = socket:select(connections, Empty, timeout)
-			local port = self.socket
-			if selected[port] then                                                    --[[VERBOSE]] verbose:listen( "new connection accepted" )
-				selected[port] = nil
-				local conn = self.protocol:createConnection{
-					pending = {},
-					socket = port:accept(),
-					port = self,
-				}
-				connections:add(conn.socket, conn)
-			end
-			for sock in pairs(selected) do
-				if type(sock) ~= "number" then                                          --[[VERBOSE]] verbose:listen( "got new message" )
-					local conn = connections[sock]
-					ready:enqueue(conn)
-				end
-			end
-			if timeout and timeout >= 0 then
-				-- select has already tried to select ready sockets for timeout seconds
-				if attempts > 1 or connections:size() == 1 then
-					-- there were other attempts to select sockets besides
-					-- the first one to select the port socket or ...
-					-- no new connections were created
-					giveup = true                                                         --[[VERBOSE]] else verbose:listen "repeating selection for new connections"
-				end
-			else
-				giveup = not ready:empty()
-			end
-		until giveup
-		return not ready:empty()
-	else
-		return true
-	end
-end
-
--- TODO:[nogara] Add scheduler to this part of code again after all is working
-function Port:accept(dispatcher)
-	local conn = self.ready:dequeue()
-	if not conn then                                                              --[[VERBOSE]] verbose:listen(true, "no message, waiting for more")
-		if self:waitformore() then
-			conn = self.ready:dequeue()
-		end                                                                         --[[VERBOSE]] verbose:listen(false) else verbose:listen "message already queued"
-	end
-	return self.protocol:handle(dispatcher, conn)
-end
-
-function Port:acceptall(dispatcher)
-	local success, errmsg
-	repeat
-		success, errmsg = self:accept(dispatcher)
-	until not success
-	return success, errmsg
-end
-
-function createPort(self, args)
-	local host = args.host or "*"
-	local port = args.port
-	local conn, except, reason
-	-- use the protocol.listen function to create a new connection
-	conn, except, reason = self:listen(host, port)
-	if conn then
-		conn = Port{
-		  socket = conn.socket,
-		  host = conn.host,
-		  port = conn.port,
-		  iorhost = args.iorhost,
-		  iorport = args.iorport,
-		  protocol = self,
-		}
-	else
-		conn, except = nil, Exception{ "NO_RESOURCES", minor_code_value = 0,
-		  message = "unable to bind to address "..host..":"..port,
-		  reason = reason,
-		  error = except,
-		  host = host,
-		  port = port,
-		}
-	end
-	return conn, except
-end
 
 --------------------------------------------------------------------------------
 -- IIOP IOR profile support ----------------------------------------------------

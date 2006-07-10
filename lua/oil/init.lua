@@ -94,10 +94,12 @@ local Factory_ActiveChannel     = arch.ChannelFactoryType{ channel_factory.Activ
 local Factory_Reference         = arch.ReferenceResolverType{ corba_reference }
 
 local Factory_Manager           = arch.TypeManagerType{ manager }
+
 local Factory_ClientBroker      = arch.ClientBrokerType{ client_broker }
+local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
+
 local Factory_Dispatcher        = arch.TypedDispatcherType{ dispatcher }
 local Factory_ServerBroker      = arch.ServerBrokerType{ server_broker }
-local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
 local Factory_Acceptor          = arch.AcceptorType{ access_point }
 ----------------------------------------
 
@@ -130,13 +132,14 @@ myClientBroker.factory = myProxy.proxies
 
 myProxy.interfaces = myManager.registry
 
-myDispatcher.protocol    = myListenProtocol.protocol
-myDispatcher.tasks       = myScheduler.tasks
+myAcceptor.listener      = myListenProtocol.protocol
+myAcceptor.dispatcher      = myDispatcher.dispatcher
+--myAcceptor.tasks       = myScheduler.tasks
+--myDispatcher.tasks       = myScheduler.tasks
 myDispatcher.objects     = myReferenceResolver.reference
 
-myServerBroker.ports = myAccessPoint.manager 
+myServerBroker.ports = myAcceptor.manager 
 myServerBroker.objectmap = myDispatcher.registry
---myAccessPoint.protocol["corba"] = myProtocol.protocol
 
 --------------------------------------------------------------------------------
 -- Local module variables and functions ----------------------------------------

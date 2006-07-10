@@ -10,4 +10,7 @@ ProxyFactory/TypedProxyFactory
 	- retorna proxy criado
 
 ServerBroker:
-	- 
+	- Cria um acceptor
+	- Para criar o acceptor, e necessario configuracoes de ip e porta, criando um canal, usando o PassiveChannelFactory.
+	- Passa o acceptor para a criacao de um dispatcher
+	- Passa para o Dispatcher o novo acceptor
