@@ -50,4 +50,21 @@ function Object:_non_existent()                                                 
 	return false
 end
 
+function dispatch()
+	
+	-- if it is an attribute
+		local result
+		if member.inputs[1] 
+			then servant[member.attribute] = buffer:get(member.inputs[1])     --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
+			else result = servant[member.attribute]                           --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
+		end                                                                 --[[VERBOSE]] verbose:dispatcher(false)
+		if conn.pending[requestid] and header.response_expected then
+			Reply.request_id = requestid                                      --[[VERBOSE]] verbose:dispatcher(true, "send reply for request ", requestid)
+			Reply.reply_status = "NO_EXCEPTION"
+			local stream = createMessage(self, ReplyID, Reply,
+														member.outputs, result)
+			_, except = conn:send(stream)                                     --[[VERBOSE]] verbose:dispatcher(false) else verbose:dispatcher("no reply expected or canceled for request ", requestid)
+		end
+
+end
 

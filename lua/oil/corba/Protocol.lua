@@ -72,10 +72,6 @@ local GIOPHeader_v1_        = giop.GIOPHeader_v1_
 local GIOPMessageHeader_v1_ = giop.MessageHeader_v1_
 local MessageErrorID        = giop.MessageErrorID
 
--- variables used accessed by protocolHelper facet
-HeaderSize            = GIOPHeaderSize
-CloseConnectionID     = giop.CloseConnectionID
-
 local Empty = {}
 
 --------------------------------------------------------------------------------
@@ -191,14 +187,16 @@ end
 
 local PortConnection = oo.class({}, Connection)
 
-function PortConnection:__init()
+function PortConnection:__init(socket, codec)
 	self.senders = OrderedSet()
+	self.socket = socket
+	self.codec = codec
 end
 
 function PortConnection:close()
 	-- test whether still active
 	if self.port.connections:remove(self.socket) then                             --[[VERBOSE]] verbose:close "connection unregistered" verbose:close(true, "send close connection message")
-		return self:send(self.protocolHelper.CloseConnectionID)                                         --[[VERBOSE]] , verbose:close(false)
+		return self:send(giop.CloseConnectionID)                                         --[[VERBOSE]] , verbose:close(false)
 	end
 end
 
@@ -547,8 +545,17 @@ local SystemExceptionReply = {
 
 local ObjectOps = giop.ObjectOperations
 
+ResultObject = oo.class{}
+function ResultObject:__init(object_key, operation, params)
+
+end
+
+function ResultObject:result(...)
+
+end
+
 local ReturnTrue = { true }
-function ListenProtocol:getrequest(self, dispatcher, conn)
+function ListenProtocol:getrequest(self, conn)
 	local except
 	local msgtype, header, buffer = conn:receive()
 	if msgtype == RequestID then
@@ -559,27 +566,23 @@ function ListenProtocol:getrequest(self, dispatcher, conn)
 			local iface = self.objects:typeof(header.object_key)
 			if iface then
 				local member = iface.members[header.operation] or objectops[header.operation]
+				-- get the parameters for the call
 				local params = { n = #member.inputs }
+				for index, input in ipairs(member.inputs) do
+					params[index] = buffer:get(input)
+				end
+
 				if member.attribute then 
-						local result
-						if member.inputs[1] 
-							then servant[member.attribute] = buffer:get(member.inputs[1])     --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
-							else result = servant[member.attribute]                           --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
-						end                                                                 --[[VERBOSE]] verbose:dispatcher(false)
-						if conn.pending[requestid] and header.response_expected then
-							Reply.request_id = requestid                                      --[[VERBOSE]] verbose:dispatcher(true, "send reply for request ", requestid)
-							Reply.reply_status = "NO_EXCEPTION"
-							local stream = createMessage(self, ReplyID, Reply,
-																		member.outputs, result)
-							_, except = conn:send(stream)                                     --[[VERBOSE]] verbose:dispatcher(false) else verbose:dispatcher("no reply expected or canceled for request ", requestid)
-						end
-				else 
-					-- try to call the function
-					for index, input in ipairs(member.inputs) do
-						params[index] = buffer:get(input)
+					header.response_expected = nil
+					if member.input[1] then 
+						header.operation = 'set_' .. member.attribute
+					else
+						header.operation = 'get_' .. member.attribute
 					end
-					local success, result = dispatcher:handle(header.object_key, 
-					                                          header.operation, params )
+				end 
+				-- try to call the function
+				local resultObject = ResultObject(header.object_key, header.operation, params)
+				resultObject.result = function() 
 					if conn.pending[requestid] and header.response_expected then
 						if success then                                                     --[[VERBOSE]] verbose:dispatcher("send reply for request ", requestid)
 							Reply.request_id = requestid
@@ -660,6 +663,9 @@ function ListenProtocol:getrequest(self, dispatcher, conn)
 			}
 			self:sendsysex(conn, requestid, except)
 		end
+
+				local success, result = dispatcher:handle(resultObject)
+
 	elseif msgtype == CancelRequestID then                                        --[[VERBOSE]] verbose:dispatcher("message to cancel request ", header.request_id)
 		conn.pending[header.request_id] = nil
 	elseif msgtype == LocateRequestID then                                        --[[VERBOSE]] verbose:dispatcher(true, "message requesting location")
@@ -685,8 +691,9 @@ function ListenProtocol:getrequest(self, dispatcher, conn)
 end
 
 
-function getchannel(self, args)
+function ListenProtocol:getchannel(self, args)
 	local conn, except = self.channels:create(args.host, args.port)
+	local portConnection = PortConnection(conn, self.codec)
 	if not except then
 		
 	else 
