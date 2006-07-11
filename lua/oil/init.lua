@@ -82,7 +82,7 @@ local server_broker     = require "oil.ServerBroker"
 local channel_factory   = require "oil.ChannelFactory"
 local dispatcher        = require "oil.orb"
 local manager           = require "oil.ir"
-local access_point      = require "oil.AccessPoint"
+local access_point      = require "oil.Acceptor"
 
 local Factory_Codec             = arch.CodecType{ corba_codec }
 local Factory_InvokeProtocol    = arch.TypedInvokeProtocolType{ corba_protocol.InvokeProtocol }
@@ -302,26 +302,7 @@ end
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
 
 function newobject(object, interface, key)
-	if type(interface) == "string" then
-		if Manager.lookup then
-			interface = Manager:lookup(interface) or interface
-		end
-	end
-	if Manager then
-		if type(interface) == "string" then
-			local iface = Manager:getiface(interface)
-			if iface then 
-				interface = iface
-			else 
-				assert.illegal(interface, "interface, unable to get definition")
-			end
-		else
-			interface = Manager:putiface(interface)
-		end
-	else
-		assert.type(interface, "idlinterface", "object interface")
-	end
-	return init():object(object, interface, key)
+	return myServerBroker:register(object, interface, key)
 end
 
 --------------------------------------------------------------------------------
@@ -347,8 +328,7 @@ end
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 
 function newproxy(object, interface)
-	local proxy = myClientBroker.proxies:newproxy(object,interface)
-	return proxy
+	return myClientBroker.proxies:newproxy(object, interface)
 end
 
 --------------------------------------------------------------------------------

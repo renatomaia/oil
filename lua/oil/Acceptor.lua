@@ -172,8 +172,4 @@ function listen(self, args)
 			}
 		end
 		return conn, except
-
-		return nil, Exception{ "NO_PROTOCOL", minor_code_value = 0,
-			message = "no protocol registered for " .. protocol_type,
-		} 
 end
