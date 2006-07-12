@@ -7,8 +7,16 @@ local assert  = require "oil.assert"
 
 module ("oil.ServerBroker", oo.class)                                       --[[VERBOSE]] local verbose = require "oil.verbose" 
 
+local MainORB
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
+
+function init(self, config)
+	if not MainORB then
+  	MainORB = self.objectmap:init(config)
+	end
+end
 
 function register(self, object, intfaceName, key)
 	key = key or intfaceName

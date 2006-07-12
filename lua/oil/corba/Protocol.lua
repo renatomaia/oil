@@ -575,9 +575,9 @@ function ListenProtocol:getrequest(self, conn)
 				if member.attribute then 
 					header.response_expected = nil
 					if member.input[1] then 
-						header.operation = 'set_' .. member.attribute
+						header.operation = '_set_' .. member.attribute
 					else
-						header.operation = 'get_' .. member.attribute
+						header.operation = '_get_' .. member.attribute
 					end
 				end 
 				-- try to call the function

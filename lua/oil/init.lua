@@ -80,7 +80,7 @@ local proxy             = require "oil.corba.proxy"
 local client_broker     = require "oil.ClientBroker"
 local server_broker     = require "oil.ServerBroker"
 local channel_factory   = require "oil.ChannelFactory"
-local dispatcher        = require "oil.corba.orb"
+local dispatcher        = require "oil.corba.Dispatcher"
 local manager           = require "oil.ir"
 local access_point      = require "oil.Acceptor"
 
@@ -392,18 +392,8 @@ end
 -- @see Config
 
 function init(config)
-	if not MainORB then
-		local except
-		if not config then config = Config end
-		if config.manager
-			then Manager = config.manager
-			else config.manager = Manager
-		end
-		-- TODO:[nogara] is a call directly to dispatcher1 the way to do it? 
-		MainORB, except = myDispatcher:init(config or Config)
-		if not MainORB then assert.error(except) end
-	end
-	return MainORB
+	if not config then config = Config end
+	myServerBroker:init(config)
 end
 
 --------------------------------------------------------------------------------
@@ -412,7 +402,7 @@ end
 -- Returns true if there is some ORB request pending or false otherwise.
 
 function pending()
-	return init():workpending()
+	return myServerBroker:workpending()
 end
 
 --------------------------------------------------------------------------------
@@ -422,7 +412,7 @@ end
 -- and an exception.
 
 function step()
-	return init():performwork()
+	return myServerBroker:performwork()
 end
 
 --------------------------------------------------------------------------------
@@ -432,7 +422,7 @@ end
 -- error occours.
 
 function run()
-	return init():run()
+	return myServerBroker:run()
 end
 
 --------------------------------------------------------------------------------
