@@ -1,33 +1,34 @@
 local print   = print
 local require = require
+local type    = type
+
 local oo      = require "oil.oo"
+local assert  = require "oil.assert"
 
 module ("oil.ServerBroker", oo.class)                                       --[[VERBOSE]] local verbose = require "oil.verbose" 
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function newobject(self, object, intfaceName, key)
-	if type(interface) == "string" then
-		if Manager.lookup then
-			interface = Manager:lookup(interface) or interface
-		end
-	end
-	if Manager then
-		if type(interface) == "string" then
-			local iface = Manager:getiface(interface)
-			if iface then 
-				interface = iface
-			else 
-				assert.illegal(interface, "interface, unable to get definition")
-			end
-		else
-			interface = Manager:putiface(interface)
-		end
-	else
-		assert.type(interface, "idlinterface", "object interface")
-	end
-	return init():object(object, interface, key)
+function register(self, object, intfaceName, key)
+	key = key or intfaceName
+	-- create servant and return it
+	return self.objectmap:register(key, object, intfaceName)
 end
 
+function tostring(servant)
+  return self.reference:referto(servant:getreference())
+end
 
+function run()
+	-- TODO[nogara]: see if there is a way to call every one of the ports at 'the same time'
+  self.ports:acceptall()
+end
+
+function step()
+
+end
+
+function pending()
+  return false
+end

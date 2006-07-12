@@ -80,7 +80,7 @@ local proxy             = require "oil.corba.proxy"
 local client_broker     = require "oil.ClientBroker"
 local server_broker     = require "oil.ServerBroker"
 local channel_factory   = require "oil.ChannelFactory"
-local dispatcher        = require "oil.orb"
+local dispatcher        = require "oil.corba.orb"
 local manager           = require "oil.ir"
 local access_point      = require "oil.Acceptor"
 

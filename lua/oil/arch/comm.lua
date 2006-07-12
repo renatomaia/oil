@@ -155,7 +155,7 @@ ServerBrokerType = component.Type{
 	objectmap = port.Receptacle,
 		-- register(id, object)
 		-- object unregister(id)
-	referee = port.Receptacle,
+	reference = port.Receptacle,
 		-- textref referto(reference)
 }
 

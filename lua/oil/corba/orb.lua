@@ -47,7 +47,7 @@ local oo     = require "oil.oo"
 
 local pcall = scheduler and scheduler.pcall or pcall
 
-module ("oil.orb", oo.class )                                                   --[[VERBOSE]] local verbose = require "oil.verbose"
+module ("oil.corba.orb", oo.class )                                                   --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
@@ -237,23 +237,29 @@ end
 --------------------------------------------------------------------------------
 
 -- TODO:[nogara] find a better way to include the protocol here
-function init(self, args)
+function init(self, args)                                                       --[[VERBOSE]] verbose:dispatcher(true, "initiating new ORB instance")
 	if not args then args = {} end
-	local tag = args.protocoltag or 0
-	local protocol = self.protocol 
-	if protocol then                                                              --[[VERBOSE]] verbose:dispatcher(true, "initiating new ORB instance with protocol ", protocol.Tag)
-		-- now, create accesspoint using the portConnection
-		local port, except = self.point:listen(protocol, args)
-		-- local port = true
-		if port
-			then return Dispatcher(self, port)                          --[[VERBOSE]] , verbose:dispatcher(false)
-			else return nil, except                                                   --[[VERBOSE]] , verbose:dispatcher(false)
+	local port, except = self.point:listen(protocol, args)
+	if port
+		then return Dispatcher(self, port)                                          --[[VERBOSE]] , verbose:dispatcher(false)
+		else return nil, except                                                     --[[VERBOSE]] , verbose:dispatcher(false)
+	end
+end
+
+function register(self, key, object, intfaceName)
+	if Manager then
+		if type(interface) == "string" then
+			local iface = Manager:getiface(interface)
+			if iface then 
+				interface = iface
+			else 
+				assert.illegal(interface, "interface, unable to get definition")
+			end
+		else
+			interface = Manager:putiface(interface)
 		end
 	else
-		assert.raise{ "INTERNAL",
-			message = "protocol with tag "..tag.." is not supported",
-			reason = "protocol",
-			tag = tag,
-		}
+		assert.type(interface, "idlinterface", "object interface")
 	end
+	return init():object(object, interface, key)
 end

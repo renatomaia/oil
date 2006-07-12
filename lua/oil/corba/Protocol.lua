@@ -582,7 +582,7 @@ function ListenProtocol:getrequest(self, conn)
 				end 
 				-- try to call the function
 				local resultObject = ResultObject(header.object_key, header.operation, params)
-				resultObject.result = function() 
+				resultObject.result = function(success, result) 
 					if conn.pending[requestid] and header.response_expected then
 						if success then                                                     --[[VERBOSE]] verbose:dispatcher("send reply for request ", requestid)
 							Reply.request_id = requestid
@@ -647,6 +647,8 @@ function ListenProtocol:getrequest(self, conn)
 						end                                                                 --[[VERBOSE]] else verbose:dispatcher("no reply expected or canceled for request ", requestid)
 					end
 				end
+				-- send the resultObject to the dispatcher
+				dispatcher:handle(resultObject)
 			else 
 				_, except = self:sendsysex(conn, requestid, { "BAD_OPERATION",
 				  minor_code_value  = 1, -- TODO:[maia] Which value?
@@ -664,7 +666,6 @@ function ListenProtocol:getrequest(self, conn)
 			self:sendsysex(conn, requestid, except)
 		end
 
-				local success, result = dispatcher:handle(resultObject)
 
 	elseif msgtype == CancelRequestID then                                        --[[VERBOSE]] verbose:dispatcher("message to cancel request ", header.request_id)
 		conn.pending[header.request_id] = nil
