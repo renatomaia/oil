@@ -191,6 +191,7 @@ function PortConnection:__init(socket, codec)
 	self.senders = OrderedSet()
 	self.socket = socket
 	self.codec = codec
+	return oo.rawnew(self)
 end
 
 function PortConnection:close()
@@ -555,7 +556,7 @@ function ResultObject:result(...)
 end
 
 local ReturnTrue = { true }
-function ListenProtocol:getrequest(self, conn)
+function ListenProtocol:getrequest(conn)
 	local except
 	local msgtype, header, buffer = conn:receive()
 	if msgtype == RequestID then
@@ -666,7 +667,6 @@ function ListenProtocol:getrequest(self, conn)
 			self:sendsysex(conn, requestid, except)
 		end
 
-
 	elseif msgtype == CancelRequestID then                                        --[[VERBOSE]] verbose:dispatcher("message to cancel request ", header.request_id)
 		conn.pending[header.request_id] = nil
 	elseif msgtype == LocateRequestID then                                        --[[VERBOSE]] verbose:dispatcher(true, "message requesting location")
@@ -692,9 +692,35 @@ function ListenProtocol:getrequest(self, conn)
 end
 
 
-function ListenProtocol:getchannel(self, args)
-	local conn, except = self.channels:create(args.host, args.port)
+local PortLowerBound = 2809 -- inclusive (never at first attempt)
+local PortUpperBound = 9999 -- inclusive
+
+function ListenProtocol:getchannel(args)
+	local host, port
+	host = args.host or "*"
+	port = args.port
+	local conn, except
+	if not port then
+		local start = PortLowerBound
+		port = start
+		repeat
+	print('config', args)
+			conn, except = self.channels:create(host, port)
+	print('config', args)
+			if conn then break end
+			if port >= PortUpperBound
+				then port = PortLowerBound
+				else port = port + 1
+			end
+		until port == start
+	else
+		conn, except = self.channels:create(host, port)
+	end
+	args.host = host
+	args.port = port
+	print( "conn", conn )
 	local portConnection = PortConnection(conn, self.codec)
+	print( "portConnection", portConnection )
 	if not except then
 		
 	else 

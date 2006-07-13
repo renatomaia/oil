@@ -132,7 +132,8 @@ myClientBroker.factory = myProxy.proxies
 
 myProxy.interfaces = myManager.registry
 
-myAcceptor.listener      = myListenProtocol.protocol
+myAcceptor.listener      = myListenProtocol.listener
+print("acceptor listener", myAcceptor.listener)
 myAcceptor.dispatcher      = myDispatcher.dispatcher
 --myAcceptor.tasks       = myScheduler.tasks
 --myDispatcher.tasks       = myScheduler.tasks
@@ -302,6 +303,7 @@ end
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
 
 function newobject(object, interface, key)
+	init()
 	return myServerBroker:register(object, interface, key)
 end
 

@@ -111,6 +111,7 @@ ClientBrokerType = component.Type{
 --- Object
 AcceptorType = component.Type{
 	manager = port.Facet,
+		-- create(<configs>)
 		-- acceptall()
 		-- accept()
 		-- boolean pending()

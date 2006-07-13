@@ -8,20 +8,22 @@ local assert  = require "oil.assert"
 module ("oil.ServerBroker", oo.class)                                       --[[VERBOSE]] local verbose = require "oil.verbose" 
 
 local MainORB
-
+local map = {}
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 function init(self, config)
-	if not MainORB then
-  	MainORB = self.objectmap:init(config)
-	end
+	-- create acceptor using configuration received from the user
+  self.ports:init(config)
+	-- bind acceptor in dispatcher
+  
 end
 
 function register(self, object, intfaceName, key)
+	-- register object in the dispatcher
 	key = key or intfaceName
 	-- create servant and return it
-	return self.objectmap:register(key, object, intfaceName)
+	local servant = self.objectmap:register(key, object, intfaceName)
 end
 
 function tostring(servant)

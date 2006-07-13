@@ -98,17 +98,7 @@ end
 --------------------------------------------------------------------------------
 -- Dispatcher initialization -------------------------------------------------------
 
-local Dispatcher = oo.class()
-
-function Dispatcher:__init(orb, port)
-	local dispatcher = {
-		map = {},
-		port = port,
-		reference_resolver = orb.reference_resolver,
-	}
-	dispatcher._orb = orb
-	return oo.rawnew(self, dispatcher)
-end
+local map = {}
 
 --------------------------------------------------------------------------------
 -- Servant management ----------------------------------------------------------
@@ -128,49 +118,42 @@ local function getobjectid(object)
 end
 
 function register(self, key, object, intfaceName)
+	local iface
 	if self.objects then
-		local iface = self.objetcs:lookup(interface)
+		iface = self.objects:lookup(intfaceName)
 		assert.type(iface, "idlinterface", "object interface")
 	end
-	return init():object(object, interface, key)
-end
 
-function Dispatcher:register(servant, interface, objid)
-	if objid == nil then 
-		objid = getobjectid(servant)
+	if key == nil then 
+		key = getobjectid(object)
 	else 
-		assert.type(objid, "string", "object ID")
+		assert.type(key, "string", "object ID")
 	end
-	local object = self.map[objid]
-	if object then                                                                --[[VERBOSE]] verbose:servant(true, "servant already is registered")
-		if interface and object._type_id ~= interface.repID then
-			if isbaseof(object._type_id, interface) then                              --[[VERBOSE]] verbose:servant "changing actual object interface to a narrowed interface"
-				object._iface = interface
-				object._type_id = interface.repID
-			elseif not isbaseof(interface.repID, object._iface) then
-				assert.illegal(interface.repID, "attempt to change object interface")   --[[VERBOSE]] else verbose:servant "attempt to change object interface for a broader interface, no action done"
+	local loc_object = self.map[key]
+	if loc_object then                                                                --[[VERBOSE]] verbose:servant(true, "servant already is registered")
+		if iface and loc_object._type_id ~= iface.repID then
+			if isbaseof(loc_object._type_id, iface) then                              --[[VERBOSE]] verbose:servant "changing actual object interface to a narrowed interface"
+				loc_object._iface = iface
+				loc_object._type_id = iface.repID
+			elseif not isbaseof(iface.repID, loc_object._iface) then
+				assert.illegal(iface.repID, "attempt to change object interface")   --[[VERBOSE]] else verbose:servant "attempt to change object interface for a broader interface, no action done"
 			end                                                                       --[[VERBOSE]] else verbose:servant "object is exported with same interface as before"
 		end                                                                         --[[VERBOSE]] verbose:servant(false)
 	else
-		local profile = self.reference_resolver:encode_profile(self.port.host, 
-		                                                      self.port.port, 
-																													objid)                --[[VERBOSE]] verbose:servant(true, "new object with id ", objid, " [iface: ", interface.repID, "]")
 		object = Object{
 			_orb = self,
-			_servant = servant,
-			_iface = interface,
-			_objectid = objid,
-			-- IOR
-			_type_id = interface.repID,
-			_profiles = {profile},
+			_servant = object,
+			_iface = iface,
+			_objectid = key,
+			_type_id = iface.repID,
 		}
-		self.map[objid] = object                                                    --[[VERBOSE]] verbose:servant(false)
+		self.map[key] = loc_object                                                    --[[VERBOSE]] verbose:servant(false)
 	end
-	return object
+	return loc_object
 end
 
--- TODO[nogara]: rewrite this part in order to get rid of any reference to a manager
-function Dispatcher:resolve(reference, iface)                                   --[[VERBOSE]] verbose:servant(true, "resolving reference to servant")
+-- TODO[nogara]: see why 'resolve' is here
+function resolve(self, reference, iface)                                   --[[VERBOSE]] verbose:servant(true, "resolving reference to servant")
 	for tag, profile in ipairs(reference._profiles) do
 		local port, key = Protocols[profile.tag]
 		if port then
@@ -192,15 +175,15 @@ function Dispatcher:resolve(reference, iface)                                   
 	end
 end
 
-function Dispatcher:getobject(objid)
+function getobject(self, objid)
 	return self.map[objid], ObjectOps
 end
 
-function Dispatcher:getreference(obj)                                                 --[[VERBOSE]] verbose:servant(true, "getting servant IOR")
+function getreference(self, obj)                                                 --[[VERBOSE]] verbose:servant(true, "getting servant IOR")
 	return self.reference_resolver:encode(obj)                                   --[[VERBOSE]] , verbose:servant(false)
 end
 
-function Dispatcher:deactivate(obj)
+function deactivate(self, obj)
 	self.map[obj._objectid] = nil
 end
 --------------------------------------------------------------------------------
@@ -217,7 +200,7 @@ local function dispatch_servant(servant, method, params)
 	return packpcall(pcall(method, servant, unpack(params)))
 end
 
-function Dispatcher:dispatch(object_key, operation, params)                       --[[VERBOSE]] verbose:dispatcher("object basic operation ", operation, " called")
+function dispatch(self, object_key, operation, params)                       --[[VERBOSE]] verbose:dispatcher("object basic operation ", operation, " called")
 	local success, result
 	local object = self.map[object_key]
 	if object then
@@ -246,7 +229,7 @@ function Dispatcher:dispatch(object_key, operation, params)                     
 	return success, result
 end
 
-function dispatch()
+function dispatch(requestObj)
 	-- if it is an attribute
 		local result
 		if member.inputs[1] 
@@ -262,35 +245,6 @@ function dispatch()
 		end
 
 end
-
-
---------------------------------------------------------------------------------
-
-function Dispatcher:workpending(timeout)
-	return self.port:waitformore(timeout or 0)
-end
-
-function Dispatcher:performwork()
-	return self.port:accept(self)
-end
-
-function Dispatcher:run()
-	return self.port:acceptall(self)
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function init(self, args)                                                       --[[VERBOSE]] verbose:dispatcher(true, "initiating new ORB instance")
-	if not args then args = {} end
-	print(self)
-	local port, except = self.point:listen(protocol, args)
-	if port
-		then return Dispatcher(self, port)                                          --[[VERBOSE]] , verbose:dispatcher(false)
-		else return nil, except                                                     --[[VERBOSE]] , verbose:dispatcher(false)
-	end
-end
-
 
 --------------------------------------------------------------------------------
 --- Helper functions
