@@ -98,7 +98,7 @@ end
 --------------------------------------------------------------------------------
 -- Dispatcher initialization -------------------------------------------------------
 
-local map = {}
+map = {}
 
 --------------------------------------------------------------------------------
 -- Servant management ----------------------------------------------------------
@@ -140,7 +140,7 @@ function register(self, key, object, intfaceName)
 			end                                                                       --[[VERBOSE]] else verbose:servant "object is exported with same interface as before"
 		end                                                                         --[[VERBOSE]] verbose:servant(false)
 	else
-		object = Object{
+		loc_object = Object{
 			_orb = self,
 			_servant = object,
 			_iface = iface,
@@ -201,7 +201,6 @@ local function dispatch_servant(servant, method, params)
 end
 
 function dispatch(self, object_key, operation, params)                       --[[VERBOSE]] verbose:dispatcher("object basic operation ", operation, " called")
-	local success, result
 	local object = self.map[object_key]
 	if object then
 		local servant = object._servant
@@ -229,21 +228,21 @@ function dispatch(self, object_key, operation, params)                       --[
 	return success, result
 end
 
-function dispatch(requestObj)
+function handle(self, requestObj)
+	local success, result
+	local operation = requestObj.operation
+	local key = requestObj.object_key
+
+	local object = self.map[key]
+	if object then
+
 	-- if it is an attribute
 		local result
 		if member.inputs[1] 
 			then servant[member.attribute] = buffer:get(member.inputs[1])     --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
 			else result = servant[member.attribute]                           --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
 		end                                                                 --[[VERBOSE]] verbose:dispatcher(false)
-		if conn.pending[requestid] and header.response_expected then
-			Reply.request_id = requestid                                      --[[VERBOSE]] verbose:dispatcher(true, "send reply for request ", requestid)
-			Reply.reply_status = "NO_EXCEPTION"
-			local stream = createMessage(self, ReplyID, Reply,
-														member.outputs, result)
-			_, except = conn:send(stream)                                     --[[VERBOSE]] verbose:dispatcher(false) else verbose:dispatcher("no reply expected or canceled for request ", requestid)
-		end
-
+  end
 end
 
 --------------------------------------------------------------------------------

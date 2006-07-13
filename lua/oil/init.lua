@@ -123,6 +123,7 @@ myInvokeProtocol.channels      = myActiveChannelFactory.factory
 
 myListenProtocol.codec         = myCodec.codec
 myListenProtocol.channels      = myPassiveChannelFactory.factory
+myListenProtocol.objects       = myManager.mapping
 
 myReferenceResolver.codec        = myCodec.codec
 
@@ -137,10 +138,11 @@ print("acceptor listener", myAcceptor.listener)
 myAcceptor.dispatcher      = myDispatcher.dispatcher
 --myAcceptor.tasks       = myScheduler.tasks
 --myDispatcher.tasks       = myScheduler.tasks
-myDispatcher.objects     = myReferenceResolver.reference
+myDispatcher.objects     = myManager.registry
 
 myServerBroker.ports = myAcceptor.manager 
 myServerBroker.objectmap = myDispatcher.registry
+myServerBroker.reference = myReferenceResolver.resolver
 
 --------------------------------------------------------------------------------
 -- Local module variables and functions ----------------------------------------
@@ -303,7 +305,7 @@ end
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
 
 function newobject(object, interface, key)
-	init()
+	init({host="localhost", port=2809})
 	return myServerBroker:register(object, interface, key)
 end
 
@@ -445,6 +447,12 @@ createservant = newobject
 
 createproxy = newproxy
 
+--------------------------------------------------------------------------------
+-- Gets reference from a servant
+
+function getreference(servant)
+	return myServerBroker:tostring(servant)
+end
 --------------------------------------------------------------------------------
 -- Creates a file with the IOR of an object.
 

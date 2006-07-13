@@ -16,7 +16,7 @@ hello = oil.newobject(hello, "Hello")           -- Create CORBA object
 
 local file = io.open("hello.ior", "w")
 if file then
-	file:write(oil.MainORB:getreference(hello))                      -- Write object ref. into file
+	file:write(oil.getreference(hello))                      -- Write object ref. into file
 	file:close()
 else
 	print(hello:_getreference())                           -- Show object ref. on screen

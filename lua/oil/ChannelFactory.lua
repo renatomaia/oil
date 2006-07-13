@@ -64,7 +64,7 @@ end
 
 function PassiveChannelFactory:create(host, port)
 	local port = self.ports[host][port]
-	if not port then return nil, self.errmsg end
+	if not port then print(self.errmsg) return nil, self.errmsg end
 	local channel, errmsg = port:accept()
 	if not channel then
 		port:close()

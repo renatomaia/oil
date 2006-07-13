@@ -113,9 +113,13 @@ function resolve(self, ...)                                                  --[
 	return profile
 end
 
-function encode(self, ...)                                                            --[[VERBOSE]] verbose:ior(true, "encode IOR")
+function referto(self, ...)                                                            --[[VERBOSE]] verbose:ior(true, "encode IOR")
 	local buffer = self.codec:newEncoder(true)
-	buffer:IOR(arg[1]) -- marshall IOR
+	-- create profile structure using the arguments provided by the serverbroker
+	local servant = arg[1]
+	local profile = self:encode_profile(servant._host, servant._port, servant._objectid)
+	servant._profiles = {profile}
+	buffer:IOR(servant) -- marshall IOR
 	return "IOR:"..byte2hexa(buffer:getdata())                                    --[[VERBOSE]] , verbose:ior(false)
 end
 

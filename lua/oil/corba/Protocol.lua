@@ -191,6 +191,7 @@ function PortConnection:__init(socket, codec)
 	self.senders = OrderedSet()
 	self.socket = socket
 	self.codec = codec
+	self.pending = {}
 	return oo.rawnew(self)
 end
 
@@ -355,6 +356,7 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 		end
 	end
 	local socket, except = self.channels:create(reference.host, reference.port)
+	print("except", except)
 	local conn = Connection(socket, self.codec)
 	local reply_object
 	if conn then
@@ -548,11 +550,10 @@ local ObjectOps = giop.ObjectOperations
 
 ResultObject = oo.class{}
 function ResultObject:__init(object_key, operation, params)
-
-end
-
-function ResultObject:result(...)
-
+	self.object_key = object_key
+	self.operation = operation
+	self.params = params
+  return oo.rawnew(self)
 end
 
 local ReturnTrue = { true }
@@ -564,9 +565,9 @@ function ListenProtocol:getrequest(conn)
 		if conn.pending[requestid] == nil then
 			conn.pending[requestid] = true
 			
-			local iface = self.objects:typeof(header.object_key)
+			local iface = self.objects:lookup(header.object_key)
 			if iface then
-				local member = iface.members[header.operation] or objectops[header.operation]
+				local member = iface.members[header.operation] or ObjectOps[header.operation]
 				-- get the parameters for the call
 				local params = { n = #member.inputs }
 				for index, input in ipairs(member.inputs) do
@@ -583,6 +584,7 @@ function ListenProtocol:getrequest(conn)
 				end 
 				-- try to call the function
 				local resultObject = ResultObject(header.object_key, header.operation, params)
+				print( "result object before function", resultObject)
 				resultObject.result = function(success, result) 
 					if conn.pending[requestid] and header.response_expected then
 						if success then                                                     --[[VERBOSE]] verbose:dispatcher("send reply for request ", requestid)
@@ -648,8 +650,8 @@ function ListenProtocol:getrequest(conn)
 						end                                                                 --[[VERBOSE]] else verbose:dispatcher("no reply expected or canceled for request ", requestid)
 					end
 				end
-				-- send the resultObject to the dispatcher
-				dispatcher:handle(resultObject)
+
+				return resultObject
 			else 
 				_, except = self:sendsysex(conn, requestid, { "BAD_OPERATION",
 				  minor_code_value  = 1, -- TODO:[maia] Which value?
@@ -697,7 +699,7 @@ local PortUpperBound = 9999 -- inclusive
 
 function ListenProtocol:getchannel(args)
 	local host, port
-	host = args.host or "*"
+	host = "*"
 	port = args.port
 	local conn, except
 	if not port then
@@ -716,8 +718,8 @@ function ListenProtocol:getchannel(args)
 	else
 		conn, except = self.channels:create(host, port)
 	end
-	args.host = host
-	args.port = port
+	--args.host = conn.host
+	--args.port = port
 	print( "conn", conn )
 	local portConnection = PortConnection(conn, self.codec)
 	print( "portConnection", portConnection )

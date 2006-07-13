@@ -45,6 +45,7 @@ module ( "oil.Acceptor", oo.class )                                          --[
 
 function accept(self)
 	local channel = self.listener:getchannel(self)
+verbose.debug("got channel", channel)
   local request = self.listener:getrequest(channel)
 	return self.dispatcher:handle(request)
 end
@@ -62,4 +63,10 @@ function init(self, args)
 	self.port = args.port
 	iorhost = args.iorhost
 	iorport = args.iorport
+end
+
+function getinfo(self)
+  return { host = self.host, 
+	         port = self.port,
+	}
 end
