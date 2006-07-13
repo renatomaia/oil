@@ -76,7 +76,7 @@ function Object:__newindex(field, value)
 end
 
 -- specific functions for corba objects
-function Object:_is_a(repID)                                                    --[[VERBOSE]] verbose:servant(true, "verifying if object interface ", self._iface.repID, " is a ", repIDtrue )
+function Object:_is_a(repID)                                                    --[[VERBOSE]] verbose:servant(true, "verifying if object interface ", self._iface.repID, " is a ", repID )
 	return isbaseof(repID, self._iface)                                           --[[VERBOSE]] , verbose:servant(false)
 end
 
@@ -200,8 +200,15 @@ local function dispatch_servant(servant, method, params)
 	return packpcall(pcall(method, servant, unpack(params)))
 end
 
-function dispatch(self, object_key, operation, params)                       --[[VERBOSE]] verbose:dispatcher("object basic operation ", operation, " called")
-	local object = self.map[object_key]
+local ObjectOps = giop.ObjectOperations
+
+function handle(self, requestObj)
+	local success, result
+	local operation = requestObj.operation
+	local key = requestObj.object_key
+  local params = requestObj.params
+
+	local object = self.map[key]
 	if object then
 		local servant = object._servant
 		local member = object._iface.members[operation]
@@ -210,11 +217,12 @@ function dispatch(self, object_key, operation, params)                       --[
 		end
 		local method = servant[operation]
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("operation implementation found [name: ", operation, "]") verbose:dispatcher(true, "get parameter values")
+			print(operation)
 			success, result = dispatch_servant(servant, method, params)                       --[[VERBOSE]] verbose:dispatcher(false)
 		elseif member.attribute then                                                --[[VERBOSE]] verbose:dispatcher(true, "got request for attribute ", member.attribute)
 			local result
 			if member.inputs[1] then 
-				servant[member.attribute] = buffer:get(member.inputs[1])                --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
+				servant[member.attribute] = params[1]                                   --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
 			else 
 				result = servant[member.attribute]                                      --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
 			end
@@ -225,30 +233,14 @@ function dispatch(self, object_key, operation, params)                       --[
 	else
 			success, result = nil, {"OBJECT_NOT_EXIST"} -- TODO:[nogara]
 	end
-	return success, result
-end
-
-function handle(self, requestObj)
-	local success, result
-	local operation = requestObj.operation
-	local key = requestObj.object_key
-
-	local object = self.map[key]
-	if object then
-
-	-- if it is an attribute
-		local result
-		if member.inputs[1] 
-			then servant[member.attribute] = buffer:get(member.inputs[1])     --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
-			else result = servant[member.attribute]                           --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
-		end                                                                 --[[VERBOSE]] verbose:dispatcher(false)
-  end
+	requestObj.result(success, result)
 end
 
 --------------------------------------------------------------------------------
 --- Helper functions
 
 local function isbaseof(baseid, iface)
+	print("executing this")
 	if iface.is_a then                                                            --[[VERBOSE]] verbose:servant(true, "executing interface is_a operation")
 		return iface:is_a(baseid)                                                   --[[VERBOSE]] , verbose:servant(false)
 	end                                                                           --[[VERBOSE]] verbose:servant(true, "checking if ", baseid, " is base of ", iface.repID)
@@ -259,6 +251,7 @@ local function isbaseof(baseid, iface)
 		if not data[iface] then                                                     --[[VERBOSE]] verbose:servant("reached interface ", iface.repID)
 			data[iface] = true
 			if iface.repID == baseid then
+				print("yeah it is")
 				return true                                                             --[[VERBOSE]] , verbose:servant(false)
 			end
 			for _, base in ipairs(iface.base_interfaces) do
@@ -267,6 +260,7 @@ local function isbaseof(baseid, iface)
 		end
 	end                                                                           --[[VERBOSE]] verbose:servant(false)
 	
+	print("no it is not")
 	return false
 end
 

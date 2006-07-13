@@ -308,7 +308,6 @@ local function createMessage(self, message, header, bodyidl, ...)
 	local buffer = self.codec:newEncoder(false, self)
 	
 	buffer:shift(GIOPHeaderSize) -- alignment accordingly to GIOP header size
-verbose:debug( "createmessage" )
 	if headeridl then buffer:put(header, headeridl) end
 	if bodyidl then
 		buffer.orb = orb
@@ -409,7 +408,7 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 						-- message still not received
 						repeat                                                                 
 						-- conn receive
-									msgtype, header, buffer = conn:receive()                                  
+							msgtype, header, buffer = conn:receive()                                  
 							if
 								msgtype == nil or
 								msgtype == MessageErrorID or
@@ -564,7 +563,7 @@ function ListenProtocol:getrequest(conn)
 		local requestid = header.request_id                                         --[[VERBOSE]] verbose:dispatcher("got request with ID ", requestid, " for object ", header.object_key )
 		if conn.pending[requestid] == nil then
 			conn.pending[requestid] = true
-			
+			print("request id", requestid)
 			local iface = self.objects:lookup(header.object_key)
 			if iface then
 				local member = iface.members[header.operation] or ObjectOps[header.operation]
@@ -575,8 +574,8 @@ function ListenProtocol:getrequest(conn)
 				end
 
 				if member.attribute then 
-					header.response_expected = nil
-					if member.input[1] then 
+					--header.response_expected = nil
+					if member.inputs[1] then 
 						header.operation = '_set_' .. member.attribute
 					else
 						header.operation = '_get_' .. member.attribute
@@ -586,14 +585,24 @@ function ListenProtocol:getrequest(conn)
 				local resultObject = ResultObject(header.object_key, header.operation, params)
 				print( "result object before function", resultObject)
 				resultObject.result = function(success, result) 
+					print("passei por aqui", requestid)
+					print(conn.pending)
+					print(conn.pending[requestid])
+					print(header.response_expected)
 					if conn.pending[requestid] and header.response_expected then
+					  print("passei por aqui 2")
 						if success then                                                     --[[VERBOSE]] verbose:dispatcher("send reply for request ", requestid)
+					    print("passei por aqui 3")
 							Reply.request_id = requestid
 							Reply.reply_status = "NO_EXCEPTION"
+							print( result )
 							local stream = createMessage(self, ReplyID, Reply,
-							                             member.outputs, unpack(result))
+							                             member.outputs, result)
+							print("passei por aqui 4")
 							_, except = conn:send(stream)                                     --[[VERBOSE]] verbose:dispatcher(false)
+							print("passei por aqui 5")
 						elseif type(result) == "table" then
+							print("la")
 							local excepttype = member.exceptions[ result[1] ]
 							if excepttype then                                                --[[VERBOSE]] verbose:dispatcher(true, "send raised exception ", result.repID)
 								Reply.request_id = requestid
@@ -629,7 +638,9 @@ function ListenProtocol:getrequest(conn)
 								}
 								self:sendsysex(conn, requestid, except)
 							end
+							print("la")
 						elseif type(result) == "string" then                                --[[VERBOSE]] verbose:dispatcher("unknown error in dispach, got ", result)
+							print("la")
 							except = Exception{ "UNKNOWN", minor_code_value = 0,
 							  completion_status = COMPLETED_MAYBE,
 							  message = "servant error: "..result,
@@ -640,6 +651,7 @@ function ListenProtocol:getrequest(conn)
 							}
 							self:sendsysex(conn, requestid, except)
 						else                                                                --[[VERBOSE]] verbose:dispatcher("illegal error type, got ", type(result))
+							print("la")
 							except = Exception{ "UNKNOWN", minor_code_value = 0,
 							  completion_status = COMPLETED_MAYBE,
 							  message = "invalid exception, got "..type(result),
@@ -648,7 +660,9 @@ function ListenProtocol:getrequest(conn)
 							}
 							self:sendsysex(conn, requestid, except)
 						end                                                                 --[[VERBOSE]] else verbose:dispatcher("no reply expected or canceled for request ", requestid)
+						print("fim do result")
 					end
+					print("fim do result 2")
 				end
 
 				return resultObject
