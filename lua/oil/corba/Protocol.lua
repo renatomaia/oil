@@ -156,7 +156,6 @@ function Connection:send(stream)
 	--
 	-- Send data stream over the socket
 	--
-	print("sending stream", self.socket)
 	local failures, success, except = 0                                           --[[VERBOSE]] verbose:send(true, "writing message into socket")
 	repeat
 		success, except = self.socket:send(stream)                                  --[[VERBOSE]] verbose:send("write GIOP message into socket [error: ", except, "]")
@@ -355,11 +354,11 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 		end
 	end
 	local socket, except = self.channels:create(reference.host, reference.port)
-	print("except", except)
 	local conn = Connection(socket, self.codec)
 	local reply_object
 	if conn then
 		local request_id = requestid(conn)
+		print("requestid", request_id)
 		-- reuse the Request object because it is marshalled before any yield
 		Request.request_id        = request_id
 		Request.object_key        = reference.object_key -- object_key at self._profiles
@@ -516,7 +515,6 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 	end -- connection test
 	-- TODO:[nogara] see where we will handle the exception 
 	-- handleexception(self, except, operation, ...)
-	print("reply object", reply_object)
 	return true, reply_object
 end
 
@@ -563,7 +561,6 @@ function ListenProtocol:getrequest(conn)
 		local requestid = header.request_id                                         --[[VERBOSE]] verbose:dispatcher("got request with ID ", requestid, " for object ", header.object_key )
 		if conn.pending[requestid] == nil then
 			conn.pending[requestid] = true
-			print("request id", requestid)
 			local iface = self.objects:lookup(header.object_key)
 			if iface then
 				local member = iface.members[header.operation] or ObjectOps[header.operation]
@@ -583,25 +580,15 @@ function ListenProtocol:getrequest(conn)
 				-- end 
 				-- try to call the function
 				local resultObject = ResultObject(header.object_key, header.operation, params)
-				print( "result object before function", resultObject)
 				resultObject.result = function(success, result) 
-					print("passei por aqui", requestid)
-					print(conn.pending)
-					print(conn.pending[requestid])
-					print(header.response_expected)
 					if conn.pending[requestid] and header.response_expected then
-					  print("passei por aqui 2")
 						if success then                                                     --[[VERBOSE]] verbose:dispatcher("send reply for request ", requestid)
-					    print("passei por aqui 3")
 							Reply.request_id = requestid
 							Reply.reply_status = "NO_EXCEPTION"
 							local stream = createMessage(self, ReplyID, Reply,
 							                             member.outputs, unpack(result))
-							print("passei por aqui 4")
 							_, except = conn:send(stream)                                     --[[VERBOSE]] verbose:dispatcher(false)
-							print("passei por aqui 5")
 						elseif type(result) == "table" then
-							print("la")
 							local excepttype = member.exceptions[ result[1] ]
 							if excepttype then                                                --[[VERBOSE]] verbose:dispatcher(true, "send raised exception ", result.repID)
 								Reply.request_id = requestid
@@ -637,9 +624,7 @@ function ListenProtocol:getrequest(conn)
 								}
 								self:sendsysex(conn, requestid, except)
 							end
-							print("la")
 						elseif type(result) == "string" then                                --[[VERBOSE]] verbose:dispatcher("unknown error in dispach, got ", result)
-							print("la")
 							except = Exception{ "UNKNOWN", minor_code_value = 0,
 							  completion_status = COMPLETED_MAYBE,
 							  message = "servant error: "..result,
@@ -650,7 +635,6 @@ function ListenProtocol:getrequest(conn)
 							}
 							self:sendsysex(conn, requestid, except)
 						else                                                                --[[VERBOSE]] verbose:dispatcher("illegal error type, got ", type(result))
-							print("la")
 							except = Exception{ "UNKNOWN", minor_code_value = 0,
 							  completion_status = COMPLETED_MAYBE,
 							  message = "invalid exception, got "..type(result),
@@ -659,9 +643,7 @@ function ListenProtocol:getrequest(conn)
 							}
 							self:sendsysex(conn, requestid, except)
 						end                                                                 --[[VERBOSE]] else verbose:dispatcher("no reply expected or canceled for request ", requestid)
-						print("fim do result")
 					end
-					print("fim do result 2")
 				end
 
 				return resultObject
@@ -719,9 +701,7 @@ function ListenProtocol:getchannel(args)
 		local start = PortLowerBound
 		port = start
 		repeat
-	print('config', args)
 			conn, except = self.channels:create(host, port)
-	print('config', args)
 			if conn then break end
 			if port >= PortUpperBound
 				then port = PortLowerBound
@@ -733,9 +713,7 @@ function ListenProtocol:getchannel(args)
 	end
 	--args.host = conn.host
 	--args.port = port
-	print( "conn", conn )
 	local portConnection = PortConnection(conn, self.codec)
-	print( "portConnection", portConnection )
 	if not except then
 		
 	else 
