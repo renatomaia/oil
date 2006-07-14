@@ -573,14 +573,14 @@ function ListenProtocol:getrequest(conn)
 					params[index] = buffer:get(input)
 				end
 
-				if member.attribute then 
-					--header.response_expected = nil
-					if member.inputs[1] then 
-						header.operation = '_set_' .. member.attribute
-					else
-						header.operation = '_get_' .. member.attribute
-					end
-				end 
+				-- if member.attribute then 
+				-- header.response_expected = nil
+				-- 	if member.inputs[1] then 
+				-- 		header.operation = '_set_' .. member.attribute
+				-- 	else
+				-- 		header.operation = '_get_' .. member.attribute
+				-- 	end
+				-- end 
 				-- try to call the function
 				local resultObject = ResultObject(header.object_key, header.operation, params)
 				print( "result object before function", resultObject)
@@ -595,9 +595,8 @@ function ListenProtocol:getrequest(conn)
 					    print("passei por aqui 3")
 							Reply.request_id = requestid
 							Reply.reply_status = "NO_EXCEPTION"
-							print( result )
 							local stream = createMessage(self, ReplyID, Reply,
-							                             member.outputs, result)
+							                             member.outputs, unpack(result))
 							print("passei por aqui 4")
 							_, except = conn:send(stream)                                     --[[VERBOSE]] verbose:dispatcher(false)
 							print("passei por aqui 5")

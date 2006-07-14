@@ -220,11 +220,12 @@ function handle(self, requestObj)
 			print(operation)
 			success, result = dispatch_servant(servant, method, params)                       --[[VERBOSE]] verbose:dispatcher(false)
 		elseif member.attribute then                                                --[[VERBOSE]] verbose:dispatcher(true, "got request for attribute ", member.attribute)
-			local result
 			if member.inputs[1] then 
 				servant[member.attribute] = params[1]                                   --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
+				result = {}
 			else 
-				result = servant[member.attribute]                                      --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
+				print("atributo", servant[member.attribute])
+				result = {servant[member.attribute]}                                      --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
 			end
 			success = true                                                            --[[VERBOSE]] verbose:dispatcher(false)
 		else 
@@ -233,13 +234,15 @@ function handle(self, requestObj)
 	else
 			success, result = nil, {"OBJECT_NOT_EXIST"} -- TODO:[nogara]
 	end
+	print("end of handle", success, result)
 	requestObj.result(success, result)
+	return true
 end
 
 --------------------------------------------------------------------------------
 --- Helper functions
 
-local function isbaseof(baseid, iface)
+function isbaseof(baseid, iface)
 	print("executing this")
 	if iface.is_a then                                                            --[[VERBOSE]] verbose:servant(true, "executing interface is_a operation")
 		return iface:is_a(baseid)                                                   --[[VERBOSE]] , verbose:servant(false)
