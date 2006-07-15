@@ -22,8 +22,7 @@ module "oil"
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
 
-local luaidl  = require "luaidl"
-local idl     = require "oil.idl"
+local idl       = require "oil.idl"
 local assert  = require "oil.assert"
 
 --------------------------------------------------------------------------------
@@ -35,56 +34,67 @@ local dummy_codec         = require "oil.dummy.Codec"
 local dummy_protocol      = require "oil.dummy.Protocol"
 local dummy_reference     = require "oil.dummy.reference"
 
-local proxy               = require "oil.proxy"
+local proxy               = require "oil.dummy.proxy"
+local dispatcher          = require "oil.dummy.Dispatcher"
+
 local channel_factory     = require "oil.ChannelFactory"
-local dispatcher          = require "oil.orb"
-local reference_handler   = require "oil.ReferenceHandler"
-local manager             = require "oil.ir"
-local access_point        = require "oil.AccessPoint"
+local client_broker       = require "oil.ClientBroker"
+local server_broker       = require "oil.ServerBroker"
+local channel_factory     = require "oil.ChannelFactory"
+local dispatcher          = require "oil.corba.Dispatcher"
+local access_point        = require "oil.Acceptor"
 
 local Factory_Codec             = arch.CodecType{ dummy_codec }
-local Factory_Protocol          = arch.ProtocolType{ dummy_protocol }
-local Factory_ReferenceResolver = arch.ReferenceResolverType{ dummy_reference }
+local Factory_InvokeProtocol    = arch.InvokeProtocolType{ dummy_protocol.InvokeProtocol }
+local Factory_ListenProtocol    = arch.ListenProtocolType{ dummy_protocol.ListenProtocol }
+local Factory_PassiveChannel    = arch.ChannelFactoryType{ channel_factory.PassiveChannelFactory }
+local Factory_ActiveChannel     = arch.ChannelFactoryType{ channel_factory.ActiveChannelFactory }
 
-local Factory_Manager           = arch.ManagerType{ manager }
-local Factory_ReferenceHandler  = arch.ReferenceHandlerType{ reference_handler }
-local Factory_ChannelFactory    = arch.ChannelFactoryType{ channel_factory }
+local Factory_Reference = arch.ReferenceResolverType{ dummy_reference }
+
+local Factory_ClientBroker      = arch.ClientBrokerType{ client_broker }
+local Factory_Proxy             = arch.ProxyFactoryType{ proxy }
+
 local Factory_Dispatcher        = arch.DispatcherType{ dispatcher }
-local Factory_Proxy             = arch.ProxyType{ proxy }
-local Factory_Manager           = arch.ManagerType{ manager }
-local Factory_AccessPoint       = arch.AccessPointType{ access_point }
+local Factory_ServerBroker      = arch.ServerBrokerType{ server_broker }
+local Factory_Acceptor          = arch.AcceptorType{ access_point }
 
 ----------------------------------------
 
-myProtocol = Factory_Protocol()
 myCodec = Factory_Codec()
-myReferenceResolver = Factory_ReferenceResolver()
-myAccessPoint = Factory_AccessPoint()
+myInvokeProtocol = Factory_InvokeProtocol()
+myListenProtocol = Factory_ListenProtocol()
+myReferenceResolver = Factory_Reference()
+myAcceptor = Factory_Acceptor()
 
-myReferenceHandler = Factory_ReferenceHandler()
+myClientBroker = Factory_ClientBroker()
 myProxy = Factory_Proxy()
-myChannelFactory = Factory_ChannelFactory()
+myPassiveChannelFactory = Factory_PassiveChannel()
+myActiveChannelFactory = Factory_ActiveChannel()
 myDispatcher = Factory_Dispatcher()
-myManager = Factory_Manager()
+myServerBroker = Factory_ServerBroker()
 
 ----------------------------------------
-myProtocol.codec         = myCodec.codec
+myInvokeProtocol.codec         = myCodec.codec
+myInvokeProtocol.channels      = myActiveChannelFactory.factory
+
+myListenProtocol.codec         = myCodec.codec
+myListenProtocol.channels      = myPassiveChannelFactory.factory
+
 myReferenceResolver.codec        = myCodec.codec
 
-myReferenceHandler.reference_resolver["dummy"] = myReferenceResolver.resolver
+myClientBroker.protocol       = myInvokeProtocol.invoker
+myClientBroker.reference = myReferenceResolver.resolver
+myClientBroker.factory = myProxy.proxies
 
-myProtocol.channelFactory   = myChannelFactory.factory
+myAcceptor.listener      = myListenProtocol.listener
+myAcceptor.dispatcher      = myDispatcher.dispatcher
+--myAcceptor.tasks       = myScheduler.tasks
+--myDispatcher.tasks       = myScheduler.tasks
 
-myProxy.protocol       = myProtocol.protocol
-myProxy.reference_handler      = myReferenceHandler.reference
-
-myManager.proxy = myProxy.proxy
-
-myDispatcher.protocol    = myProtocol.protocol
-myDispatcher.point       = myAccessPoint.point
-myDispatcher.reference_handler   = myReferenceHandler.reference
-
-myAccessPoint.protocol["dummy"] = myProtocol.protocol
+myServerBroker.ports = myAcceptor.manager 
+myServerBroker.objectmap = myDispatcher.registry
+myServerBroker.reference = myReferenceResolver.resolver
 
 --------------------------------------------------------------------------------
 -- Default configuration for creation of the default ORB instance.
@@ -139,12 +149,8 @@ Config = {}
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
 
 function newobject(object, interface, key)
-	if type(interface) == "string" then
-		if Manager.lookup then
-			interface = Manager:lookup(interface) or interface
-		end
-	end
-	return init():object(object, interface, key)
+	init({host="localhost", port=2809})
+	return myServerBroker:register(object, interface, key)
 end
 
 --------------------------------------------------------------------------------
@@ -170,12 +176,7 @@ end
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 
 function newproxy(object, interface)
-	object = myReferenceResolver:decode_profile(object)
-	
-	object = myProxy:class(object)
-
-	rawset(object, "_orb", init())
-	return object
+	return myClientBroker.proxies:newproxy(object, interface)
 end
 
 --------------------------------------------------------------------------------
@@ -199,13 +200,8 @@ end
 -- @see Config
 
 function init(config)
-	if not MainORB then
-		local except
-		if not config then config = Config end
-		MainORB, except = myDispatcher:init(config or Config)
-		if not MainORB then assert.error(except) end
-	end
-	return MainORB
+	if not config then config = Config end
+	myServerBroker:init(config)
 end
 
 --------------------------------------------------------------------------------
@@ -214,7 +210,7 @@ end
 -- Returns true if there is some ORB request pending or false otherwise.
 
 function pending()
-	return init():workpending()
+	return myServerBroker:workpending()
 end
 
 --------------------------------------------------------------------------------
@@ -224,7 +220,7 @@ end
 -- and an exception.
 
 function step()
-	return init():performwork()
+	return myServerBroker:performwork()
 end
 
 --------------------------------------------------------------------------------
@@ -234,7 +230,7 @@ end
 -- error occours.
 
 function run()
-	return init():run()
+	return myServerBroker:run()
 end
 
 --------------------------------------------------------------------------------
@@ -254,6 +250,13 @@ createservant = newobject
 -- @see newproxy
 
 createproxy = newproxy
+
+--------------------------------------------------------------------------------
+-- Gets reference from a servant
+
+function getreference(servant)
+	return myServerBroker:tostring(servant)
+end
 
 --------------------------------------------------------------------------------
 -- Creates a file with the IOR of an object.

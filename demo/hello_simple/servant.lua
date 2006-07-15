@@ -10,11 +10,11 @@ function hello:say_hello_to(name)
 	return msg
 end
 
-hello = oil.newobject(hello) -- Create object
+hello = oil.newobject(hello, "Hello") -- Create object
 
 local file = io.open("hello.ior", "w")
 if file then
-	file:write(hello:_getreference())                      -- Write object ref. into file
+	file:write(oil.getreference(hello))                      -- Write object ref. into file
 	file:close()
 else
 	print(hello:_getreference())                           -- Show object ref. on screen

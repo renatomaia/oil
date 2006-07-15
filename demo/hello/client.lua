@@ -30,5 +30,8 @@ print( "****", hello:_is_a("IDL:Hello:1.0") )
 -- Access remote CORBA object --------------------------------------------------
 
 hello.quiet = false
-for i = 1, 3 do print(hello:say_hello_to("world")) end
+for i = 1, 3 do 
+	print(hello:say_hello_to("world")) 
+	os.execute('sleep 1')
+end
 print("Object already said hello "..hello.count.." times till now.")

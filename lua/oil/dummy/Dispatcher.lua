@@ -118,65 +118,22 @@ local function getobjectid(object)
 end
 
 function register(self, key, object, intfaceName)
-	local iface
-	if self.objects then
-		iface = self.objects:lookup(intfaceName)
-		assert.type(iface, "idlinterface", "object interface")
-	end
-
 	if key == nil then 
 		key = getobjectid(object)
 	else 
 		assert.type(key, "string", "object ID")
 	end
 	local loc_object = self.map[key]
-	if loc_object then                                                                --[[VERBOSE]] verbose:servant(true, "servant already is registered")
-		if iface and loc_object._type_id ~= iface.repID then
-			if isbaseof(loc_object._type_id, iface) then                              --[[VERBOSE]] verbose:servant "changing actual object interface to a narrowed interface"
-				loc_object._iface = iface
-				loc_object._type_id = iface.repID
-			elseif not isbaseof(iface.repID, loc_object._iface) then
-				assert.illegal(iface.repID, "attempt to change object interface")   --[[VERBOSE]] else verbose:servant "attempt to change object interface for a broader interface, no action done"
-			end                                                                       --[[VERBOSE]] else verbose:servant "object is exported with same interface as before"
-		end                                                                         --[[VERBOSE]] verbose:servant(false)
-	else
+	if not loc_object then
 		loc_object = Object{
 			_orb = self,
 			_servant = object,
 			_iface = iface,
 			_objectid = key,
-			_type_id = iface.repID,
 		}
 		self.map[key] = loc_object                                                    --[[VERBOSE]] verbose:servant(false)
 	end
 	return loc_object
-end
-
--- TODO[nogara]: see why 'resolve' is here
-function resolve(self, reference, iface)                                   --[[VERBOSE]] verbose:servant(true, "resolving reference to servant")
-	for tag, profile in ipairs(reference._profiles) do
-		local port, key = Protocols[profile.tag]
-		if port then
-			port, key = port.getport(profile.profile_data)
-			if port then
-				if port == self.port then                                               --[[VERBOSE]] verbose:servant "servant colocated at same ORB"
-					return self.map[key]._servant                                         --[[VERBOSE]] , verbose:servant(false)
-				end                                                                     --[[VERBOSE]] verbose:servant "servant colocated at other ORB"
-				break
-			end
-		end
-	end                                                                           --[[VERBOSE]] verbose:servant(false)
-	if self.manager then
-		local object = self.manager:resolve(reference, iface)
-		object._orb = self
-		return object
-	else
-		return reference
-	end
-end
-
-function getobject(self, objid)
-	return self.map[objid], ObjectOps
 end
 
 function deactivate(self, obj)
@@ -196,8 +153,6 @@ local function dispatch_servant(servant, method, params)
 	return packpcall(pcall(method, servant, unpack(params)))
 end
 
-local ObjectOps = giop.ObjectOperations
-
 function handle(self, requestObj)
 	local success, result
 	local operation = requestObj.operation
@@ -207,21 +162,9 @@ function handle(self, requestObj)
 	local object = self.map[key]
 	if object then
 		local servant = object._servant
-		local member = object._iface.members[operation]
-		if not member and ObjectOps[operation] then                                 --[[VERBOSE]] verbose:dispatcher("object basic operation ", operation, " called")
-			member, servant = ObjectOps[operation], object
-		end
 		local method = servant[operation]
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("operation implementation found [name: ", operation, "]") verbose:dispatcher(true, "get parameter values")
 			success, result = dispatch_servant(servant, method, params)                       --[[VERBOSE]] verbose:dispatcher(false)
-		elseif member.attribute then                                                --[[VERBOSE]] verbose:dispatcher(true, "got request for attribute ", member.attribute)
-			if member.inputs[1] then 
-				servant[member.attribute] = params[1]                                   --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
-				result = {}
-			else 
-				result = {servant[member.attribute]}                                      --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
-			end
-			success = true                                                            --[[VERBOSE]] verbose:dispatcher(false)
 		else 
 			success, result = nil, {"NO_IMPLEMENT"} -- TODO:[nogara]
 		end
@@ -230,30 +173,6 @@ function handle(self, requestObj)
 	end
 	requestObj.result(success, result)
 	return true
-end
-
---------------------------------------------------------------------------------
---- Helper functions
-
-function isbaseof(baseid, iface)
-	if iface.is_a then                                                            --[[VERBOSE]] verbose:servant(true, "executing interface is_a operation")
-		return iface:is_a(baseid)                                                   --[[VERBOSE]] , verbose:servant(false)
-	end                                                                           --[[VERBOSE]] verbose:servant(true, "checking if ", baseid, " is base of ", iface.repID)
-	
-	local data = { iface }
-	while table.getn(data) > 0 do
-		iface = table.remove(data)
-		if not data[iface] then                                                     --[[VERBOSE]] verbose:servant("reached interface ", iface.repID)
-			data[iface] = true
-			if iface.repID == baseid then
-				return true                                                             --[[VERBOSE]] , verbose:servant(false)
-			end
-			for _, base in ipairs(iface.base_interfaces) do
-				table.insert(data, base)
-			end
-		end
-	end                                                                           --[[VERBOSE]] verbose:servant(false)
-	return false
 end
 
 --------------------------------------------------------------------------------

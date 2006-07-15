@@ -30,6 +30,7 @@ function register(self, object, intfaceName, key)
 	servant._host = info.host
 	servant._port = info.port
 	print("Host", servant._host)
+	print("Port", servant._port)
 	return servant
 end
 

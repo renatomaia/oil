@@ -50,7 +50,7 @@ local select       = select
 
 local oo      = require "oil.oo"
 
-module ("oil.proxy", oo.class )                                                 --[[VERBOSE]] local verbose = require "oil.verbose"
+module ("oil.dummy.proxy", oo.class )                                                 --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
@@ -61,10 +61,11 @@ local assert  = require "oil.assert"
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local function checkresults(results, exception)                                 --[[VERBOSE]] verbose:proxy(false)
-	if results
-		then return unpack(results)
-		else return assert.error(exception)
+local function checkresults(result, reply)                                 --[[VERBOSE]] verbose:proxy(false)
+	if result then
+		return unpack(reply:result())
+	else
+		return assert.error(reply)
 	end
 end
 
@@ -79,20 +80,17 @@ Object = oo.class()
 
 function Object:__init(reference)
 	assert.type(reference, "table", "reference is not a table")                   --[[VERBOSE]] verbose:proxy("new proxy")
-	-- TODO[nogara]: for now, decode the reference here, but
-	--               is it the best place to do it?
-	self._decoded_profile = self._reference_handler:decode_profile( reference._profiles )
 	return oo.rawnew(self, reference)
 end
 
 function Object:__call(operation, ... )
-	return self.protocol:call(self, operation, ...)
+	return self._protocol:sendrequest(self, operation, ...)
 end
 
 function Object:__index(field)
 	if type(field) == "string" then                                               --[[VERBOSE]] verbose:proxy(true, "get definition of member ", field)
 		local function stub(self, ...)                                              --[[VERBOSE]] verbose:proxy("invoke operation ", field, " with ", select("#", ... ), " arguments")
-			return checkresults(self._protocol:call(self._decoded_profile, field, ...))
+			return checkresults(self._protocol:sendrequest(self._reference, field, ...))
 		end                                                                     
 		return stub
 	end
@@ -100,19 +98,19 @@ end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
+classes = {}
 
-function class(self, interface, manager, orb)                                   --[[VERBOSE]] verbose:proxy("new proxy class")
-	return oo.class({
-		_iface = interface,
-		_manager = manager or false,
-		_orb = orb or false,
-		_protocol = self.protocol,
-		_reference_handler = self.reference_handler,
-		_handlers = {}, -- exception handlers
-		-- this is only necessary if OiL object model does not make copies of
-		-- inherited members (e.g. LOOP models like 'simple' or 'multiple')
-		__index = Object.__index,
-		__newindex = Object.__newindex,
-	}, Object)
+function create(self, reference, protocol, interfaceName)
+	local class
+	class = self.classes[interfaceName]
+	if not class then
+		class = Object{
+			_iface = interface,
+			_reference = reference,
+			_protocol = protocol,
+		}
+		self.classes[interfaceName] = class
+	end
+	return class
 end
 
