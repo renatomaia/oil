@@ -6,6 +6,7 @@ local tonumber     = tonumber
 local require      = require
 local print        = print
 local string       = string
+local table        = table
 
 module "oil.dummy.Codec"                                                                --[[VERBOSE]] local verbose = require "oil.verbose"
 
@@ -30,20 +31,20 @@ local assert     = require "oil.assert"
 
 local ReadBuffer = oo.class{}
 
-function ReadBuffer:__init()
+function ReadBuffer:__init(stream)
+	self.data = {} 
+	local pos = string.find(stream, "\t", 1, true)
+	while pos do
+		table.insert(self.data, string.sub(stream,1,pos-1))
+		stream = string.sub(stream,pos+1)
+		pos = string.find(stream, "\t", 1, true)
+	end
+	table.insert(self.data, stream)
 	return oo.rawnew(self)
 end
 
-function ReadBuffer:get(idltype)
-	local unmarshall = self[idltype._type]
-	if not unmarshall then
-		assert.illegal(idltype._type, "supported type", "MARSHALL")
-	end
-	return unmarshall(self, idltype)
-end
-
-function ReadBuffer:getdata()
-	return self.data
+function ReadBuffer:get()
+	return table.remove(self.data, 1)
 end
 
 --------------------------------------------------------------------------------
@@ -182,12 +183,6 @@ end
 --------------------------------------------------------------------------------
 
 function newEncoder(self, ...)
-	print("new encoder")
-	local buffer = WriteBuffer(...)
-	for k, v in pairs(buffer) do
-		print(k, v)
-	end
-
 	return WriteBuffer(...)
 end
 

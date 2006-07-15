@@ -122,7 +122,8 @@ function register(self, key, object, intfaceName)
 		key = getobjectid(object)
 	else 
 		assert.type(key, "string", "object ID")
-	end
+	end                                                                             --[[VERBOSE]] verbose:dispatcher("registering object with key ", key)
+	print("registering object","|".. key.."|")
 	local loc_object = self.map[key]
 	if not loc_object then
 		loc_object = Object{
@@ -131,6 +132,7 @@ function register(self, key, object, intfaceName)
 			_iface = iface,
 			_objectid = key,
 		}
+		print( "object", key, "registered", loc_object)
 		self.map[key] = loc_object                                                    --[[VERBOSE]] verbose:servant(false)
 	end
 	return loc_object
@@ -159,10 +161,14 @@ function handle(self, requestObj)
 	local key = requestObj.object_key
   local params = requestObj.params
 
+	print("looking for object", "|"..key.."|")
 	local object = self.map[key]
+	print("found object", object)
 	if object then
 		local servant = object._servant
+		print("found servant", servant)
 		local method = servant[operation]
+		print("found method", method)
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("operation implementation found [name: ", operation, "]") verbose:dispatcher(true, "get parameter values")
 			success, result = dispatch_servant(servant, method, params)                       --[[VERBOSE]] verbose:dispatcher(false)
 		else 
@@ -171,6 +177,7 @@ function handle(self, requestObj)
 	else
 			success, result = nil, {"OBJECT_NOT_EXIST"} -- TODO:[nogara]
 	end
+	print("calling result from handle", success, result)
 	requestObj.result(success, result)
 	return true
 end

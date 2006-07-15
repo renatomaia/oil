@@ -9,6 +9,7 @@ local print       = print
 local tostring    = tostring
 local string      = string
 local pairs       = pairs
+local tonumber    = tonumber
 local unpack      = unpack
 
 local table = require "table"
@@ -37,12 +38,19 @@ function Connection:close()
 end
 
 function Connection:receive()
-	local msg, except = self.socket:receive("*a")                                 --[[VERBOSE]] verbose:receive(true, "read message from socket [error: ", except, "]")
+	local size, except = self.socket:receive()
+	print("size in receive", size)
+	local msg
+	msg, except = self.socket:receive(tonumber(size))                                 --[[VERBOSE]] verbose:receive(true, "read message from socket [error: ", except, "]")
+	print("msg received", msg)
 	return msg, except                                                   
 end
 
 function Connection:send(stream)           
-	local	success, except = self.socket:send(stream)                              --[[VERBOSE]] verbose:send("write message into socket [error: ", except, "]")
+  local size = string.len(stream)
+	print("size in send", size)
+	local	success, except = self.socket:send(size.."\n")
+	success, except = self.socket:send(stream)                              --[[VERBOSE]] verbose:send("write message into socket [error: ", except, "]")
 	return success, except
 end
 
@@ -50,25 +58,51 @@ end
 -- Client helper functions
 --------------------------------------------------------------------------------
 
-local DefaultHeader = {
-	message_type = 0, -- Request message
-	message_size = 0,
-}
-
-local function createMessage(self, object_key, operation,  ...)
+local function createRequestMsg(self, object_key, operation,  ...)
 	local buffer = self.codec:newEncoder()
 
 	buffer:put(object_key)
 	buffer:put(operation)
   for i, param in ipairs(arg) do
+		print(param)
 		buffer:put(param)
 	end
 
 	return buffer:getdata()
 end
 
-local function openMessage(self, msgstr)
-  local msg
+local function openRequestMsg(self, msgstr)
+  local msg = {}
+	local buffer = self.codec:newDecoder(msgstr)
+	msg.object_key = buffer:get()
+	msg.operation = buffer:get()
+	msg.params = {}
+  local param = buffer:get()
+	while param do
+		table.insert(msg.params, param)
+  	param = buffer:get()
+	end
+	return msg
+end
+
+local function createResponseMsg(self, ...)
+	local buffer = self.codec:newEncoder()
+
+	for i, resp in ipairs(arg) do
+		print(resp)
+		buffer:put(resp)
+	end
+	return buffer:getdata()
+end
+
+local function openResponseMsg(self, msgstr)
+  local msg = {}
+	local buffer = self.codec:newDecoder(msgstr)
+  local resp = buffer:get()
+	while resp do
+		table.insert(msg, resp)
+  	resp = buffer:get()
+	end
 	return msg
 end
 --------------------------------------------------------------------------------
@@ -88,15 +122,16 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
   local conn = Connection(socket)
 	if conn then
 		
-		local stream = createMessage(self, reference.object_key, operation, ... )
+		local stream = createRequestMsg(self, reference.object_key, operation, ... )
 		print(stream)
 		expected, except = conn:send( stream )
     local reply_object = ReplyObject { result = function()
-
-			local msgtype, header, buffer = conn:receive()                                  
-		 	return msgtype, header, buffer
+			print("calling receive")
+			local msg = conn:receive()                                  
+		 	return openResponseMsg(self, msg)
 		 end }
-		return response
+		print("reply_object", reply_object)
+		return true, reply_object
 	end -- connection test
 	return handleexception(self, except, operation, ...)
 end
@@ -122,13 +157,18 @@ end
 
 function ListenProtocol:getrequest(conn)
 	local except
+	print("before receive")
 	local msg = conn:receive()
+	print("after receive")
 	if msg then
 		print(msg)
+		msg = openRequestMsg(self, msg)
 		local resultObject = ResultObject(msg.object_key, msg.operation, msg.params)
 		resultObject.result = function(success, result)
+			print("inside result", success, result)
     	if success then
-      	local stream = createMessage(self, result)
+      	local stream = createResponseMsg(self, unpack(result))
+				print("stream:", stream)
 				_,except = conn:send(stream)
 			end
 		end

@@ -63,6 +63,7 @@ local assert  = require "oil.assert"
 
 local function checkresults(result, reply)                                 --[[VERBOSE]] verbose:proxy(false)
 	if result then
+		print("getting result")
 		return unpack(reply:result())
 	else
 		return assert.error(reply)
@@ -90,6 +91,7 @@ end
 function Object:__index(field)
 	if type(field) == "string" then                                               --[[VERBOSE]] verbose:proxy(true, "get definition of member ", field)
 		local function stub(self, ...)                                              --[[VERBOSE]] verbose:proxy("invoke operation ", field, " with ", select("#", ... ), " arguments")
+			print("calling function")
 			return checkresults(self._protocol:sendrequest(self._reference, field, ...))
 		end                                                                     
 		return stub

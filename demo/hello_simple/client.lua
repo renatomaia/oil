@@ -23,4 +23,6 @@ local hello = oil.newproxy(ior, "Hello")
 --------------------------------------------------------------------------------
 -- Access remote object --------------------------------------------------
 
-print(hello:say_hello_to("world"))
+for i=1,3 do
+	print(hello:say_hello_to("world ".. i))
+end
