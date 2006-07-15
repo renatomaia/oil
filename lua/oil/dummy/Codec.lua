@@ -92,6 +92,7 @@ end
 local WriteBuffer = oo.class {}
 
 function WriteBuffer:__init()
+	self.tblbuffer = {}
 	return oo.rawnew(self)
 end
 
@@ -101,11 +102,11 @@ function WriteBuffer:put(value)
 	if not marshall then
 		assert.illegal(type(value), "supported type", "MARSHALL")
 	end
-	return marshall(self, value)
+	table.insert(self.tblbuffer, marshall(self, value))
 end
 
 function WriteBuffer:getdata()
-	return table.concat(self)
+	return table.concat(self.tblbuffer, "\t")
 end
 
 --------------------------------------------------------------------------------
@@ -113,42 +114,21 @@ end
 
 
 function WriteBuffer:boolean(value)                                             
-	if value
-		then self:octet(1)
-		else self:octet(0)
-	end                                                                           
+	return tostring(value)
 end
 
 function WriteBuffer:number(value)                                                
-	assert.type(value, "string", "char value", "MARSHAL")
-	if string.len(value) ~= 1 then
-		assert.illegal(value, "char value", "MARSHAL")
-	end
-	self:rawput(value)
+	return tostring(value)
 end
 
 
-function WriteBuffer:table(value, idltype)                                     
-	assert.type(value, "table", "struct value", "MARSHAL")
-		for _, field in ipairs(idltype.fields) do
-		local val = value[field.name]                                               
-		-- TODO:[maia] Check out if fields can be Object references and
-		--             hold nil values.
-		if not val and field.type ~= IDL.boolean then
-			assert.illegal(value,
-										"struct value (no value for field "..field.name..")",
-										"MARSHAL")
-		end
-		self:put(val, field.type)
-	end                                                                           
+function WriteBuffer:table(value)                                     
+	return table2str(value, -1)
 end
 
 
 function WriteBuffer:string(value)                                              
-	assert.type(value, "string", "string value", "MARSHAL")
-	self:ulong(string.len(value) + 1)
-	self:rawput(value)
-	self:rawput('\0')                                                             
+	return value
 end
 
 

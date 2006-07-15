@@ -67,6 +67,10 @@ local function createMessage(self, object_key, operation,  ...)
 	return buffer:getdata()
 end
 
+local function openMessage(self, msgstr)
+  local msg
+	return msg
+end
 --------------------------------------------------------------------------------
 -- Reply object implementation
 --------------------------------------------------------------------------------
@@ -118,30 +122,18 @@ end
 
 function ListenProtocol:getrequest(conn)
 	local except
-	local msg_buffer = conn:receive()
-	if msg_buffer then
-		print(msg_buffer)
-		local resultObject
-    local object = dispatcher:getobject(header.object_key)
-    local iface = object._iface
-    local servant = object._servant
-    if iface then 
-      local success, result = dispatcher:handle(header.object_key, header.operation, params )
-      Reply.request_id = requestid
-      Reply.reply_status = "NO_EXCEPTION"
-      local stream = createMessage(self, ReplyID, Reply,
-                            member.outputs, unpack(result))
-      _, except = conn:send(stream)                   
-    else 
-    end
-    conn.pending[requestid] = nil
-	else
-		if header.reason ~= "closed" then
-			except = header                                                           
+	local msg = conn:receive()
+	if msg then
+		print(msg)
+		local resultObject = ResultObject(msg.object_key, msg.operation, msg.params)
+		resultObject.result = function(success, result)
+    	if success then
+      	local stream = createMessage(self, result)
+				_,except = conn:send(stream)
+			end
 		end
-		conn:close()
+    return resultObject
 	end
-	return except == nil, except
 end
 
 local PortLowerBound = 3000 -- inclusive (never at first attempt)
