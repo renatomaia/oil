@@ -5,9 +5,13 @@ oil.Config._type = 'dummy'
 
 local hello = { }       -- Get object implementation
 function hello:say_hello_to(name)
-	local msg = "Hello " .. name .. "!"
+	local msg = "hello " .. name .. "!"
 	print(msg)
 	return msg
+end
+function hello:say_2_strings(str1, str2)
+	print(str1, str2)
+	return str1.."done", str2.."done"
 end
 
 hello = oil.newobject(hello, "Hello") -- Create object

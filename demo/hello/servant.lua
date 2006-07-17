@@ -19,7 +19,7 @@ if file then
 	file:write(oil.getreference(hello))                      -- Write object ref. into file
 	file:close()
 else
-	print(hello:_getreference())                           -- Show object ref. on screen
+	print(oil.getreference(hello))                           -- Show object ref. on screen
 end
 
 print(oil.run())                                -- Start ORB main loop

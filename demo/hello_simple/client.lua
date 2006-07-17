@@ -26,3 +26,6 @@ local hello = oil.newproxy(ior, "Hello")
 for i=1,3 do
 	print(hello:say_hello_to("world ".. i))
 end
+
+print(hello:say_2_strings("test1", "test2"))
+print(hello:send_tbl({"test1"}))

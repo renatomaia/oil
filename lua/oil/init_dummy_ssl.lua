@@ -26,7 +26,7 @@ local idl       = require "oil.idl"
 local assert  = require "oil.assert"
 
 --------------------------------------------------------------------------------
--- binding components
+-- binding components (test)
 local arch = require "oil.arch.comm"
 
 
@@ -39,7 +39,7 @@ local dispatcher          = require "oil.dummy.Dispatcher"
 
 local client_broker       = require "oil.ClientBroker"
 local server_broker       = require "oil.ServerBroker"
-local channel_factory     = require "oil.ChannelFactory"
+local channel_factory     = require "oil.SslChannelFactory"
 local dispatcher          = require "oil.corba.Dispatcher"
 local access_point        = require "oil.Acceptor"
 
@@ -60,6 +60,24 @@ local Factory_Acceptor          = arch.AcceptorType{ access_point }
 
 ----------------------------------------
 
+local client_params = {
+   key = "certs/clientkey.pem",
+   cert = "certs/client.pem",
+   cafile = "certs/rootA.pem",
+   method = "SSLv3",
+   verify = {"peer", "fail_if_no_peer_cert"},
+   options = {"all", "no_sslv2"},
+}
+local server_params = {
+   verify = {"peer", "fail_if_no_peer_cert"},
+   key = "certs/serverkey.pem",
+   cert = "certs/server.pem",
+   cafile = "certs/rootA.pem",
+   method = "SSLv3",
+   verify = {"peer", "fail_if_no_peer_cert"},
+   options = {"all", "no_sslv2"},
+}
+
 myCodec = Factory_Codec()
 myInvokeProtocol = Factory_InvokeProtocol()
 myListenProtocol = Factory_ListenProtocol()
@@ -68,8 +86,8 @@ myAcceptor = Factory_Acceptor()
 
 myClientBroker = Factory_ClientBroker()
 myProxy = Factory_Proxy()
-myPassiveChannelFactory = Factory_PassiveChannel()
-myActiveChannelFactory = Factory_ActiveChannel()
+myPassiveChannelFactory = Factory_PassiveChannel(nil, server_params)
+myActiveChannelFactory = Factory_ActiveChannel(client_params)
 myDispatcher = Factory_Dispatcher()
 myServerBroker = Factory_ServerBroker()
 
