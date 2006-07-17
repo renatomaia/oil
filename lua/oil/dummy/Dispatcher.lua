@@ -47,7 +47,7 @@ local oo     = require "oil.oo"
 
 local pcall = scheduler and scheduler.pcall or pcall
 
-module ("oil.corba.Dispatcher", oo.class )                                                   --[[VERBOSE]] local verbose = require "oil.verbose"
+module ("oil.dummy.Dispatcher", oo.class )                                                   --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------

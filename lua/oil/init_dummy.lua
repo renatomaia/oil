@@ -35,12 +35,11 @@ local dummy_protocol      = require "oil.dummy.Protocol"
 local dummy_reference     = require "oil.dummy.reference"
 
 local proxy               = require "oil.dummy.proxy"
-local dispatcher          = require "oil.dummy.Dispatcher"
 
 local client_broker       = require "oil.ClientBroker"
 local server_broker       = require "oil.ServerBroker"
 local channel_factory     = require "oil.ChannelFactory"
-local dispatcher          = require "oil.corba.Dispatcher"
+local dispatcher          = require "oil.dummy.Dispatcher"
 local access_point        = require "oil.Acceptor"
 
 local Factory_Codec             = arch.CodecType{ dummy_codec }
