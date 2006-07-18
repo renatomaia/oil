@@ -1,6 +1,10 @@
 require "oil"                                   -- Load OiL package
 
 oil.verbose:level(5)
+loop.thread.Scheduler.verbose:flag("threads", true)
+--loop.thread.Scheduler.verbose:flag("cosocket", true)
+
+require("loop.debug.Viewer"):write(loop.thread.Scheduler.verbose.flags) print()
 
 oil.loadidlfile("hello.idl")                    -- Load the interface from IDL file
 

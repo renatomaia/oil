@@ -38,6 +38,7 @@ local type        = type
 local unpack      = unpack
 
 local table       = require "table"
+local io          = require "io"
 local oo          = require "oil.oo"
 
 module "oil.corba.Protocol"                                         --[[VERBOSE]] local verbose = require "oil.verbose"                                                     
@@ -106,12 +107,13 @@ Tag = 0
 local Connection = oo.class()
 
 function Connection:__init(socket, codec)
-	self.replies = {}
-	self.receivers = {}
-	self.senders = OrderedSet()
-	self.socket = socket
-	self.codec = codec
-	return oo.rawnew(self)
+	return oo.rawnew(self, {
+		replies = {},
+		receivers = {},
+		senders = OrderedSet(),
+		socket = socket,
+		codec = codec,
+	})
 end
 
 function Connection:close()
@@ -187,11 +189,12 @@ end
 local PortConnection = oo.class({}, Connection)
 
 function PortConnection:__init(socket, codec)
-	self.senders = OrderedSet()
-	self.socket = socket
-	self.codec = codec
-	self.pending = {}
-	return oo.rawnew(self)
+	return oo.rawnew(self, {
+		senders = OrderedSet(),
+		socket = socket,
+		codec = codec,
+		pending = {},
+	})
 end
 
 function PortConnection:close()
@@ -353,12 +356,13 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 										select("#", ...)
 		end
 	end
+
 	local socket, except = self.channels:create(reference.host, reference.port)
+	-- TODO[nogara]: stop creating a new Connection for each request
 	local conn = Connection(socket, self.codec)
 	local reply_object
 	if conn then
 		local request_id = requestid(conn)
-		print("requestid", request_id)
 		-- reuse the Request object because it is marshalled before any yield
 		Request.request_id        = request_id
 		Request.object_key        = reference.object_key -- object_key at self._profiles
@@ -371,20 +375,20 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 		-- Test for mutual exclusion on connection access
 		--
 		if conn.sending then                                                        --[[VERBOSE]] verbose:send(true, "connection already being written, waiting notification")
-			conn.senders:enqueue(scheduler:current())                                  
-			scheduler.sleep()                                                         --[[VERBOSE]] verbose:send(false, "notification received")
+			conn.senders:enqueue(self.tasks.current)
+			self.tasks:suspend()                                                      --[[VERBOSE]] verbose:send(false, "notification received")
 		else                                                                        --[[VERBOSE]] verbose:send "connection free for writing"
 			conn.sending = true                                                        
 		end                                                                         
 		                                                                            
-		expected, except = conn:send( stream )                                      
+		expected, except = conn:send( stream )
 		                                                                            
 		--                                                                          
 		-- Wake blocked threads                                                     
 		--                                                                          
 		if conn.senders:empty()                                                     
 			then conn.sending = false                                                 --[[VERBOSE]] verbose:send "freeing socket for other threads"
-			else scheduler.wake(conn.senders:dequeue())                               --[[VERBOSE]] verbose:send "thread waken for writting into socket"
+			else scheduler:resume(conn.senders:dequeue())                             --[[VERBOSE]] verbose:send "thread waken for writting into socket"
 		end
 		
 		reply_object = ReplyObject{ result = function() 
@@ -402,10 +406,10 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 					local reply = replies[request_id]
 					if reply then                                                           --[[VERBOSE]] verbose:receive "returning stored reply"
 						replies[request_id] = nil
-						msgtype, header, buffer = unpack(reply)
+						msgtype, header, buffer = unpack(reply, 1, 3)
 					else 
 						-- message still not received
-						repeat                                                                 
+						repeat
 						-- conn receive
 							msgtype, header, buffer = conn:receive()                                  
 							if
@@ -413,14 +417,14 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 								msgtype == MessageErrorID or
 								msgtype == CloseConnectionID
 							then                                                                  
-								local package = { message, header, buffer, n=3 }
+								local package = { message, header, buffer }
 								local routine
 								local receivers = conn.receivers
 								while next(receivers) do                                             
 									request_id, routine = next(receivers)
 									replies[request_id] = package
 									receivers[request_id] = nil
-									scheduler.wake(routine)
+									scheduler:resume(routine)
 								end
 								conn:close()                                                         
 								break
@@ -429,14 +433,19 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 							if header.request_id ~= request_id then                               
 								local routine = conn.receivers[header.request_id]
 								if routine then                                                    
-									scheduler.wake(routine)                                             
-									coroutine.yield(msgtype, header, buffer)
+									scheduler:resume(routine, msgtype, header, buffer)
 								else                                                                 
-									replies[header.request_id] = { msgtype, header, buffer, n=3 }
+									replies[header.request_id] = { msgtype, header, buffer }
 								end
 								msgtype, header, buffer = nil, nil, nil
 							end
 						until msgtype
+					end
+
+					request_id, reply = next(conn.receivers)
+					if reply
+						then scheduler:resume(reply)
+						else conn.receiving = false
 					end
 					
 					if msgtype == ReplyID then                                              --[[VERBOSE]] verbose:invoke "got a reply message"
@@ -499,16 +508,6 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 						except = header
 						conn:close()
 					end
-
-			-- TODO: [nogara] check if this should be here or before checking
-			-- the return type
-			-- wake threads after receiving?        
-					request_id, reply = next(conn.receivers)
-					if reply
-						then scheduler.wake(reply)                                            
-						else conn.receiving = false                                           
-					end
-					
 				end --[[ oneway test ]]                                                   
 			end -- request sending
 		end }

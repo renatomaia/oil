@@ -1,9 +1,7 @@
-require "scheduler"
 require "oil"
 
-oil.verbose.output(io.open("client.log", "w"))
-oil.verbose.level(4)
-oil.verbose.flag("threads", true)
+oil.verbose:level(5)
+loop.thread.Scheduler.verbose:flag("threads", true)
 
 --------------------------------------------------------------------------------
 if not arg then
@@ -19,15 +17,7 @@ oil.loadidl [[
 	};
 ]]
 --------------------------------------------------------------------------------
-local ior
-local file = io.open("proxy.ior")
-if file then
-	ior = file:read("*a")
-	file:close()
-else
-	print "unable to read IOR from file 'server.ior'"
-	os.exit(1)
-end
+local ior = oil.readIOR("proxy.ior")
 --------------------------------------------------------------------------------
 local proxy = oil.newproxy(ior, "Concurrency::Proxy")
 --------------------------------------------------------------------------------
@@ -40,6 +30,13 @@ local function showprogress(id, time)
 end
 --------------------------------------------------------------------------------
 for id, time in ipairs(arg) do
-	scheduler.new(showprogress, id, tonumber(time))
+	oil.myScheduler.threads:register(coroutine.create(function()
+		print(id, "about to request work for "..time.." seconds")
+		if proxy:request_work_for(tonumber(time))
+			then print(id, "result received successfully")
+			else print(id, "got an unexpected result")
+		end
+	end))
 end
-scheduler.run()
+
+oil.myScheduler.control:run()

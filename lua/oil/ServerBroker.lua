@@ -16,7 +16,9 @@ local map = {}
 
 function init(self, config)
 	-- create acceptor using configuration received from the user
-  self.ports:init(config)
+	for key, port in self.ports:__all() do
+		port:init(config)
+	end
 end
 
 function register(self, object, intfaceName, key)
@@ -26,7 +28,7 @@ function register(self, object, intfaceName, key)
 	local servant = self.objectmap:register(key, object, intfaceName)
 	-- [temporary] put the host/port inside the object, in order to help the 
 	-- reference component to encode the profile
-	local info = self.ports:getinfo()
+	local info = self.ports[1]:getinfo()
 	servant._host = info.host
 	servant._port = info.port
 	print("Host", servant._host)
@@ -40,7 +42,10 @@ end
 
 function run(self)
 	-- TODO[nogara]: see if there is a way to call every one of the ports at 'the same time'
-  self.ports:acceptall()
+	for key, port in self.ports:__all() do
+		port:acceptall()
+	end
+  --self.ports:acceptall()
 end
 
 function step(self)

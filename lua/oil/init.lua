@@ -71,6 +71,7 @@ local iridl     = require "oil.ir.idl"
 -- binding components (test)
 local arch = require "oil.arch.comm"
 
+local scheduler         = require "oil.scheduler"
 
 local corba_codec         = require "oil.corba.Codec"
 local corba_protocol      = require "oil.corba.Protocol"
@@ -101,6 +102,9 @@ local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
 local Factory_Dispatcher        = arch.TypedDispatcherType{ dispatcher }
 local Factory_ServerBroker      = arch.ServerBrokerType{ server_broker }
 local Factory_Acceptor          = arch.AcceptorType{ access_point }
+
+local Factory_Scheduler         = arch.SchedulerType{ scheduler }
+
 ----------------------------------------
 
 myCodec = Factory_Codec()
@@ -117,9 +121,12 @@ myDispatcher = Factory_Dispatcher()
 myServerBroker = Factory_ServerBroker()
 myManager = Factory_Manager()
 
+myScheduler = Factory_Scheduler()
+
 ----------------------------------------
 myInvokeProtocol.codec         = myCodec.codec
 myInvokeProtocol.channels      = myActiveChannelFactory.factory
+myInvokeProtocol.tasks         = myScheduler.threads
 
 myListenProtocol.codec         = myCodec.codec
 myListenProtocol.channels      = myPassiveChannelFactory.factory
@@ -134,14 +141,20 @@ myClientBroker.factory = myProxy.proxies
 myProxy.interfaces = myManager.registry
 
 myAcceptor.listener      = myListenProtocol.listener
-myAcceptor.dispatcher      = myDispatcher.dispatcher
---myAcceptor.tasks       = myScheduler.tasks
---myDispatcher.tasks       = myScheduler.tasks
+myAcceptor.dispatcher    = myDispatcher.dispatcher
+myAcceptor.tasks         = myScheduler.threads
+
+myDispatcher.tasks       = myScheduler.threads
 myDispatcher.objects     = myManager.registry
 
-myServerBroker.ports = myAcceptor.manager 
+myServerBroker.ports[1] = myAcceptor.manager 
 myServerBroker.objectmap = myDispatcher.registry
 myServerBroker.reference = myReferenceResolver.resolver
+
+--myActiveChannelFactory.luasocket = myScheduler.socket
+myPassiveChannelFactory.luasocket = myScheduler.socket
+myActiveChannelFactory.luasocket  = require "oil.socket"
+--myPassiveChannelFactory.luasocket = require "socket"
 
 --------------------------------------------------------------------------------
 -- Local module variables and functions ----------------------------------------
@@ -303,8 +316,8 @@ end
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0")       .
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
 
-function newobject(object, interface, key)
-	init({host="localhost", port=2809})
+function newobject(object, interface, key, params)
+	init(params or {host="localhost", port=2809})
 	return myServerBroker:register(object, interface, key)
 end
 
@@ -425,7 +438,8 @@ end
 -- error occours.
 
 function run()
-	return myServerBroker:run()
+	myServerBroker.control:run()
+	myScheduler.control:run()
 end
 
 --------------------------------------------------------------------------------
@@ -460,7 +474,7 @@ end
 function writeIOR(object, file)
 	file = io.open(file, "w")
 	if file then
-		file:write(object:_ior())
+		file:write(getreference(object))
 		file:close()
 		return true
 	end

@@ -1,9 +1,9 @@
 local package = require "package"
-local scheduler = oil and oil.scheduler
+--local scheduler = oil and oil.myScheduler
 local socket
-if scheduler then
-	socket = scheduler.socket
-else
+--if scheduler then
+--	socket = scheduler.socket
+--else
 	local luasocket = require "socket"
 	socket = setmetatable({}, { __index = luasocket })
 	function socket:select(recv, send, timeout)
@@ -24,7 +24,7 @@ else
 	function socket:bind(address, port)
 		return luasocket.bind(address, port)
 	end
-end
+--end
 package.loaded["oil.socket"] = socket
 oil = oil or {}
 oil.socket = socket

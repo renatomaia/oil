@@ -6,7 +6,6 @@ local oo              = require "oil.oo"
 
 module "oil.ChannelFactory"                                        --[[VERBOSE]] local verbose = require "oil.verbose"
 
-local socket          = require "oil.socket"
 local Exception       = require "oil.Exception"
 local ObjectCache     = require "loop.collection.ObjectCache"
 
@@ -16,13 +15,13 @@ local ObjectCache     = require "loop.collection.ObjectCache"
 ActiveChannelFactory = oo.class()
 
 function ActiveChannelFactory:create(host, port)
-	return socket:connect(host, port)
+	return self.luasocket:connect(host, port)
 end
 
 --------------------------------------------------------------------------------
 
 local function connect(self, port)
-	return socket:connect(self.host, port)
+	return self.luasocket:connect(self.host, port)
 end
 
 local function channelcache(self, host)
@@ -44,7 +43,7 @@ end
 --------------------------------------------------------------------------------
 
 local function bindport(self, port)
-	local port, errmsg = socket:bind(self.host, port)
+	local port, errmsg = self.luasocket:bind(self.host, port)
 	if not port then self.errmsg = errmsg end
 	return port
 end
@@ -56,15 +55,23 @@ end
 PassiveChannelFactory = oo.class()
 
 function PassiveChannelFactory:__init(factory)
-	self = oo.rawnew(self, factory)
-	self.ports = ObjectCache(self.ports)
-	self.ports.retrieve = portcache
-	return self
+	local factory = oo.rawnew(self, factory)
+	factory.ports = ObjectCache(self.ports)
+	function factory.ports:retrieve(host)
+		local cache = ObjectCache()
+		function cache:retrieve(port)
+			local port, errmsg = factory.luasocket:bind(host, port)
+			if not port then factory.errmsg = errmsg end
+			return port
+		end
+		return cache
+	end
+	return factory
 end
 
 function PassiveChannelFactory:create(host, port)
 	local port = self.ports[host][port]
-	if not port then print(self.errmsg) return nil, self.errmsg end
+	if not port then return nil, self.errmsg end
 	local channel, errmsg = port:accept()
 	if not channel then
 		port:close()
@@ -73,3 +80,12 @@ function PassiveChannelFactory:create(host, port)
 	return channel, errmsg
 end
 
+function PassiveChannelFactory:bind(host, port)
+	return self.ports[host][port] ~= nil
+end
+
+function PassiveChannelFactory:free(host, port)
+	local port = self.ports[host][port]
+	if port then port:close() end
+	return port ~= nil
+end

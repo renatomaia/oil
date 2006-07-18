@@ -45,8 +45,6 @@ local string = require "string"
 local table  = require "table"
 local oo     = require "oil.oo"
 
-local pcall = scheduler and scheduler.pcall or pcall
-
 module ("oil.corba.Dispatcher", oo.class )                                                   --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
@@ -185,6 +183,12 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+local ObjectOps = giop.ObjectOperations
+
+--------------------------------------------------------------------------------
+
+local FreeHandlers = {}
+
 local function packpcall(success, ...)
 	if success
 		then return success, arg
@@ -192,44 +196,59 @@ local function packpcall(success, ...)
 	end
 end
 
-local function dispatch_servant(servant, method, params)
-	return packpcall(pcall(method, servant, unpack(params)))
+local function dispatch(self, requestObj)
+	local success, result
+	repeat
+		local operation = requestObj.operation
+		local key = requestObj.object_key
+	  local params = requestObj.params
+	
+		local object = self.map[key]
+		if object then
+			local servant = object._servant
+			local member = object._iface.members[operation]
+			if not member and ObjectOps[operation] then                                 --[[VERBOSE]] verbose:dispatcher("object basic operation ", operation, " called")
+				member, servant = ObjectOps[operation], object
+			end
+			local method = servant[operation]
+			if method then                                                              --[[VERBOSE]] verbose:dispatcher("operation implementation found [name: ", operation, "]") verbose:dispatcher(true, "get parameter values")
+				success, result = packpcall(self.tasks.pcall(method,
+				                                             servant,
+				                                             unpack(params)))
+			elseif member.attribute then                                                --[[VERBOSE]] verbose:dispatcher(true, "got request for attribute ", member.attribute)
+				if member.inputs[1] then 
+					servant[member.attribute] = params[1]                                   --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
+					result = {}
+				else 
+					result = {servant[member.attribute]}                                      --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
+				end
+				success = true                                                            --[[VERBOSE]] verbose:dispatcher(false)
+			else 
+				success, result = nil, {"NO_IMPLEMENT"} -- TODO:[nogara]
+			end
+		else
+			success, result = nil, {"OBJECT_NOT_EXIST"} -- TODO:[nogara]
+		end
+		requestObj.result(success, result)
+		-- TODO:[nogara] Tratar erros no envio da resposta ao cliente.
+		--success, result = requestObj.result(success, result)
+		--if not success then
+		--	io.stderr:write(tostring(result))
+		--end
+
+		table.insert(FreeHandlers, self.tasks.current)
+		self, requestObj = self.tasks:suspend()
+	until not requestObj
+	return success, result
 end
 
-local ObjectOps = giop.ObjectOperations
-
 function handle(self, requestObj)
-	local success, result
-	local operation = requestObj.operation
-	local key = requestObj.object_key
-  local params = requestObj.params
-
-	local object = self.map[key]
-	if object then
-		local servant = object._servant
-		local member = object._iface.members[operation]
-		if not member and ObjectOps[operation] then                                 --[[VERBOSE]] verbose:dispatcher("object basic operation ", operation, " called")
-			member, servant = ObjectOps[operation], object
-		end
-		local method = servant[operation]
-		if method then                                                              --[[VERBOSE]] verbose:dispatcher("operation implementation found [name: ", operation, "]") verbose:dispatcher(true, "get parameter values")
-			success, result = dispatch_servant(servant, method, params)                       --[[VERBOSE]] verbose:dispatcher(false)
-		elseif member.attribute then                                                --[[VERBOSE]] verbose:dispatcher(true, "got request for attribute ", member.attribute)
-			if member.inputs[1] then 
-				servant[member.attribute] = params[1]                                   --[[VERBOSE]] verbose:dispatcher("changed the value of ", member.attribute)
-				result = {}
-			else 
-				result = {servant[member.attribute]}                                      --[[VERBOSE]] verbose:dispatcher("the value of ", member.attribute, " is ", result)
-			end
-			success = true                                                            --[[VERBOSE]] verbose:dispatcher(false)
-		else 
-			success, result = nil, {"NO_IMPLEMENT"} -- TODO:[nogara]
-		end
+	thread = table.remove(FreeHandlers)
+	if not thread then
+		self.tasks:start(dispatch, self, requestObj)
 	else
-			success, result = nil, {"OBJECT_NOT_EXIST"} -- TODO:[nogara]
+		self.tasks:resume(thread, self, requestObj)
 	end
-	requestObj.result(success, result)
-	return true
 end
 
 --------------------------------------------------------------------------------

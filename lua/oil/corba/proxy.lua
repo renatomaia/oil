@@ -226,32 +226,26 @@ function Object:_narrow(iface)                                                  
 	return newclass(self)                                                         --[[VERBOSE]] , verbose:proxy(false)
 end
 
-classes = {}
 
 function create(self, reference, protocol, interfaceName)
 	if not interfaceName then
 		interfaceName = reference._type_id  
 	end
-	local class
-	class = self.classes[interfaceName]
-	if not class then
-		if self.interfaces then 
-			local interface = self.interfaces:lookup(interfaceName) 
-			if interface then
-				class = Object{
-					_iface = interface,
-					_reference = reference,
-					_protocol = protocol,
-				}
-				self.classes[interfaceName] = class
-			end
-			if not class then
-				--TODO[nogara]: fix the narrow when the interface was not found
-				object = self.manager:getclass("IDL:omg.org/CORBA/Object:1.0")(object) 
-				object = object:_narrow()
-			end
+	local object
+	if self.interfaces then 
+		local interface = self.interfaces:lookup(interfaceName) 
+		if interface then
+			object = Object{
+				_iface = interface,
+				_reference = reference,
+				_protocol = protocol,
+			}
 		end
-	else 
+		if not object then
+			--TODO[nogara]: fix the narrow when the interface was not found
+			object = self.manager:getclass("IDL:omg.org/CORBA/Object:1.0")(object) 
+			object = object:_narrow()
+		end
 	end
-	return class
+	return object
 end

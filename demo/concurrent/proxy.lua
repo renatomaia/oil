@@ -1,9 +1,7 @@
-require "scheduler"
 require "oil"
 
-oil.verbose.output(io.open("proxy.log", "w"))
-oil.verbose.level(4)
-oil.verbose.flag("threads", true)
+oil.verbose:level(5)
+loop.thread.Scheduler.verbose:flag("threads", true)
 
 --------------------------------------------------------------------------------
 oil.loadidl [[
@@ -17,15 +15,7 @@ oil.loadidl [[
 	};
 ]]
 --------------------------------------------------------------------------------
-local ior
-local file = io.open("server.ior")
-if file then
-	ior = file:read("*a")
-	file:close()
-else
-	print "unable to read IOR from file 'server.ior'"
-	os.exit(1)
-end
+local ior = oil.readIOR("server.ior")
 --------------------------------------------------------------------------------
 local proxy_impl = { server = oil.newproxy(ior, "Concurrency::Server") }
 function proxy_impl:request_work_for(seconds)
@@ -33,9 +23,8 @@ function proxy_impl:request_work_for(seconds)
 	return self.server:do_something_for(seconds)
 end
 --------------------------------------------------------------------------------
-local proxy = oil.newobject(proxy_impl, "Concurrency::Proxy")
+local proxy = oil.newobject(proxy_impl, "Concurrency::Proxy", nil, {host="localhost", port=2810})
 --------------------------------------------------------------------------------
 oil.writeIOR(proxy, "proxy.ior")
 --------------------------------------------------------------------------------
-scheduler.new(oil.run)
-scheduler.run()
+oil.run()

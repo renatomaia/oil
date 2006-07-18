@@ -18,6 +18,7 @@ InvokeProtocolType = component.Type({
 		-- 		success, <results or error> :result(),
 		-- 		boolean :probe()
 		-- 	}
+	tasks = port.Receptacle,
 }, ProtocolType)
 
 ListenProtocolType = component.Type({
@@ -57,12 +58,13 @@ CodecType = component.Type{
 ChannelFactoryType = component.Type{
 	factory = port.Facet,
 		-- channel create(<configs>)
+	luasocket = port.Receptacle,
 }
 
 SchedulerType = component.Type{
 	control = port.Facet,
 	threads = port.Facet,
-	sockets = port.Facet,
+	socket = port.Facet,
 }
 
 --- Reference
