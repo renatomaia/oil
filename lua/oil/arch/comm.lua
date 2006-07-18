@@ -59,24 +59,10 @@ ChannelFactoryType = component.Type{
 		-- channel create(<configs>)
 }
 
-ConnResolverType = component.Type{
-	connector = port.Facet,
-		-- operations :
-		--  call( profile, operation, args)
-	protocols = port.HashReceptacle,
---  codecs    = "context receptacle",
---  connmanager   = "receptacle",
-	references = port.HashReceptacle, -- to get the references to the objects / open profiles etc
-}
-
 SchedulerType = component.Type{
 	control = port.Facet,
 	threads = port.Facet,
 	sockets = port.Facet,
-}
-
-ResolverType = component.Type{
-	codec = port.Facet,
 }
 
 --- Reference
