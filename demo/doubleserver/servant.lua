@@ -1,12 +1,11 @@
 require "oil"                                   -- Load OiL package
 
-oil.Config.flavor = "CORBASimple"
+oil.Config.flavor = "CORBAServerDummyServer"
+oil.Config.ports = {}
+oil.Config.ports.corba = { host = "localhost", port = 2809} 
+oil.Config.ports.dummy = { host = "localhost", port = 2810} 
 oil.verbose:level(5)
 oil.init()
---loop.thread.Scheduler.verbose:flag("threads", true)
---loop.thread.Scheduler.verbose:flag("cosocket", true)
-
---require("loop.debug.Viewer"):write(loop.thread.Scheduler.verbose.flags) print()
 
 oil.loadidlfile("hello.idl")                    -- Load the interface from IDL file
 
@@ -20,7 +19,7 @@ end
 
 hello = oil.newobject(hello, "Hello")           -- Create CORBA object
 
-local file = io.open("hello.ior", "w")
+local file = io.open("server.ior", "w")
 if file then
 	file:write(oil.getreference(hello))                      -- Write object ref. into file
 	file:close()

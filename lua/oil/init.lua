@@ -44,6 +44,7 @@ local tostring = tostring
 local require  = require
 local rawset   = rawset
 local print    = print
+local next     = next
 
 local io = require "io"
 
@@ -64,132 +65,7 @@ local luaidl    = require "luaidl"
 local idl       = require "oil.idl"
 local idlparser = require "oil.idl.compiler"
 local assert    = require "oil.assert"
-local ir        = require "oil.ir"
 local iridl     = require "oil.ir.idl"
-
---------------------------------------------------------------------------------
--- binding components (test)
-local arch = require "oil.arch.comm"
-
-local scheduler         = require "oil.scheduler"
-
-local corba_codec         = require "oil.corba.Codec"
-local corba_protocol      = require "oil.corba.Protocol"
-local corba_reference     = require "oil.corba.reference"
-
-local proxy             = require "oil.corba.proxy"
-local client_broker     = require "oil.ClientBroker"
-local server_broker     = require "oil.ServerBroker"
-local channel_factory   = require "oil.ChannelFactory"
-local dispatcher        = require "oil.corba.Dispatcher"
-local manager           = require "oil.ir"
-local access_point      = require "oil.Acceptor"
-
-local Factory_Codec             = arch.CodecType{ corba_codec }
-local Factory_InvokeProtocol    = arch.TypedInvokeProtocolType{ corba_protocol.InvokeProtocol }
-local Factory_ListenProtocol    = arch.TypedListenProtocolType{ corba_protocol.ListenProtocol }
-
-local Factory_PassiveChannel    = arch.ChannelFactoryType{ channel_factory.PassiveChannelFactory }
-local Factory_ActiveChannel     = arch.ChannelFactoryType{ channel_factory.ActiveChannelFactory }
-
-local Factory_Reference         = arch.ReferenceResolverType{ corba_reference }
-
-local Factory_Manager           = arch.TypeManagerType{ manager }
-
-local Factory_ClientBroker      = arch.ClientBrokerType{ client_broker }
-local Factory_Proxy             = arch.TypedProxyFactoryType{ proxy }
-
-local Factory_Dispatcher        = arch.TypedDispatcherType{ dispatcher }
-local Factory_ServerBroker      = arch.ServerBrokerType{ server_broker }
-local Factory_Acceptor          = arch.AcceptorType{ access_point }
-
-local Factory_Scheduler         = arch.SchedulerType{ scheduler }
-
-----------------------------------------
-
-myCodec = Factory_Codec()
-myInvokeProtocol = Factory_InvokeProtocol()
-myListenProtocol = Factory_ListenProtocol()
-myReferenceResolver = Factory_Reference()
-myAcceptor = Factory_Acceptor()
-
-myClientBroker = Factory_ClientBroker()
-myProxy = Factory_Proxy()
-myPassiveChannelFactory = Factory_PassiveChannel()
-myActiveChannelFactory = Factory_ActiveChannel()
-myDispatcher = Factory_Dispatcher()
-myServerBroker = Factory_ServerBroker()
-myManager = Factory_Manager()
-
-myScheduler = Factory_Scheduler()
-
-----------------------------------------
-myInvokeProtocol.codec         = myCodec.codec
-myInvokeProtocol.channels      = myActiveChannelFactory.factory
-myInvokeProtocol.tasks         = myScheduler.threads
-
-myListenProtocol.codec         = myCodec.codec
-myListenProtocol.channels      = myPassiveChannelFactory.factory
-myListenProtocol.objects       = myManager.mapping
-
-myReferenceResolver.codec        = myCodec.codec
-
-myClientBroker.protocol       = myInvokeProtocol.invoker
-myClientBroker.reference = myReferenceResolver.resolver
-myClientBroker.factory = myProxy.proxies
-
-myProxy.interfaces = myManager.registry
-
-myAcceptor.listener      = myListenProtocol.listener
-myAcceptor.dispatcher    = myDispatcher.dispatcher
-myAcceptor.tasks         = myScheduler.threads
-
-myDispatcher.tasks       = myScheduler.threads
-myDispatcher.objects     = myManager.registry
-
-myServerBroker.ports[1] = myAcceptor.manager 
-myServerBroker.objectmap = myDispatcher.registry
-myServerBroker.reference = myReferenceResolver.resolver
-
---myActiveChannelFactory.luasocket = myScheduler.socket
-myPassiveChannelFactory.luasocket = myScheduler.socket
-myActiveChannelFactory.luasocket  = require "oil.socket"
---myPassiveChannelFactory.luasocket = require "socket"
-
---------------------------------------------------------------------------------
--- Local module variables and functions ----------------------------------------
-myManager:putiface(iridl.Repository             )
-myManager:putiface(iridl.Container              )
-myManager:putiface(iridl.ModuleDef              )
-myManager:putiface(iridl.ConstantDef            )
-myManager:putiface(iridl.IDLType                )
-myManager:putiface(iridl.StructDef              )
-myManager:putiface(iridl.UnionDef               )
-myManager:putiface(iridl.EnumDef                )
-myManager:putiface(iridl.AliasDef               )
-myManager:putiface(iridl.InterfaceDef           )
-myManager:putiface(iridl.ExceptionDef           )
-myManager:putiface(iridl.NativeDef              )
-myManager:putiface(iridl.ValueDef               )
-myManager:putiface(iridl.ValueBoxDef            )
-myManager:putiface(iridl.AbstractInterfaceDef   )
-myManager:putiface(iridl.LocalInterfaceDef      )
-myManager:putiface(iridl.ExtInterfaceDef        )
-myManager:putiface(iridl.ExtValueDef            )
-myManager:putiface(iridl.ExtAbstractInterfaceDef)
-myManager:putiface(iridl.ExtLocalInterfaceDef   )
-myManager:putiface(iridl.PrimitiveDef           )
-myManager:putiface(iridl.StringDef              )
-myManager:putiface(iridl.SequenceDef            )
-myManager:putiface(iridl.ArrayDef               )
-myManager:putiface(iridl.WstringDef             )
-myManager:putiface(iridl.FixedDef               )
-myManager:putiface(iridl.TypedefDef             )
-myManager:putiface(iridl.AttributeDef           )
-myManager:putiface(iridl.ExtAttributeDef        )
-myManager:putiface(iridl.OperationDef           )
-myManager:putiface(iridl.InterfaceAttrExtension )
-myManager:putiface(iridl.ValueMemberDef         )
 
 
 --------------------------------------------------------------------------------
@@ -220,7 +96,11 @@ myManager:putiface(iridl.ValueMemberDef         )
 
 -- @see init
 
-Config = {}
+Config = {
+	flavor = "CORBASimple",
+	host   = "localhost", 
+	port   = 2809,
+}
 
 --------------------------------------------------------------------------------
 -- Loads an IDL code strip into the local Interface Repository.
@@ -316,8 +196,8 @@ end
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0")       .
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
 
-function newobject(object, interface, key, params)
-	init(params or {host="localhost", port=2809})
+function newobject(object, interface, key)
+	init()
 	return myServerBroker:register(object, interface, key)
 end
 
@@ -344,6 +224,7 @@ end
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 
 function newproxy(object, interface)
+	init()
 	return myClientBroker.proxies:newproxy(object, interface)
 end
 
@@ -408,7 +289,15 @@ end
 -- @see Config
 
 function init(config)
-	if not config then config = Config end
+	config = config or Config
+
+	configs = require ("oil.configs." .. config.flavor)
+
+	myManager = configs.myManager
+	myServerBroker = configs.myServerBroker
+	myClientBroker = configs.myClientBroker
+	myScheduler = configs.myScheduler
+
 	myServerBroker:init(config)
 end
 
@@ -439,7 +328,9 @@ end
 
 function run()
 	myServerBroker.control:run()
-	myScheduler.control:run()
+	if myScheduler then
+		myScheduler.control:run()
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -464,7 +355,13 @@ createproxy = newproxy
 -- Gets reference from a servant
 
 function getreference(servant)
-	return myServerBroker:tostring(servant)
+	local reference = myServerBroker:tostring(servant)
+	if type(reference) == "table" then
+		_, reference = next(reference)
+		return reference
+	else
+		return reference
+	end
 end
 --------------------------------------------------------------------------------
 -- Creates a file with the IOR of an object.

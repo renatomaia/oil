@@ -117,7 +117,8 @@ function referto(self, ...)                                                     
 	local buffer = self.codec:newEncoder(true)
 	-- create profile structure using the arguments provided by the serverbroker
 	local servant = arg[1]
-	local profile = self:encode_profile(servant._host, servant._port, servant._objectid)
+	local info = arg[2]
+	local profile = self:encode_profile(info.host, info.port, servant._objectid)
 	servant._profiles = {profile}
 	buffer:IOR(servant) -- marshall IOR
 	return "IOR:"..byte2hexa(buffer:getdata())                                    --[[VERBOSE]] , verbose:ior(false)

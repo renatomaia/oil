@@ -116,6 +116,7 @@ AcceptorType = component.Type{
 DispatcherType = component.Type{
 	registry = port.Facet,
 		-- register(id, object)
+		-- object get(id)
 		-- object unregister(id)
 	dispatcher = port.Facet,
 		-- dispatch(request)
@@ -138,7 +139,7 @@ ServerBrokerType = component.Type{
 		-- run()
 		-- step()
 		-- boolean pending()
-	ports = port.ListReceptacle,
+	ports = port.HashReceptacle,
 		-- acceptall()
 		-- accept()
 		-- boolean pending()

@@ -1,6 +1,8 @@
 require "oil"                                   -- Load OiL package
 
+oil.Config.flavor = "CORBASimple"
 oil.verbose:level(5)
+oil.init()
 
 oil.loadidlfile("hello.idl")                    -- Load the interface from IDL file
 

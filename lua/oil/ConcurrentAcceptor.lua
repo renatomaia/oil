@@ -41,25 +41,9 @@ local coroutine = require "coroutine"
 
 local oo        = require "oil.oo"
 
-module ( "oil.Acceptor", oo.class )                                          --[[VERBOSE]] local verbose = require "oil.verbose"
+module ( "oil.ConcurrentAcceptor", oo.class )                                          --[[VERBOSE]] local verbose = require "oil.verbose"
 
 ------------------------------------------------------------------------------
---[[
-function accept(self)
-	local channel = self.listener:getchannel(self)
-verbose.debug("got channel", channel)
-  local request = self.listener:getrequest(channel)
-	return self.dispatcher:handle(request)
-end
-
-function acceptall(self)
-	local success, errmsg
-	repeat
-		success, errmsg = self:accept()
-	until not success
-	return success, errmsg
-end
---]]
 function init(self, args)
 	self.host = args.host
 	self.port = args.port

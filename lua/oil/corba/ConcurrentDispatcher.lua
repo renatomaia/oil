@@ -45,7 +45,7 @@ local string = require "string"
 local table  = require "table"
 local oo     = require "oil.oo"
 
-module ("oil.corba.Dispatcher", oo.class )                                                   --[[VERBOSE]] local verbose = require "oil.verbose"
+module ("oil.corba.ConcurrentDispatcher", oo.class )                                                   --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------

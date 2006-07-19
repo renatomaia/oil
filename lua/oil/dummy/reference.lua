@@ -24,6 +24,7 @@ end
 function referto(self, ...)
 -- args are (host, port, object_key)
 	local servant = arg[1]
-  return table.concat{ 'DUMMY:', servant._host, ',', servant._port, ',', servant._objectid }
+	local info = arg[2]
+  return table.concat{ 'DUMMY:', info.host, ',', info.port, ',', servant._objectid }
 end
 

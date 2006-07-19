@@ -1,6 +1,9 @@
-require "oil.init_mixed"
+require "oil"
 
+oil.Config.flavor = "CORBAClientDummyServer"
+oil.Config.port = 2810
 oil.verbose:level(5)
+oil.init()
 
 --------------------------------------------------------------------------------
 -- Load the interface from IDL file --------------------------------------------

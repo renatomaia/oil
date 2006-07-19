@@ -1,7 +1,8 @@
-require "oil.init_dummy"
+require "oil"
 
+oil.Config.flavor = "DummySimple"
 oil.verbose:level(5)
-
+oil.init()
 --------------------------------------------------------------------------------
 -- Get object reference from file ----------------------------------------------
 

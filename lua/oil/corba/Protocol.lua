@@ -31,7 +31,6 @@ local require     = require
 local rawget      = rawget
 local rawset      = rawset
 local select      = select
-local scheduler   = scheduler
 local string      = string
 local tostring    = tostring
 local type        = type
@@ -388,7 +387,7 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 		--                                                                          
 		if conn.senders:empty()                                                     
 			then conn.sending = false                                                 --[[VERBOSE]] verbose:send "freeing socket for other threads"
-			else scheduler:resume(conn.senders:dequeue())                             --[[VERBOSE]] verbose:send "thread waken for writting into socket"
+			else self.tasks:resume(conn.senders:dequeue())                             --[[VERBOSE]] verbose:send "thread waken for writting into socket"
 		end
 		
 		reply_object = ReplyObject{ result = function() 
@@ -409,6 +408,13 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 						msgtype, header, buffer = unpack(reply, 1, 3)
 					else 
 						-- message still not received
+						if conn.receiving then                                                        --[[VERBOSE]] verbose:receive(true, "connection already being read, waiting notification")
+							conn.receivers[request_id] = self.tasks.current
+							msgtype, header, buffer = self.tasks:suspend()                                 --[[VERBOSE]] verbose:receive "notification received"
+							conn.receivers[request_id] = nil
+						else                                                                          --[[VERBOSE]] verbose:receive "connection free for reading"
+							conn.receiving = true
+						end
 						repeat
 						-- conn receive
 							msgtype, header, buffer = conn:receive()                                  
@@ -424,7 +430,7 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 									request_id, routine = next(receivers)
 									replies[request_id] = package
 									receivers[request_id] = nil
-									scheduler:resume(routine)
+									self.tasks:resume(routine)
 								end
 								conn:close()                                                         
 								break
@@ -433,7 +439,7 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 							if header.request_id ~= request_id then                               
 								local routine = conn.receivers[header.request_id]
 								if routine then                                                    
-									scheduler:resume(routine, msgtype, header, buffer)
+									self.tasks:resume(routine, msgtype, header, buffer)
 								else                                                                 
 									replies[header.request_id] = { msgtype, header, buffer }
 								end
@@ -443,9 +449,10 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 					end
 
 					request_id, reply = next(conn.receivers)
-					if reply
-						then scheduler:resume(reply)
-						else conn.receiving = false
+					if reply then
+						self.tasks:resume(reply)
+					else
+						conn.receiving = false
 					end
 					
 					if msgtype == ReplyID then                                              --[[VERBOSE]] verbose:invoke "got a reply message"
@@ -456,9 +463,10 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 								expected[index] = buffer:get(output)
 							end                                                                 --[[VERBOSE]] verbose:invoke(false)
 							request_id, reply = next(conn.receivers)
-							if reply
-								then scheduler:register(reply)                                            
-								else conn.receiving = false                                           
+							if reply then
+								self.tasks:register(reply)                                            
+							else
+								conn.receiving = false                                           
 							end
 							return expected
 						elseif status == "USER_EXCEPTION" then                                --[[VERBOSE]] verbose:invoke("got user-defined exception")

@@ -1,7 +1,8 @@
-require "oil.init_dummy"                                   -- Load OiL package
+require "oil"                                   -- Load OiL package
 
+oil.Config.flavor = "DummySimple"
 oil.verbose:level(5)
-oil.Config._type = 'dummy'
+oil.init()
 
 local hello = { }       -- Get object implementation
 function hello:say_hello_to(name)
