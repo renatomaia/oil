@@ -40,19 +40,21 @@ function tostring(self, servant, portName)
 		local references = {}
 		for key, port in self.ports:__all() do
 			local info = port:getinfo()
-			references[key] = self.reference:referto(servant, info)
+			references[key] = self.reference[key]:referto(servant, info)
 		end
 		return references
 	else
 		-- return only the reference requested
 		local info = self.ports[portName]:getinfo()
+		print(portName, info)
 		info.objectid = servant._objectid
-  	return self.reference[portName]:referto(info)
+  	return self.reference[portName]:referto(servant, info)
 	end
 end
 
 function run(self)
 	for key, port in self.ports:__all() do
+		print( key, "accepting connections" )
 		port:acceptall()
 	end
 end

@@ -19,12 +19,12 @@ end
 
 hello = oil.newobject(hello, "Hello")           -- Create CORBA object
 
-local file = io.open("server.ior", "w")
-if file then
-	file:write(oil.getreference(hello))                      -- Write object ref. into file
-	file:close()
-else
-	print(oil.getreference(hello))                           -- Show object ref. on screen
-end
+for _, type in pairs({ "corba", "dummy" }) do
 
+	local file = assert(io.open("server" .. type ..".ior", "w"))
+	if file then
+		file:write(oil.getreference(hello, type))                      -- Write object ref. into file
+		file:close()
+	end
+end
 print(oil.run())                                -- Start ORB main loop

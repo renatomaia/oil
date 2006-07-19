@@ -1,6 +1,6 @@
 local require = require
 
-module "oil.configs.CORBASimple"                                  
+module "oil.configs.CORBAServerDummyServer"                                  
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
@@ -14,6 +14,7 @@ local iridl     = require "oil.ir.idl"
 -- binding components (test)
 local arch = require "oil.arch.comm"
 
+local scheduler           = require "oil.scheduler"
 local corba_codec         = require "oil.corba.Codec"
 local corba_protocol      = require "oil.corba.Protocol"
 local corba_reference     = require "oil.corba.reference"
@@ -26,7 +27,7 @@ local channel_factory   = require "oil.ChannelFactory"
 local corba_dispatcher  = require "oil.corba.SimpleDispatcher"
 local dummy_dispatcher  = require "oil.dummy.Dispatcher"
 local manager           = require "oil.ir"
-local access_point      = require "oil.SimpleAcceptor"
+local access_point      = require "oil.ConcurrentAcceptor"
 
 ----------------------------------------
 local Factory_CorbaCodec             = arch.CodecType{ corba_codec }
@@ -45,6 +46,7 @@ local Factory_CorbaDispatcher   = arch.TypedDispatcherType{ corba_dispatcher }
 local Factory_DummyDispatcher   = arch.DispatcherType{ dummy_dispatcher }
 local Factory_ServerBroker      = arch.ServerBrokerType{ server_broker }
 local Factory_Acceptor          = arch.AcceptorType{ access_point }
+local Factory_Scheduler         = arch.SchedulerType{ scheduler }
 
 ----------------------------------------
 myCodecCorba                   = Factory_CorbaCodec()
@@ -61,6 +63,8 @@ myPassiveChannelFactory        = Factory_PassiveChannel()
 myDispatcher                   = Factory_CorbaDispatcher()
 myServerBroker                 = Factory_ServerBroker()
 myManager                      = Factory_Manager()
+
+myScheduler                    = Factory_Scheduler()
 ----------------------------------------
 myListenProtocolCorba.codec    = myCodecCorba.codec
 myListenProtocolCorba.channels = myPassiveChannelFactory.factory
@@ -73,17 +77,20 @@ myReferenceResolverCorba.codec = myCodecCorba.codec
 
 myAcceptorCorba.listener       = myListenProtocolCorba.listener
 myAcceptorCorba.dispatcher     = myDispatcher.dispatcher
+myAcceptorCorba.tasks          = myScheduler.threads
 myAcceptorDummy.listener       = myListenProtocolDummy.listener
 myAcceptorDummy.dispatcher     = myDispatcher.dispatcher
+myAcceptorDummy.tasks          = myScheduler.threads
 
 myDispatcher.objects           = myManager.registry
 
 myServerBroker.ports["corba"]  = myAcceptorCorba.manager 
 myServerBroker.ports["dummy"]  = myAcceptorDummy.manager 
 myServerBroker.objectmap       = myDispatcher.registry
-myServerBroker.reference       = myReferenceResolver.resolver
+myServerBroker.reference["corba"] = myReferenceResolverCorba.resolver
+myServerBroker.reference["dummy"] = myReferenceResolverDummy.resolver
 
-myPassiveChannelFactory.luasocket = require "oil.socket"
+myPassiveChannelFactory.luasocket = myScheduler.socket
 
 --------------------------------------------------------------------------------
 -- Local module variables and functions ----------------------------------------

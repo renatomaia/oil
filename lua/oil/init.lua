@@ -354,8 +354,8 @@ createproxy = newproxy
 --------------------------------------------------------------------------------
 -- Gets reference from a servant
 
-function getreference(servant)
-	local reference = myServerBroker:tostring(servant)
+function getreference(servant, port)
+	local reference = myServerBroker:tostring(servant, port)
 	if type(reference) == "table" then
 		_, reference = next(reference)
 		return reference
