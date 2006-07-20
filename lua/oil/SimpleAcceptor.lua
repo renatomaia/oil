@@ -44,8 +44,7 @@ module ( "oil.SimpleAcceptor", oo.class )                                       
 ------------------------------------------------------------------------------
 function accept(self)
 	local channel = self.listener:getchannel(self)
-verbose.debug("got channel", channel)
-  local request = self.listener:getrequest(channel)
+	local request = self.listener:getrequest(channel)
 	return self.dispatcher:handle(request)
 end
 

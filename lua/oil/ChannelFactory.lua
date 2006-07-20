@@ -15,7 +15,7 @@ local ObjectCache     = require "loop.collection.ObjectCache"
 ActiveChannelFactory = oo.class()
 
 function ActiveChannelFactory:create(host, port)
-	return self.luasocket:connect(host, port)
+	return self.luasocket:connect(host, port, client_params)
 end
 
 --------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ end
 --------------------------------------------------------------------------------
 
 local function bindport(self, port)
-	local port, errmsg = self.luasocket:bind(self.host, port)
+	local port, errmsg = self.luasocket:bind(self.host, port, server_params)
 	if not port then self.errmsg = errmsg end
 	return port
 end
@@ -80,7 +80,7 @@ function PassiveChannelFactory:create(host, port)
 	return channel, errmsg
 end
 
-function PassiveChannelFactory:bind(host, port)
+function PassiveChannelFactory:bind(host, port, params)
 	return self.ports[host][port] ~= nil
 end
 
