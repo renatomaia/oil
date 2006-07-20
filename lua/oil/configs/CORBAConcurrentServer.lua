@@ -89,9 +89,9 @@ myAcceptor.tasks               = myScheduler.threads
 myDispatcher.tasks             = myScheduler.threads
 myDispatcher.objects           = myManager.registry
 
-myServerBroker.ports[1]        = myAcceptor.manager 
+myServerBroker.ports["corba"]        = myAcceptor.manager 
 myServerBroker.objectmap       = myDispatcher.registry
-myServerBroker.reference       = myReferenceResolver.resolver
+myServerBroker.reference["corba"]       = myReferenceResolver.resolver
 
 myPassiveChannelFactory.luasocket = myScheduler.socket
 myActiveChannelFactory.luasocket  = require "oil.socket"

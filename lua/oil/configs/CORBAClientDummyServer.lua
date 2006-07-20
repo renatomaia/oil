@@ -90,7 +90,7 @@ myAcceptor.dispatcher      = myDispatcher.dispatcher
 
 myServerBroker.ports["dummy"] = myAcceptor.manager 
 myServerBroker.objectmap = myDispatcher.registry
-myServerBroker.reference = myDummyReferenceResolver.resolver
+myServerBroker.reference["dummy"] = myDummyReferenceResolver.resolver
 
 myPassiveChannelFactory.luasocket = require "oil.socket"
 myActiveChannelFactory.luasocket  = require "oil.socket"
