@@ -81,6 +81,10 @@ ObjectOperations = {
 		name = "_interface",
 		result = IDL.Object("IDL:omg.org/CORBA/InterfaceDef:1.0"),
 	},
+	_component = IDL.operation{
+		name = "_component",
+		result = IDL.Object("IDL:omg.org/CORBA/Object:1.0"),
+	},
 	_is_a = IDL.operation{
 		name = "_is_a",
 		result = IDL.boolean,

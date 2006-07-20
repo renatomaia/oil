@@ -124,6 +124,10 @@ function Object:_interface()                                                    
 	end
 end
 
+function Object:_component()                                                    --[[VERBOSE]] verbose.servant "retrieveing component the object belongs to"
+	return nil
+end
+
 function Object:_non_existent()                                                 --[[VERBOSE]] verbose.servant "probing for object existency, returning false"
 	return false
 end
