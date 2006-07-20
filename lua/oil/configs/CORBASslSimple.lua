@@ -46,6 +46,7 @@ local Factory_Dispatcher        = arch.TypedDispatcherType{ dispatcher }
 local Factory_ServerBroker      = arch.ServerBrokerType{ server_broker }
 local Factory_Acceptor          = arch.AcceptorType{ access_point }
 
+local Factory_Scheduler         = arch.SchedulerType{ scheduler }
 ----------------------------------------
 myCodec                        = Factory_Codec()
 myInvokeProtocol               = Factory_InvokeProtocol()
@@ -60,6 +61,8 @@ myActiveChannelFactory         = Factory_ActiveChannel()
 myDispatcher                   = Factory_Dispatcher()
 myServerBroker                 = Factory_ServerBroker()
 myManager                      = Factory_Manager()
+
+myScheduler = Factory_Scheduler()
 ----------------------------------------
 myInvokeProtocol.codec         = myCodec.codec
 myInvokeProtocol.channels      = myActiveChannelFactory.factory
@@ -102,9 +105,6 @@ socket.client_params = {
    verify = {"peer", "fail_if_no_peer_cert"},
    options = {"all", "no_sslv2"},
 }
-print("socket", socket)
-print("socket.server_params", socket.server_params)
-print("socket.client_params", socket.client_params)
 myPassiveChannelFactory.luasocket = socket
 myActiveChannelFactory.luasocket  = socket
 
