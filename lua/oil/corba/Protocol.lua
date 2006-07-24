@@ -35,6 +35,7 @@ local string      = string
 local tostring    = tostring
 local type        = type
 local unpack      = unpack
+local setmetatable = setmetatable
 
 local table       = require "table"
 local io          = require "io"
@@ -45,6 +46,7 @@ module "oil.corba.Protocol"                                         --[[VERBOSE]
 local Exception          = require "oil.Exception"
 local IDL                = require "oil.idl"
 local giop               = require "oil.corba.giop"
+local ObjectCache     = require "loop.collection.ObjectCache"
 local OrderedSet      = require "loop.collection.OrderedSet"
 local assert          = require "oil.assert"
 
@@ -99,6 +101,11 @@ end
 --------------------------------------------------------------------------------
 -- Connection implementation
 --------------------------------------------------------------------------------
+
+local ConnectionCache = ObjectCache{}
+function ConnectionCache:retrieve()
+	return setmetatable({}, {__mode = "v"})
+end
 
 -- protocol IIOP tag
 Tag = 0
@@ -198,9 +205,7 @@ end
 
 function PortConnection:close()
 	-- test whether still active
-	if self.port.connections:remove(self.socket) then                             --[[VERBOSE]] verbose:close "connection unregistered" verbose:close(true, "send close connection message")
-		return self:send(giop.CloseConnectionID)                                         --[[VERBOSE]] , verbose:close(false)
-	end
+	return self.socket:send(giop.CloseConnectionID)                                         --[[VERBOSE]] , verbose:close(false)
 end
 
 
@@ -356,9 +361,20 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 		end
 	end
 
-	local socket, except = self.channels:create(reference.host, reference.port)
-	-- TODO[nogara]: stop creating a new Connection for each request
-	local conn = Connection(socket, self.codec)
+	local conn, except
+	if self._cache_enabled then
+		-- Cache enabled
+		conn, except = ConnectionCache[reference.host][reference.port]
+		if not conn then 
+			local socket, except = self.channels:create(reference.host, reference.port)
+			-- TODO[nogara]: stop creating a new Connection for each request
+			conn = Connection(socket, self.codec)
+			ConnectionCache[reference.host][reference.port] = conn
+		end
+	else
+		-- Cache disabled
+		conn = Connection(socket, self.codec)
+	end
 	local reply_object
 	if conn then
 		local request_id = requestid(conn)
@@ -688,9 +704,11 @@ function ListenProtocol:getrequest(conn)
 		self:sendsysex(conn, requestid, except)
 	else
 		if header.reason ~= "closed" then
-			except = header                                                           --[[VERBOSE]] else verbose:receive "client closed the connection"
+			except = header
+			conn:close()
+		else
+			except = "closed"                                                        --[[VERBOSE]] verbose:receive "client closed the connection"
 		end
-		conn:close()
 	end
 	return except == nil, except
 end
@@ -729,140 +747,3 @@ function ListenProtocol:getchannel(args)
 
 	return portConnection, except
 end
-
-
---------------------------------------------------------------------------------
--- IIOP IOR profile support ----------------------------------------------------
-
-Tag = 0
-
-local TaggedComponentSeq = IDL.sequence{IDL.struct{
-	{name = "tag"           , type = IDL.ulong   },
-	{name = "component_data", type = IDL.OctetSeq},
-}}
-
-local IIOPProfileBody_v1_ = {
-	-- Note: First profile structure field is read/write directly
-	[0] = IDL.struct{
-		--{name = "iiop_version", type = IDL.Version },
-		{name = "host"        , type = IDL.string  },
-		{name = "port"        , type = IDL.ushort  },
-		{name = "object_key"  , type = IDL.OctetSeq},
-	},
-	[1] = IDL.struct{
-		--{name = "iiop_version", type = IDL.Version       },
-		{name = "host"        , type = IDL.string        },
-		{name = "port"        , type = IDL.ushort        },
-		{name = "object_key"  , type = IDL.OctetSeq      },
-		{name = "components"  , type = TaggedComponentSeq},
-	},
-}
-IIOPProfileBody_v1_[2] = IIOPProfileBody_v1_[1] -- same as IIOP 1.1
-IIOPProfileBody_v1_[3] = IIOPProfileBody_v1_[1] -- same as IIOP 1.1
-
-local function openprofile(self, profile)                                             --[[VERBOSE]] verbose:connect(true, "open IIOP IOR profile")
-	local buffer = self.codec:newDecoder(profile, true)
-	local version = buffer:struct(IDL.Version)
-	local profileidl = IIOPProfileBody_v1_[version.minor]
-
-	if version.major ~= 1 or not profileidl then
-		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "IIOP version not supported, got "..
-								version.major.."."..version.minor,
-			reason = "version",
-			protocol = "IIOP",
-			major = version.major,
-			minor = version.minor,
-		}
-	end
-
-	profile = buffer:struct(profileidl)
-	profile.iiop_version = version -- add version read directly
-
-	return profile                                                                --[[VERBOSE]] , verbose:connect(false)
-end
-
-local function createprofile(self, profile, minor)
-	if not minor then minor = 0 end
-	local profileidl = IIOPProfileBody_v1_[minor]
-
-	if not profileidl then
-		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "IIOP version not supported, got 1."..minor,
-			reason = "version",
-			protocol = "IIOP",
-			major = 1,
-			minor = minor,
-		}
-	end
-																																								--[[VERBOSE]] verbose:ior(true, "create IIOP IOR profile with version 1.", minor)
-	local buffer = self.codec:newEncoder(true)
-	buffer:struct({major=1, minor=minor}, IDL.Version)
-	buffer:struct(profile, profileidl)                                            --[[VERBOSE]] verbose:ior(false)
-	return {
-		tag = Tag,  -- TODO:[nogara] this tag=Tag=0 is only for iiop
-		profile_data = buffer:getdata(),
-	}
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-local components = Empty
-function decodeurl(self, data)
-	local temp, objectkey = string.match(data, "^([^/]*)/(.*)$")
-	if temp
-		then data = temp
-		else objectkey = "" -- TODO:[maia] is this correct?
-	end
-	local major, minor
-	major, minor, temp = string.match(data, "^(%d+).(%d+)@(.+)$")
-	if major and major ~= "1" then
-		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "IIOP version not supported, got "..major.."."..minor,
-			reason = "version",
-			protocol = "IIOP",
-			major = major,
-			minor = minor,
-		}
-	end
-	if temp then data = temp end
-	local host, port = string.match(data, "^([^:]+):(%d*)$")
-	if port then
-		port = tonumber(port)
-	else
-		port = 2809
-		if data == ""
-			then host = "localhost"
-			else host = data
-		end
-	end                                                                           --[[VERBOSE]] verbose:ior("got host ", host, ":", port, " and object key '", objectkey, "'")
-	return createprofile(self, {
-			host = host,
-			port = port,
-			object_key = objectkey,
-			components = components,
-		},
-		tonumber(minor)
-	)
-end
-
-function decode_profile(self, profiles)
-		for _, profile in ipairs(profiles) do                                         --[[VERBOSE]] verbose:resolver("got profile with tag ", profile.tag)
-		if profile.tag == Tag then
-			local decoded = openprofile(self, profile.profile_data)
-			return decoded
-		end
-	end
-end
-
-function encode_profile(self, ...)
--- args are (host, port, object_key)
-	return createprofile(self, {
-		host = arg[1],
-		port = arg[2],
-		object_key = arg[3],
-	})
-end
-
-

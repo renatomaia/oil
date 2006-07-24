@@ -58,8 +58,14 @@ function getinfo(self)
 end
 
 local function reader(self, channel)
-  local request = self.listener:getrequest(channel)
-	return self.dispatcher:handle(request)
+	local request, result
+	repeat
+		request = self.listener:getrequest(channel)
+		if request then
+			self.dispatcher:handle(request)
+		end
+	until not request
+	return true
 end		
 
 local function acceptor(self)
