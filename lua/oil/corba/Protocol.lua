@@ -205,7 +205,8 @@ end
 
 function PortConnection:close()
 	-- test whether still active
-	return self.socket:send(giop.CloseConnectionID)                                         --[[VERBOSE]] , verbose:close(false)
+	self.socket:send(giop.CloseConnectionID)                                         --[[VERBOSE]] verbose:close(false)
+	self.socket:close()
 end
 
 
@@ -367,12 +368,14 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 		conn, except = ConnectionCache[reference.host][reference.port]
 		if not conn then 
 			local socket, except = self.channels:create(reference.host, reference.port)
+			
 			-- TODO[nogara]: stop creating a new Connection for each request
 			conn = Connection(socket, self.codec)
 			ConnectionCache[reference.host][reference.port] = conn
 		end
 	else
 		-- Cache disabled
+		local socket, except = self.channels:create(reference.host, reference.port)
 		conn = Connection(socket, self.codec)
 	end
 	local reply_object

@@ -21,7 +21,7 @@ local corba_reference     = require "oil.corba.reference"
 local proxy             = require "oil.corba.proxy"
 local client_broker     = require "oil.ClientBroker"
 local server_broker     = require "oil.ServerBroker"
-local channel_factory   = require "oil.ChannelFactory"
+local channel_factory   = require "oil.ChannelFactorySelect"
 local dispatcher        = require "oil.corba.SimpleDispatcher"
 local manager           = require "oil.ir"
 local access_point      = require "oil.SimpleAcceptor"
@@ -60,6 +60,7 @@ myDispatcher                   = Factory_Dispatcher()
 myServerBroker                 = Factory_ServerBroker()
 myManager                      = Factory_Manager()
 ----------------------------------------
+myInvokeProtocol._cache_enabled = true
 myInvokeProtocol.codec         = myCodec.codec
 myInvokeProtocol.channels      = myActiveChannelFactory.factory
 

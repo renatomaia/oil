@@ -45,11 +45,12 @@ module ( "oil.SimpleAcceptor", oo.class )                                       
 function accept(self)
 	local channel = self.listener:getchannel(self)
 	local request = self.listener:getrequest(channel)
-	local result, errmsg = self.dispatcher:handle(request)
-	if channel then
-		channel:close()
+	if request then
+		local result, errmsg = self.dispatcher:handle(request)
+		return result, errmsg
+	else
+		return true -- there is no request, wait for a new one
 	end
-	return result, errmsg
 end
 
 function acceptall(self)

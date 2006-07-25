@@ -1,6 +1,6 @@
 require "oil"                                   -- Load OiL package
 
-oil.Config.flavor = "CORBAConcurrentServer"
+oil.Config.flavor = "CORBASimple"
 oil.verbose:level(5)
 oil.init()
 --loop.thread.Scheduler.verbose:flag("threads", true)
