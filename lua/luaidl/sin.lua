@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.5.4b
+-- Version:  0.5.5b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 25/05/2006
+-- Last modification: 26/07/2006
 -- Filename: sin.lua
 -- 
 
@@ -296,6 +296,7 @@
 --(314) <component_name_l>      :=    ":" ":" TK_ID <component_name_l>
 --(315)                         |     empty
 --(316) <supp_inter_spec>       :=    TK_SUPPORTS <supp_name> <supp_name_list>
+--(316e)                        |     empty
 --(317) <supp_name>             :=    TK_ID <supp_name_l>
 --(318)                         |     ":" ":" TK_ID <supp_name_l>
 --(319) <supp_name_l>           :=    ":" ":" TK_ID <supp_name_l>
@@ -350,6 +351,9 @@
 --(377) <context_expr_e>        :=    <context_expr>
 --(378)                         |     empty
 --(379) <context>               :=    TK_STRING_LITERAL 
+
+--debug
+local print = print
 
 local type     = type
 local pairs    = pairs
@@ -612,12 +616,14 @@ tab_firsts.rule_253  = set_firsts { 'TK_INOUT' }
 tab_firsts.rule_254  = set_firsts { ',' }
 
 tab_firsts.rule_257  = set_firsts { ',' }
+tab_firsts.rule_297  = set_firsts { 'TK_IN' }
 
 tab_firsts.rule_305  = set_firsts { 'TK_MODULE' }
 tab_firsts.rule_306  = set_firsts { 'TK_COMPONENT' }
 tab_firsts.rule_307  = set_firsts { ':' }
 tab_firsts.rule_308  = set_firsts { 'TK_SUPPORTS' }
 tab_firsts.rule_309  = set_firsts { '{' }
+tab_firsts.rule_316  = set_firsts { 'TK_SUPPORTS' }
 tab_firsts.rule_321  = set_firsts { ',' }
 tab_firsts.rule_323  = set_firsts { 'TK_PROVIDES', 'TK_USES', 'TK_EMITS', 'TK_PUBLISHES', 
                                     'TK_CONSUMES', 'TK_READONLY', 'TK_ATTRIBUTE' }
@@ -630,6 +636,25 @@ tab_firsts.rule_330  = set_firsts { 'TK_READONLY', 'TK_ATTRIBUTE' }
 tab_firsts.rule_332  = set_firsts { 'TK_ID', ':' }
 tab_firsts.rule_333  = set_firsts { 'TK_OBJECT' }
 tab_firsts.rule_339  = set_firsts { 'TK_MULTIPLE' }
+tab_firsts.rule_345  = set_firsts { ':' }
+tab_firsts.rule_346  = set_firsts { 'TK_SUPPORTS' }
+tab_firsts.rule_347  = set_firsts { 'TK_MANAGES' }
+tab_firsts.rule_353  = set_firsts { 'TK_PRIMARYKEY' }
+tab_firsts.rule_359  = set_firsts { 'TK_ONEWAY', 'TK_VOID', 'TK_STRING', 'TK_ID', ':',
+                        'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY',
+                        'TK_OBJECT', 'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT',
+                        'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED','TK_TYPEDEF',
+                        'TK_ENUM', 'TK_NATIVE', 'TK_UNION', 'TK_STRUCT',
+                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE', 'TK_TYPECODE',
+                        'TK_FACTORY', 'TK_FINDER'
+                       }
+tab_firsts.rule_361  = tab_firsts.rule_207
+tab_firsts.rule_362  = set_firsts { 'TK_FACTORY' }
+tab_firsts.rule_363  = set_firsts { 'TK_FINDER' }
+tab_firsts.rule_364  = tab_firsts.rule_362
+tab_firsts.rule_365  = tab_firsts.rule_363
+tab_firsts.rule_366  = tab_firsts.rule_297
+tab_firsts.rule_368  = set_firsts { ',' }
 tab_firsts.rule_370  = set_firsts { 'TK_RAISES' }
 
 tab_firsts.rule_377  = set_firsts { 'TK_CONTEXT' }
@@ -664,14 +689,23 @@ tab_follow.rule_167  = set_firsts { "}" }
 tab_follow.rule_204  = set_firsts { ',', '{' }
 tab_follow.rule_221  = set_firsts { 'TK_ID' }
 tab_follow.rule_229  = set_firsts { ',', ')' }
-tab_follow.rule_307  = set_firsts { 'TK_SUPPORTS' }
+tab_follow.rule_307  = set_firsts { 'TK_SUPPORTS', '{' }
+tab_follow.rule_308  = set_firsts { ',', ':', '{' }
 tab_follow.rule_316  = set_firsts { ',', '{' }
+tab_follow.rule_316e = set_firsts { '{' }
 tab_follow.rule_321  = tab_follow.rule_316
 tab_follow.rule_332  = set_firsts { 'TK_ID' }
 tab_follow.rule_340  = set_firsts { 'TK_MULTIPLE', 'TK_ID', ':', 'TK_OBJECT' }
 tab_follow.rule_341  = set_firsts { 'TK_ID' }
 tab_follow.rule_342  = tab_follow.rule_341
 tab_follow.rule_343  = tab_follow.rule_342
+tab_follow.rule_345  = set_firsts { ',', ':', 'TK_MANAGES' }
+tab_follow.rule_347  = set_firsts { 'TK_PRIMARYKEY', '{' }
+tab_follow.rule_348  = set_firsts { 'TK_SUPPORTS' }
+tab_follow.rule_353  = set_firsts { '{' }
+tab_follow.rule_359  = set_firsts { '}' }
+tab_follow.rule_367  = set_firsts { ',', ')' }
+tab_follow.rule_369  = set_firsts { ')' }
 tab_follow.rule_600  = set_firsts { 'TK_STRING_LITERAL' }
 tab_follow_rule_error_msg = { [32]  = 'identifier',
                               [64]  = "',' or '>'",
@@ -683,9 +717,11 @@ tab_follow_rule_error_msg = { [32]  = 'identifier',
                               [204] = "',', '{'",
                               [221] = "identifier",
                               [229] = "',', ')'",
+                              [307] = "'{'",
+                              [345] = "'manages'",
                               [316] = "',', '{'",
                               [332] = "identifier",
-                              [600] = 'string literal' 
+                              [600] = 'string literal', 
                             }
 
 local token = lex.token
@@ -733,6 +769,9 @@ local TAB_TYPEID = {
                [ 'UNION' ]     = 'union',
                [ 'TYPECODE' ]  = 'TypeCode',
                [ 'COMPONENT' ] = 'component',
+               [ 'HOME' ]      = 'home',
+               [ 'FACTORY' ]   = 'factory',
+               [ 'FINDER' ]    = 'finder',
              }
 
 local TAB_BASICTYPE = { 
@@ -884,23 +923,21 @@ local function is_legal_type( type )
   end --if
 end
 
-local function is_accept_definition( type )
-  local tab_accept_definition_type = { 
+local tab_accept_member_type = { 
+    [ TAB_TYPEID.INTERFACE ] = true,
+    [ TAB_TYPEID.HOME ] = true,
+}
+
+local tab_accept_definition_type = { 
     [ TAB_TYPEID.MODULE ] = true,
     [ TAB_TYPEID.STRUCT ] = true,
     [ TAB_TYPEID.INTERFACE ] = true,
     [ TAB_TYPEID.UNION ] = true,
     [ TAB_TYPEID.EXCEPTION ] = true,
-  }
-  if ( tab_accept_definition_type[ type ] ) then
-    return true
-  else
-    return false
-  end --if
-end
+    [ TAB_TYPEID.HOME ] = true,
+}
 
-local function is_definition( type )
-  local tab_definition_type = { 
+local tab_definition_type = { 
     [ TAB_TYPEID.MODULE ] = true,
     [ TAB_TYPEID.STRUCT ] = true,
     [ TAB_TYPEID.ENUM ] = true,
@@ -910,8 +947,26 @@ local function is_definition( type )
     [ TAB_TYPEID.INTERFACE ] = true,
     [ TAB_TYPEID.TYPEDEF ] = true,
     [ TAB_TYPEID.COMPONENT ] = true,
- 
-  }
+    [ TAB_TYPEID.HOME ] = true, 
+}
+
+local function is_accept_members( type )
+  if ( tab_accept_member_type[ type ] ) then
+    return true
+  else
+    return false
+  end --if
+end
+
+local function is_accept_definition( type )
+  if ( tab_accept_definition_type[ type ] ) then
+    return true
+  else
+    return false
+  end --if
+end
+
+local function is_definition( type )
   if ( tab_definition_type[ type ] ) then
     return true
   else
@@ -940,7 +995,7 @@ local function define( name, type )
       sem_error( string.format( ERRMSG_REDEFINITION, name ) )
     end --if
   end --if
- 
+
   if tab_forward[ absolutename ] then
     tab_scope = tab_forward[ absolutename ]
     tab_forward[ absolutename ] = nil
@@ -962,7 +1017,7 @@ local function define( name, type )
     curr_scope = curr_scope..name
   end --if
   
-  if ( not tab_members and type == TAB_TYPEID[ 'INTERFACE'] ) then
+  if ( not tab_members and is_accept_members( type ) ) then
     tab_members = { }
   end --if
   
@@ -2847,6 +2902,11 @@ function exception_l( attribute_name, raises_type )
   reconhecer( ")", "')'" )
 end
 
+--------------------------------------------------------------------------
+-- COMPONENT DECLARATION
+--------------------------------------------------------------------------
+
+--17
 function component()
   reconhecer( lex.tab_tokens.TK_COMPONENT, "'component'" )
   reconhecer( lex.tab_tokens.TK_ID, "identifier" )
@@ -2858,17 +2918,25 @@ function component()
 end
 
 function component_tail( name )
+--17
   if ( tab_firsts.rule_307[ token ] ) then
-    scoped_name( 307 )
-    supp_inter_spec()
+    reconhecer(":", "':'")
+    local component = scoped_name( 307 )
+    if component._type ~= TAB_TYPEID.COMPONENT then
+      sem_error( "The previously-defined type is not a COMPONENT" )
+    end --if
+	  tab_curr_scope.component_base = component
+    supp_inter_spec(308)
     reconhecer( "{", "'{'" )
     component_body()
     reconhecer( "}", "'}'" )
+--17
   elseif ( tab_firsts.rule_308[ token ] ) then
-    supp_inter_spec()
+    supp_inter_spec(308)
     reconhecer( "{", "'{'" )
     component_body()
     reconhecer( "}", "'}'" )
+--17
   elseif ( tab_firsts.rule_309[ token ] ) then
     reconhecer( "{", "'{'" )
     component_body()
@@ -2876,23 +2944,41 @@ function component_tail( name )
   elseif ( token == ';' ) then
     dclForward( name, TAB_TYPEID.COMPONENT )
     --empty
+--17
   else
     sin_error( "':', 'supports' or '{'" )
   end --if
 end
 
-function supp_inter_spec()
-  reconhecer( lex.tab_tokens.TK_SUPPORTS, "'supports'" )
-  scoped_name( 316 )
-  supp_name_list()
-end
+--17
+function supp_inter_spec(num_follow_rule)
+  if tab_firsts.rule_316[ token ] then
+    reconhecer( lex.tab_tokens.TK_SUPPORTS, "'supports'" )
+    tab_curr_scope.supports = { }
+    local interface = scoped_name( num_follow_rule )
+    if interface._type ~= TAB_TYPEID.INTERFACE then
+      sem_error( "The 'SUPPORTS' construction must be reference to an interface" )
+    end --if
+    table.insert( tab_curr_scope.supports, interface )
+    supp_name_list(num_follow_rule)
+  elseif ( tab_follow[ 'rule_'..num_follow_rule ][ token ] ) then
+    -- empty
+  else
+    sin_error( "':', ',', or "..tab_follow_rule_error_msg[ num_follow_rule ] )
+  end
+end 
 
-function supp_name_list()
+--17
+function supp_name_list(num_follow_rule)
   if ( tab_firsts.rule_321[ token ] ) then
     reconhecer( ',', "','" )
-    scoped_name( 321 )
-    supp_name_list()
-  elseif ( token == '{' ) then
+    local interface = scoped_name( num_follow_rule )
+    if interface._type ~= TAB_TYPEID.INTERFACE then
+      sem_error( "The 'SUPPORTS' construction must be reference to an interface" )
+    end --if
+    table.insert( tab_curr_scope.supports, interface )
+    supp_name_list(num_follow_rule)
+  elseif ( tab_follow[ 'rule_'..num_follow_rule ][ token ] ) then
     --empty
   else
     sin_error( "',' or '{'" )
@@ -2934,16 +3020,20 @@ end
 
 function provides_dcl()
   reconhecer( lex.tab_tokens.TK_PROVIDES, 'provides' )
-  local name = lex.tokenvalue_previous
   local tab_provides = { _type = 'provides' }
-  new_name( name, name, tab_curr_scope.declarations, tab_provides, ERRMSG_DECLARED, name )
   tab_provides.interface_type = interface_type()
   reconhecer( lex.tab_tokens.TK_ID, '<identifier>' )
+  local name = lex.tokenvalue_previous
+  new_name( name, name, tab_curr_scope.declarations, tab_provides, ERRMSG_DECLARED, name )
 end
 
 function interface_type()
   if ( tab_firsts.rule_332[ token ] ) then
-    return scoped_name( 332 )
+    local scope = scoped_name( 332 )
+    if scope._type ~= TAB_TYPEID.INTERFACE then
+      sem_error( "The interface type of this provides declaration shall be either the keyword Object or a scoped name that denotes a previously-declared interface type" )
+    end --if
+    return scope
   elseif ( tab_firsts.rule_333[ token ] ) then
     reconhecer( lex.tab_tokens.TK_OBJECT, "'Object'" )
     return TAB_BASICTYPE.OBJECT
@@ -2954,12 +3044,12 @@ end
 
 function uses_dcl()
   reconhecer( lex.tab_tokens.TK_USES, "'uses'" )
-  local name = lex.tokenvalue_previous
   local tab_uses = { _type = 'uses' }
-  new_name( name, name, tab_curr_scope.declarations, tab_uses, ERRMSG_DECLARED, name )
   tab_uses.multiple = multiple_e()
   tab_uses.interface_type = interface_type()
   reconhecer( lex.tab_tokens.TK_ID, "<identifier>" )
+  local name = lex.tokenvalue_previous
+  new_name( name, name, tab_curr_scope.declarations, tab_uses, ERRMSG_DECLARED, name )
 end
 
 function multiple_e()
@@ -2967,12 +3057,14 @@ function multiple_e()
     reconhecer( lex.tab_tokens.TK_MULTIPLE, "'multiple'" )
     return true
   elseif ( tab_follow.rule_340[ token ] ) then
+    return nil
     --empty
   else
     sin_error( "'multiple', <identifier>, ':' or 'Object'" )
   end --if
 end
 
+--falta event!!
 function emits_dcl()
   reconhecer( lex.tab_tokens.TK_EMITS, "'emits'" )
   local name = lex.tokenvalue_previous
@@ -2983,6 +3075,7 @@ function emits_dcl()
   tab_uses.evtsrc = lex.tokenvalue_previous
 end
 
+--falta event!!
 function publishes_dcl()
   reconhecer( lex.tab_tokens.TK_PUBLISHES, "'publishes'" )
   local name = lex.tokenvalue_previous
@@ -2993,6 +3086,7 @@ function publishes_dcl()
   tab_uses.evtsrc = lex.tokenvalue_previous
 end
 
+--falta event!!
 function consumes_dcl()
   reconhecer( lex.tab_tokens.TK_CONSUMES, "'consumes'" )
   local name = lex.tokenvalue_previous
@@ -3019,28 +3113,180 @@ end
 -- HOME DECLARATION
 --------------------------------------------------------------------------
 
+--19
 function home_dcl()
   reconhecer(lex.tab_tokens.TK_HOME, "'home'")
   reconhecer(lex.tab_tokens.TK_ID, "'identifier'")
   local name = lex.tokenvalue_previous
-  home_dcl_tail()
+  define( name, TAB_TYPEID.HOME )
+  home_dcl_tail(name)
+  goto_father_scope()
 end
 
---(345) <home_dcl_tail>         :=    <home_inh_spec> <supp_inter_spec>
---                                    TK_MANAGES <home_name> <primary_key_spec_e>
---                                    "{" <home_export_l> "}"
---(346)                         |     <supp_inter_spec> TK_MANAGES <home_name> <primary_key_spec_e>
---                                    "{" <home_export_l> "}"
---(347)                         |     TK_MANAGES <home_name> <primary_key_spec_e>
---                                    "{" <home_export_l> "}"
---[[function home_dcl_tail()
+--19
+--falta primary key
+function home_dcl_tail(name)
   if ( tab_firsts.rule_345[ token ] )then
     home_inh_spec()
-    supp_inter_spec()
+    supp_inter_spec(345)
     reconhecer(lex.tab_tokens.TK_MANAGES)
-  elseif ( tab_firsts.rule_
+    local component = scoped_name(347)
+    tab_curr_scope.manages = component
+    primary_key_spec_e()
+    reconhecer("{", "'{'")
+    home_export_l()
+    reconhecer("}", "'}'")
+  elseif ( tab_firsts.rule_346[ token ] ) then
+  	supp_inter_spec(345)
+    reconhecer(lex.tab_tokens.TK_MANAGES)
+    local component = scoped_name(347)
+    tab_curr_scope.manages = component
+    primary_key_spec_e()
+    reconhecer("{", "'{'")
+    home_export_l()
+    reconhecer("}", "'}'")
+  elseif ( tab_firsts.rule_347[ token ] ) then
+    reconhecer(lex.tab_tokens.TK_MANAGES)
+    tab_curr_scope.component = scoped_name(347)
+    primary_key_spec_e()
+    reconhecer("{", "'{'")
+    home_export_l()
+    reconhecer("}", "'}'")
+  else
+    sin.error("'supports', 'manages', ':'")
   end --if
-end]]
+end
+
+--19
+function home_inh_spec()
+  if ( tab_firsts.rule_348[ token ] ) then
+  	reconhecer(":","':'")
+    local home = scoped_name( 348 )
+    if home._type ~= TAB_TYPEID.HOME then
+      sem_error( "The previously-defined type is not a HOME" )
+    end --if
+    tab_curr_scope.home_base = home
+  end --if
+end
+
+--(353) <primary_key_spec_e>    :=    TK_PRIMARYKEY <scoped_name>
+--(354)                         |     empty
+function primary_key_spec_e()
+  if tab_firsts.rule_353[ token ] then
+    reconhecer(lex.tab_tokens.TK_PRIMARYKEY, 'primarykey')
+    scoped_name(353)
+  elseif tab_follow.rule_353[ token ] then
+    --empty
+  end --if
+end
+
+--19
+function home_export_l()
+  if tab_firsts.rule_359[ token ] then
+  	home_export()
+  	home_export_l()
+  elseif tab_follow.rule_359[ token ] then
+  	--empty
+  end --if
+end
+
+--19
+function home_export()
+  if tab_firsts.rule_361[ token ] then
+    export()
+  elseif tab_firsts.rule_362[ token ] then
+  	factory_dcl()
+  	reconhecer(";","';'")
+  elseif tab_firsts.rule_363[ token ] then
+  	finder_dcl()
+  	reconhecer(";","';'")
+  else
+    sin_error("error")
+  end --if
+end
+
+--19
+function factory_dcl()
+  if tab_firsts.rule_364[ token ] then
+  	reconhecer(lex.tab_tokens.TK_FACTORY, "'factory'")
+  	reconhecer(lex.tab_tokens.TK_ID, "'identifier'")
+    local name = lex.tokenvalue_previous
+    local tab_factory = { _type = TAB_TYPEID.FACTORY, name = name }
+    new_name( name, name,
+           tab_curr_scope.members, tab_factory, ERRMSG_OPDECLARED, name )
+    reconhecer("(","'('")
+    init_param_dcls(tab_factory)
+    reconhecer(")","')'")
+    raises_expr_e(tab_factory)
+  end --if
+end
+
+--19
+function init_param_dcls(tab_factory)
+  if tab_firsts.rule_366[ token ] then
+    tab_factory.parameters = { }
+  	init_param_dcl(tab_factory)
+  	init_param_dcl_list(tab_factory)
+  elseif tab_follow.rule_367[ token ] then
+  	--empty
+  end --if
+end
+
+--19
+function init_param_dcl(tab_factory)
+  if tab_firsts.rule_297[ token ] then
+  	reconhecer(lex.tab_tokens.TK_IN, "'in'")
+  	local tab_type_spec = param_type_spec()
+  	reconhecer(lex.tab_tokens.TK_ID, "'identifier'")
+    local param_name = lex.tokenvalue_previous
+    new_name( tab_factory.name..'._parameters.'..param_name,
+           param_name, tab_factory.parameters,
+           { mode = 'PARAM_IN', type = tab_type_spec, name = param_name },
+           ERRMSG_PARAMDECLARED 
+  )
+  else
+    sin_error("'in'")
+  end --if
+end
+
+--19
+function init_param_dcl_list(tab_factory)
+  if tab_firsts.rule_368[ token ] then
+  	reconhecer(",", "','")
+  	init_param_dcl(tab_factory)
+  	init_param_dcl_list(tab_factory)
+  elseif tab_follow.rule_369[ token ] then
+  	--empty
+  end --if
+end
+
+--19
+function finder_dcl()
+  if tab_firsts.rule_365[ token ] then
+  	reconhecer(lex.tab_tokens.TK_FINDER, "'finder'")
+  	reconhecer(lex.tab_tokens.TK_ID, "'identifier'")
+    local name = lex.tokenvalue_previous
+    local tab_finder = { _type = TAB_TYPEID.FINDER, name = name }
+    new_name( name, name,
+           tab_curr_scope.members, tab_finder, ERRMSG_OPDECLARED, name )
+  	reconhecer("(", "'('")
+  	init_param_dcls(tab_finder)
+  	reconhecer(")", "')'")
+  	raises_expr_e(tab_finder)
+  else
+    sin_error("'finder'")
+  end --if
+end
+
+--------------------------------------------------------------------------
+-- EVENT DECLARATION
+--------------------------------------------------------------------------
+
+
+
+--------------------------------------------------------------------------
+-- API
+--------------------------------------------------------------------------
 
 function parse( stridlparam, ptab_callbacks )
   if not ptab_callbacks then
