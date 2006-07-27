@@ -47,6 +47,11 @@ local IDL     = require "oil.idl"
 local cdr     = require "oil.cdr"
 
 --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+local UnionLabelInfo = {name = "label"}
+
+--------------------------------------------------------------------------------
 -- TypeCode information --------------------------------------------------------
 
 -- NOTE: Description of type code categories, which is defined by field type
@@ -99,18 +104,19 @@ local TypeCodeInfo = {
 			{name = "switch" , type = IDL.TypeCode},
 			{name = "default", type = IDL.long    },
 		},
-		mutable = function(union) return
-			-- NOTE: unmarshalling of next fields depends on field switch.
-			-- TODO:[maia] Avoid creating a brand new IDL type descriptor.
-			--             Check if it can be reused.
+		mutable = {
 			{name = "options", type = IDL.sequence{
 				IDL.struct{
-					{name = "label", type = union.switch},
+					UnionLabelInfo, -- NOTE: depends on field 'switch'.
 					{name = "name" , type = IDL.string  },
 					{name = "type" , type = IDL.TypeCode},
 				},
-			}}
-		end,
+			}},
+			setup = function(self, union)
+				UnionLabelInfo.type = union.switch
+				return self
+			end,
+		},
 	},
 	[17] = {name = "enum", type = "complex",
 		parameters = IDL.struct{
@@ -207,7 +213,7 @@ function unmarshall(buffer)                                                     
 		buffer = cdr.ReadBuffer(params, true)                                       --[[VERBOSE]] verbose.unmarshall{"[parameters values]"}
 		params = buffer:struct(tcinfo.parameters)
 		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose.unmarshall{"[mutable parameters values]"}
-			for _, param in ipairs{tcinfo.mutable(params)} do
+			for _, param in ipairs(tcinfo.mutable:setup(params)) do
 				params[param.name] = buffer:get(param.type)
 			end
 		end                                                                         --[[VERBOSE]] verbose.unmarshall() -- done
@@ -243,7 +249,7 @@ function marshall(buffer, value)                                                
 		local temp = cdr.WriteBuffer(true)                                          --[[VERBOSE]] verbose.marshall{"[parameters values]"}
 		temp:struct(value, tcinfo.parameters)
 		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose.marshall{"[mutable parameters values]"}
-			for _, param in ipairs{tcinfo.mutable(value)} do
+			for _, param in ipairs(tcinfo.mutable:setup(value)) do
 				temp:put(value[param.name], param.type)
 			end
 		end                                                                         --[[VERBOSE]] verbose.marshall{"[parameters encapsulation]"}

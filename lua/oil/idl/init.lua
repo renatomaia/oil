@@ -261,10 +261,6 @@ function struct(def)                                                            
 	return def                                                                    --[[VERBOSE]] , verbose.newIDL("struct", def.name, VERBOSE_BEFORE, def)
 end
 
-local function unionindex(self, field)
-end
-local function unionnewindex(self, field, value)
-end
 function union(def)                                                             --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "union")
 	newdef(def, true)
 	if def.default == nil then def.default = -1 end -- indicates no default in CDR
