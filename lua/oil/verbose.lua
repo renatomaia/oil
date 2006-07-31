@@ -79,10 +79,9 @@ end
 
 function marshallOf(tcode, value, buffer, final)
 	if Flags.marshall then
-		local rawdata = buffer:getdata()
 		local formated = ""
 		if type(Details) == "table" and Details.marshall or Details == true then
-			formated = format_rawdata(rawdata, buffer.cursor)
+			formated = format_rawdata(buffer:getdata(), buffer.cursor)
 		end
 		marshall{"marshall of ", tcode._type, " ",
 		         tcode.name or tcode.repID,
@@ -97,10 +96,9 @@ end
 
 function unmarshallOf(tcode, value, buffer, final)
 	if Flags.unmarshall then
-		local rawdata = buffer:getdata()
 		local formated = ""
 		if type(Details) == "table" and Details.unmarshall or Details == true then
-			formated = format_rawdata(rawdata, buffer.cursor)
+			formated = format_rawdata(buffer:getdata(), buffer.cursor)
 		end
 		unmarshall{"unmarshall of ", tcode._type, " ",
 		           tcode.name or tcode.repID or "",

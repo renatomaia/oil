@@ -1,3 +1,13 @@
+/*
+* Copyright (c) 2006 Renato F. Maia.
+* All rights reserved.
+*
+* Module that exports support for conversion of numbers between different
+* binary formats and also support for bit manipulation.
+*
+* $Id$
+*/
+
 #ifndef OILBIT_H
 #define OILBIT_H
 

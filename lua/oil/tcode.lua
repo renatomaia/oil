@@ -43,13 +43,13 @@ module "oil.tcode"                                                              
 -- Dependencies ----------------------------------------------------------------
 
 local assert  = require "oil.assert"
-local IDL     = require "oil.idl"
+local idl     = require "oil.idl"
 local cdr     = require "oil.cdr"
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local UnionLabelInfo = {name = "label"}
+local UnionLabelInfo = { name = "label", type = idl.void }
 
 --------------------------------------------------------------------------------
 -- TypeCode information --------------------------------------------------------
@@ -60,56 +60,56 @@ local UnionLabelInfo = {name = "label"}
 --	simple : parameters that specify the associated type are defined as a
 --           sequence of values.
 --	complex: parameters that specify the associated type are defined as a
---           structure defined in IDL that is stored in a encapsulated octet
+--           structure defined in idl that is stored in a encapsulated octet
 --           sequence (i.e. which endianess may differ).
 
 local TypeCodeInfo = {
-	[0]  = {name = "null"     , type = "empty", idl = IDL.null     , unhandled = true}, 
-	[1]  = {name = "void"     , type = "empty", idl = IDL.void     }, 
-	[2]  = {name = "short"    , type = "empty", idl = IDL.short    },
-	[3]  = {name = "long"     , type = "empty", idl = IDL.long     },
-	[4]  = {name = "ushort"   , type = "empty", idl = IDL.ushort   },
-	[5]  = {name = "ulong"    , type = "empty", idl = IDL.ulong    },
-	[6]  = {name = "float"    , type = "empty", idl = IDL.float    },
-	[7]  = {name = "double"   , type = "empty", idl = IDL.double   },
-	[8]  = {name = "boolean"  , type = "empty", idl = IDL.boolean  },
-	[9]  = {name = "char"     , type = "empty", idl = IDL.char     },
-	[10] = {name = "octet"    , type = "empty", idl = IDL.octet    },
-	[11] = {name = "any"      , type = "empty", idl = IDL.any      },
-	[12] = {name = "TypeCode" , type = "empty", idl = IDL.TypeCode },
-	[13] = {name = "Principal", type = "empty", idl = IDL.Principal, unhandled = true},
+	[0]  = {name = "null"     , type = "empty", idl = idl.null     , unhandled = true}, 
+	[1]  = {name = "void"     , type = "empty", idl = idl.void     }, 
+	[2]  = {name = "short"    , type = "empty", idl = idl.short    },
+	[3]  = {name = "long"     , type = "empty", idl = idl.long     },
+	[4]  = {name = "ushort"   , type = "empty", idl = idl.ushort   },
+	[5]  = {name = "ulong"    , type = "empty", idl = idl.ulong    },
+	[6]  = {name = "float"    , type = "empty", idl = idl.float    },
+	[7]  = {name = "double"   , type = "empty", idl = idl.double   },
+	[8]  = {name = "boolean"  , type = "empty", idl = idl.boolean  },
+	[9]  = {name = "char"     , type = "empty", idl = idl.char     },
+	[10] = {name = "octet"    , type = "empty", idl = idl.octet    },
+	[11] = {name = "any"      , type = "empty", idl = idl.any      },
+	[12] = {name = "TypeCode" , type = "empty", idl = idl.TypeCode },
+	[13] = {name = "Principal", type = "empty", idl = idl.Principal, unhandled = true},
 
 	[14] = {name = "Object", type = "complex",
-		parameters = IDL.struct{
-			{name = "repID", type = IDL.string},
-			{name = "name" , type = IDL.string},
+		parameters = idl.struct{
+			{name = "repID", type = idl.string},
+			{name = "name" , type = idl.string},
 		},
 	},
 	[15] = {name = "struct", type = "complex",
-		parameters = IDL.struct{
-			{name = "repID" , type = IDL.string},
-			{name = "name"  , type = IDL.string},
-			{name = "fields", type = IDL.sequence{
-				IDL.struct{
-					{name = "name", type = IDL.string},
-					{name = "type", type = IDL.TypeCode}
+		parameters = idl.struct{
+			{name = "repID" , type = idl.string},
+			{name = "name"  , type = idl.string},
+			{name = "fields", type = idl.sequence{
+				idl.struct{
+					{name = "name", type = idl.string},
+					{name = "type", type = idl.TypeCode}
 				},
 			}},
 		},
 	},
 	[16] = {name = "union", type = "complex",
-		parameters = IDL.struct{
-			{name = "repID"  , type = IDL.string  },
-			{name = "name"   , type = IDL.string  },
-			{name = "switch" , type = IDL.TypeCode},
-			{name = "default", type = IDL.long    },
+		parameters = idl.struct{
+			{name = "repID"  , type = idl.string  },
+			{name = "name"   , type = idl.string  },
+			{name = "switch" , type = idl.TypeCode},
+			{name = "default", type = idl.long    },
 		},
 		mutable = {
-			{name = "options", type = IDL.sequence{
-				IDL.struct{
+			{name = "options", type = idl.sequence{
+				idl.struct{
 					UnionLabelInfo, -- NOTE: depends on field 'switch'.
-					{name = "name" , type = IDL.string  },
-					{name = "type" , type = IDL.TypeCode},
+					{name = "name" , type = idl.string  },
+					{name = "type" , type = idl.TypeCode},
 				},
 			}},
 			setup = function(self, union)
@@ -119,44 +119,44 @@ local TypeCodeInfo = {
 		},
 	},
 	[17] = {name = "enum", type = "complex",
-		parameters = IDL.struct{
-			{name = "repID"     , type = IDL.string              },
-			{name = "name"      , type = IDL.string              },
-			{name = "enumvalues", type = IDL.sequence{IDL.string}},
+		parameters = idl.struct{
+			{name = "repID"     , type = idl.string              },
+			{name = "name"      , type = idl.string              },
+			{name = "enumvalues", type = idl.sequence{idl.string}},
 		}
 	},
-	[18] = {name = "string", type = "simple", idl = IDL.string,
+	[18] = {name = "string", type = "simple", idl = idl.string,
 		parameters = {
-			{name = "maxlength", type = IDL.ulong}
+			{name = "maxlength", type = idl.ulong}
 		},
 	},
 	[19] = {name = "sequence", type = "complex",
-		parameters = IDL.struct{
-			{name = "elementtype", type = IDL.TypeCode},
-			{name = "maxlength"  , type = IDL.ulong   },
+		parameters = idl.struct{
+			{name = "elementtype", type = idl.TypeCode},
+			{name = "maxlength"  , type = idl.ulong   },
 		}
 	},
 	[20] = {name = "array", type = "complex",
-		parameters = IDL.struct{
-			{name = "elementtype", type = IDL.TypeCode},
-			{name = "length"     , type = IDL.ulong   },
+		parameters = idl.struct{
+			{name = "elementtype", type = idl.TypeCode},
+			{name = "length"     , type = idl.ulong   },
 		}
 		},
 	[21] = {name = "typedef", type = "complex",
-		parameters = IDL.struct{
-			{name = "repID", type = IDL.string  },
-			{name = "name" , type = IDL.string  },
-			{name = "type" , type = IDL.TypeCode},
+		parameters = idl.struct{
+			{name = "repID", type = idl.string  },
+			{name = "name" , type = idl.string  },
+			{name = "type" , type = idl.TypeCode},
 		},
 	},
 	[22] = {name = "except", type = "complex",
-		parameters = IDL.struct{
-			{name = "repID", type = IDL.string},
-			{name = "name",  type = IDL.string},
-			{name = "members", type = IDL.sequence{
-				IDL.struct{
-					{name = "name", type = IDL.string  },
-					{name = "type", type = IDL.TypeCode},
+		parameters = idl.struct{
+			{name = "repID", type = idl.string},
+			{name = "name",  type = idl.string},
+			{name = "members", type = idl.sequence{
+				idl.struct{
+					{name = "name", type = idl.string  },
+					{name = "type", type = idl.TypeCode},
 				},
 			}},
 		},
@@ -169,13 +169,13 @@ local TypeCodeInfo = {
 	
 	[27] = {name = "wstring", type = "simple", unhandled = true, kind = "wstring",
 		parameters = {
-			{name = "maxlength", type = IDL.ulong},
+			{name = "maxlength", type = idl.ulong},
 		},
 	},
 	[28] = {name = "fixed", type = "simple", unhandled = true, kind = "fixed",
 		parameters = {
-			{name = "digits", type = IDL.ushort},
-			{name = "scale" , type = IDL.short },
+			{name = "digits", type = idl.ushort},
+			{name = "scale" , type = idl.short },
 		},
 	},
 	
@@ -190,8 +190,7 @@ local TypeCodeInfo = {
 --------------------------------------------------------------------------------
 -- TypeCode unmarshalling function ---------------------------------------------
 
-function unmarshall(buffer)                                                     --[[VERBOSE]] verbose.unmarshallOf(IDL.TypeCode, value, buffer)
-	local kind = buffer:ulong()
+function unmarshall(kind, buffer)                                               --[[VERBOSE]] verbose.unmarshallOf(idl.TypeCode, value, buffer)
 	local tcinfo = TypeCodeInfo[kind]
 	
 	if tcinfo == nil then assert.ilegal(kind, "type code", "MARSHALL") end        --[[VERBOSE]] verbose.unmarshall{"TypeCode defines a ", tcinfo.name}
@@ -209,19 +208,24 @@ function unmarshall(buffer)                                                     
 		
 	elseif tcinfo.type == "complex" then                                          --[[VERBOSE]] verbose.unmarshall{"[parameters encapsulation]"}
 		
-		local params = buffer:sequence(IDL.OctetSeq)
-		buffer = cdr.ReadBuffer(params, true)                                       --[[VERBOSE]] verbose.unmarshall{"[parameters values]"}
-		params = buffer:struct(tcinfo.parameters)
+		local params = buffer:sequence(idl.OctetSeq)
+		local temp = cdr.ReadBuffer(params, true)                                   --[[VERBOSE]] verbose.unmarshall{"[parameters values]"}
+		temp:pointto(buffer)
+		params = temp:struct(tcinfo.parameters)
 		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose.unmarshall{"[mutable parameters values]"}
 			for _, param in ipairs(tcinfo.mutable:setup(params)) do
-				params[param.name] = buffer:get(param.type)
+				params[param.name] = temp:get(param.type)
 			end
 		end                                                                         --[[VERBOSE]] verbose.unmarshall() -- done
-		return IDL[tcinfo.name](params)
+		return idl[tcinfo.name](params)
 		
 	end                                                                           --[[VERBOSE]] verbose.unmarshall() -- done
 	
 	return tcinfo.idl
+end
+
+function get(buffer)
+	return buffer:indirection(unmarshall)
 end
 
 --------------------------------------------------------------------------------
@@ -230,11 +234,7 @@ end
 local TypeCodes = { interface = 14 }
 for tcode, info in ipairs(TypeCodeInfo) do TypeCodes[info.name] = tcode end
 
-function marshall(buffer, value)                                                --[[VERBOSE]] verbose.marshallOf(IDL.TypeCode, value, buffer)
-	local kind   = TypeCodes[value._type]
-	local tcinfo = TypeCodeInfo[kind]
-	
-	if not kind then assert.ilegal(value, "IDL type", "MARSHALL") end
+local function marshall(buffer, value, kind, tcinfo)
 	
 	buffer:ulong(kind)
 	
@@ -247,13 +247,28 @@ function marshall(buffer, value)                                                
 	elseif tcinfo.type == "complex" then
 		
 		local temp = cdr.WriteBuffer(true)                                          --[[VERBOSE]] verbose.marshall{"[parameters values]"}
+		temp:pointto(buffer)
+		temp.start = temp.start + 4 -- adds the size of the OctetSeq count
 		temp:struct(value, tcinfo.parameters)
 		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose.marshall{"[mutable parameters values]"}
 			for _, param in ipairs(tcinfo.mutable:setup(value)) do
 				temp:put(value[param.name], param.type)
 			end
 		end                                                                         --[[VERBOSE]] verbose.marshall{"[parameters encapsulation]"}
-		buffer:sequence(temp:getdata(), IDL.OctetSeq)
+		buffer:sequence(temp:getdata(), idl.OctetSeq)
 		
+	end
+end
+
+function put(buffer, value)                                                     --[[VERBOSE]] verbose.marshallOf(idl.TypeCode, value, buffer)
+	local kind   = TypeCodes[value._type]
+	local tcinfo = TypeCodeInfo[kind]
+
+	if not kind then assert.ilegal(value, "idl type", "MARSHALL") end
+	
+	if tcinfo.type == "empty" then
+		buffer:ulong(kind)
+	else
+		buffer:indirection(marshall, value, kind, tcinfo)
 	end                                                                           --[[VERBOSE]] verbose.marshall() -- done
 end

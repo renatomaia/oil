@@ -102,6 +102,7 @@ local tonumber     = tonumber
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 local require      = require
+local unpack       = unpack
 
 local math         = require "math"
 local string       = require "string"
@@ -127,6 +128,8 @@ local function alignbuffer(self, alignment)
 	if extra > 0 then self:jump(alignment - extra) end
 end
 
+NativeEndianess = (bit.endianess() == "little")
+
 --------------------------------------------------------------------------------
 --##  ##  ##  ##  ##   ##   ####   #####    ####  ##  ##   ####   ##     ##   --
 --##  ##  ### ##  ### ###  ##  ##  ##  ##  ##     ##  ##  ##  ##  ##     ##   --
@@ -139,22 +142,23 @@ end
 -- Unmarshalling buffer class --------------------------------------------------
 
 ReadBuffer = oo.class{
-	cursor    = 1  ,
-	endianess = '>', -- default write buffer endianess
+	start = 1,
+	cursor = 1,
+	unpack = bit.unpack, -- use current platform native endianess
 }
 
 -- NOTE: second parameter indicates an encasulated octet-stream, therefore
 --       endianess must be read from stream.
 function ReadBuffer:__init(octets, getorder, object)
-	local buffer = oo.rawnew(self, { data = octets, object = object })
-	if getorder then buffer:order(self.boolean(buffer)) end
-	return buffer
+	self = oo.rawnew(self, { data = octets, object = object })
+	self.history = self
+	if getorder then self:order(self:boolean()) end
+	return self
 end
 
 function ReadBuffer:order(value)
-	if value
-		then self.endianess = value and '<' or '>'
-		else return self.endianess == '<'
+	if value ~= NativeEndianess then
+		self.unpack = bit.invunpack
 	end
 end
 
@@ -177,17 +181,32 @@ function ReadBuffer:getdata()
 	return self.data
 end
 
+function ReadBuffer:pointto(buffer)
+	self.start = buffer.start + buffer.cursor - string.len(self.data) - 1
+	self.history = buffer.history
+end
+
+function ReadBuffer:indirection(unmarshall, ...)
+	local pos = self.start + self.cursor - 1
+	local tag = self:ulong()
+	if tag == 4294967295 then -- indirection marker (0xffffffff)
+		pos = self.start + self.cursor - 1
+		return self.history[pos + self:long()]
+	else
+		local value = unmarshall(tag, self, unpack(arg))
+		self.history[pos] = value
+		return value
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Unmarshalling functions -----------------------------------------------------
                                                                                 --[[VERBOSE]] local VERBOSE_NumberTypeCode = {s=IDL.short,l=IDL.long,S=IDL.ushort,L=IDL.ulong,f=IDL.float,d=IDL.double}
 local function numberunmarshaller(size, format)
-	local cursor
 	return function (self)
 		alignbuffer(self, size)
-		local cursor = self.cursor
+		local value = self.unpack(format, self.data, nil, nil, self.cursor)         --[[VERBOSE]] verbose.unmarshallOf(VERBOSE_NumberTypeCode[format], value, self, true)
 		self:jump(size)
-		local value = bit.unpack(self.endianess..format,
-		                         self.data, cursor)                                 --[[VERBOSE]] verbose.unmarshallOf(VERBOSE_NumberTypeCode[format], value, self, true)
 		return value
 	end
 end
@@ -199,7 +218,7 @@ ReadBuffer.ushort   = numberunmarshaller(2, "S")
 ReadBuffer.ulong    = numberunmarshaller(4, "L")
 ReadBuffer.float    = numberunmarshaller(4, "f")
 ReadBuffer.double   = numberunmarshaller(8, "d")
-ReadBuffer.TypeCode = tcode.unmarshall
+ReadBuffer.TypeCode = tcode.get
 
 function ReadBuffer:boolean()                                                   --[[VERBOSE]] verbose.unmarshallOf(IDL.boolean, nil, self)
 	return (self:octet() ~= 0)                                                    --[[VERBOSE]] , verbose.unmarshall()
@@ -212,7 +231,7 @@ function ReadBuffer:char()
 end
 
 function ReadBuffer:octet()
-	local value = bit.unpack("B", self.data, self.cursor)                         --[[VERBOSE]] verbose.unmarshallOf(IDL.octet, value, self, true)
+	local value = self.unpack("B", self.data, nil, nil, self.cursor)              --[[VERBOSE]] verbose.unmarshallOf(IDL.octet, value, self, true)
 	self:jump(1)
 	return value
 end
@@ -342,30 +361,22 @@ ReadBuffer.interface = ReadBuffer.Object
 -- Unmarshalling buffer class --------------------------------------------------
 
 WriteBuffer = oo.class {
+	start = 1,
 	cursor = 1,
 	emptychar = '\255', -- character used in buffer alignment
-	endianess = '>',    -- TODO:[maia] use current platform native endianess
+	pack = bit.pack,    -- use current platform native endianess
 }
 
 -- NOTE: Presence of a parameter indicates an encapsulated octet-stream.
 --       Parameter value indicates which endianess must be used.
 --       (little = 0; big = 1)
-function WriteBuffer:__init(order, object)
-	if not order then
-		return oo.rawnew(self, { object = object, n = 0})
-	elseif order == "little" then
-		return oo.rawnew(self, { object = object, '\1', n=1,
-			cursor = 2,
-			endianess = '<',
-		})
-	-- TODO:[maia] use current platform native endianess
-	elseif order == "big" or order == true then
-		return oo.rawnew(self, { object = object, '\0', n=1,
-			cursor = 2,
-			endianess = '>',
-		})
+function WriteBuffer:__init(putorder, object)
+	self = oo.rawnew(self, { format = {}, object = object })
+	self.history = self
+	if putorder then
+		self:boolean(NativeEndianess)
 	end
-	assert.ilegal(order, "buffer order")
+	return self
 end
 
 function WriteBuffer:shift(shift)
@@ -373,13 +384,13 @@ function WriteBuffer:shift(shift)
 end
 
 function WriteBuffer:jump(shift)
-	table.insert(self, string.rep(self.emptychar, shift))
-	self:shift(shift)
+	self:rawput('"', string.rep(self.emptychar, shift), shift)
 end
 
-function WriteBuffer:rawput(data)
-	self.cursor = self.cursor + string.len(data)
+function WriteBuffer:rawput(format, data, size)
+	table.insert(self.format, format)
 	table.insert(self, data)
+	self.cursor = self.cursor + size
 end
 
 function WriteBuffer:put(value, idltype)
@@ -391,11 +402,27 @@ function WriteBuffer:put(value, idltype)
 end
 
 function WriteBuffer:getdata()
-	return table.concat(self)
+	return self.pack(table.concat(self.format), self)
 end
 
 function WriteBuffer:getlength()
 	return self.cursor - 1
+end
+
+function WriteBuffer:pointto(buffer)
+	self.start = buffer.start + buffer:getlength()
+	self.history = buffer.history
+end
+
+function WriteBuffer:indirection(marshall, value, ...)
+	local previous = self.history[value]
+	if previous then
+		self:ulong(4294967295) -- indirection marker (0xffffffff)
+		self:long(previous - self.start + self:getlength()) -- offset
+	else
+		self.history[value] = self.start + self:getlength()
+		marshall(self, value, unpack(arg))
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -405,7 +432,7 @@ local function numbermarshaller(size, format)
 	return function (self, value)                                                 --[[VERBOSE]] verbose.marshallOf(VERBOSE_NumberTypeCode[format], value, self, true)
 		assert.type(value, "number", "numeric value", "MARSHAL")
 		alignbuffer(self, size)
-		self:rawput(bit.pack(self.endianess..format, value))
+		self:rawput(format, value, size)
 	end
 end
 
@@ -416,7 +443,7 @@ WriteBuffer.ushort   = numbermarshaller(2, "S")
 WriteBuffer.ulong    = numbermarshaller(4, "L")
 WriteBuffer.float    = numbermarshaller(4, "f")
 WriteBuffer.double   = numbermarshaller(8, "d")
-WriteBuffer.TypeCode = tcode.marshall
+WriteBuffer.TypeCode = tcode.put
 
 function WriteBuffer:boolean(value)                                             --[[VERBOSE]] verbose.marshallOf(IDL.boolean, nil, self)
 	if value
@@ -430,12 +457,12 @@ function WriteBuffer:char(value)                                                
 	if string.len(value) ~= 1 then
 		assert.ilegal(value, "char value", "MARSHAL")
 	end
-	self:rawput(value)
+	self:rawput('"', value, 1)
 end
 
 function WriteBuffer:octet(value)                                               --[[VERBOSE]] verbose.marshallOf(IDL.octet, value, self, true)
 	assert.type(value, "number", "octet value", "MARSHAL")
-	self:rawput(bit.pack("B", value))
+	self:rawput("B", value, 1)
 end
 
 -- TODO:[maia] Garantee that every unmarshalled value can be used as an
@@ -548,7 +575,6 @@ function WriteBuffer:union(value, idltype)                                      
 end
 
 function WriteBuffer:enum(value, idltype)                                       --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
-if not idltype.labelvalue then verbose.Viewer:print(idltype) end
 	value = tonumber(value) or idltype.labelvalue[value]
 	if not value then assert.ilegal(value, "enum value", "MARSHAL") end
 	self:ulong(value)                                                             --[[VERBOSE]] verbose.marshall()
@@ -556,9 +582,10 @@ end
 
 function WriteBuffer:string(value)                                              --[[VERBOSE]] verbose.marshallOf(IDL.string, value, self)
 	assert.type(value, "string", "string value", "MARSHAL")
-	self:ulong(string.len(value) + 1)
-	self:rawput(value)
-	self:rawput('\0')                                                             --[[VERBOSE]] verbose.marshall()
+	local length = string.len(value)
+	self:ulong(length + 1)
+	self:rawput('"', value, length)
+	self:rawput('"', '\0', 1)                                                     --[[VERBOSE]] verbose.marshall()
 end
 
 function WriteBuffer:sequence(value, idltype)                                   --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
@@ -567,8 +594,9 @@ function WriteBuffer:sequence(value, idltype)                                   
 		type(value) == "string" and
 		(elementtype == IDL.octet or elementtype == IDL.char)
 	then
-		self:ulong(string.len(value))
-		self:rawput(value)
+		local length = string.len(value)
+		self:ulong(length)
+		self:rawput('"', value, length)
 	else
 		assert.type(value, "table", "sequence value", "MARSHAL")
 		local size = table.getn(value)
@@ -581,20 +609,23 @@ end
 
 function WriteBuffer:array(value, idltype)                                      --[[VERBOSE]] verbose.marshallOf(idltype, value, self)
 	local elementtype = idltype.elementtype
+	local length -- TODO:[maia] In Lua 5.1 add: = #value
 	if
 		type(value) == "string" and
 		(elementtype == IDL.octet or elementtype == IDL.char)
 	then
-		if string.len(value) ~= idltype.length then
+		length = string.len(value)
+		if length ~= idltype.length then
 			assert.ilegal(value, "array value (wrong length)", "MARSHAL")
 		end
-		self:rawput(value)
+		self:rawput('"', value, length)
 	else
 		assert.type(value, "table", "array value", "MARSHAL")
-		if table.getn(value) ~= idltype.length then
+		length = table.getn(value)
+		if length ~= idltype.length then
 			assert.ilegal(value, "array value (wrong length)", "MARSHAL")
 		end
-		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose.marshall{"[element ", i, "]"}
+		for i = 1, length do                                                        --[[VERBOSE]] verbose.marshall{"[element ", i, "]"}
 			self:put(value[i], elementtype)
 		end
 	end                                                                           --[[VERBOSE]] verbose.marshall()

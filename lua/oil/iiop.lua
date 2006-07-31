@@ -440,7 +440,7 @@ end
 local DefaultGIOPHeader = {
 	magic        = GIOPMagicTag,
 	GIOP_version = {major=1, minor=0},
-	byte_order   = false, -- TODO:[maia] get native endianess
+	byte_order   = cdr.NativeEndianess,
 	message_type = 0, -- Request message
 	message_size = 0,
 }
