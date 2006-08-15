@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.5.6b
+-- Version:  0.5.7b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 08/08/2006
+-- Last modification: 15/08/2006
 -- Filename: sin.lua
 -- 
 
@@ -557,7 +557,7 @@ tab_firsts.rule_190  = set_firsts { 'TK_LOCAL' }
 tab_firsts.rule_191  = set_firsts { 'TK_CUSTOM' }
 tab_firsts.rule_192  = set_firsts { 'TK_INTERFACE' }
 tab_firsts.rule_193  = set_firsts { 'TK_VALUETYPE' }
-
+tab_firsts.rule_194  = set_firsts { 'TK_EVENTTYPE' }
 tab_firsts.rule_195  = set_firsts { 'TK_INTERFACE' }
 tab_firsts.rule_196  = set_firsts { 'TK_VALUETYPE' }
 tab_firsts.rule_198  = set_firsts { ':' }
@@ -643,6 +643,8 @@ tab_firsts.rule_297  = set_firsts { 'TK_IN' }
 tab_firsts.rule_298  = set_firsts { ':', 'TK_SUPPORTS' }
 tab_firsts.rule_299  = set_firsts { '{' }
 tab_firsts.rule_300  = tab_firsts.rule_27
+tab_firsts.rule_302  = tab_firsts.rule_298
+tab_firsts.rule_303  = set_firsts { '{' }
 tab_firsts.rule_305  = set_firsts { 'TK_MODULE' }
 tab_firsts.rule_306  = set_firsts { 'TK_COMPONENT' }
 tab_firsts.rule_307  = set_firsts { ':' }
@@ -719,6 +721,7 @@ tab_follow.rule_272  = set_firsts { ':', 'TK_ID' }
 tab_follow.rule_278  = set_firsts { 'TK_SUPPORTS', '{' }
 tab_follow.rule_286  = set_firsts { '}' }
 tab_follow.rule_301  = set_firsts { ';' }
+tab_follow.rule_304  = set_firsts { ';' }
 tab_follow.rule_307  = set_firsts { 'TK_SUPPORTS', '{' }
 tab_follow.rule_308  = set_firsts { ',', '{' }
 tab_follow.rule_316  = set_firsts { ',', '{' }
@@ -805,6 +808,7 @@ local TAB_TYPEID = {
                [ 'FACTORY' ]   = 'factory',
                [ 'FINDER' ]    = 'finder',
                [ 'VALUETYPE' ] = 'valuetype',
+               [ 'EVENTTYPE' ] = 'eventtype',
              }
 
 local TAB_BASICTYPE = { 
@@ -960,6 +964,7 @@ local tab_accept_member_type = {
     [ TAB_TYPEID.INTERFACE ] = true,
     [ TAB_TYPEID.HOME ] = true,
     [ TAB_TYPEID.VALUETYPE ] = true,
+    [ TAB_TYPEID.EVENTTYPE ] = true,
 }
 
 local tab_accept_definition_type = { 
@@ -970,6 +975,7 @@ local tab_accept_definition_type = {
     [ TAB_TYPEID.EXCEPTION ] = true,
     [ TAB_TYPEID.HOME ] = true,
     [ TAB_TYPEID.VALUETYPE ] = true,
+    [ TAB_TYPEID.EVENTTYPE ] = true,
 }
 
 local tab_definition_type = { 
@@ -984,6 +990,7 @@ local tab_definition_type = {
     [ TAB_TYPEID.COMPONENT ] = true,
     [ TAB_TYPEID.HOME ] = true, 
     [ TAB_TYPEID.VALUETYPE ] = true,
+    [ TAB_TYPEID.EVENTTYPE ] = true,
 }
 
 local function is_accept_members( type )
@@ -1136,6 +1143,17 @@ local function get_tab_global_legal_type( global_namespace )
     return forward
   end --if
   sem_error( string.format( ERRMSG_UNDECLARED, global_namespace ) )
+end
+
+local function get_tab_legal_type_spec(fullnamespace)
+  if ( type( tab_namespaces[ fullnamespace ] ) == 'table' ) then
+    return tab_namespaces[ fullnamespace ].tab_namespace
+  end -- if
+  local forward = tab_forward[ fullnamespace ]
+  if forward then
+    return forward
+  end --if
+  sem_error( string.format( ERRMSG_UNDECLARED, fullnamespace ) )
 end
 
 local function get_token()
@@ -2286,11 +2304,7 @@ function scoped_name_l( tab_scope, full_namespace, num_follow_rule )
     reconhecer( lex.tab_tokens.TK_ID , "identifier" )
     local namespace = lex.tokenvalue_previous
     full_namespace = tab_scope.absolute_name..'::'..namespace
-    if ( type( tab_namespaces[ full_namespace ] ) == 'table' ) then
-      tab_scope = tab_namespaces[ full_namespace ].tab_namespace
-    else
-      sem_error(  string.format( ERRMSG_UNDECLARED, full_namespace ) )
-    end --if
+    tab_scope = get_tab_legal_type_spec(full_namespace)
     scoped_name_l( tab_scope, full_namespace, num_follow_rule )
   elseif ( tab_follow[ 'rule_'..num_follow_rule ][ token ] ) then
     -- empty
@@ -2451,6 +2465,16 @@ function abstract_tail()
     if tab_callbacks.valuetype then
       tab_callbacks.valuetype( tab_valuetypescope )
     end --if    
+  elseif tab_firsts.rule_197[ token ] then
+    reconhecer( lex.tab_tokens.TK_EVENTTYPE, "'eventtype'" )
+    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+    local name = lex.tokenvalue_previous
+    define( name, TAB_TYPEID.EVENTTYPE )
+    tab_curr_scope.abstract = true
+    local tab_eventtypescope = eventtype_tail( name )
+    if tab_callbacks.eventtype then
+      tab_callbacks.eventtype( tab_eventtypescope )
+    end --if
   else
     sin_error( "'interface', 'valuetype' or 'event'" )
   end --if
@@ -2489,6 +2513,15 @@ function inter_value_event()
   elseif ( tab_firsts.rule_191[ token ] ) then
     reconhecer( lex.tab_tokens.TK_CUSTOM, "'custom'" )
     value_or_event()
+  elseif tab_firsts.rule_194[ token ] then
+    reconhecer( lex.tab_tokens.TK_EVENTTYPE, "'eventtype'" )
+    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+    local name = lex.tokenvalue_previous
+    define( name, TAB_TYPEID.EVENTTYPE )
+    local tab_eventtypescope = eventtype_tail(name)
+    if tab_callbacks.eventtype then
+      tab_callbacks.eventtype( tab_eventtypescope )
+    end --if
   else
     sin_error( "'interface', 'abstract', 'local' or 'valuetype'" )
   end --if
@@ -3356,7 +3389,14 @@ function value_or_event()
     end --if
   elseif ( tab_firsts.rule_282[ token ] ) then
     reconhecer( lex.tab_tokens.TK_EVENTTYPE, "'eventtype'" )
-    valueinhe_export()
+    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+    local name = lex.tokenvalue_previous
+    define( name, TAB_TYPEID.EVENTTYPE )
+    tab_curr_scope.custom = true
+    local tab_eventtypescope = eventtype_tail( name )
+    if tab_callbacks.eventtype then
+      tab_callbacks.eventtype( tab_eventtypescope )
+    end --if
   else
     sin_error( "'valuetype' or 'eventtype'" )
   end --if
@@ -3485,7 +3525,37 @@ end
 -- EVENT DECLARATION
 --------------------------------------------------------------------------
 
+function eventtype_tail(name)
+  if tab_firsts.rule_302[ token ] then
+    value_inhe_spec()
+    reconhecer( "{", "'{'" )
+    value_element_l()
+    reconhecer( "}", "'}'" )
+    local tab_eventtypescope = tab_curr_scope
+    goto_father_scope()
+    return tab_eventtypescope
+  elseif tab_firsts.rule_303[ token ] then
+    reconhecer( "{", "'{'" )
+    value_element_l()
+    reconhecer( "}", "'}'" )
+    local tab_eventtypescope = tab_curr_scope
+    goto_father_scope()
+    return tab_eventtypescope
+  elseif tab_follow.rule_304[ token ] then
+    return dclForward( name, TAB_TYPEID.EVENTTYPE )
+  end --if
+end
 
+--[[function type_prefix_dcl()
+  if tab_firsts.rule_260[ token ] then
+    reconhecer( lex.tab_tokens.TK_TYPEPREFIX, "'typeprefix'" )
+    scoped_name()
+    reconhecer( lex.tab_tokens.TK_STRING_LITERAL, "<string literal>" )
+  else
+    sin_error( "'typeprefix'" )
+  end --if
+end
+]]
 
 --------------------------------------------------------------------------
 -- API
