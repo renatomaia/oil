@@ -119,7 +119,7 @@ DispatcherType = component.Type{
 		-- object get(id)
 		-- object unregister(id)
 	dispatcher = port.Facet,
-		-- dispatch(request)
+		-- handle(request)
 	tasks = port.Receptacle,
 		-- start(function, ...)
 }
