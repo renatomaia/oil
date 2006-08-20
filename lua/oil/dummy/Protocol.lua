@@ -15,7 +15,7 @@ local unpack      = unpack
 local table = require "table"
 local oo        = require "oil.oo"
 
-module "oil.dummy.Protocol"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+module "oil.dummy.Protocol"                                                     -- [[VERBOSE]] local verbose = require "oil.verbose"
 
 local Exception = require "oil.Exception"
 local MapWithArrayOfKeys = require "loop.collection.MapWithArrayOfKeys"
@@ -34,23 +34,20 @@ function Connection:__init(socket)
 end
 
 function Connection:close()
-	self.socket:close()                                                           --[[VERBOSE]] verbose:close "connection socket closed"
+	self.socket:close()                                                           -- [[VERBOSE]] verbose:close "connection socket closed"
 end
 
 function Connection:receive()
 	local size, except = self.socket:receive()
-	print("size in receive", size)
 	local msg
-	msg, except = self.socket:receive(tonumber(size))                                 --[[VERBOSE]] verbose:receive(true, "read message from socket [error: ", except, "]")
-	print("msg received", msg)
+	msg, except = self.socket:receive(tonumber(size))                                 -- [[VERBOSE]] verbose:receive(true, "read message from socket [error: ", except, "]")
 	return msg, except                                                   
 end
 
 function Connection:send(stream)           
   local size = string.len(stream)
-	print("size in send", size)
 	local	success, except = self.socket:send(size.."\n")
-	success, except = self.socket:send(stream)                              --[[VERBOSE]] verbose:send("write message into socket [error: ", except, "]")
+	success, except = self.socket:send(stream)                              -- [[VERBOSE]] verbose:send("write message into socket [error: ", except, "]")
 	return success, except
 end
 
@@ -64,7 +61,6 @@ local function createRequestMsg(self, object_key, operation,  ...)
 	buffer:put(object_key)
 	buffer:put(operation)
   for i, param in ipairs(arg) do
-		print(param)
 		buffer:put(param)
 	end
 
@@ -89,7 +85,6 @@ local function createResponseMsg(self, ...)
 	local buffer = self.codec:newEncoder()
 
 	for i, resp in ipairs(arg) do
-		print(resp)
 		buffer:put(resp)
 	end
 	return buffer:getdata()
@@ -123,14 +118,11 @@ function InvokeProtocol:sendrequest(reference, operation, ...)
 	if conn then
 		
 		local stream = createRequestMsg(self, reference.object_key, operation, ... )
-		print(stream)
 		expected, except = conn:send( stream )
     local reply_object = ReplyObject { result = function()
-			print("calling receive")
 			local msg = conn:receive()                                  
 		 	return openResponseMsg(self, msg)
 		 end }
-		print("reply_object", reply_object)
 		return true, reply_object
 	end -- connection test
 	return handleexception(self, except, operation, ...)
@@ -157,18 +149,13 @@ end
 
 function ListenProtocol:getrequest(conn)
 	local except
-	print("before receive")
 	local msg = conn:receive()
-	print("after receive")
 	if msg then
-		print(msg)
 		msg = openRequestMsg(self, msg)
 		local resultObject = ResultObject(msg.object_key, msg.operation, msg.params)
 		resultObject.result = function(success, result)
-			print("inside result", success, result)
     	if success then
       	local stream = createResponseMsg(self, unpack(result))
-				print("stream:", stream)
 				_,except = conn:send(stream)
 			end
 		end
