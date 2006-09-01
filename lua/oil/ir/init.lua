@@ -1030,7 +1030,8 @@ function InterfaceDef:describe_interface()                                      
 	for _, base in ipairs(self.base_interfaces) do                                --[[VERBOSE]] verbose:ir_classes("adding base interface ", base.absolute_name)
 		table.insert(base_interfaces, base.repID)
 	end
-	local queue = OrderedSet{ self }
+	local queue = OrderedSet()
+	queue:enqueue(self)
 	local iface = OrderedSet.firstkey
 	while queue[iface] do iface = queue[iface]                                    --[[VERBOSE]] verbose:ir_classes(true, "adding members from interface ", iface.absolute_name)
 		for _, member in pairs(iface.members) do
