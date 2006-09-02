@@ -84,7 +84,7 @@ function PassiveChannelFactory:create(host, port)
 		local attempts = 0 -- how much attempts to select a socket?
 		local giveup = false
 		repeat
-			attempts = attempts + connections:size()
+			attempts = attempts + #connections
 			local selected = self.luasocket:select(connections, Empty, timeout)
 			if selected[port] then
 				selected[port] = nil
@@ -104,7 +104,7 @@ function PassiveChannelFactory:create(host, port)
 			end
 			if timeout and timeout >= 0 then
 				-- select has already tried to select ready sockets for timeout seconds
-				if attempts > 1 or connections:size() == 1 then
+				if attempts > 1 or #connections == 1 then
 					-- there were other attempts to select sockets besides
 					-- the first one to select the port socket or ...
 					-- no new connections were created

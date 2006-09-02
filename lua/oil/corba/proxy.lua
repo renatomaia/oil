@@ -147,7 +147,6 @@ function Object:__newindex(field, value)
 		if type(member) == "table" then
 			if member._type == "attribute" then                                       --[[VERBOSE]] verbose:proxy("write ", member.readonly and "readonly" or "", "attribute ", field)
 				if not member.readonly then
-					print("changing member value")
 					checkcall(self._protocol:sendrequest(self._reference, member.setter, value))
 				else
 					assert.error("attempt to set read-only attribute "..field)

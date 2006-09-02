@@ -44,8 +44,8 @@ TypedInvokeProtocolType = component.Type({
 }, InvokeProtocolType)
 
 TypedListenProtocolType = component.Type({
-	objects = port.Receptacle,
-		-- interface typeof(objectid)
+	interfaces = port.Receptacle,
+		-- interface lookup(interfaceid)
 }, ListenProtocolType)
 
 CodecType = component.Type{
@@ -125,9 +125,8 @@ DispatcherType = component.Type{
 }
 
 TypedDispatcherType = component.Type({
-	objects = port.Receptacle,
-  -- interface typeof(objid) 
-
+	interfaces = port.Receptacle,
+		-- interface lookup(interfaceid)
 }, DispatcherType)
 
 ServerBrokerType = component.Type{
