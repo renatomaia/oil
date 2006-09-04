@@ -207,7 +207,7 @@ static int b_unpack(lua_State *L) {
 	fmtend = format + end;
 	stream += shift - 1;
 	for (format += start - 1; format < fmtend; format++) {
-		size_t size;
+		size_t size = 0;
 		switch (*format) {
 			case 'b': case 'B': size = 1; break;
 			case 's': case 'S': size = 2; break;
@@ -304,7 +304,7 @@ static int b_invunpack(lua_State *L) {
 	fmtend = format + end;
 	stream += shift - 1;
 	for (format += start - 1; format < fmtend; format++) {
-		size_t size;
+		size_t size = 0;
 		switch (*format) {
 			case 'b': case 'B': size = 1; break;
 			case 's': case 'S': size = 2; break;
