@@ -33,7 +33,6 @@ OIL_PCK= oil/assert.lua \
          oil/cdr.lua \
          oil/Exception.lua \
          oil/giop.lua \
-         oil/idl.lua \
          oil/iiop.lua \
          oil/init.lua \
          oil/invoke.lua \
@@ -45,6 +44,8 @@ OIL_PCK= oil/assert.lua \
          oil/socket.lua \
          oil/tcode.lua \
          oil/verbose.lua \
+         oil/idl/init.lua \
+         oil/idl/compiler.lua \
          oil/ir/idl.lua \
          oil/ir/init.lua
 SCHEDULER_PCK= scheduler/init.lua

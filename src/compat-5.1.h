@@ -12,7 +12,12 @@
 #define LUA_QL(x)	"'" x "'"
 #define LUA_QS		LUA_QL("%s")
 
-#define luaL_Reg	luaL_reg
+#define luaL_Reg luaL_reg
+#define luaL_addchar luaL_putchar
+
+#define lua_Integer ptrdiff_t
+
+#define luaL_checkinteger(L,i) ((lua_Integer)luaL_checknumber(L,i))
 
 LUA_API void  (lua_getfield) (lua_State *L, int idx, const char *k);
 LUA_API void  (lua_setfield) (lua_State *L, int idx, const char *k);
