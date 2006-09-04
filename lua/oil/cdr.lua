@@ -205,8 +205,9 @@ end
 local function numberunmarshaller(size, format)
 	return function (self)
 		alignbuffer(self, size)
-		local value = self.unpack(format, self.data, nil, nil, self.cursor)         --[[VERBOSE]] verbose.unmarshallOf(VERBOSE_NumberTypeCode[format], value, self, true)
+		local value = self.cursor
 		self:jump(size)
+		value = self.unpack(format, self.data, nil, nil, value)                     --[[VERBOSE]] verbose.unmarshallOf(VERBOSE_NumberTypeCode[format], value, self, true)
 		return value
 	end
 end
