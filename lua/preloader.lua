@@ -1,3 +1,11 @@
+--------------------------------------------------------------------------------
+-- Project: Library Generation Utilities                                      --
+-- Release: 1.0 alpha                                                         --
+-- Title  : Pre-Loader of Pre-Compiled Lua Script Files                       --
+-- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
+-- Date   : 13/12/2004 13:51                                                  --
+--------------------------------------------------------------------------------
+
 local FILE_SEP = "/"
 local FUNC_SEP = "_"
 local PACK_SEP = "."
@@ -29,7 +37,30 @@ end
 function processargs(arg)
 	local i = 1
 	if not arg then
-		io.stderr:write("usage: lua preloader.lua [options] <headers>")
+		io.stderr:write([[
+Script for generation of code that pre-loads pre-compiled Lua packages.
+By Renato Maia <maia@tecgraf.puc-rio.br>
+
+usage: lua preloader.lua [options] <headers>
+  
+  options:
+  
+  -d, -directory  Directory where the output files should be generated. Its
+                  default is the current directory.
+  
+  -f, -filename   Name used to form the name of the files generated. Two files
+                  are generated: a source code file with the sufix '.c' with
+                  the pre-loading code and a header file with the suffix '.h'
+                  with the function that pre-loads the scripts. Its default is
+                  'preload'.
+  
+  -I, -includes   Adds a directory to the list of paths where the header files
+                  of pre-compiled libraries are searched.
+  
+  -p, -prefix     Prefix added to the signature of the functions generated.
+                  Its default is LUAPRELOAD_API.
+]])
+		os.exit(1)
 	end
 	while arg[i] do
 		local opt = string.match(arg[i], "^%-(.+)$")
