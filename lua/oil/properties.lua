@@ -25,11 +25,10 @@
 local require    = require
 local rawget     = rawget
 local rawset     = rawset
-local loop       = require "loop"
 local oo         = require "loop.base"
 local assert     = require "oil.assert"
 
-module("oil.properties", loop.define(oo.class()))                               --[[VERBOSE]] local verbose = require "oil.verbose"
+module("oil.properties", oo.class)                                              --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Key constants ---------------------------------------------------------------

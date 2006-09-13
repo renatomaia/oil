@@ -27,10 +27,9 @@
 --------------------------------------------------------------------------------
 
 local require    = require
-local loop       = require "loop"
 local oo         = require "loop.base"
 
-module("oil.cos.event.Queue", loop.define(oo.class()))                          --[[VERBOSE]] local verbose = require "oil.verbose"
+module("oil.cos.event.Queue", oo.class)                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
