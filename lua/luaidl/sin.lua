@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.5.7b
+-- Version:  0.5.8b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 15/08/2006
+-- Last modification: 27/09/2006
 -- Filename: sin.lua
 -- 
 
@@ -353,7 +353,7 @@
 --(379) <context>               :=    TK_STRING_LITERAL 
 
 --debug
-local print = print
+--local print = print
 
 local type     = type
 local pairs    = pairs
@@ -515,7 +515,7 @@ tab_firsts.rule_144  = tab_firsts.rule_141
 tab_firsts.rule_145  = set_firsts { "[" }
 
 tab_firsts.rule_147  = tab_firsts.rule_145
-
+tab_firsts.rule_148  = set_firsts { 'TK_UNION' }
 tab_firsts.rule_149  = tab_firsts.rule_44
 tab_firsts.rule_150  = set_firsts { 'TK_LONG' }
 tab_firsts.rule_151  = set_firsts { 'TK_CHAR' }
@@ -1209,8 +1209,8 @@ local function dclForward( name, type)
   return def
 end
 
-local function is_not_int( const )
-  return string.find( const, '[^%d]' )
+local function is_int( const )
+  return string.find( const, '[%d]' )
 end
 
 local function is_num( const )
@@ -1637,10 +1637,13 @@ function positive_int_const( numrule )
   if tab_firsts.rule_75[ token ] then
     local const1 = xor_expr( numrule )
     or_expr_l( numrule )
-    if ( is_not_int( const1 ) and const1 < 0 ) then
-      sem_error( tab_ERRORMSG[ 24 ] )
+    if is_int( const1 ) then
+     const1 = tonumber(const1) 
+     if const1 < 0 then
+        sem_error( tab_ERRORMSG[ 24 ] )
+      end --if
     end --if
-    return tonumber( const1 )
+    return const1
   else
     sin_error( tab_ERRORMSG[ 13 ] )
   end --if
@@ -1691,9 +1694,10 @@ end
 function mult_expr( numrule )
   if tab_firsts.rule_107[ token ] then
     local const = unary_expr()
-    if not is_num( const ) then
+--[[    if not is_num( const ) then
       sem_error( tab_ERRORMSG[ 25 ] )
     end --if
+]]
     const = mult_expr_l( const, numrule )
     return const
 --  else
@@ -2100,6 +2104,7 @@ function union_type()
     define( union_name, TAB_TYPEID.UNION )
     reconhecer( "(", "'('" )
     tab_curr_scope.switch = switch_type_spec()
+    tab_curr_scope.options = { }
     reconhecer( ")", "')'" )
     reconhecer( "{" )
     tmp = -1

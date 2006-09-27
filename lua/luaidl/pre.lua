@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.5.7b
+-- Version:  0.5.8b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 15/08/2006
+-- Last modification: 27/09/2006
 -- Filename: pre.lua
 -- 
 
@@ -108,6 +108,8 @@ function _run( source, ptab_options )
     end --if
   end --if
   numLine = 1
+  -- ugly!
+  source = source..'\n'
   for strLine in string.gfind( source, "(.-\n)" ) do
     strLine = string.gsub( strLine, '^%s*#%s*(%w+)%s*([^%s]*)%s*([^%s]*)', processDirective )
     if ( READ ) then
