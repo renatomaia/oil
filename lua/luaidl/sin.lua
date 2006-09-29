@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.5.8b
+-- Version:  0.5.9b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 27/09/2006
+-- Last modification: 28/09/2006
 -- Filename: sin.lua
 -- 
 
@@ -2116,7 +2116,7 @@ function union_type()
     if tab_callbacks.union then
       tab_callbacks.union( tab_unionscope )
     end --if
-    return tab_curr_scope[ union_name ]
+    return tab_unionscope
   else
     sin_error( tab_ERRORMSG[ 29 ] )
   end --if
@@ -2382,6 +2382,7 @@ function union_or_struct()
     if tab_callbacks.struct then
       tab_callbacks.struct( tab_structscope )
     end --if
+    return tab_structscope
   elseif ( tab_firsts.rule_169[ token ] ) then
     reconhecer( lex.tab_tokens.TK_UNION, "'union'" )
     reconhecer( lex.tab_tokens.TK_ID, "identifier" )
@@ -2393,6 +2394,7 @@ function union_or_struct()
     if tab_callbacks.union then
       tab_callbacks.union( tab_unionscope )
     end --if
+    return tab_unionscope
   else
     sin_error( "'struct' or 'union'" )
   end -- if
