@@ -225,6 +225,7 @@ end
 function class(interface, manager, orb)                                         --[[VERBOSE]] verbose.proxy{"new proxy class for ", interface.repID}
 	return oo.class({
 		_iface = interface,
+		__idltype = interface,
 		_manager = manager or false,
 		_orb = orb or false,
 		_handlers = {}, -- exception handlers
