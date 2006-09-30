@@ -29,25 +29,32 @@ LUAIDL_PCK= luaidl/init.lua \
             luaidl/lex.lua \
             luaidl/pre.lua \
             luaidl/sin.lua
-OIL_PCK= oil/assert.lua \
+OIL_PCK= oil/Exception.lua \
+         oil/assert.lua \
          oil/cdr.lua \
-         oil/Exception.lua \
+         oil/cos/event/Dispatcher.lua \
+         oil/cos/event/Factory.lua \
+         oil/cos/event/Queue.lua \
+         oil/cos/event/Reaper.lua \
+         oil/cos/event/init.lua \
+         oil/cos/naming.lua \
          oil/giop.lua \
+         oil/idl/compiler.lua \
+         oil/idl/init.lua \
          oil/iiop.lua \
          oil/init.lua \
          oil/invoke.lua \
          oil/ior.lua \
+         oil/ir/idl.lua \
+         oil/ir/init.lua \
          oil/manager.lua \
          oil/oo.lua \
          oil/orb.lua \
+         oil/properties.lua \
          oil/proxy.lua \
          oil/socket.lua \
          oil/tcode.lua \
-         oil/verbose.lua \
-         oil/idl/init.lua \
-         oil/idl/compiler.lua \
-         oil/ir/idl.lua \
-         oil/ir/init.lua
+         oil/verbose.lua
 SCHEDULER_PCK= scheduler/init.lua
 
 OILBIT_INC=	oilbit.h
