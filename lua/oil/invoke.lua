@@ -161,7 +161,10 @@ function call(self, operation, args)
 						exception[1] = exception.exception_id
 						except = Exception(exception)
 					elseif status == "LOCATION_FORWARD" then                              --[[VERBOSE]] verbose.invoke "got location forward notice"
-						return call(buffer:IOR(), operation, args)
+						local ior = buffer:IOR()
+						ior._manager = self._manager
+						ior._orb = self._orb
+						return call(ior, operation, args)
 					else
 						--TODO:[maia] handle GIOP 1.2 reply status
 						except = Exception{ "INTERNAL", minor_code_value = 0,
