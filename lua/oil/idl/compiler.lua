@@ -22,7 +22,7 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local assert  = assert
+local error   = error 
 local require = require
 local ipairs  = ipairs
 
@@ -80,11 +80,13 @@ function registerAll(manager)
 end
 
 function parsefile(filename,manager)
-	assert(luaidl.parsefile(filename,options))
+	local success, errmsg = luaidl.parsefile(filename,options)
+	if not success then error(errmsg) end
 	registerAll(manager)
 end
 
 function parse(idlspec,manager)
-	assert(luaidl.parse(idlspec, options))
+	local success, errmsg = luaidl.parse(idlspec, options)
+	if not success then error(errmsg) end
 	registerAll(manager)
 end
