@@ -209,6 +209,11 @@ function Broker:object(servant, interface, objid)
 	end
 	local object = self.map[objid]
 	if object then                                                                --[[VERBOSE]] verbose.servant("servant already is registered", true)
+		-- TODO:[maia] is it really good to allow an object to change its interface
+		--             to a more especialized one? This was used to allow implicit
+		--             created servants previously exported with a base interface to
+		--             change to the actual interface. However this is now resolved
+		--             by the '__idltype' meta-field.
 		if object._type_id ~= interface.repID then
 			if isbaseof(object._type_id, interface) then                              --[[VERBOSE]] verbose.servant "changing actual object interface to a narrowed interface"
 				object._iface = interface

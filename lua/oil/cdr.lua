@@ -511,7 +511,13 @@ function WriteBuffer:Object(value, idltype)
 		if not value._type_id or not value._profiles then
 			local object = self.object
 			if object and object._orb then                                            --[[VERBOSE]] verbose.marshall("implicit servant creation", true)
-				if idltype._type == "Object" then idltype = idltype.repID end
+				local metatable = getmetatable(value)
+				if metatable then
+					idltype = metatable.__idltype or idltype
+				end
+				if IDL.istype(idltype) and idltype._type == "Object" then
+					idltype = idltype.repID
+				end
 				value = object._orb:object(value, idltype)                              --[[VERBOSE]] verbose.marshall()
 			else
 				assert.ilegal(value, "Object, unable to create from table", "MARHSALL")
