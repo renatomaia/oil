@@ -182,21 +182,27 @@ function ReadBuffer:getdata()
 end
 
 function ReadBuffer:pointto(buffer)
-	self.start = buffer.start + buffer.cursor - string.len(self.data) - 1
+	self.start = (buffer.start - 1) + (buffer.cursor - string.len(self.data))
 	self.history = buffer.history
 end
 
 function ReadBuffer:indirection(unmarshall, ...)
-	local pos = self.start + self.cursor - 1
+	local pos = (self.start - 1) + self.cursor
 	local tag = self:ulong()
+	local value
 	if tag == 4294967295 then -- indirection marker (0xffffffff)
-		pos = self.start + self.cursor - 1
-		return self.history[pos + self:long()]
+		pos = (self.start - 1) + self.cursor
+		value = self.history[pos + self:long()]
+		if value == nil then
+verbose.Viewer:print(pos + self:long())
+verbose.Viewer:print(self.history)
+			assert.ilegal(nil, "indirection value", "MARSHALL")
+		end
 	else
-		local value = unmarshall(tag, self, unpack(arg))
+		value = unmarshall(tag, self, unpack(arg))
 		self.history[pos] = value
-		return value
 	end
+	return value
 end
 
 --------------------------------------------------------------------------------
@@ -411,17 +417,19 @@ function WriteBuffer:getlength()
 end
 
 function WriteBuffer:pointto(buffer)
-	self.start = buffer.start + buffer:getlength()
+	self.start = (buffer.start - 1) + buffer.cursor
 	self.history = buffer.history
 end
 
 function WriteBuffer:indirection(marshall, value, ...)
+	local pos = (self.start - 1) + self.cursor
 	local previous = self.history[value]
 	if previous then
 		self:ulong(4294967295) -- indirection marker (0xffffffff)
-		self:long(previous - self.start + self:getlength()) -- offset
+		pos = (self.start - 1) + self.cursor
+		self:long(previous - pos) -- offset
 	else
-		self.history[value] = self.start + self:getlength()
+		self.history[value] = pos
 		marshall(self, value, unpack(arg))
 	end
 end
