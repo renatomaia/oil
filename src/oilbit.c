@@ -164,29 +164,31 @@ static int b_pack(lua_State *L) {
 			case 'f': case 'd': size = 0;
 			case 'l': case 'L': size *= 2;
 			case 's': case 'S': size *= 2;
-			case 'b': case 'B':
+			case 'b': case 'B': {
+				lua_Number number;
 				luaL_argcheck(L, lua_isnumber(L, -1), 2, "table contains mismatched values");
-				break;
+				number = lua_tonumber(L, -1);
+				lua_pop(L, 1);
+				if (size) {
+					add_integer(&b, number, size);
+				} else {
+					if (*format == 'f') {
+						float value;
+						value = (float)number;
+						luaL_addlstring(&b, (char*)&value, sizeof(value));
+					} else {
+						double value;
+						value = (double)number;
+						luaL_addlstring(&b, (char*)&value, sizeof(value));
+					}
+				}
+			}	break;
 			case '"':
 				luaL_argcheck(L, lua_isstring(L, -1), 2, "table contains mismatched values");
 				luaL_addvalue(&b);
-				continue;
+				break;
 			default: luaL_error(L, "invalid format option, got '%c'", *format);
 		}
-		if (size) {
-			add_integer(&b, lua_tonumber(L, -1), size);
-		} else {
-			if (*format == 'f') {
-				float value;
-				value = (float)lua_tonumber(L, -1);
-				luaL_addlstring(&b, (char*)&value, sizeof(value));
-			} else {
-				double value;
-				value = (double)lua_tonumber(L, -1);
-				luaL_addlstring(&b, (char*)&value, sizeof(value));
-			}
-		}
-		lua_pop(L, 1);
 	}
 	luaL_pushresult(&b);
 	return 1;
@@ -219,10 +221,10 @@ static int b_unpack(lua_State *L) {
 		luaL_argcheck(L, stream + size <= strend, 2, "insufficient data in stream");
 		switch (*format) {
 			case 'b': case 's': case 'l':
-				lua_pushnumber(L, putsign(get_integer(stream, size), size));
+				lua_pushnumber(L, putsign(get_integer((const byte*)stream, size), size));
 				break;
 			case 'B': case 'S': case 'L':
-				lua_pushnumber(L, (lua_Number)get_integer(stream, size));
+				lua_pushnumber(L, (lua_Number)get_integer((const byte*)stream, size));
 				break;
 			case 'f':
 				lua_pushnumber(L, (lua_Number)*((float*)stream));
@@ -316,19 +318,19 @@ static int b_invunpack(lua_State *L) {
 		luaL_argcheck(L, stream + size <= strend, 2, "data string too short");
 		switch (*format) {
 			case 'b': case 's': case 'l':
-				lua_pushnumber(L, putsign(get_inverted_integer(stream, size), size));
+				lua_pushnumber(L, putsign(get_inverted_integer((const byte*)stream, size), size));
 				break;
 			case 'B': case 'S': case 'L':
-				lua_pushnumber(L, (lua_Number)get_inverted_integer(stream, size));
+				lua_pushnumber(L, (lua_Number)get_inverted_integer((const byte*)stream, size));
 				break;
 			case 'f': {
 				float value;
-				inverted_copy(stream, (byte*)&value, sizeof(value));
+				inverted_copy((const byte*)stream, (byte*)&value, sizeof(value));
 				lua_pushnumber(L, (lua_Number)value);
 			} break;
 			case 'd': {
 				double value;
-				inverted_copy(stream, (byte*)&value, sizeof(value));
+				inverted_copy((const byte*)stream, (byte*)&value, sizeof(value));
 				lua_pushnumber(L, (lua_Number)value);
 			} break;
 		}
