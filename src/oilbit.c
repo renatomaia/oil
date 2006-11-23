@@ -261,31 +261,33 @@ static int b_invpack(lua_State *L) {
 			case 'f': case 'd': size = 0;
 			case 'l': case 'L': size *= 2;
 			case 's': case 'S': size *= 2;
-			case 'b': case 'B':
+			case 'b': case 'B': {
+				lua_Number number;
 				luaL_argcheck(L, lua_isnumber(L, -1), 2, "table contains mismatched values");
-				break;
+				number = lua_tonumber(L, -1);
+				lua_pop(L, 1);
+				if (size) {
+					add_inverted_integer(&b, number, size);
+				} else {
+					if (*format == 'f') {
+						float value;
+						value = (float)number;
+						invert_bytes((byte*)&value, sizeof(value));
+						luaL_addlstring(&b, (char*)&value, sizeof(value));
+					} else {
+						double value;
+						value = (double)number;
+						invert_bytes((byte*)&value, sizeof(value));
+						luaL_addlstring(&b, (char*)&value, sizeof(value));
+					}
+				}
+			}	break;
 			case '"':
 				luaL_argcheck(L, lua_isstring(L, -1), 2, "table contains mismatched values");
 				luaL_addvalue(&b);
-				continue;
+				break;
 			default: luaL_error(L, "invalid format character, got '%c'", *format);
 		}
-		if (size) {
-			add_inverted_integer(&b, lua_tonumber(L, -1), size);
-		} else {
-			if (*format == 'f') {
-				float value;
-				value = (float)lua_tonumber(L, -1);
-				invert_bytes((byte*)&value, sizeof(value));
-				luaL_addlstring(&b, (char*)&value, sizeof(value));
-			} else {
-				double value;
-				value = (double)lua_tonumber(L, -1);
-				invert_bytes((byte*)&value, sizeof(value));
-				luaL_addlstring(&b, (char*)&value, sizeof(value));
-			}
-		}
-		lua_pop(L, 1);
 	}
 	luaL_pushresult(&b);
 	return 1;
