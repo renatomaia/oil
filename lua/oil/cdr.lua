@@ -194,8 +194,6 @@ function ReadBuffer:indirection(unmarshall, ...)
 		pos = (self.start - 1) + self.cursor
 		value = self.history[pos + self:long()]
 		if value == nil then
-verbose.Viewer:print(pos + self:long())
-verbose.Viewer:print(self.history)
 			assert.ilegal(nil, "indirection value", "MARSHALL")
 		end
 	else
