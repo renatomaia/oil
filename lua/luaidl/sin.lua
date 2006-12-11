@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.5.9b
+-- Version:  0.6.0b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 28/09/2006
+-- Last modification: 11/12/2006
 -- Filename: sin.lua
 -- 
 
@@ -353,7 +353,7 @@
 --(379) <context>               :=    TK_STRING_LITERAL 
 
 --debug
---local print = print
+local print = print
 
 local type     = type
 local pairs    = pairs
@@ -2310,7 +2310,7 @@ function scoped_name_l( tab_scope, full_namespace, num_follow_rule )
     local namespace = lex.tokenvalue_previous
     full_namespace = tab_scope.absolute_name..'::'..namespace
     tab_scope = get_tab_legal_type_spec(full_namespace)
-    scoped_name_l( tab_scope, full_namespace, num_follow_rule )
+    tab_scope = scoped_name_l( tab_scope, full_namespace, num_follow_rule )
   elseif ( tab_follow[ 'rule_'..num_follow_rule ][ token ] ) then
     -- empty
   else
