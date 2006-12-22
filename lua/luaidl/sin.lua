@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.6.0b
+-- Version:  0.6.1b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 11/12/2006
+-- Last modification: 21/12/2006
 -- Filename: sin.lua
 -- 
 
@@ -353,7 +353,7 @@
 --(379) <context>               :=    TK_STRING_LITERAL 
 
 --debug
-local print = print
+--local print = print
 
 local type     = type
 local pairs    = pairs
@@ -1113,7 +1113,7 @@ local function get_tab_legal_type( namespace )
     end --if
     if tab_scope._type == TAB_TYPEID.INTERFACE then
       for _, v in ipairs( tab_scope ) do
-        tab_scope = tab_namespaces[ v.absolute_name ].tab_namespace
+        local tab_scope = tab_namespaces[ v.absolute_name ].tab_namespace
         absolutename = get_absolutename( tab_scope, namespace )
         if ( type( tab_namespaces[ absolutename ] ) == 'table' ) then
           return tab_namespaces[ absolutename ].tab_namespace
