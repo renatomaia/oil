@@ -63,7 +63,7 @@
 --------------------------------------------------------------------------------
 -- Notes:                                                                     --
 --   The syntax used for description of IDL specifications is strongly based  --
---   on the work provided by Letícia Nogeira (i.e. LuaRep), which was mainly  --
+--   on the work provided by Letï¿½ia Nogeira (i.e. LuaRep), which was mainly  --
 --   inteded to provide an user-friendly syntax. This approach may change to  --
 --   allow better fitting into CORBA model, since the use of LuaIDL parsing   --
 --   facilities already provides an user-friendly way to define IDL           --
@@ -102,6 +102,8 @@ local BasicTypes = {
 	void     = true,
 	short    = true,
 	long     = true,
+        llong    = true,
+        ldouble  = true,
 	ushort   = true,
 	ulong    = true,
 	float    = true,
