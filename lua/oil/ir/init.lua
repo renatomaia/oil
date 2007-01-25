@@ -67,7 +67,7 @@ local AttributeDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/Attrib
 local OperationDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/OperationDef:1.0"            }, Contained)
 --local ValueMemberDef          = oo.class({ __idltype = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, Contained)
 --local ConstantDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
-local TypedefDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, Contained, IDLType)
+local TypedefDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, IDLType, Contained)
 
 local StructDef               = oo.class({ __idltype = "IDL:omg.org/CORBA/StructDef:1.0"               }, TypedefDef , Container)
 local UnionDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/UnionDef:1.0"                }, TypedefDef , Container)
