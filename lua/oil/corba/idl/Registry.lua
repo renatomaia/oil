@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -13,83 +8,109 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.3 alpha                                                         --
--- Title  : Interface Repository (IR) object manager                          --
--- Authors: Renato Maia           <maia@inf.puc-rio.br>                       --
+-- Release: 0.4 alpha                                                         --
+-- Title  : IDL Definition Registry                                           --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
--- Interface:                                                                 --
---   new(ifaces) Creates new interface repository with interface map 'ifaces' --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
+-- interfaces:Facet
+-- 	interface:table register(definition:table)
+-- 	interface:table remove(definition:table)
+-- 	[interface:table] lookup(name:string)
+-- 	[interface:table] lookup_id(repid:string)
 --------------------------------------------------------------------------------
 
-local type         = type
-local pairs        = pairs
+local error        = error
 local ipairs       = ipairs
-local setmetatable = setmetatable
-local require      = require
-local getmetatable = getmetatable
+local pairs        = pairs
 local rawget       = rawget
-local pack         = pack
-local print        = print
+local select       = select
+local setmetatable = setmetatable
+local type         = type
+local unpack       = unpack
 
 local string = require "string"
 local table  = require "table"
-local oo         = require "oil.oo"
 
-module "oil.ir"                                                  --[[VERBOSE]] local verbose = require "oil.verbose"
+local ObjectCache = require "loop.collection.ObjectCache"
+local OrderedSet  = require "loop.collection.OrderedSet"
 
-local OrderedSet = require "loop.collection.OrderedSet"
-local assert     = require "oil.assert"
-local idl        = require "oil.idl"
-local manager    = require "oil.manager"
-local iridl      = require "oil.ir.idl"
+local oo        = require "oil.oo"
+local assert    = require "oil.assert"
+local idl       = require "oil.corba.idl"
+local iridl     = require "oil.corba.idl.ir"                                    --[[VERBOSE]] local verbose = require "oil.verbose"
 
-local Empty = {}
-local ObjectManager = manager.ObjectManager
+module "oil.corba.idl.Registry"
 
 --------------------------------------------------------------------------------
--- Classes ---------------------------------------------------------------------
+-- Internal classes ------------------------------------------------------------
 
-local IRObject                = oo.class()
-local Contained               = oo.class({}, IRObject)
-local Container               = oo.class({}, IRObject)
-local IDLType                 = oo.class({}, IRObject)
+  IRObject                = oo.class()
+  Contained               = oo.class({}, IRObject)
+  Container               = oo.class({}, IRObject)
+  IDLType                 = oo.class({}, IRObject)
+  
+  PrimitiveDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/PrimitiveDef:1.0"            }, IDLType)
+  ArrayDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/ArrayDef:1.0"                }, IDLType)
+  SequenceDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/SequenceDef:1.0"             }, IDLType)
+  StringDef               = oo.class({ __idltype = "IDL:omg.org/CORBA/StringDef:1.0"               }, IDLType)
+--WstringDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/WstringDef:1.0"              }, IDLType)
+--FixedDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/FixedDef:1.0"                }, IDLType)
+  
+  AttributeDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, Contained)
+  OperationDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/OperationDef:1.0"            }, Contained)
+--ValueMemberDef          = oo.class({ __idltype = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, Contained)
+--ConstantDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
+  TypedefDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, Contained, IDLType)
+  
+  StructDef               = oo.class({ __idltype = "IDL:omg.org/CORBA/StructDef:1.0"               }, TypedefDef , Container)
+  UnionDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/UnionDef:1.0"                }, TypedefDef , Container)
+  EnumDef                 = oo.class({ __idltype = "IDL:omg.org/CORBA/EnumDef:1.0"                 }, TypedefDef)
+  AliasDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/AliasDef:1.0"                }, TypedefDef)
+--NativeDef               = oo.class({ __idltype = "IDL:omg.org/CORBA/NativeDef:1.0"               }, TypedefDef)
+--ValueBoxDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/ValueBoxDef:1.0"             }, TypedefDef)
+  
+  Repository              = oo.class({ __idltype = "IDL:omg.org/CORBA/Repository:1.0"              }, Container)
+  ModuleDef               = oo.class({ __idltype = "IDL:omg.org/CORBA/ModuleDef:1.0"               }, Contained, Container)
+  ExceptionDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/ExceptionDef:1.0"            }, Contained, Container)
+  InterfaceDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/InterfaceDef:1.0"            }, IDLType, Contained, Container)
+--ValueDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/ValueDef:1.0"                }, Container, Contained, IDLType)
+  
+--AbstractInterfaceDef    = oo.class({ __idltype = "IDL:omg.org/CORBA/AbstractInterfaceDef:1.0"    }, InterfaceDef)
+--LocalInterfaceDef       = oo.class({ __idltype = "IDL:omg.org/CORBA/LocalInterfaceDef:1.0"       }, InterfaceDef)
+  
+--ExtAttributeDef         = oo.class({ __idltype = "IDL:omg.org/CORBA/ExtAttributeDef:1.0"         }, AttributeDef)
+--ExtValueDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/ExtValueDef:1.0"             }, ValueDef)
+--ExtInterfaceDef         = oo.class({ __idltype = "IDL:omg.org/CORBA/ExtInterfaceDef:1.0"         }, InterfaceDef, InterfaceAttrExtension)
+--ExtAbstractInterfaceDef = oo.class({ __idltype = "IDL:omg.org/CORBA/ExtAbstractInterfaceDef:1.0" }, AbstractInterfaceDef, InterfaceAttrExtension)
+--ExtLocalInterfaceDef    = oo.class({ __idltype = "IDL:omg.org/CORBA/ExtLocalInterfaceDef:1.0"    }, LocalInterfaceDef, InterfaceAttrExtension)
+  
+  ObjectRef               = oo.class({}, PrimitiveDef) -- fake class
 
-local PrimitiveDef            = oo.class({}, IDLType)
-local ArrayDef                = oo.class({}, IDLType)
-local SequenceDef             = oo.class({}, IDLType)
-local StringDef               = oo.class({}, IDLType)
---local WstringDef              = oo.class({}, IDLType)
---local FixedDef                = oo.class({}, IDLType)
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
-local AttributeDef            = oo.class({}, Contained)
-local OperationDef            = oo.class({}, Contained)
---local ValueMemberDef          = oo.class({}, Contained)
---local ConstantDef             = oo.class({}, Contained)
-local TypedefDef              = oo.class({}, Contained, IDLType)
+local Empty = setmetatable({}, { __newindex = function(_, field) error("attempt to set table 'Empty'") end })
 
-local StructDef               = oo.class({}, TypedefDef , Container)
-local UnionDef                = oo.class({}, TypedefDef , Container)
-local EnumDef                 = oo.class({}, TypedefDef)
-local AliasDef                = oo.class({}, TypedefDef)
---local NativeDef               = oo.class({}, TypedefDef)
---local ValueBoxDef             = oo.class({}, TypedefDef)
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
-local Repository              = oo.class({}, ObjectManager, Container)
-local ModuleDef               = oo.class({}, Contained, Container)
-local ExceptionDef            = oo.class({}, Contained, Container)
-local InterfaceDef            = oo.class({}, IDLType, Contained, Container)
---local ValueDef                = oo.class({}, Container, Contained, IDLType)
-
---local AbstractInterfaceDef    = oo.class({}, InterfaceDef)
---local LocalInterfaceDef       = oo.class({}, InterfaceDef)
-
---local ExtAttributeDef         = oo.class({}, AttributeDef)
---local ExtValueDef             = oo.class({}, ValueDef)
---local ExtInterfaceDef         = oo.class({}, InterfaceDef, InterfaceAttrExtension)
---local ExtAbstractInterfaceDef = oo.class({}, AbstractInterfaceDef, InterfaceAttrExtension)
---local ExtLocalInterfaceDef    = oo.class({}, LocalInterfaceDef, InterfaceAttrExtension)
+local function topdown(stack, class)
+	while stack[class] do
+		local ready = true
+		for _, super in oo.supers(stack[class]) do
+			if stack:insert(super, class) then
+				ready = false
+				break
+			end
+		end
+	 	if ready then return stack[class] end
+	end
+end
+local function iconstruct(class)
+	local stack = OrderedSet()
+	stack:push(class)
+	return topdown, stack, OrderedSet.firstkey
+end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -97,26 +118,79 @@ local InterfaceDef            = oo.class({}, IDLType, Contained, Container)
 --
 -- Implementation
 --
-local function construct(obj, class, history)
-	for _, super in ipairs({oo.superclass(class)}) do
-		construct(obj, super, history)
+local DefaultRegistry = oo.class()
+function DefaultRegistry:__index(...) return ... end
+
+function IRObject:__init(definition, registry)
+	registry = registry or DefaultRegistry()
+	local object
+	local repository = definition.containing_repository
+	object = repository.definition_map[definition.repID]
+	if object ~= definition then                                                  --[[VERBOSE]] verbose:repository(true, definition._type," ",definition.repID or definition.name)
+		object = oo.rawnew(self, object)
+		object.containing_repository = repository
+		object.dependencies = object.dependencies or {}
+		registry[definition] = object
+		registry[object] = object
+		for class in iconstruct(self) do
+			local fields = rawget(class, "definition_fields")
+			if fields then
+				for name, field in pairs(fields) do
+					if definition[name] ~= nil or not field.optional then
+						if type(field.type) == "string" then
+							assert.type(definition[name], field.type, name)
+						else
+							definition[name] = registry[ definition[name] ]
+						end
+					end
+				end
+			end
+			local update = rawget(class, "update")
+			if update then
+				update(object, definition, registry)
+			end
+		end                                                                         --[[VERBOSE]] verbose:repository(false)
 	end
-	if not history[class] then
-		history[class] = true
-		local constructor = rawget(class, "constructor")
-		if constructor then constructor(obj) end
-	end
-	return obj
+	return object
 end
-function IRObject:__init(def)
-	return construct(oo.rawnew(self, def), self, {})
+
+--TODO:[maia] add calls to these function and manage depencies properly
+
+function IRObject:associate(object, field)
+	local dependencies = object.dependencies
+	if dependencies then
+		--if not dependencies[self] then
+		--	dependencies[self] = {}
+		--end
+		--dependencies[self][field] = true
+		if dependencies[self] and dependencies[self] ~= field then
+			assert.error("Êpa! Isso não deveria acontecer:"..dependencies[self].." -> "..field)
+		end
+		dependencies[self] = field
+	end
+	return object
+end
+
+function IRObject:desassociate(object, field)
+	local dependencies = object.dependencies
+	if dependencies then
+		--dependencies[self][field] = nil
+		--if next(dependencies[self]) == nil then
+		--	dependencies[self] nil
+		--end
+		dependencies[self] = nil
+	end
 end
 
 --
 -- Operations
 --
 function IRObject:destroy()
-	-- TODO:[maia] raise proper exception!
+	assert.exception{ "BAD_INV_ORDER", minor_error_code = 1,
+		message = "attempt to destroy IR definition (currently not allowed)",
+		reason = "irdestroy",
+		object = self,
+	}
 end
 
 --------------------------------------------------------------------------------
@@ -124,89 +198,76 @@ end
 --
 -- Implementation
 --
-local function createrepid(name, version)                                       --[[VERBOSE]] verbose:ir_classes("creating new repository ID from ", name, " ", version)
-	return string.format("IDL:%s:%s",
-	                     string.sub(string.gsub(name, "::", "/"), 2),
-	                     version)
-end
+Contained.version    = "1.0"
+Contained.definition_fields = {
+	repID                 = { type = "string", optional = true },
+	containing_repository = { type = Repository },
+	defined_in            = { type = Container, optional = true },
+	version               = { type = "string", optional = true },
+	name                  = { type = "string" },
+}
 
-function Contained:constructor()
-	local repository = self.containing_repository
-	local defined_in = self.defined_in                                            --[[VERBOSE]] verbose:ir_classes(true, "constructing contained object ", self.name, " inside ", defined_in and defined_in.name, " (", self.repID, ")")
-	
-	if not defined_in then                                                        --[[VERBOSE]] verbose:ir_classes "contained object defines no container, repository containment assumed"
-		self.defined_in = repository
-		defined_in = repository
-	end
-	if not self.version then self.version = "1.0" end
-
-	assert.type(repository, "table", "repository object")
-	assert.type(defined_in, "table", "container object")
-	assert.type(self.name, "string", "contained object name")                     --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct parent object ", defined_in.name)
-	
-	repository:newobject(defined_in)                                              --[[VERBOSE]] verbose:ir_classes()
-
-	if not oo.instanceof(defined_in, Container) then
-		assert.illegal(defined_in, "container", "BAD_PARAM")
-	elseif defined_in.containing_repository ~= repository then
+function Contained:update(new)
+	new.defined_in = new.defined_in or new.containing_repository
+	if new.defined_in.containing_repository ~= self.containing_repository then
 		assert.illegal(defined_in,
 		              "container, repository does not match",
 		              "BAD_PARAM")
 	end
-
-	if self.repID then self:_set_id(self.repID) end
-
-	return self:move(self.defined_in, self.name, self.version)                    --[[VERBOSE]] , verbose:ir_classes()
+	if new.repID then self:_set_id(new.repID) end
+	self:move(new.defined_in, new.name, new.version)
 end
 
+local RepIDFormat = "IDL:%s:%s"
 function Contained:updatename()
-	self.absolute_name = self.defined_in.absolute_name.."::"..self.name           --[[VERBOSE]] verbose:ir_classes(true, "updating contained object's absolute name to ", self.absolute_name)
+	self.absolute_name = self.defined_in.absolute_name.."::"..self.name
 	if not self.repID then
-		self:_set_id(createrepid(self.absolute_name, self.version))
+		self:_set_id(RepIDFormat:format(self.absolute_name:gsub("::", "/"):sub(2),
+		                                self.version))
 	end
-	if self.definitions and oo.instanceof(self, Container) then                   --[[VERBOSE]] verbose:ir_classes(true, "updating members absolute names")
+	if self.definitions then
 		for name, member in pairs(self.definitions) do
-			if type(name) == "string" and oo.instanceof(member, Contained) then
+			if oo.instanceof(member, Contained) then
 				member:updatename()
 			end
-		end                                                                         --[[VERBOSE]] verbose:ir_classes()
-	end                                                                           --[[VERBOSE]] verbose:ir_classes()
+		end
+	end
 end
 
 --
 -- Attributes
 --
-function Contained:_set_id(id)                                                  --[[VERBOSE]] verbose:ir_classes("setting contained object repID to ", id)
-	local ifaces = self.containing_repository.ifaces
-	if id ~= self.repID then
-		if ifaces[id] then
-			assert.illegal(id, "repository ID, already exists", "BAD_PARAM", 2)
-		end
-		if self.repID then ifaces[self.repID] = nil end
-		self.repID = id
+function Contained:_set_id(id)
+	local definitions = self.containing_repository.definition_map
+	if definitions[id] and definitions[id] ~= self then
+		assert.illegal(id, "repository ID, already exists", "BAD_PARAM", 2)
 	end
+	if self.repID then
+		definitions[self.repID] = nil
+	end
+	self.repID = id
 	self.id = id
-	ifaces[id] = self
+	definitions[id] = self
 end
 
-function Contained:_set_name(name)                                              --[[VERBOSE]] verbose:ir_classes(true, "setting contained object name to ", name)
+function Contained:_set_name(name)
 	local definitions = self.defined_in.definitions
-	if name ~= self.name then
-		if definitions[name] then
-			assert.illegal(name, "contained name, name clash", "BAD_PARAM", 1)
-		end
-		definitions[self.name] = nil
-		self.name = name
+	if definitions[name] and definitions[name] ~= self then
+		assert.illegal(name, "contained name, name clash", "BAD_PARAM", 1)
 	end
+	if self.name then
+		definitions[self.name] = nil
+	end
+	self.name = name
 	definitions[name] = self
-	self:updatename()                                                             --[[VERBOSE]] verbose:ir_classes()
+	self:updatename()
 end
 
 --
 -- Operations
 --
 local ContainedDescription = iridl.Contained.definitions.Description
-function Contained:describe()                                                   --[[VERBOSE]] verbose:ir_classes("describing contained object ", self.name)
+function Contained:describe()
 	local description = self:get_description()
 	description.name       = self.name
 	description.id         = self.repID
@@ -221,7 +282,7 @@ end
 --function Contained:within() -- TODO:[maia] This op is described in specs but
 --end                         --             is not listed in IR IDL!
 
-function Contained:move(new_container, new_name, new_version)                   --[[VERBOSE]] verbose:ir_classes(true, "moving contained object into container ", new_container.name)
+function Contained:move(new_container, new_name, new_version)
 	if new_container.containing_repository ~= self.containing_repository then
 		assert.illegal(new_container, "container", "BAD_PARAM", 4)
 	end
@@ -230,11 +291,11 @@ function Contained:move(new_container, new_name, new_version)                   
 		assert.illegal(new_name, "contained name, already exists", "BAD_PARAM", 3)
 	end
 	if self.defined_in then
-		self.defined_in.definitions[self.name] = nil                                --[[VERBOSE]] verbose:ir_classes("contained object removed from old container ", self.defined_in.name)
+		self.defined_in.definitions[self.name] = nil
 	end
 	self.defined_in = new_container
 	self.version = new_version
-	self:_set_name(new_name)                                                      --[[VERBOSE]] verbose:ir_classes()
+	self:_set_name(new_name)
 end
 
 --------------------------------------------------------------------------------
@@ -242,72 +303,94 @@ end
 --
 -- Implementation
 --
-function Container:constructor()                                                --[[VERBOSE]] verbose:ir_classes(true, "constructing container object")
-	if self.definitions then
-		local repository = self.containing_repository
-		for field, member in pairs(self.definitions) do
-			if type(field) == "string" and not string.find(field, "^_") then          --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct member object ", type(member) == "table" and member.name or member)
-				repository:newobject(member)                                            --[[VERBOSE]] verbose:ir_classes()
+Container.definition_fields = {
+	definitions = { type = "table", optional = true },
+}
+function Container:update(new, registry)
+	self.definitions = self.expandable and self.definitions or {}
+	if new.definitions then
+		for name, member in pairs(new.definitions) do
+			if type(name) == "string" and not name:match("^_") then
+				member = self:associate(registry[member], "definitions")
+				member:move(self, name, self.version)
 			end
 		end
-	else
-		self.definitions = {}
-	end                                                                           --[[VERBOSE]] verbose:ir_classes()
+	end
+end
+
+local single
+local function isingle() return single end
+function Container:hierarchy()
+	single = self
+	return isingle
 end
 
 --
 -- Read interface
 --
 
-function Container:lookup(search_name)                                          --[[VERBOSE]] verbose:ir_classes(true, "searching for name ", search_name)
+function Container:lookup(search_name)
 	local scope
-	if string.find(search_name, "^::") then
+
+if not search_name.find then verbose:debug() end
+
+	if search_name:find("^::") then
 		scope = self.containing_repository
 	else
 		scope = self
 		search_name = "::"..search_name
 	end
-	for nextscope in string.gmatch(search_name, "::([%w][_%w]*)") do               --[[VERBOSE]] verbose:ir_classes("looking name ", nextscope, " in scope ", scope and scope.name) if not scope then verbose:ir_classes "scope not found!" elseif not scope.definitions then verbose:ir_classes "invalid scope!" end
+	for nextscope in string.gmatch(search_name, "::([%w][_%w]*)") do
 		if not scope or not scope.definitions then return nil end
 		scope = scope.definitions[nextscope]
 	end
-	return scope                                                                  --[[VERBOSE]] , verbose:ir_classes()
+	return scope
 end
 
-function Container:contents(limit_type, exclude_inherited, max_returned_objs)   --[[VERBOSE]] verbose:ir_classes(true, "returing up to ", max_returned_objs, " contents of kind ", limit_type)
-	-- TODO:[maia] finish implementation
-	if not contents then contents = {} end
-	for name, member in pairs(self.definitions)	do
-		if
-			type(name) == "string" and
-			(limit_type == "dk_all" or member.def_kind == limit_type)
-		then
-			if max_returned_objs == 0 then break end                                  --[[VERBOSE]] verbose:ir_classes("including member ", member.name)
-			table.insert(contents, member)
-			max_returned_objs = max_returned_objs - 1
+function Container:contents(limit_type, exclude_inherited, max_returned_objs)
+	max_returned_objs = max_returned_objs or -1
+	local contents = {}
+	for container in self:hierarchy() do
+		for _, list in ipairs{ container.definitions, container.members } do
+			for name, member in pairs(list)	do
+				if
+					type(name) == "string" and not name:match("^_") and
+					(limit_type == "dk_all" or member.def_kind == limit_type)
+				then
+					if max_returned_objs == 0 then break end
+					contents[#contents+1] = member
+					max_returned_objs = max_returned_objs - 1
+				end
+			end
 		end
+		if exclude_inherited then break end
 	end
-	return contents, max_returned_objs                                            --[[VERBOSE]] , verbose:ir_classes()
+	return contents, max_returned_objs
 end
 
 function Container:lookup_name(search_name, levels_to_search,
-																limit_type, exclude_inherited)
-	-- TODO:[maia] finish implementation
-	if not results then results = {} end
-	for name, member in pairs(self.definitions)	do
-		if
-			type(name) == "string" and
-			(limit_type == "dk_all" or member.def_kind == limit_type)
-		then
-			table.insert(results, member)
+                               limit_type, exclude_inherited)
+	-- TODO:[maia] should return contents in the order they were created
+	local results = {}
+	for container in self:hierarchy() do
+		for _, list in ipairs{ container.definitions, container.members } do
+			for name, member in pairs(list)	do
+				if
+					type(name) == "string" and not name:match("^_") and
+					(limit_type == "dk_all" or member.def_kind == limit_type)
+				then
+					results[#results+1] = member
+				end
+			end
 		end
+		if exclude_inherited then break end
 	end
 	return results
 end
 
 local ContainerDescription = iridl.Container.definitions.Description
 function Container:describe_contents(limit_type, exclude_inherited,
-																		max_returned_objs)                         --[[VERBOSE]] verbose:ir_classes(true, "describing contents")
+                                     max_returned_objs)
 	local contents = self:contents(limit_type,
 	                               exclude_inherited,
 	                               max_returned_objs)
@@ -318,8 +401,7 @@ function Container:describe_contents(limit_type, exclude_inherited,
 			value = content:describe(),
 		}, ContainerDescription)
 	end
-	
-	return contents                                                               --[[VERBOSE]] , verbose:ir_classes()
+	return contents
 end
 
 --
@@ -455,339 +537,13 @@ end
 
 --------------------------------------------------------------------------------
 
-function IDLType:constructor()                                                  --[[VERBOSE]] verbose:ir_classes "constructing IDL type object"
-	if not self.type then self.type = self end
+function IDLType:update()
+	self.type = self
 end
 
 --------------------------------------------------------------------------------
 
-local ObjectRef = oo.class({}, PrimitiveDef)
-ObjectRef._type = "Object"
-ObjectRef.kind = "pk_objref"
-ObjectRef.repID = "IDL:omg.org/CORBA/Object:1.0"
-ObjectRef.name = "Object"
-
-function ObjectRef:constructor()
-	if self.repID ~= ObjectRef.repID then
-		assert.raise{ "INTERNAL", minor_code_value = 0,
-			reason = "IRObject",
-			message = "illegal Object type, use interface definition instead",
-		}
-	end
-end
-
---------------------------------------------------------------------------------
-
-PrimitiveDef.def_kind = "dk_Primitive"
-
-PrimitiveDef(idl.null    ).kind = "pk_null"
-PrimitiveDef(idl.void    ).kind = "pk_void"
-PrimitiveDef(idl.short   ).kind = "pk_short"
-PrimitiveDef(idl.long    ).kind = "pk_long"
-PrimitiveDef(idl.ushort  ).kind = "pk_ushort"
-PrimitiveDef(idl.ulong   ).kind = "pk_ulong"
-PrimitiveDef(idl.float   ).kind = "pk_float"
-PrimitiveDef(idl.double  ).kind = "pk_double"
-PrimitiveDef(idl.boolean ).kind = "pk_boolean"
-PrimitiveDef(idl.char    ).kind = "pk_char"
-PrimitiveDef(idl.octet   ).kind = "pk_octet"
-PrimitiveDef(idl.any     ).kind = "pk_any"
-PrimitiveDef(idl.TypeCode).kind = "pk_TypeCode"
-PrimitiveDef(idl.string  ).kind = "pk_string"
---PrimitiveDef(    objref  ).kind = "pk_objref"
-
---------------------------------------------------------------------------------
-
-ArrayDef.def_kind = "dk_Array"
-ArrayDef._type = "array"
-
-function ArrayDef:constructor()                                                 --[[VERBOSE]] verbose:ir_classes(true, "constructing ArrayDef object")
-	if not self.element_type_def then                                             --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct element type object")
-		self.containing_repository:newobject(self.elementtype)                      --[[VERBOSE]] verbose:ir_classes()
-		self:_set_element_type_def(self.elementtype)                                --[[VERBOSE]] verbose:ir_classes()
-	end
-end
-
-function ArrayDef:_get_element_type() return self.elementtype end
-
-function ArrayDef:_set_element_type_def(type_def)                               --[[VERBOSE]] verbose:ir_classes "setting sequence/array element type"
-	self.element_type_def = type_def
-	self.elementtype = type_def.type
-end
-
---------------------------------------------------------------------------------
-
-SequenceDef.def_kind = "dk_Sequence"
-SequenceDef._type = "sequence"
-
-function SequenceDef:constructor()                                              --[[VERBOSE]] verbose:ir_classes(true, "constructing SequenceDef object")
-	if not self.element_type_def then                                             --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct element type object")
-		self.containing_repository:newobject(self.elementtype)                     --[[VERBOSE]] verbose:ir_classes()
-		self:_set_element_type_def(self.elementtype)
-	end                                                                           --[[VERBOSE]] verbose:ir_classes()
-end
-
-SequenceDef._get_element_type = ArrayDef._get_element_type
-SequenceDef._set_element_type_def = ArrayDef._set_element_type_def
-function SequenceDef:_set_bound(value) self.maxlength = value end
-function SequenceDef:_get_bound() return self.maxlength end
-
---------------------------------------------------------------------------------
-
-StringDef.def_kind = "dk_String"
-StringDef._type = "string"
-StringDef.maxlength = 0
-StringDef._set_bound = SequenceDef._set_bound
-StringDef._get_bound = SequenceDef._get_bound
-
---------------------------------------------------------------------------------
-
-AttributeDef.def_kind = "dk_Attribute"
-AttributeDef._type = "attribute"
-
-function AttributeDef:get_description()                                         --[[VERBOSE]] verbose:ir_classes "creating attribute description"
-	return setmetatable({
-		type = self.type,
-		mode = self.mode,
-	}, iridl.AttributeDescription)
-end
-
-function AttributeDef:constructor()                                             --[[VERBOSE]] verbose:ir_classes(true, "constructing AttributeDef object")
-	if not self.mode then
-		self.mode = (self.readonly and "ATTR_READONLY" or "ATTR_NORMAL")
-	end
-	if not self.type_def then                                                     --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct element type object")
-		self.containing_repository:newobject(self.type)                             --[[VERBOSE]] verbose:ir_classes()
-		self:_set_type_def(self.type)
-	end
-	
-	self.defined_in.members[self.name] = self	                                    --[[VERBOSE]] verbose:ir_classes()
-end
-
-function AttributeDef:_set_mode(value)                                          --[[VERBOSE]] verbose:ir_classes "setting attribute mode"
-	self.mode = value
-	self.readonly = (value == "ATTR_READONLY")
-end
-
-function AttributeDef:_set_type_def(type_def)                                   --[[VERBOSE]] verbose:ir_classes "setting attribute type"
-	self.type_def = type_def
-	self.type = type_def.type
-end
-
---------------------------------------------------------------------------------
-
-OperationDef.def_kind = "dk_Operation"
-OperationDef._type = "operation"
-OperationDef.contexts = Empty
-OperationDef.parameters = Empty
-OperationDef.exceptions = Empty
-OperationDef.result = idl.void
-
-function OperationDef:get_description()                                         --[[VERBOSE]] verbose:ir_classes "creating operation description"
-	local exceptions = {}
-	for index, except in ipairs(self.exceptions) do
-		exceptions[index] = except:describe().value
-	end
-	return setmetatable({
-		result     = self.result,
-		mode       = self.mode,
-		contexts   = self.contexts,
-		parameters = self.parameters,
-		exceptions = exceptions,
-	}, iridl.OperationDescription)
-end
-
-function OperationDef:constructor()                                             --[[VERBOSE]] verbose:ir_classes(true, "constructing OperationDef object")
-	if not self.mode then
-		self.mode = (self.oneway and "OP_ONEWAY" or "OP_NORMAL")
-	end
-	local repository = self.containing_repository
-	for _, param in ipairs(self.parameters) do
-		if not param.type_def then                                                  --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct parameter ", _, " type object")
-			repository:newobject(param.type)                                          --[[VERBOSE]] verbose:ir_classes()
-			param.type_def = param.type
-		end
-	end
-	for _, except in ipairs(self.exceptions) do                                   --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct raised exception ", except.name, " type object")
-		repository:newobject(except)                                                --[[VERBOSE]] verbose:ir_classes()
-	end
-	if not self.result_def then                                                   --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct result type object")
-		repository:newobject(self.result)                                           --[[VERBOSE]] verbose:ir_classes()
-		self:_set_result_def(self.result)
-	end
-	self:_set_params(self.parameters)
-	self:_set_exceptions(self.exceptions)
-
-	self.defined_in.members[self.name] = self	                                    --[[VERBOSE]] verbose:ir_classes()
-end
-
-function OperationDef:_set_mode(value)                                          --[[VERBOSE]] verbose:ir_classes "setting operation mode"
-	self.mode = value
-	self.oneway = (value == "OP_ONEWAY")
-end
-
-function OperationDef:_set_result_def(type_def)                                 --[[VERBOSE]] verbose:ir_classes "setting operation result type"
-	self.result_def = type_def
-	self.result = type_def.type
-end
-
-function OperationDef:_get_params() return self.parameters end
-function OperationDef:_set_params(parameters)                                   --[[VERBOSE]] verbose:ir_classes "setting operation parameters"
-	local inputs = {}
-	local outputs = {}
-	if self.result and self.result ~= idl.void then
-		table.insert(outputs, self.result)
-	end
-	for _, param in ipairs(parameters) do
-		param.type = param.type_def.type
-		if param.mode == nil or param.mode == "PARAM_IN" then
-			table.insert(inputs, param.type)
-		elseif param.mode == "PARAM_OUT" then
-			table.insert(outputs, param.type)
-		elseif param.mode == "PARAM_INOUT" then
-			table.insert(inputs, param.type)
-			table.insert(outputs, param.type)
-		else
-			assert.illegal(param.mode, "operation parameter mode")
-		end
-	end
-	self.parameters = parameters
-	self.inputs = inputs
-	self.outputs = outputs
-end
-
-function OperationDef:_set_exceptions(excepts)                                  --[[VERBOSE]] verbose:ir_classes "setting operation raised exceptions"
-	for _, except in ipairs(excepts) do
-		excepts[except.repID] = except
-	end
-	self.exceptions = excepts
-end
-
---------------------------------------------------------------------------------
-
-TypedefDef.def_kind = "dk_Typedef"
-TypedefDef._type = "typedef"
-
-function TypedefDef:get_description()                                           --[[VERBOSE]] verbose:ir_classes "creating type definition description"
-	return setmetatable({ type = self.type }, iridl.TypeDescription)
-end
-
---------------------------------------------------------------------------------
-
-StructDef.def_kind = "dk_Struct"
-StructDef._type = "struct"
-
-function StructDef:constructor()                                                --[[VERBOSE]] verbose:ir_classes(true, "constructing StructDef object")
-	local repository = self.containing_repository
-	for _, field in ipairs(self.fields) do
-		if not field.type_def then                                                  --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct struct field type object")
-			repository:newobject(field.type)                                          --[[VERBOSE]] verbose:ir_classes()
-			field.type_def = field.type
-		end
-	end
-	self:_set_members(self.fields)                                                --[[VERBOSE]] verbose:ir_classes()
-end
-
-StructDef._set_type_def = AttributeDef._set_type_def
-
-function StructDef:_get_members() return self.fields end
-function StructDef:_set_members(members)
-	for _, field in ipairs(members) do
-		field.type = field.type_def.type
-	end
-	self.fields = members
-end
-
---------------------------------------------------------------------------------
-
-UnionDef.def_kind = "dk_Union"
-UnionDef._type = "union"
-UnionDef.default = -1
-
-function UnionDef:constructor()                                                 --[[VERBOSE]] verbose:ir_classes(true, "constructing UnionDef object")
-	local repository = self.containing_repository
-	if not self.discriminator_type_def then                                       --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct switch type object")
-		repository:newobject(self.switch)                                           --[[VERBOSE]] verbose:ir_classes()
-		self:_set_discriminator_type_def(self.switch)
-	end
-	if not self.members then
-		local members = {}
-		for index, option in ipairs(self.options) do                                --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct option ", option.name, " type object")
-			repository:newobject(option.type)                                         --[[VERBOSE]] verbose:ir_classes()
-			members[index] = {
-				name = option.name,
-				label = setmetatable({option.label}, self.switch),
-				type_def = option.type,
-				type = option.type.type,
-			}
-		end
-		self.members = members
-	elseif not self.options then
-		self:_set_members(self.members)
-	end
-end
-
-function UnionDef:_get_discriminator_type() return self.switch end
-
-function UnionDef:_set_discriminator_type_def(type_def)                         --[[VERBOSE]] verbose:ir_classes "setting union discriminator type"
-	self.discriminator_type_def = type_def
-	self.switch = type_def.type
-end
-
-function UnionDef:_set_members(members)                                         --[[VERBOSE]] verbose:ir_classes "setting union members"
-	local options = {}
-	local selector = {}
-	local selection = {}
-	for index, member in ipairs(members) do
-		local option = {
-			label = member.label[1],
-			name = member.name,
-			type = member.type_def.type,
-		}
-		options[index] = option
-		selector[option.name] = option.label
-		selection[option.label] = option
-	end
-	self.options = options
-	self.selector = selector
-	self.selection = selection
-end
-
---------------------------------------------------------------------------------
-
-EnumDef.def_kind = "dk_Enum"
-EnumDef._type = "enum"
-
-function EnumDef:constructor()                                                  --[[VERBOSE]] verbose:ir_classes(true, "constructing EnumDef object")
-	self:_set_members(self.enumvalues)                                            --[[VERBOSE]] verbose:ir_classes()
-end
-
-function EnumDef:_get_members() return self.enumvalues end
-function EnumDef:_set_members(members)
-	local labelvalue = {}
-	for index, label in ipairs(members) do
-		labelvalue[label] = index - 1
-	end
-	self.enumvalues = members
-	self.labelvalue = labelvalue
-end
-
---------------------------------------------------------------------------------
-
-AliasDef.def_kind = "dk_Alias"
-AliasDef._type = "typedef"
-
-function AliasDef:_set_original_type_def(type_def)
-	self.original_type_def = type_def
-	self.type = type_def.type
-end
-
---------------------------------------------------------------------------------
-
-Repository.repID = ""
-Repository.absolute_name = ""
-
-Repository.primitive = {
+local PrimitiveTypes = {
 	pk_null     = idl.null,
 	pk_void     = idl.void,
 	pk_short    = idl.short,
@@ -802,114 +558,417 @@ Repository.primitive = {
 	pk_any      = idl.any,
 	pk_TypeCode = idl.TypeCode,
 	pk_string   = idl.string,
-	pk_objref   = ObjectRef(),
+	pk_objref   = idl.Object("IDL:omg.org/CORBA/Object:1.0"),
 }
 
-local Classes = {
-	struct     = StructDef,
-	union      = UnionDef,
-	enum       = EnumDef,
-	sequence   = SequenceDef,
-	array      = ArrayDef,
-	string     = StringDef,
-	typedef    = AliasDef,
-	except     = ExceptionDef,
-	attribute  = AttributeDef,
-	operation  = OperationDef,
-	module     = ModuleDef,
-	interface  = InterfaceDef,
-	Object     = ObjectRef,
+PrimitiveDef.def_kind = "dk_Primitive"
+
+function PrimitiveDef:__init(definition)
+	self = oo.rawnew(self, definition)
+	IDLType.update(self)
+	return self
+end
+
+for kind, type in pairs(PrimitiveTypes) do
+	PrimitiveDef(type).kind = kind
+end
+
+--------------------------------------------------------------------------------
+
+function ObjectRef:update(new)
+	if new.repID ~= ObjectRef.repID then
+		assert.illegal(new, "Object type, use interface definition instead")
+	end
+	return PrimitiveTypes.pk_objref
+end
+
+--------------------------------------------------------------------------------
+
+ArrayDef._type = "array"
+ArrayDef.def_kind = "dk_Array"
+ArrayDef.definition_fields = {
+	maxlength   = { type = "number" },
+	elementtype = { type = IDLType },
 }
-function Repository:newobject(object)
-	if getmetatable(object) == nil then                                           --[[VERBOSE]] verbose:ir_classes "creating new IR object from IDL definition"
-		object.containing_repository = self
-		return Classes[object._type](object)
-	elseif
-		object._is_a and
-		object:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0")
-	then
-		return self.proxy:interface(object)                                              --[[VERBOSE]] else verbose:ir_classes "object already is an IR object"
+
+function ArrayDef:update(new)
+	self.maxlengh = new.maxlengh
+	self:_set_element_type_def(new.elementtype)
+end
+
+function ArrayDef:_get_element_type() return self.elementtype end
+
+function ArrayDef:_set_element_type_def(type_def)
+	self.element_type_def = type_def
+	self.elementtype = type_def.type
+end
+
+--------------------------------------------------------------------------------
+
+SequenceDef._type = "sequence"
+SequenceDef.def_kind = "dk_Sequence"
+SequenceDef.maxlength = 0
+SequenceDef.definition_fields = {
+	maxlength   = { type = "number", optional = true },
+	elementtype = { type = IDLType },
+}
+
+SequenceDef.update = ArrayDef.update
+SequenceDef._get_element_type = ArrayDef._get_element_type
+SequenceDef._set_element_type_def = ArrayDef._set_element_type_def
+function SequenceDef:_set_bound(value) self.maxlength = value end
+function SequenceDef:_get_bound() return self.maxlength end
+
+--------------------------------------------------------------------------------
+
+StringDef._type = "string"
+StringDef.def_kind = "dk_String"
+StringDef.maxlength = 0
+StringDef.definition_fields = {
+	maxlength   = { type = "number", optional = true },
+}
+StringDef._set_bound = SequenceDef._set_bound
+StringDef._get_bound = SequenceDef._get_bound
+
+--------------------------------------------------------------------------------
+
+AttributeDef._type = "attribute"
+AttributeDef.def_kind = "dk_Attribute"
+AttributeDef.definition_fields = {
+	defined_in = { type = InterfaceDef },
+	readonly   = { type = "boolean", optional = true },
+	type       = { type = IDLType },
+}
+
+function AttributeDef:update(new)
+	self:_set_mode(new.readonly and "ATTR_READONLY" or "ATTR_NORMAL")
+	self:_set_type_def(new.type)
+end
+
+function AttributeDef:_set_name(name)
+	Contained._set_name(self, name)
+	self.defined_in.members[name] = self
+end
+
+function AttributeDef:_set_mode(value)
+	self.mode = value
+	self.readonly = (value == "ATTR_READONLY")
+end
+
+function AttributeDef:_set_type_def(type_def)
+	self.type_def = type_def
+	self.type = type_def.type
+end
+
+function AttributeDef:get_description()
+	return setmetatable({
+		type = self.type,
+		mode = self.mode,
+	}, iridl.AttributeDescription)
+end
+
+--------------------------------------------------------------------------------
+
+OperationDef._type = "operation"
+OperationDef.def_kind = "dk_Operation"
+OperationDef.contexts = Empty
+OperationDef.parameters = Empty
+OperationDef.inputs = Empty
+OperationDef.outputs = Empty
+OperationDef.exceptions = Empty
+OperationDef.result = idl.void
+OperationDef.definition_fields = {
+	defined_in = { type = InterfaceDef },
+	oneway = { type = "boolean", optional = true },
+	contexts = { type = "table", optional = true },
+	parameters = { type = "table", optional = true },
+	exceptions = { type = "table", optional = true },
+	result = { type = IDLType, optional = true },
+}
+
+function OperationDef:update(new, registry)
+	self:_set_mode(new.oneway and "OP_ONEWAY" or "OP_NORMAL")
+	if new.result then
+		self.outputs = {}
+		self:_set_result_def(new.result)
+	end
+	
+	if new.parameters then
+		local parameters = {}
+		for index, param in ipairs(new.parameters) do
+			local type_def = registry[param.type]
+			parameters[index] = {
+				name = param.name,
+				mode = param.mode,
+				type_def = type_def,
+				type = type_def.type,
+			}
+		end
+		self:_set_params(parameters)
+	end
+	
+	if new.exceptions then
+		local exceptions = {}
+		for index, except in ipairs(new.exceptions) do
+			exceptions[index] = registry[except]
+		end
+		self:_set_exceptions(exceptions)
+	end
+	
+	self.contexts = new.contexts
+end
+
+function OperationDef:_set_name(name)
+	Contained._set_name(self, name)
+	self.defined_in.members[name] = self
+end
+
+function OperationDef:_set_mode(value)
+	self.mode = value
+	self.oneway = (value == "OP_ONEWAY")
+end
+
+function OperationDef:_set_result_def(type_def)
+	local current = self.result
+	local newval = type_def.type
+	if current ~= newval then
+		self.result_def = type_def
+		self.result = newval
+		if current == idl.void then
+			table.insert(self.outputs, 1, newval)
+		elseif newval == idl.void then
+			table.remove(self.outputs, 1)
+		else
+			self.outputs[1] = newval
+		end
 	end
 end
 
-function Repository:__init(object)                                              --[[VERBOSE]] verbose:ir_classes(true, "creating new repository")
-	object = object or {ifaces = ifaces}
-	ObjectManager.__init(self, object) 
-	object.containing_repository = object
-	return IRObject.__init(self, object)                                          --[[VERBOSE]] , verbose:ir_classes()
-end
-
-function Repository:constructor()                                               --[[VERBOSE]] verbose:ir_classes(true, "constructing Repository object")
-	for repID, iface in pairs(self.ifaces) do
-		if type(iface) == "table" and iface._type == "interface" then
-			self:newobject(iface)
-		end
-	end                                                                           --[[VERBOSE]] verbose:ir_classes()
-end
-
-function Repository:putiface(def)
-	assert.type(def, "idlinterface", "interface")
-	local repID = def.repID
-	assert.type(repID, "string", "interface repository ID")
-
-	local interface = rawget(self.ifaces, repID)
-	if interface ~= def then
-		if interface then                                                           --[[VERBOSE]] verbose:ir_manager("replace definition of ", repID)
-			---- redefine interface members
-			--interface:update(def)
-			--
-			---- redefine interface class
-			--proxyclass = rawget(self.classes, repID)
-			--if proxyclass then                                                        --[[VERBOSE]] verbose:ir_manager("replace proxy class of ", repID)
-			--	-- TODO: reset proxy class members, so new operation stubs will be created
-			--	local handlers = proxyclass._handlers
-			--	table.clear(proxyclass)
-			--	proxyclass._iface = interface
-			--	proxyclass._manager = self
-			--	proxyclass._handlers = handlers
-			--	proxyclass.__index = proxy.Object.__index
-			--	proxyclass.__newindex = proxy.Object.__newindex
-			--end
-		else                                                                        --[[VERBOSE]] verbose:ir_manager(true, "register definition of ", repID)
-			if getmetatable(def) then                                                 --[[VERBOSE]] verbose:ir_manager "remote or customized interface description"
-				interface = def
-				self.ifaces[repID] = interface
-			else                                                                      --[[VERBOSE]] verbose:ir_manager "creating InterfaceDef from description"
-				def.containing_repository = self
-				if not def.defined_in then def.defined_in = self end
-				interface = InterfaceDef(def)
-			end                                                                       --[[VERBOSE]] verbose:ir_manager()
+function OperationDef:_get_params() return self.parameters end
+function OperationDef:_set_params(params)
+	local parameters = {}
+	local inputs = {}
+	local outputs = {}
+	if self.result ~= idl.void then
+		outputs[#outputs+1] = self.result
+	end
+	for index, param in ipairs(params) do
+		local type = param.type
+		local mode = param.mode or "PARAM_IN"
+		parameters[index] = {
+			name = param.name,
+			typedef = param.typedef,
+			type = type,
+			mode = mode,
+		}
+		if mode == "PARAM_IN" then
+			inputs[#inputs+1] = type
+		elseif mode == "PARAM_OUT" then
+			outputs[#outputs+1] = type
+		elseif mode == "PARAM_INOUT" then
+			inputs[#inputs+1] = type
+			outputs[#outputs+1] = type
+		else
+			assert.illegal(mode, "operation parameter mode")
 		end
 	end
-	return interface
+	self.parameters = parameters
+	self.inputs = inputs
+	self.outputs = outputs
+end
+
+function OperationDef:_set_exceptions(excepts)
+	local exceptions = {}
+	for index, except in ipairs(excepts) do
+		exceptions[index] = except
+		exceptions[except.repID] = except:get_description().type
+	end
+	self.exceptions = excepts
+end
+
+function OperationDef:get_description()
+	return setmetatable({
+		result     = self.result,
+		mode       = self.mode,
+		contexts   = self.contexts,
+		parameters = self.parameters,
+		exceptions = self.exceptions,
+	}, iridl.OperationDescription)
+end
+
+--------------------------------------------------------------------------------
+
+TypedefDef._type = "typedef"
+TypedefDef.def_kind = "dk_Typedef"
+
+function TypedefDef:get_description()
+	return setmetatable({ type = self.type }, iridl.TypeDescription)
+end
+
+--------------------------------------------------------------------------------
+
+StructDef._type = "struct"
+StructDef.def_kind = "dk_Struct"
+StructDef.fields = Empty
+StructDef.definition_fields = {
+	fields = { type = "table", optional = true },
+}
+
+function StructDef:update(new, registry)
+	if new.fields then
+		local fields = {}
+		for index, field in ipairs(new.fields) do
+			local type_def = registry[field.type]
+			fields[index] = {
+				name = field.name,
+				type_def = type_def,
+				type = type_def.type,
+			}
+		end
+		self:_set_members(fields)
+	end
+end
+
+StructDef._set_type_def = AttributeDef._set_type_def
+
+function StructDef:_get_members() return self.fields end
+function StructDef:_set_members(members)
+	local fields = {}
+	for index, member in ipairs(members) do
+		fields[index] = {
+			name = member.name,
+			type = member.type,
+			type_def = member.type_def,
+		}
+	end
+	self.fields = fields
+end
+
+--------------------------------------------------------------------------------
+
+UnionDef._type = "union"
+UnionDef.def_kind = "dk_Union"
+UnionDef.default = -1
+UnionDef.options = Empty
+UnionDef.members = Empty
+UnionDef.definition_fields = {
+	switch = { type = IDLType },
+	options = { type = "table", optional = true },
+	default = { type = "number", optional = true },
+}
+
+function UnionDef:update(new, registry)
+	self:_set_discriminator_type_def(new.switch)
+	
+	if new.options then
+		local members = {}
+		for index, option in ipairs(new.options) do
+			local type_def = registry[option.type]
+			members[index] = {
+				name = option.name,
+				label = setmetatable({ option.label }, self.switch),
+				type_def = type_def,
+				type = type_def.type,
+			}
+		end
+		self:_set_members(members)
+	end
+end
+
+function UnionDef:_get_discriminator_type() return self.switch end
+
+function UnionDef:_set_discriminator_type_def(type_def)
+	self.discriminator_type_def = type_def
+	self.switch = type_def.type
+end
+
+function UnionDef:_set_members(members)
+	local options = {}
+	local selector = {}
+	local selection = {}
+	for index, member in ipairs(members) do
+		local option = {
+			label = member.label._anyval,
+			name = member.name,
+			type = member.type,
+			type_def = member.type_def,
+		}
+		options[index] = option
+		selector[option.name] = option.label
+		selection[option.label] = option
+	end
+	self.options = options
+	self.selector = selector
+	self.selection = selection
+	self.members = members
+end
+
+--------------------------------------------------------------------------------
+
+EnumDef._type = "enum"
+EnumDef.def_kind = "dk_Enum"
+EnumDef.definition_fields = {
+	enumvalues = { type = "table" },
+}
+
+function EnumDef:update(new)
+	self:_set_members(new.enumvalues)
+end
+
+function EnumDef:_get_members() return self.enumvalues end
+function EnumDef:_set_members(members)
+	local labelvalue = {}
+	for index, label in ipairs(members) do
+		labelvalue[label] = index - 1
+	end
+	self.enumvalues = members
+	self.labelvalue = labelvalue
+end
+
+--------------------------------------------------------------------------------
+
+AliasDef._type = "typedef"
+AliasDef.def_kind = "dk_Alias"
+AliasDef.definition_fields = {
+	type = { type = IDLType },
+}
+
+function AliasDef:update(new)
+	self:_set_original_type_def(new.type)
+end
+
+function AliasDef:_set_original_type_def(type_def)
+	self.original_type_def = type_def
+	self.type = type_def.type
+end
+
+--------------------------------------------------------------------------------
+
+Repository.def_kind = "dk_Repository"
+Repository.repID = ""
+Repository.absolute_name = ""
+
+function Repository:__init(object)
+	self = oo.rawnew(self, object)
+	self.containing_repository = self.containing_repository or self
+	self.definition_map        = self.definition_map or {}
+	Container.update(self, self)
+	return self
 end
 
 --
 -- Read interface
 --
 
-function Repository:lookup(search_name)
-	local iface = Container.lookup(self, search_name)
-	if not iface and self.ir then                                                 --[[VERBOSE]] verbose:ir_classes(true, "looking up name on remote IR")
-		iface = self.ir:lookup(search_name)                                         --[[VERBOSE]] verbose:ir_classes()
-		if iface then
-			iface = self:newobject(
-				iface:_narrow("IDL:omg.org/CORBA/InterfaceDef:1.0")
-			)
-		end
-	end
-	return iface
-end
-
-function Repository:lookup_id(search_id)                                        --[[VERBOSE]] verbose:ir_classes(true, "looking up of object with ir ", search_id)
-	return self.ifaces[search_id]                                                 --[[VERBOSE]] , verbose:ir_classes()
+function Repository:lookup_id(search_id)
+	return self.definition_map[search_id]
 end
 
 --function Repository:get_canonical_typecode(tc)
 --end
 
-function Repository:get_primitive(kind)                                         --[[VERBOSE]] verbose:ir_classes("getting primitive ", kind)
-	return self.primitive[kind]
+function Repository:get_primitive(kind)
+	return PrimitiveTypes[kind]
 end
 
 --
@@ -952,62 +1011,81 @@ end
 
 --------------------------------------------------------------------------------
 
-ModuleDef.def_kind = "dk_Module"
 ModuleDef._type = "module"
+ModuleDef.def_kind = "dk_Module"
+ModuleDef.expandable = true
 
-function ModuleDef:get_description()                                            --[[VERBOSE]] verbose:ir_classes "creating module description"
+function ModuleDef:get_description()
 	return setmetatable({}, iridl.ModuleDescription)
 end
 
 --------------------------------------------------------------------------------
 
-ExceptionDef.def_kind = "dk_Exception"
 ExceptionDef._type = "except"
+ExceptionDef.def_kind = "dk_Exception"
+ExceptionDef.members = Empty
+ExceptionDef.definition_fields = {
+	members = { type = "table", optional = true },
+}
 
-function ExceptionDef:get_description()                                         --[[VERBOSE]] verbose:ir_classes "creating exception description"
-	return setmetatable({ type = self }, iridl.ExceptionDescription)
+function ExceptionDef:update(new, registry)
+	self.type = self
+	if new.members then
+		local members = {}
+		for index, member in ipairs(new.members) do
+			local type_def = registry[member.type]
+			members[index] = {
+				name = member.name,
+				type_def = type_def,
+				type = type_def.type,
+			}
+		end
+		self.members = members
+	end
 end
 
-function ExceptionDef:constructor()
-	self.type = self
-	local repository = self.containing_repository
-	for _, member in ipairs(self.members) do
-		if not member.type_def then                                                 --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct exception member type object")
-			repository:newobject(member.type)                                         --[[VERBOSE]] verbose:ir_classes()
-			member.type_def = member.type
-		end
-		member.type = member.type_def.type
-	end
+function ExceptionDef:get_description()
+	return setmetatable({ type = self }, iridl.ExceptionDescription)
 end
 
 --------------------------------------------------------------------------------
 
-InterfaceDef.def_kind = "dk_Interface"
 InterfaceDef._type = "interface"
-InterfaceDef.base_interfaces = { {
-	repID = "IDL:omg.org/CORBA/Object:1.0",
-	members = Empty,
-} }
+InterfaceDef.def_kind = "dk_Interface"
+InterfaceDef.base_interfaces = Empty
+InterfaceDef.members = Empty
+InterfaceDef.definition_fields = {
+	base_interfaces = { type = "table", optional = true },
+	members = { type = "table", optional = true },
+}
 
-function InterfaceDef:get_description()                                         --[[VERBOSE]] verbose:ir_classes "creating interface description"
-	local bases = {}
-	for index, base in ipairs(self.base_interfaces) do
-		bases[index] = base.repID
-	end
-	return setmetatable({ base_interfaces = bases }, iridl.InterfaceDescription)
-end
+InterfaceDef.hierarchy = idl.basesof
 
-function InterfaceDef:constructor()                                             --[[VERBOSE]] verbose:ir_classes(true, "constructing InterfaceDef type object")
-	self.members = idl.InterfaceMemberList(self.members, self)
-	local repository = self.containing_repository
-	for _, member in pairs(self.members) do
-		if not member.attribute then                                                --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct interface member ", member.name)
-			repository:newobject(member)                                              --[[VERBOSE]] verbose:ir_classes()
+function InterfaceDef:update(new, registry)
+	self.members = {}
+	if new.members then
+		for name, member in pairs(new.members) do
+			if type(name) == "string" then
+				self.members[member.name] = registry[member]
+			end
 		end
 	end
-	for _, base in ipairs(self.base_interfaces) do                                --[[VERBOSE]] verbose:ir_classes(true, "attempt to construct base interface ", base.name, " type object")
-		repository:newobject(base)                                                  --[[VERBOSE]] verbose:ir_classes()
-	end                                                                           --[[VERBOSE]] verbose:ir_classes()
+	if new.base_interfaces then
+		local base_interfaces = {}
+		for index, base in ipairs(new.base_interfaces) do
+			base_interfaces[index] = registry[base]
+		end
+		self:_set_base_interfaces(base_interfaces)
+	end
+end
+
+function InterfaceDef:get_description()
+	local base_interfaces = {}
+	for index, base in ipairs(self.base_interfaces) do
+		base_interfaces[index] = base.repID
+	end
+	return setmetatable({ base_interfaces = base_interfaces },
+	                    iridl.InterfaceDescription)
 end
 
 --
@@ -1023,28 +1101,22 @@ function InterfaceDef:is_a(interface_id)
 end
 
 local FullIfaceDescription = iridl.InterfaceDef.definitions.FullInterfaceDescription
-function InterfaceDef:describe_interface()                                      --[[VERBOSE]] verbose:ir_classes(true, "describing interface ")
+function InterfaceDef:describe_interface()
 	local operations = {}
 	local attributes = {}
 	local base_interfaces = {}
-	for _, base in ipairs(self.base_interfaces) do                                --[[VERBOSE]] verbose:ir_classes("adding base interface ", base.absolute_name)
-		table.insert(base_interfaces, base.repID)
+	for index, base in ipairs(self.base_interfaces) do
+		base_interfaces[index] = base.repID
 	end
-	local queue = OrderedSet()
-	queue:enqueue(self)
-	local iface = OrderedSet.firstkey
-	while queue[iface] do iface = queue[iface]                                    --[[VERBOSE]] verbose:ir_classes(true, "adding members from interface ", iface.absolute_name)
-		for _, member in pairs(iface.members) do
-			if member._type == "attribute" then                                       --[[VERBOSE]] verbose:ir_classes(true, "adding attribute ", member.name)
-				table.insert(attributes, member:describe().value)                       --[[VERBOSE]] verbose:ir_classes()
-			elseif member._type == "operation" and not member.attribute then          --[[VERBOSE]] verbose:ir_classes(true, "adding operation ", member.name)
-				table.insert(operations, member:describe().value)                       --[[VERBOSE]] verbose:ir_classes()
+	for base in self:hierarchy() do
+		for _, member in pairs(base.members) do
+			if member._type == "attribute" then
+				attributes[#attributes+1] = member:describe().value
+			elseif member._type == "operation" and not member.name:match("^_") then
+				operations[#operations+1] = member:describe().value
 			end
-		end                                                                         --[[VERBOSE]] verbose:ir_classes()
-		for _, base in ipairs(iface.base_interfaces) do
-			if not queue:contains(base) then queue:enqueue(base) end
 		end
-	end                                                                           --[[VERBOSE]] verbose:ir_classes()
+	end
 	return setmetatable({
 		name = self.name,
 		id = self.id,
@@ -1062,7 +1134,20 @@ end
 --
 
 function InterfaceDef:_set_base_interfaces(bases)
-	-- TODO:[maia] implement it. See section 10.5.24.2 of CORBA specs
+	for _, interface in ipairs(bases) do
+		for base in interface:hierarchy() do
+			for _, member in pairs(base.members) do
+				if self.members[member.name] then
+					assert.illegal(bases,
+					               "base interfaces, member '"..
+					               member.name..
+					               "' override not allowed",
+					               "BAD_PARAM", 5)
+				end
+			end
+		end
+	end
+	self.base_interfaces = bases
 end
 
 function InterfaceDef:create_attribute(id, name, version, type, mode)
@@ -1081,8 +1166,8 @@ function InterfaceDef:create_attribute(id, name, version, type, mode)
 end
 
 function InterfaceDef:create_operation(id, name, version,
-																				result, mode, params,
-																				exceptions, contexts)
+                                       result, mode, params,
+                                       exceptions, contexts)
 	return OperationDef {
 		containing_repository = self.containing_repository,
 		defined_in = self,
@@ -1162,13 +1247,91 @@ end
 --                                          get_exceptions, set_exceptions)
 --end
 
+
 --------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
+-- Implementation --------------------------------------------------------------
+
+oo.class(_M, Repository)
+
+local Classes = {
+	struct     = StructDef,
+	union      = UnionDef,
+	enum       = EnumDef,
+	sequence   = SequenceDef,
+	array      = ArrayDef,
+	string     = StringDef,
+	typedef    = AliasDef,
+	except     = ExceptionDef,
+	attribute  = AttributeDef,
+	operation  = OperationDef,
+	module     = ModuleDef,
+	interface  = InterfaceDef,
+	Object     = ObjectRef,
+}
+
 --------------------------------------------------------------------------------
 
-return Repository
---function new(self, ifaces)                                                            --[[VERBOSE]] verbose:ir_classes(true, "instantiating new integrated IR with map ", ifaces)
---return Repository{ ifaces = ifaces }, iridl.Repository                        --[[VERBOSE]] , verbose:ir_classes()
---end
+local Registry = oo.class()
+
+function Registry:__init(object)
+	self = oo.rawnew(self, object)
+	self[PrimitiveTypes.pk_null    ] = PrimitiveTypes.pk_null
+	self[PrimitiveTypes.pk_void    ] = PrimitiveTypes.pk_void
+	self[PrimitiveTypes.pk_short   ] = PrimitiveTypes.pk_short
+	self[PrimitiveTypes.pk_long    ] = PrimitiveTypes.pk_long
+	self[PrimitiveTypes.pk_ushort  ] = PrimitiveTypes.pk_ushort
+	self[PrimitiveTypes.pk_ulong   ] = PrimitiveTypes.pk_ulong
+	self[PrimitiveTypes.pk_float   ] = PrimitiveTypes.pk_float
+	self[PrimitiveTypes.pk_double  ] = PrimitiveTypes.pk_double
+	self[PrimitiveTypes.pk_boolean ] = PrimitiveTypes.pk_boolean
+	self[PrimitiveTypes.pk_char    ] = PrimitiveTypes.pk_char
+	self[PrimitiveTypes.pk_octet   ] = PrimitiveTypes.pk_octet
+	self[PrimitiveTypes.pk_any     ] = PrimitiveTypes.pk_any
+	self[PrimitiveTypes.pk_TypeCode] = PrimitiveTypes.pk_TypeCode
+	self[PrimitiveTypes.pk_string  ] = PrimitiveTypes.pk_string
+	self[PrimitiveTypes.pk_objref  ] = PrimitiveTypes.pk_objref
+	self[self.repository           ] = self.repository
+	return self
+end
+
+function Registry:__index(definition)
+	local class = Classes[definition._type]
+	definition.containing_repository = self.repository
+	definition = class(definition, self)
+	return definition
+end
+
+--------------------------------------------------------------------------------
+
+function register(self, ...)
+	local repository = self
+	local registry = Registry{ repository = self }
+	local results = {}
+	local count = select("#", ...)
+	for i = 1, count do
+		local definition = select(i, ...)
+		assert.type(definition, "table", "IR object definition")
+		results[i] = registry[definition]
+	end
+	return unpack(results, 1, count)
+end
+
+function resolve(self, typeref)
+	if type(typeref) == "string" then
+		return self:lookup(typeref) or
+		       self:lookup_id(typeref) or
+		       assert.exception{ "INTERNAL", minor_code_value = 0,
+		       	reason = "interface",
+		       	message = "unknown interface with reference",
+		       	reference = type,
+		       }
+	elseif typeref._type == "interface" then
+		return self:register(typeref)
+	else
+		assert.exception{ "INTERNAL", minor_code_value = 0,
+			reason = "interface",
+			message = "illegal IDL type",
+			type = typeref,
+		}
+	end
+end

@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -13,78 +8,88 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.3.2 alpha                                                       --
+-- Release: 0.4 alpha                                                         --
 -- Title  : Interface Definition Language (IDL) compiler                      --
--- Authors: Ricardo Cosme         <rcosme@tecgraf.puc-rio.br>                 --
+-- Authors: Renato Maia   <maia@inf.puc-rio.br>                               --
+--          Ricardo Cosme <rcosme@tecgraf.puc-rio.br>                         --
 --------------------------------------------------------------------------------
--- Interface:                                                                 --
+-- compiler:Facet
+-- 	success:boolean, [except:table] load(idl:string)
+-- 	success:boolean, [except:table] loadfile(filepath:string)
+-- 
+-- types:Receptacle
+-- 	types:table register(definition:table)
 --------------------------------------------------------------------------------
--- Notes:                                                                     --
+
+local select = select
+local unpack = unpack
+
+local luaidl = require "luaidl"
+
+local oo  = require "oil.oo"
+local idl = require "oil.corba.idl"
+
+module("oil.corba.idl.Compiler", oo.class)
+
+context = false
+
+--------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local assert  = assert
-local require = require
-local ipairs  = ipairs
-
-local table   = require "table"
-
-module("oil.idl.compiler")
-
---------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
-
-local luaidl         = require "luaidl"
-local idl            = require "oil.idl"
-local callbacks      = { }
-local tab_interfaces = { }
-
---callbacks.null   = idl.null
-callbacks.VOID     = idl.void
-callbacks.SHORT    = idl.short
-callbacks.LONG     = idl.long
-callbacks.USHORT   = idl.ushort
-callbacks.ULONG    = idl.ulong
-callbacks.FLOAT    = idl.float
-callbacks.DOUBLE   = idl.double
-callbacks.BOOLEAN  = idl.boolean
-callbacks.CHAR     = idl.char
-callbacks.OCTET    = idl.octet
-callbacks.ANY      = idl.any
-callbacks.TYPECODE = idl.TypeCode
-callbacks.STRING   = idl.string
-callbacks.OBJECT   = idl.object
-callbacks.interface = function (def)
-  if def.definitions then -- not forward declarations
-	  def = idl.interface(def)
-	  table.insert(tab_interfaces,def)
+local Options = {
+	callbacks = {
+	--null      = idl.null,
+		VOID      = idl.void,
+		SHORT     = idl.short,
+		LONG      = idl.long,
+		USHORT    = idl.ushort,
+		ULONG     = idl.ulong,
+		FLOAT     = idl.float,
+		DOUBLE    = idl.double,
+		BOOLEAN   = idl.boolean,
+		CHAR      = idl.char,
+		OCTET     = idl.octet,
+		ANY       = idl.any,
+		TYPECODE  = idl.TypeCode,
+		STRING    = idl.string,
+		OBJECT    = idl.object,
+		operation = idl.operation,
+		attribute = idl.attribute,
+		module    = idl.module,
+		except    = idl.except,
+		union     = idl.union,
+		struct    = idl.struct,
+		enum      = idl.enum,
+		typedef   = idl.typedef,
+		array     = idl.array,
+		sequence  = idl.sequence,
+	},
+}
+function Options.callbacks.interface(def)
+	if def.definitions then -- not forward declarations
+		idl.interface(def)
 	end
 end
-callbacks.operation = idl.operation
-callbacks.attribute = idl.attribute
-callbacks.module    = idl.module
-callbacks.except    = idl.except
-callbacks.union     = idl.union
-callbacks.struct    = idl.struct
-callbacks.enum      = idl.enum
-callbacks.typedef   = idl.typedef
-callbacks.array     = idl.array
-callbacks.sequence  = idl.sequence
 
-local options = { callbacks = callbacks }
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
-function registerAll(manager)
-	for _, interface in ipairs(tab_interfaces) do
-		manager:putiface(interface)	
+function doresults(self, ...)
+	if ... then
+		local results = {}
+		local count = select("#", ...)
+		for i = 1, count do
+			results[i] = self.context.types:register(select(i, ...))
+		end
+		return unpack(results, 1, count)
 	end
-	tab_interfaces = { }
+	return ...
 end
 
-function parsefile(filename,manager)
-	assert(luaidl.parsefile(filename,options))
-	registerAll(manager)
+function loadfile(self, filepath)
+	return self:doresults(luaidl.parsefile(filepath, Options))
 end
 
-function parse(idlspec,manager)
-	assert(luaidl.parse(idlspec, options))
-	registerAll(manager)
+function load(self, idlspec)
+	return self:doresults(luaidl.parse(idlspec, Options))
 end

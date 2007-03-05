@@ -15,13 +15,7 @@
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
 -- Release: 0.3 alpha                                                         --
 -- Title  : Interface Definition Language (IDL) specifications in Lua         --
--- Authors: Noemi Rodriquez       <noemi@inf.puc-rio.br>                      --
---          Roberto Ierusalimschy <roberto@inf.puc-rio.br>                    --
---          Renato Cerqueira      <rcerq@inf.puc-rio.br>                      --
---          Pedro Miller          <miller@inf.puc-rio.br>                     --
---          Reinaldo Mello        <rmello@inf.puc-rio.br>                     --
---          Luiz Nogara           <nogara@inf.puc-rio.br>                     --
---          Renato Maia           <maia@inf.puc-rio.br>                       --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- Interface:                                                                 --
 --   istype(object)        Checks whether object is an IDL type               --
@@ -71,25 +65,24 @@
 --   possible.                                                                --
 --------------------------------------------------------------------------------
 
-local type    = type
-local pairs   = pairs
-local ipairs  = ipairs
-local rawset  = rawset
-local require = require
-local rawget  = rawget
+local type     = type
+local newproxy = newproxy
+local pairs    = pairs
+local ipairs   = ipairs
+local rawset   = rawset
+local require  = require
+local rawget   = rawget
 
+-- backup of string package functions to avoid name crash with string IDL type
+local match = require("string").match
 local table = require "table"
 
-module "oil.idl"                                                                --[[VERBOSE]] local verbose = require "oil.verbose"
-
---------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
+local OrderedSet = require "loop.collection.OrderedSet"
 
 local oo     = require "oil.oo"
 local assert = require "oil.assert"
 
--- backup of string package functions to avoid name crash with string IDL type
-local match = require("string").match
+module "oil.corba.idl"                                                          --[[VERBOSE]] local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- IDL element types -----------------------------------------------------------
@@ -137,7 +130,7 @@ local InterfaceElements = {
 
 function istype(object)
 	return type(object) == "table" and (
-	       	BasicTypes[object._type] or
+	       	BasicTypes[object._type] == object or
 	       	UserTypes[object._type]
 	       )
 end
@@ -164,33 +157,41 @@ end
 
 for name in pairs(BasicTypes) do
 	local basictype = {_type = name}
-	_M[name] = basictype                                                          --[[VERBOSE]] verbose.newIDL(name)
+	_M[name] = basictype
 	BasicTypes[name] = basictype
 end
 
 --------------------------------------------------------------------------------
 -- Scoped definitions management -----------------------------------------------
 
-local function setrepid(idldef, version)
+local DefinitionList = oo.class()
+
+local function updatenames(idldef)
 	local container = idldef.defined_in
+	local version = idldef.version
 	if container then
 		local start, default = match(container.repID, "^(IDL:.*):(%d+%.%d+)$")
 		if not start then
-			assert.ilegal(container.repID, "parent scope repository ID")
+			assert.illegal(container.repID, "parent scope repository ID")
 		end
 		rawset(idldef, "repID", start.."/"..idldef.name..":"..(version or default))
 	elseif idldef.name then
 		if not version then version = "1.0" end
 		rawset(idldef, "repID", "IDL:"..idldef.name..":"..version)
 	end
+	for _, member in pairs(idldef) do
+		if oo.classof(member) == DefinitionList then
+			for name, member in pairs(member) do
+				if type(name) == "string" then
+					updatenames(member)
+				end
+			end
+		end
+	end
 	return idldef.repID
 end
 
---------------------------------------------------------------------------------
-
-local ScopeKey = {}
-
-DefinitionList = oo.class()
+local ScopeKey = newproxy()
 
 function DefinitionList:__init(list, scope)
 	if list then
@@ -211,13 +212,13 @@ function DefinitionList:__init(list, scope)
 end
 
 function DefinitionList:__newindex(name, value)
-	if isspec(value) then                                                         --[[VERBOSE]] verbose.idl({"new member definition at key ", name; member = value})
+	if isspec(value) then
 		value.defined_in = self[ScopeKey]
 		if type(name) == "string"
 			then value.name = name
 			else name = value.name
 		end
-		setrepid(value, value.version)
+		updatenames(value)
 	end
 	return rawset(self, name, value)
 end
@@ -227,7 +228,7 @@ end
 local function newdef(def, scope)
 	assert.type(def, "table", "IDL definition")
 	if def.name  == nil then def.name = DefaultTypeName end
-	if def.repID == nil then setrepid(def, def.version) end
+	if def.repID == nil then updatenames(def) end
 	assert.type(def.name, "string", "IDL definition name")
 	assert.type(def.repID, "string", "repository ID")
 	if scope then
@@ -243,29 +244,25 @@ end
 
 string = { _type = "string", maxlength = 0 }
 
-function Object(def)                                                            --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "Object")
+function Object(def)
 	if type(def) == "string"
 		then def = {repID = def}
 		else assert.type(def, "table", "Object type definition")
 	end
 	assert.type(def.repID, "string", "Object type repository ID")
 	def._type = "Object"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("Object", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
-function struct(def)                                                            --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "struct")
+function struct(def)
 	newdef(def, true)
 	if def.fields == nil then def.fields = def end
 	checkfields(def.fields)
 	def._type = "struct"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("struct", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
-local function unionindex(self, field)
-end
-local function unionnewindex(self, field, value)
-end
-function union(def)                                                             --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "union")
+function union(def)
 	newdef(def, true)
 	if def.default == nil then def.default = -1 end -- indicates no default in CDR
 	assert.type(def.switch, "type", "union type discriminant")
@@ -275,7 +272,7 @@ function union(def)                                                             
 	def.selection = {} -- maps labels (option selector) to options
 	for _, option in ipairs(def.options) do
 		checkfield(option)
-		if option.label == nil then assert.ilegal(nil, "option label value") end
+		if option.label == nil then assert.illegal(nil, "option label value") end
 		def.selector[option.name] = option.label
 		def.selection[option.label] = option
 	end
@@ -295,10 +292,10 @@ function union(def)                                                             
 	end
 
 	def._type = "union"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("union", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
-function enum(def)                                                              --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "enum")
+function enum(def)
 	newdef(def)
 	if def.enumvalues == nil then def.enumvalues = def end
 	assert.type(def.enumvalues, "table", "enumeration values definition")
@@ -310,40 +307,40 @@ function enum(def)                                                              
 	end
 
 	def._type = "enum"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("enum", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
-function sequence(def)                                                          --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "sequence")
+function sequence(def)
 	if def.maxlength   == nil then def.maxlength = 0 end
 	if def.elementtype == nil then def.elementtype = def[1] end
 	assert.type(def.maxlength, "number", "sequence type maximum length ")
 	assert.type(def.elementtype, "type", "sequence element type")
 	def._type = "sequence"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("sequence", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
-function array(def)                                                             --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "array")
+function array(def)
 	assert.type(def.length, "number", "array type length")
 	if def.elementtype == nil then def.elementtype = def[1] end
 	assert.type(def.elementtype, "type", "array element type")
 	def._type = "array"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("array", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
-function typedef(def)                                                           --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "typedef")
+function typedef(def)
 	newdef(def)
 	if def.type  == nil then def.type  = def[1] end
 	assert.type(def.type, "type", "type in typedef definition")
 	def._type = "typedef"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("typedef", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
-function except(def)                                                            --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "except")
+function except(def)
 	newdef(def, true)
 	if def.members == nil then def.members = def end
 	checkfields(def.members)
 	def._type = "except"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("except", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
 --------------------------------------------------------------------------------
@@ -351,7 +348,7 @@ end
 
 -- Note: construtor syntax is optimized for use with Interface Repository
 
-function attribute(def)                                                         --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "attribute")
+function attribute(def)
 	newdef(def)
 	if def.type  == nil then def.type = def[1] end
 	assert.type(def.type, "type", "attribute type")
@@ -360,21 +357,21 @@ function attribute(def)                                                         
 	if mode == "ATTR_READONLY" then
 		def.readonly = true
 	elseif mode ~= nil and mode ~= "ATTR_NORMAL" then
-		assert.ilegal(def.mode, "attribute mode")
+		assert.illegal(def.mode, "attribute mode")
 	end
 	
 	def._type = "attribute"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("attribute", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
-function operation(def)                                                         --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "operation")
+function operation(def)
 	newdef(def)
 	
 	local mode = def.mode
 	if mode == "OP_ONEWAY" then
 		def.oneway = true
 	elseif mode ~= nil and mode ~= "OP_NORMAL" then
-		assert.ilegal(def.mode, "operation mode")
+		assert.illegal(def.mode, "operation mode")
 	end
 
 	def.inputs = {}
@@ -395,7 +392,7 @@ function operation(def)                                                         
 					table.insert(def.inputs, param.type)
 					table.insert(def.outputs, param.type)
 				else
-					assert.ilegal(param.mode, "operation parameter mode")
+					assert.illegal(param.mode, "operation parameter mode")
 				end
 			else
 				table.insert(def.inputs, param.type)
@@ -407,7 +404,7 @@ function operation(def)                                                         
 		for _, except in ipairs(def.exceptions) do
 			assert.type(except, "idlexcept", "raised exception")
 			if def.exceptions[except.repID] ~= nil then
-				assert.ilegal(except.repID,
+				assert.illegal(except.repID,
 					"exception raise defintion, got duplicated repository ID")
 			end
 			def.exceptions[except.repID] = except
@@ -417,59 +414,41 @@ function operation(def)                                                         
 	end
 
 	def._type = "operation"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("operation", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
-function module(def)                                                            --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "module")
+function module(def)
 	newdef(def, true)
 	def._type = "module"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("module", def.name, VERBOSE_BEFORE, def)
+	return def
 end
 
 --------------------------------------------------------------------------------
 
-InterfaceMemberList = oo.class({}, DefinitionList)
-
-function InterfaceMemberList:__index(name)
-	local bases = rawget(self, ScopeKey).base_interfaces                          --[[VERBOSE]] verbose.interface({"search for inherited member ", name; bases = table.getn(bases)}, true)
-	if type(name) == "string" then
-		for _, base in ipairs(bases) do                                             --[[VERBOSE]] verbose.interface({"searching in interface ", base.name or base.repID}, true)
-			local member = base.members[name]
-			if member then
-				return member                                                           --[[VERBOSE]] , verbose.interface(), verbose.interface()
-			end                                                                       --[[VERBOSE]] verbose.interface()
-		end                                                                         --[[VERBOSE]] else verbose.interface{"member name is not a string: ", name}
-	end                                                                           --[[VERBOSE]] verbose.interface()
-end
-
-function InterfaceMemberList:__newindex(name, value)
-	DefinitionList.__newindex(self, name, value)
-	if value._type == "attribute" then
-		value.getter = operation{
-			attribute = value.name,
-			name = "_get_"..value.name,
-			result = value.type,
-		}
-		rawset(self, value.getter.name, value.getter)
-		if not value.readonly then
-			value.setter = operation{
-				attribute = value.name,
-				name = "_set_"..value.name,
-				parameters = { {type = value.type, name = "value"} },
-			}
-			rawset(self, value.setter.name, value.setter)
+local function ibases(queue, interface)
+	interface = queue[interface]
+	if interface then
+		for _, base in ipairs(interface.base_interfaces) do
+			queue:enqueue(base)
 		end
+		return interface
 	end
 end
+function basesof(interface)
+	local queue = OrderedSet()
+	queue:enqueue(interface)
+	return ibases, queue, OrderedSet.firstkey
+end
 
-function interface(def)                                                         --[[VERBOSE]] local VERBOSE_BEFORE = verbose.valueOf(def, "interface")
+function interface(def)
 	newdef(def, true)
 	if def.base_interfaces == nil then def.base_interfaces = def end
-	def.members = InterfaceMemberList(def.members, def)
+	def.members = DefinitionList(def.members, def)
 	assert.type(def.base_interfaces, "table", "base interface list")
 	assert.type(def.members, "table", "interface member list")
 	def._type = "interface"
-	return def                                                                    --[[VERBOSE]] , verbose.newIDL("interface", def.name, VERBOSE_BEFORE, def)
+	def.hierarchy = basesof
+	return def
 end
 
 --------------------------------------------------------------------------------

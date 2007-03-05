@@ -7,26 +7,34 @@
 --------------------------------                --------------------------------
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.4                                                               --
--- Title  : Cooperative Task Manager                                          --
+-- Project: OiL - ORB in Lua                                                  --
+-- Release: 0.4 alpha                                                         --
+-- Title  : Client-side CORBA GIOP Protocol specific to IIOP                  --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
-
-local getmetatable    = getmetatable
-local coroutine       = require "coroutine"
-local luasocket       = require "socket"
-local oo              = require "loop.simple"
-local SocketScheduler = require "loop.thread.SocketScheduler"
-
-module "oil.kernel.cooperative.Tasker"
-
-oo.class(_M, SocketScheduler)
-
---------------------------------------------------------------------------------
--- Additional Behavior ---------------------------------------------------------
+-- channels:Facet
+-- 	channel:object retieve(configs:table)
+-- 	channel:object select(channel|configs...)
+-- 	configs:table default(configs:table)
+-- 
+-- sockets:Receptacle
+-- 	socket:object tcp()
+-- 	input:table, output:table select([input:table], [output:table], [timeout:number])
 --------------------------------------------------------------------------------
 
-function new(self, func)
-	return coroutine.create(func)
+local StringStream = require "loop.serial.StringStream"
+
+local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+
+module("oil.ludo.Codec", oo.class)
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function encoder(self)
+	return StringStream()
+end
+
+function decoder(self, stream)
+	return StringStream{ data = stream }
 end

@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -13,238 +8,143 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.3 alpha                                                         --
--- Title  : Dynamic client stub for remote object access                      --
--- Authors: Renato Maia           <maia@inf.puc-rio.br>                       --
+-- Release: 0.4                                                               --
+-- Title  : Remote Object Proxies                                             --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
--- Interface:                                                                 --
---   class(iface) Creates a class for creating client stubs (object proxies)  --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---   You can use this module to access objects without use of an Interface    --
---   Repository (IR) or IDL compiler. See the example below:                  --
---                                                                            --
---     local Hello = oil.proxy.class(oil.idl.interface{                       --
---       name = "Hello",                                                      --
---       members = {                                                          --
---         say_hello_to = oil.idl.operation{                                  --
---           parameters = {{name = "to", type = IDL.string}},                 --
---         },                                                                 --
---       },                                                                   --
---     }                                                                      --
---     local proxy = Hello(oil.ior.decode("IOR:..."))                         --
---     proxy:say_hello_to("world")                                            --
---                                                                            --
+-- proxies:Facet
+-- 	proxy:object proxyto(reference:table)
+--
+-- invoker:Receptacle
+-- 	[results:object], [except:table] invoke(reference, operation, args...)
 --------------------------------------------------------------------------------
 
-local type         = type
-local pairs        = pairs
-local ipairs       = ipairs
-local tostring     = tostring
-local unpack       = unpack
-local require      = require
-local rawset       = rawset
-local getmetatable = getmetatable
-local print        = print
-local select       = select
+--[[VERBOSE]] local select = select
 
-local oo      = require "oil.oo"
+local rawget = rawget
+local type   = type
 
-module ("oil.corba.proxy", oo.class )                                                 --[[VERBOSE]] local verbose = require "oil.verbose"
+local table = require "loop.table"
 
---------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
+local ObjectCache = require "loop.collection.ObjectCache"
 
-local verbose = require "oil.verbose"
-local assert  = require "oil.assert"
-local idl     = require "oil.idl"
-local giop    = require "oil.corba.giop"
-local invoke  = require "oil.corba.Protocol"
+local oo        = require "oil.oo"
+local assert    = require "oil.assert"
+local Exception = require "oil.Exception"
+local Proxies   = require "oil.kernel.base.Proxies"                             --[[VERBOSE]] local verbose = require "oil.verbose"
+
+module("oil.kernel.typed.Proxies", oo.class)
+
+context = false
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local addmember = idl.InterfaceMemberList.__newindex
-function interface(iface)                                                       --[[VERBOSE]] verbose:proxy("entering interface")
-	local desc = iface:describe_interface()
+local CachedIndex = oo.class({}, Proxies.Proxy)
 
-	rawset(iface, "_type", "interface")
-	rawset(iface, "repID", desc.id)
-	rawset(iface, "members", {})
-
-	for _, attribute in ipairs(desc.attributes) do
-		attribute.defined_in = iface
-		addmember(iface.members, attribute.name, idl.attribute(attribute))
-	end
-	
-	for _, operation in ipairs(desc.operations) do
-		local excepts = operation.exceptions
-		for index, except in ipairs(excepts) do
-			excepts[index] = except.type
-		end
-		operation.defined_in = iface
-		addmember(iface.members, operation.name, idl.operation(operation))
-	end
-	
-	return iface
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-local function checkresults(result, reply)                                 --[[VERBOSE]] verbose:proxy(false)
-	if result then
-		return unpack(reply:result())
-	else
-		return assert.error(reply)
-	end
-end
-
-local function checkcall(results, exception)                                    --[[VERBOSE]] verbose:proxy(false)
-	if not results then return assert.error(exception) end
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-Object = oo.class()
-
-Object._iface = { repID = "IDL:omg.org/CORBA/Object:1.0", members = {} }
-
-function Object:__init(reference)
-	assert.type(reference, "table", "reference is not a table")                   --[[VERBOSE]] verbose:proxy("new proxy for ", reference._type_id)
-	return oo.rawnew(self, reference)
-end
-
-function Object:__call(operation, ... )
-	return self._protocol:sendrequest(self, operation, ...)
-end
-
-function Object:__index(field)
-	local cache = getmetatable(self)
-	if cache[field] then return cache[field] end
-	if type(field) == "string" then                                               --[[VERBOSE]] verbose:proxy(true, "get definition of member ", field)
-		local member = self._iface.members[field]                                   --[[VERBOSE]] verbose:proxy(false)
-		if type(member) == "table" then
-			if member._type == "operation" then                                       --[[VERBOSE]] verbose:proxy("new stub function for operation ", field)
-				local function stub(self, ...)                                          --[[VERBOSE]] verbose:proxy("invoke operation ", field, " with ", select("#", ... ), " arguments")
-					return checkresults(self._protocol:sendrequest(self._reference, member, ...))
-				end                                                                     
-				cache[field] = stub
-				return stub
-			elseif member._type == "attribute" then                                   --[[VERBOSE]] verbose:proxy("read attribute ", field)
-				return checkresults(self._protocol:sendrequest(self._reference, member.getter))
-			else
-				assert.error("unsupported member kind, got "..tostring(member._type))
-			end
-		end
-	end
-end
-
-function Object:__newindex(field, value)
-	if type(field) == "string" then                                               --[[VERBOSE]] verbose:proxy(true, "get definition of member ", field)
-		local member = self._iface.members[field]                                   --[[VERBOSE]] verbose:proxy(false)
-		if type(member) == "table" then
-			if member._type == "attribute" then                                       --[[VERBOSE]] verbose:proxy("write ", member.readonly and "readonly" or "", "attribute ", field)
-				if not member.readonly then
-					checkcall(self._protocol:sendrequest(self._reference, member.setter, value))
-				else
-					assert.error("attempt to set read-only attribute "..field)
+function CachedIndex:__index(field)
+	if type(field) == "string" then
+		local deferred = field:match(CachedIndex.DeferredPattern)
+		local context = self.__context
+		local operation, value, cached = context.indexer:valueof(self.__type,
+		                                                         deferred or field)
+		if operation then
+			if cached then
+				if value == nil then
+					if deferred then
+						value = function(self, ...)                                         --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
+							local reply = CachedIndex.doresult(self, operation,
+								self.__context.invoker:invoke(self, operation, ...))
+							reply.proxy = self
+							reply.operation = operation
+							reply.results = CachedIndex.results
+							return reply
+						end
+					else
+						value = function(self, ...)                                         --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+							return select(2,
+								CachedIndex.doresult(self, operation, 
+									CachedIndex.doresult(self, operation,
+										self.__context.invoker:invoke(self, operation, ...)
+									):results()
+								)
+							)
+						end
+					end
 				end
-			elseif member._type ~= "operation" then
-				assert.error("unsupported interface member type, got "..tostring(member._type))
+				self[field] = value
+			else
+				if value == nil then
+					local proxies = context.proxies
+					CachedIndex:currentop(operation)
+					value = deferred and CachedIndex.defer or CachedIndex.invoke
+				end
 			end
 		end
-	end
-	rawset(self, field, value)
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-ObjectOps = giop.ObjectOperations
-
-for name, value in pairs(ObjectOps) do
-	if type(value) == "table" and value._type == "operation" then
-		local member = value                                                        --[[VERBOSE]] local VERBOSE_field = name
-		Object[name] = function(self, ...)                                          --[[VERBOSE]] verbose:proxy(true, "invoke operation ", VERBOSE_field, " with ", select( "#", ... ), " arguments")
-			return checkresults(self._protocol:sendrequest(self._reference, member, ...))
-		end
+		return value
 	end
 end
 
-local member = ObjectOps._non_existent
-function Object:_non_existent()                                                 --[[VERBOSE]] verbose:proxy(true, "invoke operation _non_existent")
-	local results, exception = self._protocol:call(self._reference, member) --[[VERBOSE]] verbose:proxy(false)
-	if results then
-		return results[1]
-	elseif exception.reason == "connect" or exception.reason == "closed" then
-		return true
+--------------------------------------------------------------------------------
+
+function __init(self, object)
+	self = oo.rawnew(self, object)
+	self.classes = ObjectCache()
+	function self.classes.retrieve(_, type)
+		return CachedIndex(oo.initclass{
+			__context = self.context,
+			__type = type,
+		})
+	end
+	return self
+end
+
+--------------------------------------------------------------------------------
+
+function proxyto(self, reference, type)                                         --[[VERBOSE]] verbose:proxies(true, "new proxy to ",reference)
+	local context = self.context
+	type = type or context.indexer:typeof(reference)
+	local result, except = self.classes[type]
+	if result then
+		result = oo.rawnew(result, reference)
 	else
-		return assert.error(exception)
+		except = Exception{
+			reason = "type",
+			message = "unable to get type for reference",
+			reference = reference,
+			type = type,
+		}
+	end                                                                           --[[VERBOSE]] verbose:proxies(false)
+	return result, except
+end
+
+function excepthandler(self, type, handler)
+	local class = self.classes[type]
+	class._exceptions = handler
+end
+
+function resetcache(self, interface)
+	local class = rawget(self.classes, interface)
+	if class then
+		table.clear(class)
 	end
 end
 
-function Object:_narrow(iface)                                                  --[[VERBOSE]] verbose:proxy(true, "narrowing proxy")
+--------------------------------------------------------------------------------
 
-	if iface == nil then                                                          --[[VERBOSE]] verbose:proxy(true, "no interface suppied, getting object interface")
-		local result = self._protocol:call(self._reference, ObjectOps._interface)
-		if result and result[1] then
-			result = result[1]
-			iface = result:_get_id()
-			if (not manager) or (not manager:getiface(iface)) then                    --[[VERBOSE]] verbose:proxy "using unknown remote interface"
-				iface = interface(result)                                               --[[VERBOSE]] else verbose:proxy "object interface is already known"                       
-			end
-		else                                                                        --[[VERBOSE]] verbose:proxy "no results, using interface defined at reference table"
-			iface = self._type_id
-		end                                                                         --[[VERBOSE]] verbose:proxy(false)
-	end
-	
-	local newclass
-	if self.interfaces then
-		if type(iface) ~= "string" then                                             --[[VERBOSE]] verbose:proxy(true, "registering narrowing interface at object manager")
-			iface = self.interfaces:putiface(iface)
-			iface = iface.repID                                                       --[[VERBOSE]] verbose:proxy(false)
-		elseif self.interfaces.lookup then
-			local interface = self.interfaces:lookup(iface)
-			if interface then iface = interface.repID end
-		end
-		newclass = self.interfaces:getclass(iface)
-		if not newclass then
-			assert.raise{ "INTERNAL", minor_code_value = 0,
-				reason = "interface",
-				message = "unknown interface repository ID",
-				repID = iface,
-			}
-		end
-	else                                                                          --[[VERBOSE]] verbose:proxy(true, "creating unmanaged proxy class from interface")
-		assert.type(iface, "idlinterface", "narrowing interface")
-		newclass = class(iface)                                                     --[[VERBOSE]] verbose:proxy(false)
-	end
-	
-	return newclass(self)                                                         --[[VERBOSE]] , verbose:proxy(false)
-end
-
-
-function create(self, reference, protocol, interfaceName)
-	if not interfaceName then
-		interfaceName = reference._type_id  
-	end
-	local object
-	if self.interfaces then 
-		local interface = self.interfaces:lookup(interfaceName) 
-		if interface then
-			object = Object{
-				_iface = interface,
-				_reference = reference,
-				_protocol = protocol,
-			}
-		end
-		if not object then
-			--TODO[nogara]: fix the narrow when the interface was not found
-			object = self.manager:getclass("IDL:omg.org/CORBA/Object:1.0")(object) 
-			object = object:_narrow()
-		end
-	end
-	return object
-end
+--[[VERBOSE]] function verbose.custom:proxies(...)
+--[[VERBOSE]] 	local params = false
+--[[VERBOSE]] 	for i = 1, select("#", ...) do
+--[[VERBOSE]] 		local value = select(i, ...)
+--[[VERBOSE]] 		local type = type(value)
+--[[VERBOSE]] 		if type == "string" and not params then
+--[[VERBOSE]] 			self.viewer.output:write(value)
+--[[VERBOSE]] 		elseif type == "table" and rawget(value, "name") then
+--[[VERBOSE]] 			self.viewer.output:write(value.name,"(")
+--[[VERBOSE]] 			params = true
+--[[VERBOSE]] 		else
+--[[VERBOSE]] 			self.viewer:write(value)
+--[[VERBOSE]] 		end
+--[[VERBOSE]] 	end
+--[[VERBOSE]] 	if params then self.viewer.output:write(")") end
+--[[VERBOSE]] end

@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -15,80 +10,57 @@
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
 -- Release: 0.3 alpha                                                         --
 -- Title  : General Inter-ORB Protocol (GIOP) IDL specifications              --
--- Authors: Noemi Rodriquez       <noemi@inf.puc-rio.br>                      --
---          Roberto Ierusalimschy <roberto@inf.puc-rio.br>                    --
---          Renato Cerqueira      <rcerq@inf.puc-rio.br>                      --
---          Pedro Miller          <miller@inf.puc-rio.br>                     --
---          Reinaldo Mello        <rmello@inf.puc-rio.br>                     --
---          Luiz Nogara           <nogara@inf.puc-rio.br>                     --
---          Renato Maia           <maia@inf.puc-rio.br>                       --
---------------------------------------------------------------------------------
--- Interface:                                                                 --
---   IOR               Interoperable Object Reference (IOR) specification     --
---   TaggedProfile     IOR Tagged Profile specification                       --
---   GIOPHeaderSize    Size of messages common header                         --
---   GIOPMagicTag      Magic tag that identify message boudaries              --
---   GIOPHeader_v1_    Messages common header for each minor version          --
---                                                                            --
---   MessageHeader_v1_ Message headers for each minor version                 --
---   MessageType       Maps of message tags into its name                     --
---                                                                            --
---   RequestID         Tag of GIOP request message                            --
---   ReplyID           Tag of GIOP reply message                              --
---   CancelRequestID   Tag of GIOP cancel request message                     --
---   LocateRequestID   Tag of GIOP locate request message                     --
---   LocateReplyID     Tag of GIOP locate reply message                       --
---   CloseConnectionID Tag of GIOP close connection message                   --
---   MessageErrorID    Tag of GIOP message error message                      --
---   FragmentID        Tag of GIOP fragment message                           --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- Notes:                                                                     --
 --   See in section 15.4 of CORBA 3.0 specification.                          --
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- Dependencies ----------------------------------------------------------------
+
 local require = require
+
+local idl = require "oil.corba.idl"
+
+--------------------------------------------------------------------------------
+-- Module Declaration ----------------------------------------------------------
 
 module "oil.corba.giop"
 
 --------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
-
-local IDL = require "oil.idl"
-
---------------------------------------------------------------------------------
--- List of supported protocols -------------------------------------------------
-
-Protocols = {}
-
---------------------------------------------------------------------------------
 -- Interoperable Object Reference ----------------------------------------------
 
-TaggedProfile = IDL.struct{
-	{name = "tag"         , type = IDL.ulong   },
-	{name = "profile_data", type = IDL.OctetSeq},
+TaggedProfile = idl.struct{
+	{name = "tag"         , type = idl.ulong   },
+	{name = "profile_data", type = idl.OctetSeq},
 }
-									-- underscore character allows using IOR as proxy objects
-IOR = IDL.struct{ -- because it avoids name clashes with object members.
-	{name = "_type_id" , type = IDL.string                 },
-	{name = "_profiles", type = IDL.sequence{TaggedProfile}},
+                  -- underscore character allows using IOR as proxy objects
+IOR = idl.struct{ -- because it avoids name clashes with object members.
+	{name = "_type_id" , type = idl.string                 },
+	{name = "_profiles", type = idl.sequence{TaggedProfile}},
 }
 
 --------------------------------------------------------------------------------
 -- Object basic operations -----------------------------------------------------
 
 ObjectOperations = {
-	_interface = IDL.operation{
+	_interface = idl.operation{
 		name = "_interface",
-		result = IDL.Object("IDL:omg.org/CORBA/InterfaceDef:1.0"),
+		result = idl.Object("IDL:omg.org/CORBA/InterfaceDef:1.0"),
 	},
-	_is_a = IDL.operation{
+	_component = idl.operation{
+		name = "_component",
+		result = idl.Object("IDL:omg.org/CORBA/Object:1.0"),
+	},
+	_is_a = idl.operation{
 		name = "_is_a",
-		result = IDL.boolean,
-		parameters = {{ type = IDL.string, name = "interface" }},
+		result = idl.boolean,
+		parameters = {{ type = idl.string, name = "interface" }},
 	},
-	_non_existent = IDL.operation{
+	_non_existent = idl.operation{
 		name = "_non_existent",
-		result = IDL.boolean,
+		result = idl.boolean,
 	},
 	-- TODO:[maia] add other basic operations
 }
@@ -96,10 +68,10 @@ ObjectOperations = {
 --------------------------------------------------------------------------------
 -- System Exception Structure --------------------------------------------------
 
-SystemExceptionIDL = IDL.struct{
-	{name = "exception_id"     , type = IDL.string},
-	{name = "minor_code_value" , type = IDL.ulong },
-	{name = "completion_status", type = IDL.ulong },
+SystemExceptionIDL = idl.struct{
+	{name = "exception_id"     , type = idl.string},
+	{name = "minor_code_value" , type = idl.ulong },
+	{name = "completion_status", type = idl.ulong },
 }
 
 SystemExceptionIDs = {
@@ -147,105 +119,96 @@ SystemExceptionIDs = {
 --------------------------------------------------------------------------------
 -- Message Header Commom to All GIOP Messages ----------------------------------
 
-GIOPHeaderSize = 12   -- TODO:[maia] Calculate from IDL specification
-GIOPMagicTag = "GIOP" -- TODO:[maia] Garantee that the string "GIOP" is
-											--             encoded in ISO Latin-1 (8859.1).
-											--             How can I do this in Lua?!
+HeaderSize = 12   -- TODO:[maia] Calculate from IDL specification
+MagicTag = "GIOP" -- TODO:[maia] Garantee that the string "GIOP" is
+                  --             encoded in ISO Latin-1 (8859.1).
+                  --             How can I do this in Lua?!
 
-GIOPHeader_v1_ = { -- Common message header for each GIOP version
-	[0] = IDL.struct{ -- GIOP 1.0
-		{name = "magic"       , type = IDL.array{IDL.char; length = 4}},
-		{name = "GIOP_version", type = IDL.Version                    },
-		{name = "byte_order"  , type = IDL.boolean                    },
-		{name = "message_type", type = IDL.octet                      },
-		{name = "message_size", type = IDL.ulong                      },
+Header_v1_ = { -- Common message header for each GIOP version
+	[0] = idl.struct{ -- GIOP 1.0
+		{name = "magic"       , type = idl.array{idl.char; length = 4}},
+		{name = "GIOP_version", type = idl.Version                    },
+		{name = "byte_order"  , type = idl.boolean                    },
+		{name = "message_type", type = idl.octet                      },
+		{name = "message_size", type = idl.ulong                      },
 	},
-	[1] = IDL.struct{ -- GIOP 1.1
-		{name = "magic"       , type = IDL.array{IDL.char; length = 4}},
-		{name = "GIOP_version", type = IDL.Version                    },
-		{name = "flags"       , type = IDL.octet                      },
-		{name = "message_type", type = IDL.octet                      },
-		{name = "message_size", type = IDL.ulong                      },
+	[1] = idl.struct{ -- GIOP 1.1
+		{name = "magic"       , type = idl.array{idl.char; length = 4}},
+		{name = "GIOP_version", type = idl.Version                    },
+		{name = "flags"       , type = idl.octet                      },
+		{name = "message_type", type = idl.octet                      },
+		{name = "message_size", type = idl.ulong                      },
 	},
 }
-GIOPHeader_v1_[2] = GIOPHeader_v1_[1] -- GIOP 1.2, same as GIOP 1.1
-GIOPHeader_v1_[3] = GIOPHeader_v1_[1] -- GIOP 1.3, same as GIOP 1.1
+Header_v1_[2] = Header_v1_[1] -- GIOP 1.2, same as GIOP 1.1
+Header_v1_[3] = Header_v1_[1] -- GIOP 1.3, same as GIOP 1.1
 
 --------------------------------------------------------------------------------
 -- Message Header of GIOP Messages ---------------------------------------------
 
-RequestID           = 0
-ReplyID             = 1
-CancelRequestID     = 2
-LocateRequestID     = 3
-LocateReplyID       = 4
-CloseConnectionID   = 5
-MessageErrorID      = 6
-FragmentID          = 7
-NegotiateSessionID  = 8
+RequestID         = 0
+ReplyID           = 1
+CancelRequestID   = 2
+LocateRequestID   = 3
+LocateReplyID     = 4
+CloseConnectionID = 5
+MessageErrorID    = 6
+FragmentID        = 7
 
 --------------------------------------------------------------------------------
 
 MessageType = {
-	[RequestID         ] = "Request"         ,
-	[ReplyID           ] = "Reply"           ,
-	[CancelRequestID   ] = "CancelRequest"   ,
-	[LocateRequestID   ] = "LocateRequest"   ,
-	[LocateReplyID     ] = "LocateReply"     ,
-	[CloseConnectionID ] = "CloseConnection" ,
-	[MessageErrorID    ] = "MessageError"    ,
-	[FragmentID        ] = "Fragment"        ,
-	[NegotiateSessionID] = "NegotiateSession",
+	[RequestID        ] = "Request"        ,
+	[ReplyID          ] = "Reply"          ,
+	[CancelRequestID  ] = "CancelRequest"  ,
+	[LocateRequestID  ] = "LocateRequest"  ,
+	[LocateReplyID    ] = "LocateReply"    ,
+	[CloseConnectionID] = "CloseConnection",
+	[MessageErrorID   ] = "MessageError"   ,
+	[FragmentID       ] = "Fragment"       ,
 }
-
-
---- GIOP 1.3.
---MsgType_1_3 = IDL.enum{
---      "Request", "Reply", "CancelRequest", "LocateRequest", "LocateReply",
---      "CloseConnection", "MessageError", "Fragment", "NegotiateSession"
---}
 
 --------------------------------------------------------------------------------
 
-local ServiceContextList = IDL.sequence{IDL.struct{
-	{name = "context_id"  , type = IDL.ulong   },
-	{name = "context_data", type = IDL.OctetSeq},
+local ServiceContextList = idl.sequence{idl.struct{
+	{name = "context_id"  , type = idl.ulong   },
+	{name = "context_data", type = idl.OctetSeq},
 }}
 
 MessageHeader_v1_ = {} -- Message headers for each GIOP version
 
 --------------------------------------------------------------------------------
 
-local ReplyStatusType_1_0 = IDL.enum{
+local ReplyStatusType_1_0 = idl.enum{
 	"NO_EXCEPTION", "USER_EXCEPTION", "SYSTEM_EXCEPTION", "LOCATION_FORWARD",
 }
-local LocateStatusType_1_0 = IDL.enum{
+local LocateStatusType_1_0 = idl.enum{
 	"UNKNOWN_OBJECT", "OBJECT_HERE", "OBJECT_FORWARD",
 }
 
 MessageHeader_v1_[0] = { -- GIOP 1.0
-	[RequestID] = IDL.struct{
+	[RequestID] = idl.struct{
 		{name = "service_context"     , type = ServiceContextList},
-		{name = "request_id"          , type = IDL.ulong         },
-		{name = "response_expected"   , type = IDL.boolean       },
-		{name = "object_key"          , type = IDL.OctetSeq      },
-		{name = "operation"           , type = IDL.string        },
-		{name = "requesting_principal", type = IDL.OctetSeq      },
+		{name = "request_id"          , type = idl.ulong         },
+		{name = "response_expected"   , type = idl.boolean       },
+		{name = "object_key"          , type = idl.OctetSeq      },
+		{name = "operation"           , type = idl.string        },
+		{name = "requesting_principal", type = idl.OctetSeq      },
 	},
-	[ReplyID] = IDL.struct{
+	[ReplyID] = idl.struct{
 		{name = "service_context", type = ServiceContextList },
-		{name = "request_id"     , type = IDL.ulong          },
+		{name = "request_id"     , type = idl.ulong          },
 		{name = "reply_status"   , type = ReplyStatusType_1_0},
 	},
-	[CancelRequestID] = IDL.struct{
-		{name = "request_id", type = IDL.ulong},
+	[CancelRequestID] = idl.struct{
+		{name = "request_id", type = idl.ulong},
 	},
-	[LocateRequestID] = IDL.struct{
-		{name = "request_id", type = IDL.ulong   },
-		{name = "object_key", type = IDL.OctetSeq},
+	[LocateRequestID] = idl.struct{
+		{name = "request_id", type = idl.ulong   },
+		{name = "object_key", type = idl.OctetSeq},
 	},
-	[LocateReplyID] = IDL.struct{
-		{name = "request_id"   , type = IDL.ulong           },
+	[LocateReplyID] = idl.struct{
+		{name = "request_id"   , type = idl.ulong           },
 		{name = "locate_status", type = LocateStatusType_1_0},
 	},
 	[CloseConnectionID] = false, -- empty header
@@ -255,14 +218,14 @@ MessageHeader_v1_[0] = { -- GIOP 1.0
 --------------------------------------------------------------------------------
 
 MessageHeader_v1_[1] = { -- GIOP 1.1
-	[RequestID] = IDL.struct{
+	[RequestID] = idl.struct{
 		{name = "service_context"     , type = ServiceContextList              },
-		{name = "request_id"          , type = IDL.ulong                       },
-		{name = "response_expected"   , type = IDL.boolean                     },
-		{name = "reserved"            , type = IDL.array{IDL.octet; length = 3}},
-		{name = "object_key"          , type = IDL.OctetSeq                    },
-		{name = "operation"           , type = IDL.string                      },
-		{name = "requesting_principal", type = IDL.OctetSeq                    },
+		{name = "request_id"          , type = idl.ulong                       },
+		{name = "response_expected"   , type = idl.boolean                     },
+		{name = "reserved"            , type = idl.array{idl.octet; length = 3}},
+		{name = "object_key"          , type = idl.OctetSeq                    },
+		{name = "operation"           , type = idl.string                      },
+		{name = "requesting_principal", type = idl.OctetSeq                    },
 	},
 	[ReplyID          ] = MessageHeader_v1_[0][ReplyID          ],
 	[CancelRequestID  ] = MessageHeader_v1_[0][CancelRequestID  ],
@@ -275,49 +238,49 @@ MessageHeader_v1_[1] = { -- GIOP 1.1
 
 --------------------------------------------------------------------------------
 
-local ReplyStatusType_1_2 = IDL.enum{
+local ReplyStatusType_1_2 = idl.enum{
 	"NO_EXCEPTION", "USER_EXCEPTION", "SYSTEM_EXCEPTION", "LOCATION_FORWARD",
 	"LOCATION_FORWARD_PERM", "NEEDS_ADDRESSING_MODE",
 }
-local LocateStatusType_1_2 = IDL.enum{
+local LocateStatusType_1_2 = idl.enum{
 	"UNKNOWN_OBJECT", "OBJECT_HERE", "OBJECT_FORWARD",
 	"OBJECT_FORWARD_PERM", "LOC_SYSTEM_EXCEPTION", "LOC_NEEDS_ADDRESSING_MODE",
 }
 
-local IORAddressingInfo = IDL.struct{
-	{type = IDL.ulong, name = "selected_profile_index"},
+local IORAddressingInfo = idl.struct{
+	{type = idl.ulong, name = "selected_profile_index"},
 	{type = IOR      , name = "ior"                   },
 }
-local TargetAddress = IDL.union{
-	switch = IDL.short,     
+local TargetAddress = idl.union{
+	switch = idl.short,     
 	options = {             
-		{label = 0, name = "object_key", type = IDL.OctetSeq     },
+		{label = 0, name = "object_key", type = idl.OctetSeq     },
 		{label = 1, name = "profile"   , type = TaggedProfile    },
 		{label = 2, name = "ior"       , type = IORAddressingInfo},
 	}
 }
 
 MessageHeader_v1_[2] = { -- GIOP 1.2
-	[RequestID] = IDL.struct{
-		{name = "request_id"     , type = IDL.ulong                       },
-		{name = "response_flags" , type = IDL.octet                       },
-		{name = "reserved"       , type = IDL.array{IDL.octet; length = 3}},
+	[RequestID] = idl.struct{
+		{name = "request_id"     , type = idl.ulong                       },
+		{name = "response_flags" , type = idl.octet                       },
+		{name = "reserved"       , type = idl.array{idl.octet; length = 3}},
 		{name = "target"         , type = TargetAddress                   },
-		{name = "operation"      , type = IDL.string                      },
+		{name = "operation"      , type = idl.string                      },
 		{name = "service_context", type = ServiceContextList              },
 	},
-	[ReplyID] = IDL.struct{
-		{name = "request_id"     , type = IDL.ulong          },
+	[ReplyID] = idl.struct{
+		{name = "request_id"     , type = idl.ulong          },
 		{name = "reply_status"   , type = ReplyStatusType_1_2},
 		{name = "service_context", type = ServiceContextList },
 	},
 	[CancelRequestID] = MessageHeader_v1_[1][CancelRequestID],
-	[LocateRequestID] = IDL.struct{
-		{name = "request_id", type = IDL.ulong    },
+	[LocateRequestID] = idl.struct{
+		{name = "request_id", type = idl.ulong    },
 		{name = "target"    , type = TargetAddress},
 	},
-	[LocateReplyID] = IDL.struct{
-		{name = "request_id"   , type = IDL.ulong           },
+	[LocateReplyID] = idl.struct{
+		{name = "request_id"   , type = idl.ulong           },
 		{name = "locate_status", type = LocateStatusType_1_2},
 	},
 	[CloseConnectionID] = MessageHeader_v1_[1][CloseConnectionID],
@@ -328,8 +291,3 @@ MessageHeader_v1_[2] = { -- GIOP 1.2
 --------------------------------------------------------------------------------
 
 MessageHeader_v1_[3] = MessageHeader_v1_[2] -- GIOP 1.3, same as GIOP 1.2
-
---- related to negotiation of firewall transversal
-NegotiateSession_1_3 = IDL.struct{
-														{name="service_context", type = ServiceContextList },
-}

@@ -9,36 +9,24 @@
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
 -- Release: 0.4 alpha                                                         --
--- Title  : Socket API Wrapper                                                --
+-- Title  : CORBA Interface Indexer                                           --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
+-- members:Receptacle
+-- 	member:table valueof(interface:table, name:string)
+--------------------------------------------------------------------------------
 
-local socket = require "socket"
+local oo   = require "oil.oo"
+local giop = require "oil.corba.giop"                                           --[[VERBOSE]] local verbose = require "oil.verbose"
 
-local oo = require "oil.oo"
+module("oil.corba.giop.Indexer", oo.class)
 
-module("oil.kernel.base.Sockets", oo.class)
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
-function select(self, recvt, sendt, timeout)
-	return socket.select(recvt, sendt, timeout)
-end
+context = false
 
-function sleep(self, timeout)
-	return socket.sleep(timeout)
-end
-
-function tcp(self)
-	return socket.tcp()
-end
-
-function udp(self)
-	return socket.udp()
-end
-
-function connect(self, address, port)
-	return socket.connect(address, port)
-end
-
-function bind(self, address, port)
-	return socket.bind(address, port)
+function valueof(self, interface, name)
+	return self.context.members:valueof(interface, name) or
+	       giop.ObjectOperations[name], nil, true
 end

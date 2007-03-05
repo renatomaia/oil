@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -13,9 +8,9 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.3 alpha                                                         --
+-- Release: 0.4 alpha                                                         --
 -- Title  : OiL main programming interface (API)                              --
--- Authors: Renato Maia           <maia@inf.puc-rio.br>                       --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- Interface:                                                                 --
 --   loadidl(code)                                                            --
@@ -37,16 +32,12 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local type     = type
-local pairs    = pairs
-local ipairs   = ipairs
-local tostring = tostring
+local module   = module
 local require  = require
-local rawset   = rawset
-local print    = print
-local next     = next
 
 local io = require "io"
+
+local builder = require "oil.builder"
 
 --------------------------------------------------------------------------------
 -- OiL main programming interface (API).
@@ -56,17 +47,11 @@ local io = require "io"
 -- that currently are only supported as part of the internal implementation and
 -- therefore may change in the future.
 
-module "oil"                                  
+module "oil"
 
---------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
-
-local luaidl    = require "luaidl"
-local idl       = require "oil.idl"
-local idlparser = require "oil.idl.compiler"
-local assert    = require "oil.assert"
-local iridl     = require "oil.ir.idl"
-
+function assemble(flavor)
+	Components = builder.build(flavor)
+end
 
 --------------------------------------------------------------------------------
 -- Default configuration for creation of the default ORB instance.
@@ -96,11 +81,7 @@ local iridl     = require "oil.ir.idl"
 
 -- @see init
 
-Config = {
-	flavor = "CORBASimple",
-	host   = "localhost", 
-	port   = 2809,
-}
+Config = {}
 
 --------------------------------------------------------------------------------
 -- Loads an IDL code strip into the local Interface Repository.
@@ -116,7 +97,7 @@ Config = {
 --        ]]                                                                   .
 
 function loadidl(idlspec)
-	return idlparser.parse(idlspec, myManager)
+	return assert.check(Components.TypeRepository.compiler:load(idlspec))
 end
 
 --------------------------------------------------------------------------------
@@ -130,14 +111,12 @@ end
 -- parameter.
 
 -- @param filename string The path to the IDL file that must be loaded.
--- @param preprocessed string [optional] Path to a temporary file used to store
--- the preprocessed data.
 
 -- @usage oil.loadidlfile "/usr/local/corba/idl/CosNaming.idl"                 .
 -- @usage oil.loadidlfile("HelloWorld.idl", "/tmp/preprocessed.idl")           .
 
-function loadidlfile(filename, preprocessed)
-	return idlparser.parsefile(filename, myManager)
+function loadidlfile(filename)
+	return assert.check(Components.TypeRepository.compiler:loadfile(filename))
 end
 
 --------------------------------------------------------------------------------
@@ -145,12 +124,8 @@ end
 
 -- @return 1 proxy CORBA object that exports the local Interface Repository.
 
-local LocalIR
 function getLIR()
-	if not LocalIR then
-		LocalIR = init():object(myManager, "IDL:omg.org/CORBA/Repository:1.0")
-	end
-	return LocalIR
+	return self.Components.TypeRepository.interfaces
 end
 
 --------------------------------------------------------------------------------
@@ -159,7 +134,7 @@ end
 -- @return 1 proxy Proxy for the remote IR currently used.
 
 function getIR()
-	return myManager.ir
+	return newobject(getLIR(), "IDL:omg.org/CORBA/Repository:1.0")
 end
 
 --------------------------------------------------------------------------------
@@ -171,7 +146,7 @@ end
 --                               "IDL:omg.org/CORBA/Repository:1.0"))          .
 
 function setIR(ir)
-	myManager.ir = ir
+	self.Components.TypeRepository.remote = ir
 end
 
 --------------------------------------------------------------------------------
@@ -197,8 +172,12 @@ end
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
 
 function newobject(object, interface, key)
-	init()
-	return myServerBroker:register(object, interface, key)
+	if Config then init(Config) end
+	return assert.check(Components.ServerBroker.broker:object(object, key, interface))
+end
+
+function tostring(object)
+	return assert.check(Components.ServerBroker.broker:tostring(object))
 end
 
 --------------------------------------------------------------------------------
@@ -224,8 +203,7 @@ end
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 
 function newproxy(object, interface)
-	init()
-	return myClientBroker.proxies:newproxy(object, interface)
+	return assert.check(Components.ClientBroker.broker:fromstring(object, interface))
 end
 
 --------------------------------------------------------------------------------
@@ -257,15 +235,8 @@ end
 
 -- @see newproxy
 
-function narrow(proxy, interface)
-	if proxy then
-		if type(interface) == "string" then
-			if Manager.lookup then
-				interface = Manager:lookup(interface) or interface
-			end
-		end
-		return proxy:_narrow(interface)
-	end
+function narrow(object, interface)
+	return object and object:_narrow(interface)
 end
 
 --------------------------------------------------------------------------------
@@ -289,16 +260,8 @@ end
 -- @see Config
 
 function init(config)
-	config = config or Config
-
-	configs = require ("oil.configs." .. config.flavor)
-
-	myManager = configs.myManager
-	myServerBroker = configs.myServerBroker
-	myClientBroker = configs.myClientBroker
-	myScheduler = configs.myScheduler
-
-	myServerBroker:init(config)
+	config, Config = config or Config, nil
+	return assert.check(Components.ServerBroker.broker:initialize(config))
 end
 
 --------------------------------------------------------------------------------
@@ -307,7 +270,7 @@ end
 -- Returns true if there is some ORB request pending or false otherwise.
 
 function pending()
-	return myServerBroker:workpending()
+	return assert.check(Components.ServerBroker.broker:pending())
 end
 
 --------------------------------------------------------------------------------
@@ -317,7 +280,7 @@ end
 -- and an exception.
 
 function step()
-	return myServerBroker:performwork()
+	return assert.check(Components.ServerBroker.broker:step())
 end
 
 --------------------------------------------------------------------------------
@@ -327,10 +290,35 @@ end
 -- error occours.
 
 function run()
-	myServerBroker.control:run()
-	if myScheduler then
-		myScheduler.control:run()
+	assert.check(Components.ServerBroker.broker:initialize(Config))
+	return assert.check(Components.ServerBroker.broker:run())
+end
+
+function main(main)
+	if Components.TaskManager then
+		local tasks = Components.TaskManager.tasks
+		assert.check(tasks:register(tasks:new(main)))
+		return Components.TaskManager.control:run()
+	else
+		return main()
 	end
+end
+
+function newthread(body, ...)
+	return Components.TaskManager.tasks:start(body, ...)
+end
+
+function sleep(time)
+	return Components.OperatingSystem.sockets:sleep(time)
+end
+
+--------------------------------------------------------------------------------
+-- Shuts down the ORB.
+
+-- Stops the ORB main loop if it is executing and closes all connections.
+
+function shutdown()
+	return assert.check(Components.ServerBroker.broker:shutdown())
 end
 
 --------------------------------------------------------------------------------
@@ -352,30 +340,18 @@ createservant = newobject
 createproxy = newproxy
 
 --------------------------------------------------------------------------------
--- Gets reference from a servant
-
-function getreference(servant, port)
-	local reference = myServerBroker:tostring(servant, port)
-	if type(reference) == "table" then
-		_, reference = next(reference)
-		return reference
-	else
-		return reference
-	end
-end
---------------------------------------------------------------------------------
 -- Creates a file with the IOR of an object.
 
 -- Utility function for writing stringfied IORs into a file.
 
-function writeIOR(object, file)
-	file = io.open(file, "w")
-	if file then
-		file:write(getreference(object))
+function writeto(filepath, text)
+	local result, errmsg = io.open(filepath, "w")
+	if result then
+		local file = result
+		result, errmsg = file:write(text)
 		file:close()
-		return true
 	end
-	assert.error("unable to write file '"..tostring(file).."'")
+	return result, errmsg
 end
 
 --------------------------------------------------------------------------------
@@ -383,13 +359,50 @@ end
 
 -- Utility function for reading stringfied IORs from a file.
 
-function readIOR(filename)
-	local file = io.open(filename)
-	if file then
-		local ior = file:read("*a")
+function readfrom(filepath)
+	local result, errmsg = io.open(filepath)
+	if result then
+		local file = result
+		result, errmsg = file:read("*a")
 		file:close()
-		return ior
 	end
-	assert.error("unable to read from file '"..filename.."'")
+	return result, errmsg
 end
 
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function newencoder()
+	return assert.check(Components.ValueEncoder.codec:encoder(true))
+end
+
+function newdecoder(stream)
+	return assert.check(Components.ValueEncoder.codec:decoder(stream, true))
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+local port       = require "oil.port"
+local ClientSide = require "oil.corba.interceptors.ClientSide"
+local ServerSide = require "oil.corba.interceptors.ServerSide"
+
+function setclientinterceptor(iceptor)
+	assert.check(port.intercept, "interceptors not supported")
+	if iceptor then
+		iceptor = ClientSide{ interceptor = iceptor }
+		port.intercept(Components.OperationRequester, "requests", "method", iceptor)
+		port.intercept(Components.OperationRequester, "messenger", "method", iceptor)
+		return true
+	end
+end
+
+function setserverinterceptor(iceptor)
+	assert.check(port.intercept, "interceptors not supported")
+	if iceptor then
+		iceptor = ServerSide{ interceptor = iceptor }
+		port.intercept(Components.RequestListener, "messenger", "method", iceptor)
+		port.intercept(Components.RequestDispatcher, "dispatcher", "method", iceptor)
+		return true
+	end
+end

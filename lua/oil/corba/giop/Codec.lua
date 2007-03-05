@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -15,19 +10,9 @@
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
 -- Release: 0.3 alpha                                                         --
 -- Title  : Mapping of Lua values into Common Data Representation (CDR)       --
--- Authors: Noemi Rodriquez       <noemi@inf.puc-rio.br>                      --
---          Roberto Ierusalimschy <roberto@inf.puc-rio.br>                    --
---          Renato Cerqueira      <rcerq@inf.puc-rio.br>                      --
---          Pedro Miller          <miller@inf.puc-rio.br>                     --
---          Reinaldo Mello        <rmello@inf.puc-rio.br>                     --
---          Luiz Nogara           <nogara@inf.puc-rio.br>                     --
---          Renato Maia           <maia@inf.puc-rio.br>                       --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
--- Interface:                                                                 --
---   ReadBuffer      Buffer class for unmarshalling of CDR data from string   --
---   WriteBuffer     Buffer class for marshalling data into string in CDR     --
---                                                                            --
--- ReadBuffer interface:                                                      --
+-- decoder interface:                                                         --
 --   order(value)    Change or return the endianess of the buffer             --
 --   jump(shift)     Places an empty space in the data of the buffer          --
 --   getdata()       Returns the raw data stream of marshalled data           --
@@ -57,9 +42,8 @@
 --   except(type)    Unmarhsall an expection value, given its type            --
 --                                                                            --
 --   interface(type) Unmarshall an object reference of a given interface      --
---   IOR()           Unmarhsall an interoperable object reference             --
 --                                                                            --
--- WriteBuffer interface:                                                     --
+-- encoder interface:                                                         --
 --   order(value)         Change or return the endianess of the buffer        --
 --   jump(shift)          Jump an empty space in the data of the buffer       --
 --   getdata()            Returns the raw data stream of marshalled data      --
@@ -89,36 +73,181 @@
 --   except(value, type)  Marhsall an expection value, given its type         --
 --                                                                            --
 --   interface(value,type)Marshall an object reference of a given interface   --
---   IOR(value)           Marhsall an interoperable object reference          --
 --------------------------------------------------------------------------------
 -- Notes:                                                                     --
 --   See section 15.3 of CORBA 3.0 specification.                             --
 --------------------------------------------------------------------------------
-
-local type         = type
-local pairs        = pairs
-local ipairs       = ipairs
-local tonumber     = tonumber
-local setmetatable = setmetatable
-local getmetatable = getmetatable
-local require      = require
-local print        = print
-
-local math         = require "math"
-local string       = require "string"
-local table        = require "table"
-
-module "oil.corba.Codec"                                                        --[[VERBOSE]] local verbose = require "oil.verbose"
-
+-- codec:Facet
+-- 	encoder:object encoder()
+-- 	decoder:object decoder(stream:string)
+-- 
+-- proxies:Receptacle
+-- 	proxy:object proxyto(ior:table, iface:table|string)
+-- 
+-- objects:Receptacle
+-- 	proxy:object register(implementation:object, iface:table|string)
 --------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
+
+local getmetatable = getmetatable
+local ipairs       = ipairs
+local setmetatable = setmetatable
+local tonumber     = tonumber
+local type         = type
+
+local math   = require "math"
+local string = require "string"
+local table  = require "table"
 
 local oo     = require "oil.oo"
 local assert = require "oil.assert"
 local bit    = require "oil.bit"
-local IDL    = require "oil.idl"
-local tcode  = require "oil.corba.tcode"
-local giop   = require "oil.corba.giop"
+local idl    = require "oil.corba.idl"
+local giop   = require "oil.corba.giop"                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+
+module("oil.corba.giop.Codec", oo.class)
+
+context = false
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+local UnionLabelInfo = { name = "label", type = idl.void }
+
+--------------------------------------------------------------------------------
+-- TypeCode information --------------------------------------------------------
+
+-- NOTE: Description of type code categories, which is defined by field type
+--	empty  : no further parameters are necessary to specify the associated
+--           type.
+--	simple : parameters that specify the associated type are defined as a
+--           sequence of values.
+--	complex: parameters that specify the associated type are defined as a
+--           structure defined in idl that is stored in a encapsulated octet
+--           sequence (i.e. which endianess may differ).
+
+local TypeCodeInfo = {
+	[0]  = {name = "null"     , type = "empty", idl = idl.null     , unhandled = true}, 
+	[1]  = {name = "void"     , type = "empty", idl = idl.void     }, 
+	[2]  = {name = "short"    , type = "empty", idl = idl.short    },
+	[3]  = {name = "long"     , type = "empty", idl = idl.long     },
+	[4]  = {name = "ushort"   , type = "empty", idl = idl.ushort   },
+	[5]  = {name = "ulong"    , type = "empty", idl = idl.ulong    },
+	[6]  = {name = "float"    , type = "empty", idl = idl.float    },
+	[7]  = {name = "double"   , type = "empty", idl = idl.double   },
+	[8]  = {name = "boolean"  , type = "empty", idl = idl.boolean  },
+	[9]  = {name = "char"     , type = "empty", idl = idl.char     },
+	[10] = {name = "octet"    , type = "empty", idl = idl.octet    },
+	[11] = {name = "any"      , type = "empty", idl = idl.any      },
+	[12] = {name = "TypeCode" , type = "empty", idl = idl.TypeCode },
+	[13] = {name = "Principal", type = "empty", idl = idl.Principal, unhandled = true},
+
+	[14] = {name = "Object", type = "complex",
+		parameters = idl.struct{
+			{name = "repID", type = idl.string},
+			{name = "name" , type = idl.string},
+		},
+	},
+	[15] = {name = "struct", type = "complex",
+		parameters = idl.struct{
+			{name = "repID" , type = idl.string},
+			{name = "name"  , type = idl.string},
+			{name = "fields", type = idl.sequence{
+				idl.struct{
+					{name = "name", type = idl.string},
+					{name = "type", type = idl.TypeCode}
+				},
+			}},
+		},
+	},
+	[16] = {name = "union", type = "complex",
+		parameters = idl.struct{
+			{name = "repID"  , type = idl.string  },
+			{name = "name"   , type = idl.string  },
+			{name = "switch" , type = idl.TypeCode},
+			{name = "default", type = idl.long    },
+		},
+		mutable = {
+			{name = "options", type = idl.sequence{
+				idl.struct{
+					UnionLabelInfo, -- NOTE: depends on field 'switch'.
+					{name = "name" , type = idl.string  },
+					{name = "type" , type = idl.TypeCode},
+				},
+			}},
+			setup = function(self, union)
+				UnionLabelInfo.type = union.switch
+				return self
+			end,
+		},
+	},
+	[17] = {name = "enum", type = "complex",
+		parameters = idl.struct{
+			{name = "repID"     , type = idl.string              },
+			{name = "name"      , type = idl.string              },
+			{name = "enumvalues", type = idl.sequence{idl.string}},
+		}
+	},
+	[18] = {name = "string", type = "simple", idl = idl.string,
+		parameters = {
+			{name = "maxlength", type = idl.ulong}
+		},
+	},
+	[19] = {name = "sequence", type = "complex",
+		parameters = idl.struct{
+			{name = "elementtype", type = idl.TypeCode},
+			{name = "maxlength"  , type = idl.ulong   },
+		}
+	},
+	[20] = {name = "array", type = "complex",
+		parameters = idl.struct{
+			{name = "elementtype", type = idl.TypeCode},
+			{name = "length"     , type = idl.ulong   },
+		}
+		},
+	[21] = {name = "typedef", type = "complex",
+		parameters = idl.struct{
+			{name = "repID", type = idl.string  },
+			{name = "name" , type = idl.string  },
+			{name = "type" , type = idl.TypeCode},
+		},
+	},
+	[22] = {name = "except", type = "complex",
+		parameters = idl.struct{
+			{name = "repID", type = idl.string},
+			{name = "name",  type = idl.string},
+			{name = "members", type = idl.sequence{
+				idl.struct{
+					{name = "name", type = idl.string  },
+					{name = "type", type = idl.TypeCode},
+				},
+			}},
+		},
+	},
+	
+	[23] = {name = "longlong"  , type = "empty", unhandled = true}, 
+	[24] = {name = "ulonglong" , type = "empty", unhandled = true},
+	[25] = {name = "longdouble", type = "empty", unhandled = true},
+	[26] = {name = "wchar"     , type = "empty", unhandled = true},
+	
+	[27] = {name = "wstring", type = "simple", unhandled = true, kind = "wstring",
+		parameters = {
+			{name = "maxlength", type = idl.ulong},
+		},
+	},
+	[28] = {name = "fixed", type = "simple", unhandled = true, kind = "fixed",
+		parameters = {
+			{name = "digits", type = idl.ushort},
+			{name = "scale" , type = idl.short },
+		},
+	},
+	
+	[29] = {name = "value"             , type = "complex", unhandled = true},
+	[30] = {name = "value_box"         , type = "complex", unhandled = true},
+	[31] = {name = "native"            , type = "complex", unhandled = true},
+	[32] = {name = "abstract_interface", type = "complex", unhandled = true},
+	
+	-- [0xffffffff] = {name="none", type = "simple"},
+}
 
 --------------------------------------------------------------------------------
 -- Local module functions ------------------------------------------------------
@@ -127,6 +256,8 @@ local function alignbuffer(self, alignment)
 	local extra = math.mod(self.cursor - 1, alignment)
 	if extra > 0 then self:jump(alignment - extra) end
 end
+
+local NativeEndianess = (bit.endianess() == "little")
 
 --------------------------------------------------------------------------------
 --##  ##  ##  ##  ##   ##   ####   #####    ####  ##  ##   ####   ##     ##   --
@@ -139,34 +270,32 @@ end
 --------------------------------------------------------------------------------
 -- Unmarshalling buffer class --------------------------------------------------
 
-local ReadBuffer = oo.class{
-	cursor    = 1  ,
-	endianess = '>', -- default write buffer endianess
+local Decoder = oo.class{
+	start = 1,
+	cursor = 1,
+	unpack = bit.unpack, -- use current platform native endianess
 }
 
--- NOTE: second parameter indicates an encasulated octet-stream, therefore
---       endianess must be read from stream.
-function ReadBuffer:__init(octets, getorder, object)
-	local buffer = oo.rawnew(self, { data = octets, object = object })
-	if getorder then buffer:order(self.boolean(buffer)) end
-	return buffer
+function Decoder:__init(object)
+	self = oo.rawnew(self, object)
+	self.history = self
+	return self
 end
 
-function ReadBuffer:order(value)
-	if value
-		then self.endianess = value and '<' or '>'
-		else return self.endianess == '<'
+function Decoder:order(value)
+	if value ~= NativeEndianess then
+		self.unpack = bit.invunpack
 	end
 end
 
-function ReadBuffer:jump(shift)
+function Decoder:jump(shift)
 	self.cursor = self.cursor + shift
 	if self.cursor - 1 > string.len(self.data) then
 		assert.illegal(self.data, "data stream, insufficient data", "MARSHALL")
 	end
 end
 
-function ReadBuffer:get(idltype)
+function Decoder:get(idltype)
 	local unmarshall = self[idltype._type]
 	if not unmarshall then
 		assert.illegal(idltype._type, "supported type", "MARSHALL")
@@ -174,53 +303,76 @@ function ReadBuffer:get(idltype)
 	return unmarshall(self, idltype)
 end
 
-function ReadBuffer:getdata()
+function Decoder:append(data)
+	self.data = self.data..data
+end
+
+function Decoder:getdata()
 	return self.data
+end
+
+function Decoder:pointto(buffer)
+	self.start = (buffer.start - 1) + (buffer.cursor - string.len(self.data))
+	self.history = buffer.history
+end
+
+function Decoder:indirection(unmarshall, ...)
+	local pos = (self.start - 1) + self.cursor
+	local tag = self:ulong()
+	local value
+	if tag == 4294967295 then -- indirection marker (0xffffffff)
+		pos = (self.start - 1) + self.cursor
+		value = self.history[pos + self:long()]
+		if value == nil then
+			assert.illegal(nil, "indirection value", "MARSHALL")
+		end
+	else
+		value = unmarshall(self, tag, ...)
+		self.history[pos] = value
+	end
+	return value
 end
 
 --------------------------------------------------------------------------------
 -- Unmarshalling functions -----------------------------------------------------
-																																								--[[VERBOSE]] local VERBOSE_NumberTypeCode = {s=IDL.short,l=IDL.long,S=IDL.ushort,L=IDL.ulong,f=IDL.float,d=IDL.double}
+
 local function numberunmarshaller(size, format)
-	local cursor
 	return function (self)
 		alignbuffer(self, size)
-		local cursor = self.cursor
+		local value = self.cursor
 		self:jump(size)
-		local value = bit.unpack(self.endianess..format,
-														self.data, cursor)                                 --[[VERBOSE]] verbose:unmarshall(VERBOSE_NumberTypeCode[format], value, self, true)
+		value = self.unpack(format, self.data, nil, nil, value)                     --[[VERBOSE]] verbose:unmarshal(self, format, value)
 		return value
 	end
 end
 
-ReadBuffer.void     = function() end -- TODO:[maia] Should null be the same?
-ReadBuffer.short    = numberunmarshaller(2, "s")
-ReadBuffer.long     = numberunmarshaller(4, "l")
-ReadBuffer.ushort   = numberunmarshaller(2, "S")
-ReadBuffer.ulong    = numberunmarshaller(4, "L")
-ReadBuffer.float    = numberunmarshaller(4, "f")
-ReadBuffer.double   = numberunmarshaller(8, "d")
-ReadBuffer.TypeCode = tcode.unmarshall
+Decoder.void     = function() end -- TODO:[maia] Should null be the same?
+Decoder.short    = numberunmarshaller(2, "s")
+Decoder.long     = numberunmarshaller(4, "l")
+Decoder.ushort   = numberunmarshaller(2, "S")
+Decoder.ulong    = numberunmarshaller(4, "L")
+Decoder.float    = numberunmarshaller(4, "f")
+Decoder.double   = numberunmarshaller(8, "d")
 
-function ReadBuffer:boolean()                                                   --[[VERBOSE]] verbose:unmarshall(IDL.boolean, nil, self)
-	return (self:octet() ~= 0)                                                    --[[VERBOSE]] , verbose:unmarshall(false)
+function Decoder:boolean()                                                      --[[VERBOSE]] verbose:unmarshal(true, self, idl.boolean)
+	return (self:octet() ~= 0)                                                    --[[VERBOSE]],verbose:unmarshal(false)
 end
 
-function ReadBuffer:char()
-	local value = string.sub(self.data, self.cursor, self.cursor)                 --[[VERBOSE]] verbose:unmarshall(IDL.char, value, self, true)
+function Decoder:char()
+	local value = self.data:sub(self.cursor, self.cursor)                         --[[VERBOSE]] verbose:unmarshal(self, idl.char, value)
 	self:jump(1)
 	return value
 end
 
-function ReadBuffer:octet()
-	local value = bit.unpack("B", self.data, self.cursor)                         --[[VERBOSE]] verbose:unmarshall(IDL.octet, value, self, true)
+function Decoder:octet()
+	local value = self.unpack("B", self.data, nil, nil, self.cursor)              --[[VERBOSE]] verbose:unmarshal(self, idl.octet, value)
 	self:jump(1)
 	return value
 end
 
-function ReadBuffer:any()                                                       --[[VERBOSE]] verbose:unmarshall(IDL.any, nil, self)
-	local idltype = self:TypeCode()                                               --[[VERBOSE]] verbose:unmarshall("got any of type ", idltype._type, " ", idltype.repID or "")
-	local value = self:get(idltype)                                               --[[VERBOSE]] verbose:unmarshall(false)
+function Decoder:any()                                                          --[[VERBOSE]] verbose:unmarshal(true, self, idl.any) verbose:unmarshal "[type of any]"
+	local idltype = self:TypeCode()                                               --[[VERBOSE]] verbose:unmarshal "[value of any]"
+	local value = self:get(idltype)                                               --[[VERBOSE]] verbose:unmarshal(false)
 	if type(value) == "table"
 		then value._anyval = value
 		else value = setmetatable({_anyval = value}, idltype)
@@ -228,108 +380,139 @@ function ReadBuffer:any()                                                       
 	return value
 end
 
-function ReadBuffer:Object(idltype)                                             --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
-	local ior = self:IOR()                                                        --[[VERBOSE]] verbose:unmarshall(false, "got ", ior._type_id, " object")
-	if ior._type_id ~= "" then
-		local object = self.object
-		if object and object._manager then                                          --[[VERBOSE]] verbose:unmarshall(true, "recovering object from IOR by a object manager")
+function Decoder:Object(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+	local ior = self:struct(giop.IOR)
+	if ior._type_id == "" then                                                    --[[VERBOSE]] verbose:unmarshal "got a null reference"
+		ior = nil
+	else
+		local proxies = self.context.proxies
+		if proxies then                                                             --[[VERBOSE]] verbose:unmarshal(true, "retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
-			ior = object._manager:resolve(ior, idltype)                               --[[VERBOSE]] verbose:unmarshall(false)
+			ior = proxies:proxy(ior, idltype)                                         --[[VERBOSE]] verbose:unmarshal(false)
 		end
-		return ior
-	end
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	return ior
 end
 
-function ReadBuffer:struct(idltype)                                             --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
+function Decoder:struct(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local value = {}
-	for _, field in ipairs(idltype.fields) do                                     --[[VERBOSE]] verbose:unmarshall("[field ", field.name, "]")
+	for _, field in ipairs(idltype.fields) do                                     --[[VERBOSE]] verbose:unmarshal("[field ",field.name,"]")
 		value[field.name] = self:get(field.type)
-	end                                                                           --[[VERBOSE]] verbose:unmarshall(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return setmetatable(value, idltype)
 end
 
-function ReadBuffer:union(idltype)                                              --[[VERBOSE]] verbose:unmarshall(idltype, nil, self) verbose:unmarshall "[union switch]"
+function Decoder:union(idltype)                                                 --[[VERBOSE]] verbose:unmarshal(true, self, idltype) verbose:unmarshal "[union switch]"
 	local switch = self:get(idltype.switch)
+	local value = { _switch = switch }
 	local option = idltype.selection[switch]
-	if option then                                                                --[[VERBOSE]] verbose:unmarshall "[union value]"
-		local value = self:get(option.type)                                         --[[VERBOSE]] verbose:unmarshall(false)
-		return setmetatable({
-			_switch = switch,
-			_value  = value,
-			_field  = option.name,
-		}, idltype)
-	else
-		return setmetatable({ _switch = switch }, idltype)
-	end
+	if option then                                                                --[[VERBOSE]] verbose:unmarshal("[field",option.name,"]")
+		value._field = option.name
+		value._value = self:get(option.type)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	return setmetatable(value, idltype)
 end
 
-function ReadBuffer:enum(idltype)                                               --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
-	local value = self:ulong() + 1                                                --[[VERBOSE]] verbose:unmarshall(false)
-	if value > table.getn(idltype.enumvalues) then
+function Decoder:enum(idltype)                                                  --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+	local value = self:ulong() + 1                                                --[[VERBOSE]] verbose:unmarshal(false)
+	if value > #idltype.enumvalues then
 		assert.illegal(value, "enumeration value", "MARSHAL")
 	end
 	return idltype.enumvalues[value]
 end
 
-function ReadBuffer:string()                                                    --[[VERBOSE]] verbose:unmarshall(IDL.string, nil, self)
+function Decoder:string()                                                       --[[VERBOSE]] verbose:unmarshal(true, self, idl.string)
 	local length = self:ulong()
-	local value = string.sub(self.data,
-														self.cursor, -- take out the \0
-														self.cursor + length - 2)                            --[[VERBOSE]] verbose:unmarshall(false, "string value is ", verbose:valueOf(value, "unmarshall"))
+	local value = self.data:sub(self.cursor, self.cursor + length - 2)            --[[VERBOSE]] verbose:unmarshal(false, "got ",verbose.viewer:tostring(value))
 	self:jump(length)
 	return value
 end
 
-function ReadBuffer:sequence(idltype)                                           --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
+function Decoder:sequence(idltype)                                              --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local length      = self:ulong()
 	local elementtype = idltype.elementtype
 	local value
-	if elementtype._type == "octet" or elementtype._type == "char" then
-		value = string.sub(self.data,
-												self.cursor,
-												self.cursor + length - 1)                                --[[VERBOSE]] verbose:unmarshall("sequence value is ", verbose:valueOf(value, "unmarshall"))
+	while elementtype._type == "typecode" do elementtype = elementtype.type end
+	if elementtype == idl.octet or elementtype == idl.char then
+		value = self.data:sub(self.cursor, self.cursor + length - 1)                --[[VERBOSE]] verbose:unmarshal("got ", verbose.viewer:tostring(value))
 		self:jump(length)
 	else
-		value = setmetatable({ n = length }, idltype)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshall("[element ", i, "]")
+		value = setmetatable({}, idltype)
+		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshal("[element ",i,"]")
 			value[i] = self:get(elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose:unmarshall(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return value
 end
 
-function ReadBuffer:array(idltype)                                              --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
+function Decoder:array(idltype)                                                 --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local length      = idltype.length
 	local elementtype = idltype.elementtype
 	local value
-	if elementtype._type == "octet" or elementtype._type == "char" then
-		value = string.sub(self.data,
-												self.cursor,
-												self.cursor + length - 1)                                --[[VERBOSE]] verbose:unmarshall("array value is ", verbose:valueOf(value, "unmarshall"))
+	while elementtype._type == "typecode" do elementtype = elementtype.type end
+	if elementtype == idl.octet or elementtype == idl.char then
+		value = self.data:sub(self.cursor, self.cursor + length - 1)                --[[VERBOSE]] verbose:unmarshal("got ",verbose.viewer:tostring(value))
 		self:jump(length)
 	else
-		value = setmetatable({ n = length }, idltype)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshall("[element ", i, "]")
+		value = setmetatable({}, idltype)
+		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshal("[element ",i,"]")
 			value[i] = self:get(elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose:unmarshall(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return value
 end
 
-function ReadBuffer:typedef(idltype)                                            --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
-	return self:get(idltype.type)                                                 --[[VERBOSE]] , verbose:unmarshall(false)
+function Decoder:typedef(idltype)                                               --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+	return self:get(idltype.type)                                                 --[[VERBOSE]],verbose:unmarshal(false)
 end
 
-function ReadBuffer:except(idltype)                                             --[[VERBOSE]] verbose:unmarshall(idltype, nil, self)
+function Decoder:except(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local value = {}
-	for _, field in ipairs(idltype.members) do                                    --[[VERBOSE]] verbose:marshall("[member ", field.name, "]")
-		value[field.name] = self:get(field.type)
-	end                                                                           --[[VERBOSE]] verbose:unmarshall(false)
+	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose:unmarshal("[member ",member.name,"]")
+		value[member.name] = self:get(member.type)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return setmetatable(value, idltype)
 end
 
-function ReadBuffer:IOR() return self:struct(giop.IOR) end
-ReadBuffer.interface = ReadBuffer.Object
+Decoder.interface = Decoder.Object
+
+local function gettype(decoder, kind)
+	local tcinfo = TypeCodeInfo[kind]
+	
+	if tcinfo == nil then assert.illegal(kind, "type code", "MARSHALL") end       --[[VERBOSE]] verbose:unmarshal("TypeCode defines a ",tcinfo.name)
+	if tcinfo.unhandled then
+		assert.illegal(tcinfo.name, "supported type code", "MARSHALL")
+	end
+	
+	if tcinfo.type == "simple" then
+		
+		-- NOTE: The string type is the only simple type being handled,
+		--       therefore parameters are ignored.
+		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose:unmarshal("[parameter ",param.name,"]")
+			decoder:get(param.type)
+		end
+		
+	elseif tcinfo.type == "complex" then                                          --[[VERBOSE]] verbose:unmarshal(true, "[parameters encapsulation]")
+		
+		local params = decoder:sequence(idl.OctetSeq)
+		local temp = decoder.context.__component:decoder(params, true)              --[[VERBOSE]] verbose:unmarshal "[parameters values]"
+		temp:pointto(decoder)
+		params = temp:struct(tcinfo.parameters)
+		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose:unmarshal "[mutable parameters values]"
+			for _, param in ipairs(tcinfo.mutable:setup(params)) do
+				params[param.name] = temp:get(param.type)
+			end
+		end                                                                         --[[VERBOSE]] verbose:unmarshal(false)
+		return idl[tcinfo.name](params)
+		
+	end
+	
+	return tcinfo.idl
+end
+
+function Decoder:TypeCode()                                                     --[[VERBOSE]] verbose:unmarshal(true, self, idl.TypeCode)
+	return self:indirection(gettype)                                              --[[VERBOSE]],verbose:unmarshal(false)
+end
 
 --------------------------------------------------------------------------------
 --   ##   ##   #####   ######    ######  ##   ##   #####   ##       ##        --
@@ -342,48 +525,35 @@ ReadBuffer.interface = ReadBuffer.Object
 --------------------------------------------------------------------------------
 -- Unmarshalling buffer class --------------------------------------------------
 
-local WriteBuffer = oo.class {
+local Encoder = oo.class {
+	start = 1,
 	cursor = 1,
 	emptychar = '\255', -- character used in buffer alignment
-	endianess = '>',    -- TODO:[maia] use current platform native endianess
+	pack = bit.pack,    -- use current platform native endianess
 }
 
--- NOTE: Presence of a parameter indicates an encapsulated octet-stream.
---       Parameter value indicates which endianess must be used.
---       (little = 0; big = 1)
-function WriteBuffer:__init(order, object)
-	if not order then
-		return oo.rawnew(self, { object = object, n = 0})
-	elseif order == "little" then
-		return oo.rawnew(self, { object = object, '\1', n=1,
-			cursor = 2,
-			endianess = '<',
-		})
-	-- TODO:[maia] use current platform native endianess
-	elseif order == "big" or order == true then
-		return oo.rawnew(self, { object = object, '\0', n=1,
-			cursor = 2,
-			endianess = '>',
-		})
-	end
-	assert.illegal(order, "buffer order")
+function Encoder:__init(object)
+	self = oo.rawnew(self, object)
+	self.format = {}
+	self.history = self
+	return self
 end
 
-function WriteBuffer:shift(shift)
+function Encoder:shift(shift)
 	self.cursor = self.cursor + shift
 end
 
-function WriteBuffer:jump(shift)
-	table.insert(self, string.rep(self.emptychar, shift))
-	self:shift(shift)
+function Encoder:jump(shift)
+	self:rawput('"', string.rep(self.emptychar, shift), shift)
 end
 
-function WriteBuffer:rawput(data)
-	self.cursor = self.cursor + string.len(data)
+function Encoder:rawput(format, data, size)
+	table.insert(self.format, format)
 	table.insert(self, data)
+	self.cursor = self.cursor + size
 end
 
-function WriteBuffer:put(value, idltype)
+function Encoder:put(value, idltype)
 	local marshall = self[idltype._type]
 	if not marshall then
 		assert.illegal(idltype._type, "supported type", "MARSHALL")
@@ -391,125 +561,148 @@ function WriteBuffer:put(value, idltype)
 	return marshall(self, value, idltype)
 end
 
-function WriteBuffer:getdata()
-	return table.concat(self)
+function Encoder:getdata()
+	return self.pack(table.concat(self.format), self)
 end
 
-function WriteBuffer:getlength()
+function Encoder:getlength()
 	return self.cursor - 1
+end
+
+function Encoder:pointto(encoder)
+	self.start = (encoder.start - 1) + encoder.cursor
+	self.history = encoder.history
+end
+
+function Encoder:indirection(marshall, value, ...)
+	local pos = (self.start - 1) + self.cursor
+	local previous = self.history[value]
+	if previous then
+		self:ulong(4294967295) -- indirection marker (0xffffffff)
+		pos = (self.start - 1) + self.cursor
+		self:long(previous - pos) -- offset
+	else
+		self.history[value] = pos
+		marshall(self, value, ...)
+	end
 end
 
 --------------------------------------------------------------------------------
 -- Marshalling functions -------------------------------------------------------
 
 local function numbermarshaller(size, format)
-	return function (self, value)                                                 --[[VERBOSE]] verbose:marshall(true, VERBOSE_NumberTypeCode[format], value, self)
+	return function (self, value)                                                 --[[VERBOSE]] verbose:marshal(self, format, value)
 		assert.type(value, "number", "numeric value", "MARSHAL")
 		alignbuffer(self, size)
-		self:rawput(bit.pack(self.endianess..format, value))
+		self:rawput(format, value, size)
 	end
 end
 
-WriteBuffer.void     = function() end -- TODO:[maia] Should null be the same?
-WriteBuffer.short    = numbermarshaller(2, "s")
-WriteBuffer.long     = numbermarshaller(4, "l")
-WriteBuffer.ushort   = numbermarshaller(2, "S")
-WriteBuffer.ulong    = numbermarshaller(4, "L")
-WriteBuffer.float    = numbermarshaller(4, "f")
-WriteBuffer.double   = numbermarshaller(8, "d")
-WriteBuffer.TypeCode = tcode.marshall
-
-function WriteBuffer:boolean(value)                                             --[[VERBOSE]] verbose:marshall(IDL.boolean, nil, self)
+Encoder.void     = function() end -- TODO:[maia] Should null be the same?
+Encoder.short    = numbermarshaller(2, "s")
+Encoder.long     = numbermarshaller(4, "l")
+Encoder.ushort   = numbermarshaller(2, "S")
+Encoder.ulong    = numbermarshaller(4, "L")
+Encoder.float    = numbermarshaller(4, "f")
+Encoder.double   = numbermarshaller(8, "d")
+	
+function Encoder:boolean(value)                                                 --[[VERBOSE]] verbose:marshal(true, self, idl.boolean)
 	if value
 		then self:octet(1)
 		else self:octet(0)
-	end                                                                           --[[VERBOSE]] verbose:marshall(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:char(value)                                                --[[VERBOSE]] verbose:marshall(true, IDL.char, value, self)
+function Encoder:char(value)                                                    --[[VERBOSE]] verbose:marshal(self, idl.char, value)
 	assert.type(value, "string", "char value", "MARSHAL")
 	if string.len(value) ~= 1 then
 		assert.illegal(value, "char value", "MARSHAL")
 	end
-	self:rawput(value)
+	self:rawput('"', value, 1)
 end
 
-function WriteBuffer:octet(value)                                               --[[VERBOSE]] verbose:marshall(true, IDL.octet, value, self)
+function Encoder:octet(value)                                                   --[[VERBOSE]] verbose:marshal(self, idl.octet, value)
 	assert.type(value, "number", "octet value", "MARSHAL")
-	self:rawput(bit.pack("B", value))
+	self:rawput("B", value, 1)
 end
 
--- TODO:[maia] Garantee that every unmarshalled value can be used as an
---             CORBA's any value.
 local DefaultMapping = {
-	-- TODO:[maia] Should nil be mapped to something? an Object ref. maybe?
-	number  = IDL.double,
-	string  = IDL.string,
-	boolean = IDL.boolean,
+	number  = idl.double,
+	string  = idl.string,
+	boolean = idl.boolean,
 }
-function WriteBuffer:any(value)                                                 --[[VERBOSE]] verbose:marshall(IDL.any, nil, self)
+function Encoder:any(value)                                                     --[[VERBOSE]] verbose:marshal(true, self, idl.any)
 	local luatype = type(value)
 	local idltype = DefaultMapping[luatype]
 	if not idltype then
 		local metatable = getmetatable(value)
 		if metatable then
-			if IDL.istype(metatable) then
-				idltype = metatable                                                     --[[VERBOSE]] verbose:marshall("value metatable is ", idltype._type)
-			elseif IDL.istype(metatable.__idltype) then
-				idltype = metatable.__idltype                                           --[[VERBOSE]] verbose:marshall("metatable define type ", idltype._type)
+			if idl.istype(metatable) then
+				idltype = metatable
+			elseif idl.istype(metatable.__idltype) then
+				idltype = metatable.__idltype
 			end
 		end
 		if luatype == "table" then
-			if not idltype and IDL.istype(value._anytype) then
+			if not idltype and idl.istype(value._anytype) then
 				idltype = value._anytype
 			end
 			if value._anyval ~= nil then
 				value = value._anyval
 			end
-		end                                                                         --[[VERBOSE]] else verbose:marshall("using default map to ", idltype._type)
+		end
 	end
 	if not idltype then
-		assert.illegal(value, "any, unable to map into an IDL type", "MARSHAL")
-	end                                                                           --[[VERBOSE]] verbose:marshall "[type of any]"
-	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose:marshall "[value of any]"
-	self:put(value, idltype)                                                      --[[VERBOSE]] verbose:marshall(false)
+		assert.illegal(value, "any, unable to map into an idl type", "MARSHAL")
+	end                                                                           --[[VERBOSE]] verbose:marshal "[type of any]"
+	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose:marshal "[value of any]"
+	self:put(value, idltype)                                                      --[[VERBOSE]] verbose:marshal(false)
 end
 
 local NullReference = { _type_id = "", _profiles = { n=0 } }
-function WriteBuffer:Object(value, idltype)
+function Encoder:Object(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype)
 	if value == nil then
 		value = NullReference
 	else
 		assert.type(value, "table", "object reference", "MARSHAL")
 		if not value._type_id or not value._profiles then
-			local object = self.object
-			if object and object._orb then                                            --[[VERBOSE]] verbose:marshall(true, "implicit servant creation")
-				if idltype._type == "Object" then idltype = idltype.repID end
-				value = object._orb:object(value, idltype)                              --[[VERBOSE]] verbose:marshall(false)
+			local objects = self.context.objects
+			if objects then                                                           --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
+				local metatable = getmetatable(value)
+				if metatable then
+					idltype = metatable.__idltype or idltype
+				end
+				if idl.istype(idltype) and idltype._type == "Object" then
+					idltype = idltype.repID
+				end
+				value = objects:object(value, nil, idltype)                             --[[VERBOSE]] verbose:marshal(false)
 			else
 				assert.illegal(value, "Object, unable to create from table", "MARHSALL")
 			end
 		end
 	end
-	self:IOR(value)
+	self:struct(value, giop.IOR)                                                  --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:struct(value, idltype)                                     --[[VERBOSE]] verbose:marshall(idltype, value, self)
+function Encoder:struct(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype)
 	assert.type(value, "table", "struct value", "MARSHAL")
-		for _, field in ipairs(idltype.fields) do
-		local val = value[field.name]                                               --[[VERBOSE]] verbose:marshall("[field ", field.name, "]")
-		-- TODO:[maia] Check out if fields can be Object references and
-		--             hold nil values.
-		if not val and field.type ~= IDL.boolean then
+	for _, field in ipairs(idltype.fields) do
+		local val = value[field.name]                                               --[[VERBOSE]] verbose:marshal("[field ",field.name,"]")
+		if
+			not val and
+			field.type ~= idl.boolean and
+			field.type._type ~= "Object" and
+			field.type._type ~= "interface"
+		then
 			assert.illegal(value,
-										"struct value (no value for field "..field.name..")",
-										"MARSHAL")
+			              "struct value (no value for field "..field.name..")",
+			              "MARSHAL")
 		end
 		self:put(val, field.type)
-	end                                                                           --[[VERBOSE]] verbose:marshall(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:union(value, idltype)                                      --[[VERBOSE]] verbose:marshall(idltype, value, self)
+function Encoder:union(value, idltype)                                          --[[VERBOSE]] verbose:marshal(true, self, idltype)
 	assert.type(value, "table", "union value", "MARSHAL")
 	local switch = value._switch
 	local unionvalue = value._value
@@ -532,7 +725,7 @@ function WriteBuffer:union(value, idltype)                                      
 				end
 			end
 		end
-	end                                                                           --[[VERBOSE]] verbose:marshall "[union switch]"
+	end                                                                           --[[VERBOSE]] verbose:marshal "[union switch]"
 	self:put(switch, idltype.switch)
 	
 	local selection = idltype.selection[switch]
@@ -543,100 +736,190 @@ function WriteBuffer:union(value, idltype)                                      
 			if unionvalue == nil then
 				assert.illegal(value, "union (no value)", "MARSHAL")
 			end
-		end                                                                         --[[VERBOSE]] verbose:marshall "[union value]"
+		end                                                                         --[[VERBOSE]] verbose:marshal("[field ",selection.name,"]")
 		self:put(unionvalue, selection.type)
-	end                                                                           --[[VERBOSE]] verbose:marshall(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:enum(value, idltype)                                       --[[VERBOSE]] verbose:marshall(idltype, value, self)
-	if not idltype.labelvalue then verbose.Viewer:print(idltype) end
+function Encoder:enum(value, idltype)                                           --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	value = tonumber(value) or idltype.labelvalue[value]
 	if not value then assert.illegal(value, "enum value", "MARSHAL") end
-	self:ulong(value)                                                             --[[VERBOSE]] verbose:marshall(false)
+	self:ulong(value)                                                             --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:string(value)                                              --[[VERBOSE]] verbose:marshall(IDL.string, value, self)
+function Encoder:string(value)                                                  --[[VERBOSE]] verbose:marshal(true, self, idl.string, value)
 	assert.type(value, "string", "string value", "MARSHAL")
-	self:ulong(string.len(value) + 1)
-	self:rawput(value)
-	self:rawput('\0')                                                             --[[VERBOSE]] verbose:marshall(false)
+	local length = #value
+	self:ulong(length + 1)
+	self:rawput('"', value, length)
+	self:rawput('"', '\0', 1)                                                     --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:sequence(value, idltype)                                   --[[VERBOSE]] verbose:marshall(idltype, value, self)
+function Encoder:sequence(value, idltype)                                       --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	local elementtype = idltype.elementtype
-	if
-		type(value) == "string" and
-		(elementtype == IDL.octet or elementtype == IDL.char)
-	then
-		self:ulong(string.len(value))
-		self:rawput(value)
+	local length = #value
+	self:ulong(length)
+	if type(value) == "string" then
+		while elementtype._type == "typecode" do elementtype = elementtype.type end
+		if elementtype == idl.octet or elementtype == idl.char then                 --[[VERBOSE]] verbose:marshal("got ", verbose.viewer:tostring(value))
+			self:rawput('"', value, length)
+		else
+			assert.illegal(value, "sequence value (table expected, got string)",
+			                      "MARSHAL")
+		end
 	else
 		assert.type(value, "table", "sequence value", "MARSHAL")
-		local size = table.getn(value)
-		self:ulong(size)
-		for i = 1, size do                                                          --[[VERBOSE]] verbose:marshall("[element ", i, "]")
+		for i = 1, length do                                                        --[[VERBOSE]] verbose:marshal("[element ",i,"]")
 			self:put(value[i], elementtype) 
 		end
-	end                                                                           --[[VERBOSE]] verbose:marshall(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:array(value, idltype)                                      --[[VERBOSE]] verbose:marshall(idltype, value, self)
+function Encoder:array(value, idltype)                                          --[[VERBOSE]] verbose:marshalOf(true, self, idltype, value)
 	local elementtype = idltype.elementtype
-	if
-		type(value) == "string" and
-		(elementtype == IDL.octet or elementtype == IDL.char)
-	then
-		if string.len(value) ~= idltype.length then
-			assert.illegal(value, "array value (wrong length)", "MARSHAL")
+	local length = #value
+	if length ~= idltype.length then
+		assert.illegal(value, "array value (wrong length)", "MARSHAL")
+	end
+	if type(value) == "string" then
+		while elementtype._type == "typecode" do elementtype = elementtype.type end
+		if elementtype == idl.octet or elementtype == idl.char then                 --[[VERBOSE]] verbose:marshal("got ", verbose.viewer:tostring(value))
+			self:rawput('"', value, length)
+		else
+			assert.illegal(value, "array value (table expected, got string)",
+			                      "MARSHAL")
 		end
-		self:rawput(value)
 	else
 		assert.type(value, "table", "array value", "MARSHAL")
-		if table.getn(value) ~= idltype.length then
-			assert.illegal(value, "array value (wrong length)", "MARSHAL")
-		end
-		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose:marshall("[element ", i, "]")
+		for i = 1, length do                                                        --[[VERBOSE]] verbose:marshal("[element ",i,"]")
 			self:put(value[i], elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose:marshall(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:typedef(value, idltype)                                    --[[VERBOSE]] verbose:marshall(idltype, value, self)
-	self:put(value, idltype.type)                                                 --[[VERBOSE]] verbose:marshall(false)
+function Encoder:typedef(value, idltype)                                        --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
+	self:put(value, idltype.type)                                                 --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:except(value, idltype)                                     --[[VERBOSE]] verbose:marshall(idltype, value, self)
+function Encoder:except(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	assert.type(value, "table", "except value", "MARSHAL")
-	for _, field in ipairs(idltype.members) do                                    --[[VERBOSE]] verbose:marshall("[member ", field.name, "]")
-		local val = value[field.name]
-		-- TODO:[maia] Check out if fields can be Object references and
-		--             hold nil values.
-		if not val and field.type ~= IDL.boolean then
+	for _, member in ipairs(idltype.members) do                                    --[[VERBOSE]] verbose:marshal{"[member ", member.name, "]"}
+		local val = value[member.name]
+		if
+			not val and
+			member.type ~= idl.boolean and
+			member.type._type ~= "Object" and
+			member.type._type ~= "interface"
+		then
 			assert.illegal(value,
-										"except value (no value for field "..field.name..")",
-										"MARSHAL")
+			              "except value (no value for member "..member.name..")",
+			              "MARSHAL")
 		end
-		self:put(val, field.type)
-	end                                                                           --[[VERBOSE]] verbose:marshall(false)
+		self:put(val, member.type)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function WriteBuffer:IOR(value) return self:struct(value, giop.IOR) end
-WriteBuffer.interface = WriteBuffer.Object
+Encoder.interface = Encoder.Object
 
+local TypeCodes = { interface = 14 }
+for tcode, info in ipairs(TypeCodeInfo) do TypeCodes[info.name] = tcode end
+
+local function puttype(encoder, value, kind, tcinfo)
+	
+	encoder:ulong(kind)
+	
+	if tcinfo.type == "simple" then
+		
+		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose:marshal("[parameter ",param.name,"]")
+			encoder:put(value[param.name], param.type)
+		end
+		
+	elseif tcinfo.type == "complex" then
+		
+		local temp = encoder.context.__component:encoder(true)                      --[[VERBOSE]] verbose:marshal "[parameters values]"
+		temp:pointto(encoder)
+		temp.start = temp.start + 4 -- adds the size of the OctetSeq count
+		temp:struct(value, tcinfo.parameters)
+		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose:marshal "[mutable parameters values]"
+			for _, param in ipairs(tcinfo.mutable:setup(value)) do
+				temp:put(value[param.name], param.type)
+			end
+		end                                                                         --[[VERBOSE]] verbose:marshal(true, "[parameters encapsulation]")
+		encoder:sequence(temp:getdata(), idl.OctetSeq)                              --[[VERBOSE]] verbose:marshal(false)
+		
+	end
+end
+
+function Encoder:TypeCode(value)                                                --[[VERBOSE]] verbose:marshal(true, self, idl.TypeCode, value)
+	local kind   = TypeCodes[value._type]
+	local tcinfo = TypeCodeInfo[kind]
+
+	if not kind then assert.illegal(value, "idl type", "MARSHALL") end
+	
+	if tcinfo.type == "empty" then
+		self:ulong(kind)
+	else
+		self:indirection(puttype, value, kind, tcinfo)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
+end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
+
+-- NOTE: second parameter indicates an encasulated octet-stream, therefore
+--       endianess must be read from stream.
+function decoder(self, octets, getorder)
+	local decoder = Decoder{
+		data = octets,
+		context = self.context,
+	}
+	if getorder then decoder:order(decoder:boolean()) end
+	return decoder
+end
+
+-- NOTE: Presence of a parameter indicates an encapsulated octet-stream.
+function encoder(self, putorder)
+	local encoder = Encoder{ context = self.context }
+	if putorder then encoder:boolean(NativeEndianess) end
+	return encoder
+end
+
+--------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function newEncoder(self, ...)
-	return WriteBuffer(...)
-end
-
-function newDecoder(self, stream, ...)
-	return ReadBuffer(stream, ...)
-end
-
-Codec = oo.class{}
-Codec.newEncoder = newEncoder
-Codec.newDecoder = newDecoder
-return Codec
+--[[VERBOSE]] local numtype = {
+--[[VERBOSE]] 	s = idl.short,
+--[[VERBOSE]] 	l = idl.long,
+--[[VERBOSE]] 	S = idl.ushort,
+--[[VERBOSE]] 	L = idl.ulong,
+--[[VERBOSE]] 	f = idl.float,
+--[[VERBOSE]] 	d = idl.double,
+--[[VERBOSE]] }
+--[[VERBOSE]] local codecop = {
+--[[VERBOSE]] 	[Encoder] = "marshal",
+--[[VERBOSE]] 	[Decoder] = "unmarshal",
+--[[VERBOSE]] }
+--[[VERBOSE]] function verbose.custom:marshal(codec, type, value)
+--[[VERBOSE]] 	local viewer = self.viewer
+--[[VERBOSE]] 	local output = viewer.output
+--[[VERBOSE]] 	local op = codecop[oo.classof(codec)]
+--[[VERBOSE]] 	if op then
+--[[VERBOSE]] 		type = numtype[type] or type
+--[[VERBOSE]] 		output:write(op," of ",type._type)
+--[[VERBOSE]] 		type = type.name or type.repID
+--[[VERBOSE]] 		if type then
+--[[VERBOSE]] 			output:write(" ",type)
+--[[VERBOSE]] 		end
+--[[VERBOSE]] 		if value ~= nil then
+--[[VERBOSE]] 			output:write(" (got ")
+--[[VERBOSE]] 			viewer:write(value)
+--[[VERBOSE]] 			output:write(")")
+--[[VERBOSE]] 		end
+--[[VERBOSE]] 		if self:flag("hexastream") then
+--[[VERBOSE]] 			self.custom.hexastream(self, codec:getdata(), codec.cursor)
+--[[VERBOSE]] 		end
+--[[VERBOSE]] 	else
+--[[VERBOSE]] 		return true -- cancel custom message
+--[[VERBOSE]] 	end
+--[[VERBOSE]] end
+--[[VERBOSE]] verbose.custom.unmarshal = verbose.custom.marshal

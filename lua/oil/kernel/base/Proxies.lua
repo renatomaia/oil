@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -13,104 +8,107 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.3 alpha                                                         --
--- Title  : Dynamic client stub for remote object access                      --
--- Authors: Renato Maia           <maia@inf.puc-rio.br>                       --
+-- Release: 0.4                                                               --
+-- Title  : Remote Object Proxies                                             --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
--- Interface:                                                                 --
---   class(iface) Creates a class for creating client stubs (object proxies)  --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---   You can use this module to access objects without use of an Interface    --
---   Repository (IR) or IDL compiler. See the example below:                  --
---                                                                            --
---     local Hello = oil.proxy.class(oil.idl.interface{                       --
---       name = "Hello",                                                      --
---       members = {                                                          --
---         say_hello_to = oil.idl.operation{                                  --
---           parameters = {{name = "to", type = IDL.string}},                 --
---         },                                                                 --
---       },                                                                   --
---     }                                                                      --
---     local proxy = Hello(oil.ior.decode("IOR:..."))                         --
---     proxy:say_hello_to("world")                                            --
---                                                                            --
+-- proxies:Facet
+-- 	proxy:object proxyto(reference:table)
+--
+-- invoker:Receptacle
+-- 	[results:object], [except:table] invoke(reference, operation, args...)
 --------------------------------------------------------------------------------
 
-local type         = type
-local pairs        = pairs
-local ipairs       = ipairs
-local tostring     = tostring
-local unpack       = unpack
-local require      = require
-local rawset       = rawset
-local getmetatable = getmetatable
-local print        = print
-local select       = select
+--[[VERBOSE]] local select = select
 
-local oo      = require "oil.oo"
+local error  = error
+local rawget = rawget
+local type   = type
+local unpack = unpack
 
-module ("oil.dummy.proxy", oo.class )                                                 -- [[VERBOSE]] local verbose = require "oil.verbose"
+local oo     = require "oil.oo"
+local assert = require "oil.assert"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
---------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
+module("oil.kernel.base.Proxies", oo.class)
 
-local verbose = require "oil.verbose"
-local assert  = require "oil.assert"
+context = false
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local function checkresults(result, reply)                                 -- [[VERBOSE]] verbose:proxy(false)
-	if result then
-		return unpack(reply:result())
-	else
-		return assert.error(reply)
+Proxy = oo.class()
+
+local function raiseerror(except)
+	error(except)
+end
+function Proxy:doresult(operation, success, ...)
+	if not success then
+		return (rawget(self, "__exceptions") or raiseerror)(..., operation)
 	end
+	return success, ...
 end
 
-local function checkcall(results, exception)                                    -- [[VERBOSE]] verbose:proxy(false)
-	if not results then return assert.error(exception) end
+function Proxy:deferredresults()                                                --[[VERBOSE]] verbose:proxies("getting deferred results of ",self.operation)
+	return select(2, Proxy.doresult(self.proxy, self.operation,
+	                                unpack(self, 1, self.resultcount)))
 end
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
+local operation
 
-Object = oo.class()
-
-function Object:__init(reference)
-	assert.type(reference, "table", "reference is not a table")                   -- [[VERBOSE]] verbose:proxy("new proxy")
-	return oo.rawnew(self, reference)
+function Proxy:defer(...)                                                       --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
+	local reply = Proxy.doresult(self, operation,
+		self.__context.invoker:invoke(self, operation, ...))
+	reply.proxy = self
+	reply.operation = operation
+	reply.results = Proxy.deferredresults
+	return reply
 end
 
-function Object:__call(operation, ... )
-	return self._protocol:sendrequest(self, operation, ...)
+function Proxy:invoke(...)                                                      --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+	return select(2, Proxy.doresult(self, operation, 
+	                 	Proxy.doresult(self, operation,
+	                 		self.__context.invoker:invoke(self, operation, ...)
+	                 	):results()
+	                 ))
 end
 
-function Object:__index(field)
-	if type(field) == "string" then                                               -- [[VERBOSE]] verbose:proxy(true, "get definition of member ", field)
-		local function stub(self, ...)                                              -- [[VERBOSE]] verbose:proxy("invoke operation ", field, " with ", select("#", ... ), " arguments")
-			return checkresults(self._protocol:sendrequest(self._reference, field, ...))
-		end                                                                     
-		return stub
+function Proxy:currentop(value)
+	operation = value
+end
+
+Proxy.DeferredPattern = "^___(.+)$"
+
+function Proxy:__index(field)
+	if type(field) == "string" then
+		operation = field
+		return field:match(Proxy.DeferredPattern) and Proxy.defer or Proxy.invoke
 	end
 end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
-classes = {}
 
-function create(self, reference, protocol, interfaceName)
-	local class
-	class = self.classes[interfaceName]
-	if not class then
-		class = Object{
-			_iface = interface,
-			_reference = reference,
-			_protocol = protocol,
-		}
-		self.classes[interfaceName] = class
-	end
-	return class
+function proxyto(self, reference)
+	reference.__context = self.context
+	return Proxy(reference)
 end
 
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+--[[VERBOSE]] function verbose.custom:proxies(...)
+--[[VERBOSE]] 	local params = false
+--[[VERBOSE]] 	for i = 1, select("#", ...) do
+--[[VERBOSE]] 		local value = select(i, ...)
+--[[VERBOSE]] 		local type = type(value)
+--[[VERBOSE]] 		if type == "string" and not params then
+--[[VERBOSE]] 			self.viewer.output:write(value)
+--[[VERBOSE]] 		elseif type == "table" and rawget(value, "name") then
+--[[VERBOSE]] 			self.viewer.output:write(value.name,"(")
+--[[VERBOSE]] 			params = true
+--[[VERBOSE]] 		else
+--[[VERBOSE]] 			self.viewer:write(value)
+--[[VERBOSE]] 		end
+--[[VERBOSE]] 	end
+--[[VERBOSE]] 	if params then self.viewer.output:write(")") end
+--[[VERBOSE]] end

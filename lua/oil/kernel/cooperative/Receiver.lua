@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -13,70 +8,146 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.3 alpha                                                         --
--- Title  : Internet Inter-ORB Protocol (IIOP) over sockets                   --
--- Authors: Renato Maia           <maia@inf.puc-rio.br>                       --
---          Antonio Theophilo     <theophilo@inf.puc-rio.br>                  --
+-- Release: 0.4                                                               --
+-- Title  : Request Acceptor                                                  --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
--- Connection interface:                                                      --
---   receive(reqid)   Returns a message ID, header and buffer with the data   --
---   send(i,h,t,d)    Sends a message with ID,header,contents types and data  --
---   close()          Closes the connection                                   --
---      
--- Port interface:                                                            --
---   profile(objid)   Returns a marshalled profile with port and object id    --
---   waitformore(t)   Wait for more messages for t to 2*t seconds             --
---   accept(orb)      Reads one request and treat it with the provided ORB    --
---   acceptall(orb)   Handles all subsequent requests with the provided ORB   --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---   See section 15.7 of CORBA 3.0 specification.                             --
---   See section 13.6.10.3 of CORBA 3.0 specification for IIOP corbaloc.      --
+-- acceptor:Facet
+-- 	configs:table, [except:table] setup([configs:table])
+-- 	success:boolean, [except:table] hasrequest(configs:table)
+-- 	success:boolean, [except:table] acceptone(configs:table)
+-- 	success:boolean, [except:table] acceptall(configs:table)
+-- 	success:boolean, [except:table] halt(configs:table)
+-- 
+-- listener:Receptacle
+-- 	configs:table default([configs:table])
+-- 	channel:object, [except:table] getchannel(configs:table)
+-- 	success:boolean, [except:table] disposechannels(configs:table)
+-- 	success:boolean, [except:table] disposechannel(channel:object)
+-- 	request:table, [except:table] = getrequest(channel:object, [probe:boolean])
+-- 	success:booelan, [except:table] = sendreply(channel:object, request:table, success:booelan, results...)
+-- 
+-- dispatcher:Receptacle
+-- 	success:boolean, [except:table]|results... dispatch(objectkey:string, operation:string|function, params...)
+-- 
+-- tasks:Receptacle
+-- 	current:thread
+-- 	start(func:function, args...)
+-- 	remove(thread:thread)
 --------------------------------------------------------------------------------
 
-local require      = require
-local print        = print
+local next  = next
+local pairs = pairs
 
-local coroutine = require "coroutine"
+local ObjectCache = require "loop.collection.ObjectCache"
+local OrderedSet  = require "loop.collection.OrderedSet"
 
 local oo        = require "oil.oo"
+local assert    = require "oil.assert"
+local Exception = require "oil.Exception"
+local Receiver  = require "oil.kernel.base.Receiver"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module ( "oil.ConcurrentAcceptor", oo.class )                                          --[[VERBOSE]] local verbose = require "oil.verbose"
+module "oil.kernel.cooperative.Receiver"
 
-------------------------------------------------------------------------------
-function init(self, args)
-	self.host = args.host
-	self.port = args.port
-	iorhost = args.iorhost
-	iorport = args.iorport
+oo.class(_M, Receiver)
+
+context = false
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function __init(self, object)
+	self = oo.rawnew(self, object)
+	self.thread = {}
+	self.threads = {}
+	return self
 end
 
-function getinfo(self)
-  return { host = self.host, 
-	         port = self.port,
-	}
-end
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
-local function reader(self, channel)
-	local request, result
-	repeat
-		request = self.listener:getrequest(channel)
-		if request then
-			self.dispatcher:handle(request)
-		end
-	until not request
-	return true
-end		
-
-local function acceptor(self)
-	local channel
-	while true do -- TODO:[maia] implement shutdown ORB operation
-		channel = self.listener:getchannel(self)
-		self.tasks:start(reader, self, channel)
+function sendreply(self, channel, request, ...)
+	local context = self.context
+	context.mutex:locksend(channel)
+	local result, except = context.listener:sendreply(channel, request, ...)
+	context.mutex:freesend(channel)
+	if not result and except.reason ~= "closed" and not self.except then
+		self.except = except
 	end
 end
 
-function acceptall(self)
-	local routine = coroutine.create(function() acceptor(self) end)
-	self.tasks:register(routine)
+function dispatchrequest(self, channel, request)
+	local context = self.context
+	return self:sendreply(channel, request, context.dispatcher:dispatch(
+		request.object_key,
+		request.operation,
+		request:params()
+	))
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function getallrequests(self, channelinfo, channel)
+	local context = self.context
+	local thread = context.tasks.current
+	local threads = self.threads[channelinfo]
+	threads[thread] = channel
+	local result, except
+	repeat
+		result, except = context.listener:getrequest(channel)
+		if result then
+			context.tasks:start(self.dispatchrequest, self, channel, result)
+		end
+	until except or self.except
+	if not result and except.reason ~= "closed" and not self.except then
+		self.except = except
+	end
+	threads[thread] = nil
+	if next(threads) == nil then
+		threads[thread] = nil
+	end
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function acceptall(self, channelinfo)                                           --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",channelinfo)
+	local context = self.context
+	self.thread[channelinfo] = context.tasks.current
+	self.threads[channelinfo] = {}
+	local result, except
+	repeat
+		result, except = context.listener:getchannel(channelinfo)
+		if result then
+			context.tasks:start(self.getallrequests, self, channelinfo, result)
+		end
+	until not result and except.reason ~= "closed" or self.except                 --[[VERBOSE]] verbose:acceptor(false)
+	self.channelinfo = nil
+	self.thread[channelinfo] = nil
+	return result, self.except or except
+end
+
+function halt(self, channelinfo)                                                --[[VERBOSE]] verbose:acceptor "halt acceptor"
+	local tasks = self.context.tasks
+	local listener = self.context.listener
+	local result, except = nil, Exception{
+		reason = "halted",
+		message = "orb already halted",
+	}
+	local thread = self.thread[channelinfo]
+	if thread then
+		tasks:remove(thread)
+		result, except = listener:disposechannels(channelinfo)
+		self.thread[channelinfo] = nil
+	end
+	local threads = self.threads[channelinfo]
+	if threads then
+		for thread, channel in pairs(threads) do
+			tasks:remove(thread)
+			result, except = listener:disposechannel(channel)
+		end
+		self.threads[channelinfo] = nil
+	end
+	return result, except
 end

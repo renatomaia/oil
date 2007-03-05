@@ -1,68 +1,81 @@
-local print   = print
-local require = require
-local type    = type
-local print   = print
-local pairs   = pairs
+--------------------------------------------------------------------------------
+------------------------------  #####      ##     ------------------------------
+------------------------------ ##   ##  #  ##     ------------------------------
+------------------------------ ##   ## ##  ##     ------------------------------
+------------------------------ ##   ##  #  ##     ------------------------------
+------------------------------  #####  ### ###### ------------------------------
+--------------------------------                --------------------------------
+----------------------- An Object Request Broker in Lua ------------------------
+--------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
+-- Release: 0.4                                                               --
+-- Title  : Server-Side Broker                                                --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
+--------------------------------------------------------------------------------
+-- broker:Facet
+-- 	[configs:table], [except:table] initialize([configs:table])
+-- 	servant:object object(impl:object, [objectkey:string])
+-- 	reference:string tostring(servant:object)
+-- 	success:boolean, [except:table] pending()
+-- 	success:boolean, [except:table] step()
+-- 	success:boolean, [except:table] run()
+-- 	success:boolean, [except:table] shutdown()
+-- 
+-- objects:Receptacle
+-- 	objectkey:string register(impl:object, objectkey:string)
+-- 
+-- acceptor:Receptacle
+-- 	configs:table, [except:table] setup([configs:table])
+-- 	success:boolean, [except:table] hasrequest(configs:table)
+-- 	success:boolean, [except:table] acceptone(configs:table)
+-- 	success:boolean, [except:table] acceptall(configs:table)
+-- 	success:boolean, [except:table] halt(configs:table)
+-- 
+-- references:Receptacle
+-- 	reference:table referenceto(objectkey:string, accesspointinfo:table...)
+-- 	stringfiedref:string encode(reference:table)
+-- 
+-- types:Receptacle
+-- 	type:table resolve(type:string)
+--------------------------------------------------------------------------------
 
-local oo      = require "oil.oo"
-local assert  = require "oil.assert"
+local getmetatable = getmetatable
+local rawget       = rawget
+local rawset       = rawset
+local setmetatable = setmetatable
+local luatostring  = tostring
 
-module ("oil.ServerBroker", oo.class)                                       --[[VERBOSE]] local verbose = require "oil.verbose" 
+local table = require "loop.table"
 
-local MainORB
-local map = {}
+local oo     = require "oil.oo"
+local Server = require "oil.kernel.base.Server"                                 --[[VERBOSE]] local verbose = require "oil.verbose"
+
+module "oil.kernel.typed.Server"
+
+oo.class(_M, Server)
+
+context = false
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function init(self, config)
-	-- create acceptor using configuration received from the user
-	if config.ports then
-		for k, v in pairs(config.ports) do
-    	self.ports[k]:init(v)
+function object(self, object, key, type)
+	local context = self.context
+	if not key then
+		local meta = getmetatable(object)
+		local backup
+		if meta then
+			backup = rawget(meta, "__tostring")
+			if backup ~= nil then rawset(meta, "__tostring", nil) end
 		end
-	else
-		for key, port in self.ports:__all() do
-			port:init(config)
+		key = luatostring(object):match("%l+: (%w+)")
+		if meta then
+			if backup ~= nil then rawset(meta, "__tostring", backup) end
 		end
 	end
-end
-
-function register(self, object, intfaceName, key)
-	-- register object in the dispatcher
-	key = key or intfaceName
-	-- create servant and return it
-	return self.objectmap:register(key, object, intfaceName)
-end
-
-function tostring(self, servant, portName)
-	if not portName then
-		-- get all the references and return them inside a table
-		local references = {}
-		for key, port in self.ports:__all() do
-			local info = port:getinfo()
-			references[key] = self.reference[key]:referto(servant, info)
-		end
-		return references
-	else
-		-- return only the reference requested
-		local info = self.ports[portName]:getinfo()
-		print(portName, info)
-		info.objectid = servant._objectid
-  	return self.reference[portName]:referto(servant, info)
-	end
-end
-
-function run(self)
-	for key, port in self.ports:__all() do
-		print( key, "accepting connections" )
-		port:acceptall()
-	end
-end
-
-function step(self)
-
-end
-
-function pending(self)
-  return false
+	type   = context.types:resolve(type)
+	type   = context.mapper:register(type, key)
+	object = context.objects:register(object, key)
+	key    = context.references:referenceto(key, self.config)
+	return table.copy(key, object)
 end

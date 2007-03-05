@@ -1,13 +1,6 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
+local idl = require "oil.corba.idl"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
-local require = require
-
-module "oil.ir.idl"
-
-local idl = require "oil.idl"
+module "oil.corba.idl.ir"
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -39,9 +32,9 @@ module{
 	definitions = _M,
 }
 
-Identifier        = typedef{string}
-ScopedName        = typedef{string}
-RepositoryId      = typedef{string}
+Identifier   = typedef{string}
+ScopedName   = typedef{string}
+RepositoryId = typedef{string}
 
 DefinitionKind = enum{
 	"dk_none",
