@@ -9,11 +9,11 @@ TO_INC= oilbit.h
 TO_LIB= liboilbit.a
 SO_LIB= liboilbit
 
-TO_LUA=	loop luaidl oil scheduler
+TO_LUA=	loop luaidl oil
 
-BND_INC=	loop.h luaidl.h oil.h scheduler.h
-BND_LIB=	libloop.a libluaidl.a liboil.a libscheduler.a
-BND_SOL=	loop luaidl oil scheduler
+BND_INC=	loop.h luaidl.h oil.h
+BND_LIB=	libloop.a libluaidl.a liboil.a
+BND_SOL=	loop luaidl oil
 
 PLD_INC=	oilall.h
 PLD_LIB=	liboilall.a
@@ -25,7 +25,7 @@ INSTALL_DIR= $(INSTALL_INC) $(INSTALL_LIB) \
 
 all: $(PLAT)
 
-$(PLATS) a so clean:
+$(PLATS) bundles preload a so clean:
 	cd src; $(MAKE) $@
 
 test:	all

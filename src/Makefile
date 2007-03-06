@@ -7,66 +7,120 @@ include ../config
 PRECMP_LUA=	../lua/precompiler.lua
 PRELDR_LUA=	../lua/preloader.lua
 
-LOOP_PCK= loop/base.lua \
-          loop/cached.lua \
-          loop/init.lua \
-          loop/multiple.lua \
-          loop/scoped.lua \
-          loop/simple.lua \
-          loop/utils.lua \
-          loop/collection/MapWithKeyArray.lua \
-          loop/collection/ObjectCache.lua \
-          loop/collection/OrderedSet.lua \
-          loop/collection/PriorityQueue.lua \
-          loop/collection/UnorderedArray.lua \
-          loop/collection/UnorderedArraySet.lua \
-          loop/compiler/Conditional.lua \
-          loop/debug/verbose.lua \
-          loop/debug/Viewer.lua \
-          loop/extras/Exception.lua \
-          loop/extras/Wrapper.lua
+LOOP_PCK= loop/base.lua                          \
+          loop/cached.lua                        \
+          loop/multiple.lua                      \
+          loop/scoped.lua                        \
+          loop/simple.lua                        \
+          loop/table.lua                         \
+          loop/collection/MapWithArrayOfKeys.lua \
+          loop/collection/ObjectCache.lua        \
+          loop/collection/OrderedSet.lua         \
+          loop/collection/PriorityQueue.lua      \
+          loop/collection/UnorderedArray.lua     \
+          loop/collection/UnorderedArraySet.lua  \
+          loop/compiler/Conditional.lua          \
+          loop/compiler/Expression.lua           \
+          loop/component/base.lua                \
+          loop/component/contained.lua           \
+          loop/component/dynamic.lua             \
+          loop/component/intercepted.lua         \
+          loop/component/introspection.lua       \
+          loop/component/wrapped.lua             \
+          loop/debug/Inspector.lua               \
+          loop/debug/Matcher.lua                 \
+          loop/debug/Verbose.lua                 \
+          loop/debug/Viewer.lua                  \
+          loop/object/Exception.lua              \
+          loop/object/Wrapper.lua                \
+          loop/serial/FileStream.lua             \
+          loop/serial/Serializer.lua             \
+          loop/serial/SocketStream.lua           \
+          loop/serial/StringStream.lua           \
+          loop/thread/CoSocket.lua               \
+          loop/thread/IOScheduler.lua            \
+          loop/thread/Scheduler.lua              \
+          loop/thread/SocketScheduler.lua        \
+          loop/thread/Timer.lua
 LUAIDL_PCK= luaidl/init.lua \
-            luaidl/lex.lua \
-            luaidl/pre.lua \
+            luaidl/lex.lua  \
+            luaidl/pre.lua  \
             luaidl/sin.lua
-OIL_PCK= oil/Exception.lua \
-         oil/assert.lua \
-         oil/cdr.lua \
-         oil/cos/event/Dispatcher.lua \
-         oil/cos/event/Factory.lua \
-         oil/cos/event/Queue.lua \
-         oil/cos/event/Reaper.lua \
-         oil/cos/event/init.lua \
-         oil/cos/naming.lua \
-         oil/giop.lua \
-         oil/idl/compiler.lua \
-         oil/idl/init.lua \
-         oil/iiop.lua \
-         oil/init.lua \
-         oil/invoke.lua \
-         oil/ior.lua \
-         oil/ir/idl.lua \
-         oil/ir/init.lua \
-         oil/manager.lua \
-         oil/oo.lua \
-         oil/orb.lua \
-         oil/properties.lua \
-         oil/proxy.lua \
-         oil/socket.lua \
-         oil/tcode.lua \
-         oil/verbose.lua
-SCHEDULER_PCK= scheduler/init.lua
+OIL_PCK= oil/assert.lua                        \
+         oil/component.lua                     \
+         oil/Exception.lua                     \
+         oil/init.lua                          \
+         oil/oo.lua                            \
+         oil/port.lua                          \
+         oil/properties.lua                    \
+         oil/verbose.lua                       \
+         oil/arch/base.lua                     \
+         oil/arch/cooperative.lua              \
+         oil/arch/corba.lua                    \
+         oil/arch/ludo.lua                     \
+         oil/arch/typed.lua                    \
+         oil/builder/base.lua                  \
+         oil/builder/cooperative.lua           \
+         oil/builder/corba.lua                 \
+         oil/builder/init.lua                  \
+         oil/builder/ludo.lua                  \
+         oil/builder/typed.lua                 \
+         oil/corba/giop/Codec.lua              \
+         oil/corba/giop/Indexer.lua            \
+         oil/corba/giop/init.lua               \
+         oil/corba/giop/Listener.lua           \
+         oil/corba/giop/Messenger.lua          \
+         oil/corba/giop/ProxyOps.lua           \
+         oil/corba/giop/Referrer.lua           \
+         oil/corba/giop/Requester.lua          \
+         oil/corba/giop/ServantOps.lua         \
+         oil/corba/idl/Compiler.lua            \
+         oil/corba/idl/Importer.lua            \
+         oil/corba/idl/Indexer.lua             \
+         oil/corba/idl/init.lua                \
+         oil/corba/idl/ir.lua                  \
+         oil/corba/idl/Registry.lua            \
+         oil/corba/iiop/Acceptor.lua           \
+         oil/corba/iiop/Connector.lua          \
+         oil/corba/iiop/Profiler.lua           \
+         oil/corba/interceptors/ClientSide.lua \
+         oil/corba/interceptors/ServerSide.lua \
+         oil/cos/event/Dispatcher.lua          \
+         oil/cos/event/Factory.lua             \
+         oil/cos/event/init.lua                \
+         oil/cos/event/Queue.lua               \
+         oil/cos/event/Reaper.lua              \
+         oil/cos/naming.lua                    \
+         oil/kernel/base/Client.lua            \
+         oil/kernel/base/Dispatcher.lua        \
+         oil/kernel/base/Invoker.lua           \
+         oil/kernel/base/Proxies.lua           \
+         oil/kernel/base/Receiver.lua          \
+         oil/kernel/base/Server.lua            \
+         oil/kernel/base/Sockets.lua           \
+         oil/kernel/cooperative/Invoker.lua    \
+         oil/kernel/cooperative/Mutex.lua      \
+         oil/kernel/cooperative/Receiver.lua   \
+         oil/kernel/cooperative/Tasker.lua     \
+         oil/kernel/typed/Client.lua           \
+         oil/kernel/typed/Dispatcher.lua       \
+         oil/kernel/typed/Proxies.lua          \
+         oil/kernel/typed/Server.lua           \
+         oil/ludo/Codec.lua                    \
+         oil/ludo/Listener.lua                 \
+         oil/ludo/Referrer.lua                 \
+         oil/ludo/Requester.lua
 
 OILBIT_INC=	oilbit.h
 OILBIT_OBJ=	oilbit.o $(COMPAT_51)
 OILBIT_LIB=	liboilbit.a
 OILBIT_SOL=	liboilbit.$V.so
 
-PRECMP_INC=	loop.h luaidl.h scheduler.h oil.h
-PRECMP_SRC=	loop.c luaidl.c scheduler.c oil.c
-PRECMP_OBJ=	loop.o luaidl.o scheduler.o oil.o
-PRECMP_LIB=	libloop.a     libluaidl.a     libscheduler.a     liboil.a
-PRECMP_SOL=	libloop.$V.so libluaidl.$V.so libscheduler.$V.so liboil.$V.so
+PRECMP_INC=	loop.h luaidl.h oil.h
+PRECMP_SRC=	loop.c luaidl.c oil.c
+PRECMP_OBJ=	loop.o luaidl.o oil.o
+PRECMP_LIB=	libloop.a     libluaidl.a     liboil.a
+PRECMP_SOL=	libloop.$V.so libluaidl.$V.so liboil.$V.so
 
 PRELDR_INC=	oilall.h
 PRELDR_SRC=	oilall.c
@@ -104,9 +158,6 @@ luaidl.c luaidl.h: $(PRECMP_LUA)
 oil.c oil.h: $(PRECMP_LUA)
 	$(LUAINT) $(PRECMP_LUA) $(PC_FLAGS) -l ../lua -f oil $(OIL_PCK)
 
-scheduler.c scheduler.h: $(PRECMP_LUA)
-	$(LUAINT) $(PRECMP_LUA) $(PC_FLAGS) -l ../lua -f scheduler $(SCHEDULER_PCK)
-
 oilall.c oilall.h: $(PRELDR_LUA) $(PRECMP_INC) $(OILBIT_INC)
 	$(LUAINT) $(PRELDR_LUA) $(PLD_FLAGS) -f oilall $(PRECMP_INC) $(OILBIT_INC)
 
@@ -128,13 +179,11 @@ $(OILBIN_TRG): $(COMPAT_51) $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ) $(OILBIN_O
 bundlelibs: $(OILBIT_OBJ) $(PRECMP_OBJ)
 	$(AR) libloop.a loop.o            ; $(RANLIB) libloop.a
 	$(AR) libluaidl.a luaidl.o        ; $(RANLIB) libluaidl.a
-	$(AR) libscheduler.a scheduler.o  ; $(RANLIB) libscheduler.a
 	$(AR) liboil.a oil.o $(OILBIT_OBJ); $(RANLIB) liboil.a
 
 bundles: $(OILBIT_OBJ) $(PRECMP_OBJ)
 	$(LD) -shared -o libloop.$V.so      loop.o
 	$(LD) -shared -o libluaidl.$V.so    luaidl.o
-	$(LD) -shared -o libscheduler.$V.so scheduler.o
 	$(LD) -shared -o liboil.$V.so       oil.o $(OILBIT_OBJ)
 
 preload: $(PRELDR_LIB) $(PRELDR_SOL)
@@ -172,7 +221,6 @@ macosx:
 
 loop.o: loop.c loop.h
 luaidl.o: luaidl.c luaidl.h
-scheduler.o: scheduler.c scheduler.h
 oilbit.o: oilbit.c oilbit.h
 oil.o: oil.c oil.h
 oilall.o: $(PRECMP_INC) $(PRELDR_INC)

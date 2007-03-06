@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
 	L = lua_open();
 	luaL_openlibs(L);
 
-	luaopen_luasocket(L); // open the LuaSocket library
+	luaopen_socket_core(L); // open the LuaSocket library
 
 #ifndef PRELOAD
 	luaopen_oil_bit(L);   // open the OiL bit library (only OiL C library)

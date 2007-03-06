@@ -8,14 +8,10 @@ OBJS=	run.o
 
 SRCS=	run.c
 
-#PRELOAD=	-DPRELOAD
-#OILLIB=	-loilall
-OILLIB=	-loilbit
-
 INCS= -I$(LUA_INC) -I$(OIL)/src
-LIBS= -L$(LUA_LIB) -L$(OIL) -lm -ldl -llua -lluasocket $(OILLIB)
+LIBS= -L$(LUA_LIB) -L$(OIL)/src -lm -ldl -llua -lluasocket -loilall
 
-CFLAGS= $(INCS)
+CFLAGS= -DPRELOAD $(INCS)
 
 T= run
 
