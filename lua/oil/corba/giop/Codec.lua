@@ -388,7 +388,7 @@ function Decoder:Object(idltype)                                                
 		local proxies = self.context.proxies
 		if proxies then                                                             --[[VERBOSE]] verbose:unmarshal(true, "retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
-			ior = proxies:proxy(ior, idltype)                                         --[[VERBOSE]] verbose:unmarshal(false)
+			ior = assert.check(proxies:proxy(ior, idltype))                           --[[VERBOSE]] verbose:unmarshal(false)
 		end
 	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return ior
@@ -675,7 +675,7 @@ function Encoder:Object(value, idltype)                                         
 				if idl.istype(idltype) and idltype._type == "Object" then
 					idltype = idltype.repID
 				end
-				value = objects:object(value, nil, idltype)                             --[[VERBOSE]] verbose:marshal(false)
+				value = assert.check(objects:object(value, nil, idltype))               --[[VERBOSE]] verbose:marshal(false)
 			else
 				assert.illegal(value, "Object, unable to create from table", "MARHSALL")
 			end

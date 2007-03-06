@@ -79,11 +79,10 @@ function encode(self, object_key, config, minor)
 
 	if not profileidl then
 		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "IIOP version not supported, got 1."..minor,
+			message = "IIOP minor version not supported",
 			reason = "version",
 			protocol = "IIOP",
-			major = 1,
-			minor = minor,
+			version = minor,
 		}
 	end
 	
@@ -106,12 +105,10 @@ function decode(self, profile)
 
 	if version.major ~= 1 or not profileidl then
 		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "IIOP version not supported, got "..
-			          version.major.."."..version.minor,
 			reason = "version",
+			message = "IIOP version not supported",
 			protocol = "IIOP",
-			major = version.major,
-			minor = version.minor,
+			version = version,
 		}
 	end
 
@@ -134,11 +131,12 @@ function decodeurl(self, data)
 	major, minor, temp = string.match(data, "^(%d+).(%d+)@(.+)$")
 	if major and major ~= "1" then
 		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "IIOP version not supported, got "..major.."."..minor,
+			message = "IIOP version not supported",
 			reason = "version",
 			protocol = "IIOP",
 			major = major,
 			minor = minor,
+			version = major.."."..minor
 		}
 	end
 	if temp then data = temp end

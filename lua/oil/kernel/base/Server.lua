@@ -72,8 +72,15 @@ function object(self, object, key)
 			if backup ~= nil then rawset(meta, "__tostring", backup) end
 		end
 	end
-	object = context.objects:register(object, key)
-	return table.copy(context.references:referenceto(key, self.config), object)
+	local result, except = context.objects:register(object, key)
+	if result then
+		local object = result
+		result, except = context.references:referenceto(key, self.config)
+		if result then
+			result = table.copy(result, object)
+		end
+	end
+	return result, except
 end
 
 function tostring(self, object)

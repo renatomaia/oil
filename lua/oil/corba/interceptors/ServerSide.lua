@@ -14,6 +14,7 @@
 --------------------------------------------------------------------------------
 
 local select = select
+local unpack = unpack
 
 local oo   = require "oil.oo"
 local giop = require "oil.corba.giop"                                           --[[VERBOSE]] local verbose = require "oil.verbose"
@@ -49,9 +50,20 @@ function before(self, request, object, ...)
 			local interceptor = self.interceptor
 			if interceptor.receiverequest and self.message then
 				local key, operation = ...
-				request.message, self.message = self.message, nil
-				return self:handleinterception(request, object, key, operation,
-					interceptor:receiverequest(request.message, select(3, ...)))
+				local message
+				message, self.message = self.message, nil
+				message.count = select("#", ...) - 2
+				for i = 1, message.count do
+					message[i] = select(i+2, ...)
+				end
+				interceptor:receiverequest(message)
+				request.message = message
+				if message.success == nil then
+					return object, key, operation, unpack(message, 1, message.count)
+				else
+					request.cancel = true
+					return message.success, unpack(message, 1, message.count)
+				end
 			end
 		end
 	end
@@ -80,8 +92,15 @@ function after(self, request, ...)
 		if request.method == request.object.dispatch then
 			local interceptor = self.interceptor
 			if interceptor.sendreply then
-				self.message = request.message
-				return interceptor:sendreply(request.message, ...)
+				local message = request.message
+				message.success = ...
+				message.count = select("#", ...) - 1
+				for i = 1, message.count do
+					message[i] = select(i+1, ...)
+				end
+				interceptor:sendreply(message)
+				self.message = message
+				return message.success, unpack(message, 1, message.count)
 			end
 		end
 	end

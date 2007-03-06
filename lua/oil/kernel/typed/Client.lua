@@ -36,10 +36,25 @@ module("oil.kernel.typed.Client", oo.class)
 context = false
 
 function fromstring(self, reference, type)
-	return self:proxy(self.context.references:decode(reference), type)
+	local result, except = self.context.references:decode(reference)
+	if result then
+		result, except = self:proxy(result, type)
+	end
+	return result, except
 end
 
-function proxy(self, reference, type)                                      --[[VERBOSE]] verbose:client "creating proxy"
-	return self.context.proxies:proxyto(reference,
-		type and self.context.types:resolve(type))
+function proxy(self, reference, type)                                           --[[VERBOSE]] verbose:client "creating proxy"
+	local result, except
+	if type then
+		result, success = self.context.types:resolve(type)
+		if result then
+			type = result
+		end
+	else
+		result = true
+	end
+	if result then
+		result, except = self.context.proxies:proxyto(reference, type)
+	end
+	return result, except
 end

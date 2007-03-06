@@ -73,9 +73,18 @@ function object(self, object, key, type)
 			if backup ~= nil then rawset(meta, "__tostring", backup) end
 		end
 	end
-	type   = context.types:resolve(type)
-	type   = context.mapper:register(type, key)
-	object = context.objects:register(object, key)
-	key    = context.references:referenceto(key, self.config)
-	return table.copy(key, object)
+	local result, except = context.types:resolve(type)
+	if result then
+		result = context.mapper:register(result, key)
+		if result then
+			result = context.objects:register(object, key)
+			if result then
+				result = context.references:referenceto(key, self.config)
+				if result then
+					result = table.copy(result, object)
+				end
+			end
+		end
+	end
+	return result, except
 end

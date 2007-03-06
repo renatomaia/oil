@@ -127,11 +127,11 @@ function receivemsg(self, channel)                                              
 					elseif header == nil then
 						success = nil
 						except = Exception{ "INTERNAL", minor_code_value = 0,
-							message = "GIOP 1.0 message type not supported, got "..type,
+							message = "GIOP 1.0 message type not supported",
 							reason = "messageid",
 							major = version.major,
 							minor = version.minor,
-							messageid = type,
+							type = type,
 						}
 					end
 				else
@@ -145,17 +145,16 @@ function receivemsg(self, channel)                                              
 			else
 				success = nil
 				except = Exception{ "INTERNAL", minor_code_value = 0,
-					message = "GIOP version not supported, got "..major.."."..minor,
+					message = "GIOP version not supported",
 					reason = "version",
 					procotol = "GIOP",
-					major = version.major,
-					minor = version.minor,
+					version = version,
 				}
 			end
 		else
 			success = nil
 			except = Exception{ "MARSHALL", minor_code_value = 8,
-				message = "illegal GIOP message, magic number is "..magic,
+				message = "illegal GIOP message magic tag",
 				reason = "magictag",
 				tag = magic,
 			}

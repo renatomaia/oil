@@ -1,6 +1,6 @@
 require "oil"
 
-local Viewer    = require "loop.debug.Viewer"
+local Viewer = require "loop.debug.Viewer"
 
 oil.assemble "corba.typed.cooperative.base"
 
@@ -16,8 +16,8 @@ local send_context_idl = oil.loadidl [[
 		string stack;
 	};
 ]]
-function interceptor:sendrequest(request, ...)
-	print("intercepting request to "..request.operation.."("..Viewer:tostring(...)..")")
+function interceptor:sendrequest(request)
+	print("intercepting request to "..request.operation.."("..Viewer:tostring(unpack(request, 1, request.count))..")")
 	local encoder = oil.newencoder()
 	encoder:put({
 		memory = gcinfo(),
@@ -29,7 +29,6 @@ function interceptor:sendrequest(request, ...)
 			context_data = encoder:getdata()
 		}
 	}
-	return ...
 end
 
 --------------------------------------------------------------------------------
@@ -40,21 +39,22 @@ local receive_context_idl = oil.loadidl [[
 		double ending;
 	};
 ]]
-function interceptor:receivereply(reply, ...)
+function interceptor:receivereply(reply)
 	print("intercepting reply of opreation "..reply.operation)
-	print("\tsuccess -> "..tostring(...))
-	print("\tresults -> "..Viewer:tostring(select(2, ...)))
+	print("\tsuccess:", reply.success)
+	print("\tresults:", Viewer:tostring(unpack(reply, 1, reply.count)))
 	for _, context in ipairs(reply.service_context) do
 		if context.context_id == 4321 then
 			local decoder = oil.newdecoder(context.context_data)
 			local result = decoder:get(receive_context_idl)
-			print("\tstart:", result.start)
-			print("\tending:", result.ending)
-			return ...
+			print("\ttime:", result.ending - result.start)
+			return
 		end
 	end
 	io.stderr:write("context 4321 not found! Canceling ...\n")
-	return false, oil.newexcept{ "ACCESS_DENIED" }
+	reply.success = false
+	reply.count = 1
+	reply[1] = oil.newexcept{ "ACCESS_DENIED" }
 end
 
 --------------------------------------------------------------------------------

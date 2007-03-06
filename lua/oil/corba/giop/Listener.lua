@@ -84,9 +84,9 @@ function default(self, configs)
 		return channels:default(configs)
 	else
 		return nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
-			message = "no supported Inter-ORB Protocol profile found",
+			message = "no supported GIOP profile found for configuration",
 			reason = "protocol",
-			configs = configs,
+			configuration = configs,
 		}
 	end
 end
@@ -99,9 +99,9 @@ function getchannel(self, configs, probe)                                       
 		result, except = result:retrieve(configs)
 	else
 		except = nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
-			message = "no supported Inter-ORB Protocol profile found",
+			message = "no supported GIOP profile found for configuration",
 			reason = "protocol",
-			configs = configs,
+			configuration = configs,
 		}
 	end                                                                           --[[VERBOSE]] verbose:listen(false)
 	return result, except

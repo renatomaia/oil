@@ -88,6 +88,9 @@ end
 function getchannel(self, reference)                                            --[[VERBOSE]] verbose:invoke(true, "get communication channel")
 	local channel, except = reference[ChannelKey]
 	if not channel then
+	
+if not reference._profiles then verbose:debug() end
+	
 		for _, profile in ipairs(reference._profiles) do                            --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",profile.tag,"]")
 			local tag = profile.tag or 0
 			local channels = self.context.channels[tag]
@@ -102,14 +105,14 @@ function getchannel(self, reference)                                            
 					elseif except == "connection refused" then
 						except = Exception{ "COMM_FAILURE", minor_code_value = 1,
 							reason = "connect",
-							message = except,
+							message = "connection to profile refused",
 							profile = profiler,
 						}
 					elseif except == "too many open connections" then
 						except = Exception{ "NO_RESOURCES", minor_code_value = 0,
 							reason = "resources",
-							message = except,
-							profiletag = tag,
+							message = "too many open connections by protocol",
+							protocol = tag,
 						}
 					end
 				else
@@ -119,9 +122,8 @@ function getchannel(self, reference)                                            
 		end
 		if not channel and not except then
 		 	except = Exception{ "IMP_LIMIT", minor_code_value = 1,
-				message = "no Inter-ORB Protocol profile could be used",
+				message = "no supported GIOP profile found",
 				reason = "profiles",
-				profiles = reference._profiles,
 			}
 		end
 	end                                                                           --[[VERBOSE]] verbose:invoke(false)
@@ -221,7 +223,7 @@ function getreply(self, channel, probe)                                         
 						result[1] = Exception(decoder:except(exception))
 					else
 						result[1] = Exception{ "UNKNOWN", minor_code_value = 0,
-							message = "unexpected user-defined exception, got "..repId,
+							message = "unexpected user-defined exception",
 							reason = "exception",
 							exception = exception,
 						}
@@ -233,7 +235,7 @@ function getreply(self, channel, probe)                                         
 					result[1] = Exception(exception)
 				else
 					result[1] = Exception{ "INTERNAL", minor_code_value = 0,
-						message = "unsupported reply status, got "..status,
+						message = "unsupported reply status",
 						reason = "replystatus",
 						status = status,
 					}
@@ -244,7 +246,7 @@ function getreply(self, channel, probe)                                         
 			except = Exception{ "INTERNAL", minor_code_value = 0,
 				message = "unexpected request id",
 				reason = "requestid",
-				requestid = header.request_id,
+				id = header.request_id,
 			}
 		end
 	elseif msgid == CloseConnectionID then                                        --[[VERBOSE]] verbose:invoke("got remote request to close channel")
@@ -262,26 +264,27 @@ function getreply(self, channel, probe)                                         
 		elseif except == "connection refused" then
 			except = Exception{ "COMM_FAILURE", minor_code_value = 1,
 				reason = "connect",
-				message = except,
-				profile = profiler,
+				message = "unable to restablish channel",
+				channel = channel,
 			}
 		elseif except == "too many open connections" then
 			except = Exception{ "NO_RESOURCES", minor_code_value = 0,
 				reason = "resources",
-				message = except,
-				profiletag = tag,
+				message = "unbale to restablish channel, too many open connections",
+				channel = channel,
 			}
 		end
 	elseif msgid == MessageErrorID then
 		except = Exception{ "COMM_FAILURE", minor_code_value = 0,
-			message = "error in server message processing",
 			reason = "server",
+			message = "error in server message processing",
 		}
 	elseif MessageType[msgid] then
 		except = Exception{ "INTERNAL", minor_code_value = 0,
-			message = "unexpected GIOP message, got "..MessageType[msgid],
 			reason = "unexpected",
-			messageid = msgid,
+			message = "unexpected GIOP message",
+			message = MessageType[msgid],
+			id = msgid,
 		}
 	elseif header.reason == "version" then                                        --[[VERBOSE]] verbose:invoke(true, "got message with wrong version")
 		local context = self.context

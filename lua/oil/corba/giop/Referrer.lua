@@ -38,9 +38,10 @@ local tonumber  = tonumber
 
 local string = require "string"
 
-local oo     = require "oil.oo"
-local assert = require "oil.assert"
-local giop   = require "oil.corba.giop"                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo        = require "oil.oo"
+local assert    = require "oil.assert"
+local Exception = require "oil.Exception"
+local giop      = require "oil.corba.giop"                                      --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.corba.giop.Referrer", oo.class)
 
@@ -106,6 +107,12 @@ function referenceto(self, objectkey, ...)
 			ior._profiles[#ior._profiles + 1] = {
 				tag          = tag,
 				profile_data = profiler:encode(objectkey, acceptorinfo),
+			}
+		else
+			return nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
+				message = "GIOP profile tag not supported",
+				reason = "profiles",
+				tag = tag,
 			}
 		end
 	end

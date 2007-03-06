@@ -38,40 +38,32 @@ function CanceledRequest:results()
 	return self.success, unpack(self, 1, self.resultcount)
 end
 
-function handlerequest(self, request, object, success, ...)
-	if request.cancelled then
-		request.cancel = true
-		return CanceledRequest{
-			success = success,
-			resultcount = select("#", ...),
-			...,
-		}
-	end
-	return object, success, ...
-end
-
-function handlereply(self, reply, success, ...)
-	reply.success = success
-	reply.resultcount = select("#", ...)
-	for i = 1, reply.resultcount do
-		reply[i] = select(i, ...)
-	end
-	return reply, ...
-end
-
 function before(self, request, object, ...)
 	if request.port == "requests" then
 		if request.method == request.object.newrequest then
 			local interceptor = self.interceptor
 			if interceptor.sendrequest then
 				local channel, reference, operation = ...
-				request.object_key        = reference._object
-				request.operation         = operation.name
-				request.response_expected = not operation.oneway
-				self.message = request
-				return self:handlerequest(request,
-					object, channel, reference, operation,
-					interceptor:sendrequest(request, select(4, ...)))
+				request.service_context      = nil
+				request.object_key           = reference._object
+				request.operation            = operation.name
+				request.response_expected    = not operation.oneway
+				request.requesting_principal = nil
+				request.count = select("#", ...) - 3
+				for i = 1, request.count do
+					request[i] = select(i+3, ...)
+				end
+				interceptor:sendrequest(request)
+				if request.success == nil then
+					self.message = request
+					request.cancel = nil
+					return object, channel, reference, operation, unpack(request, 1, request.count)
+				else
+					self.message = nil
+					request.cancel = true
+					request.resultcount = request.count
+					return CancelledRequest(request)
+				end
 			else
 				self.message = nil
 			end
@@ -108,29 +100,33 @@ function after(self, request, ...)
 		end
 	elseif request.port == "requests" then
 		if request.method == request.object.newrequest then
-			local reply = ...
-			if reply then
-				reply.message = request
+			local futurereply = ...
+			if futurereply then
+				futurereply.message = request
 			end
 		elseif request.method == request.object.getreply then
 			local interceptor = self.interceptor
-			if interceptor.receivereply and self.message then
-				reply = ...
-				if reply then
-					local message = self.message
-					reply.message.service_context = message.service_context
-					reply.message.request_id      = message.request_id
-					reply.message.reply_status    = message.reply_status
-					
-					return self:handlereply(reply,
-						interceptor:receivereply(
-							reply.message,
-							reply.success,
-							unpack(reply, 1, reply.resultcount)
-						)
-					)
+			if interceptor.receivereply then
+				local header, reply = self.message, ...
+				if header and reply then
+					local message = reply.message
+					self.message = nil
+					message.service_context = header.service_context
+					message.request_id      = header.request_id
+					message.reply_status    = header.reply_status
+					message.success         = reply.success
+					message.count           = reply.resultcount
+					for i = 1, message.count do
+						message[i] = reply[i]
+					end
+					interceptor:receivereply(message)
+					reply.success = message.success
+					reply.resultcount = message.count
+					for i = 1, message.count do
+						reply[i] = message[i]
+					end
+					return message
 				end
-				self.message = nil
 			end
 		end
 	end

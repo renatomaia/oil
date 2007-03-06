@@ -37,7 +37,8 @@ local require  = require
 
 local io = require "io"
 
-local builder = require "oil.builder"
+local builder   = require "oil.builder"
+local Exception = require "oil.Exception"
 
 --------------------------------------------------------------------------------
 -- OiL main programming interface (API).
@@ -378,6 +379,13 @@ end
 
 function newdecoder(stream)
 	return assert.check(Components.ValueEncoder.codec:decoder(stream, true))
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function newexcept(body)
+	return Exception(body)
 end
 
 --------------------------------------------------------------------------------

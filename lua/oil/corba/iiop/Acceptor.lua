@@ -156,7 +156,7 @@ function __init(self, object)
 						}
 					else
 						self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-							message = "unable to listen to "..host..":"..port,
+							message = "unable to listen to port of host",
 							reason = "listen",
 							error = errmsg,
 							host = host, 
@@ -165,7 +165,7 @@ function __init(self, object)
 					end
 				else
 					self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-						message = "unable to bind to "..host..":"..port,
+						message = "unable to bind to port of host",
 						reason = "bind",
 						error = errmsg,
 						host = host, 
@@ -174,7 +174,7 @@ function __init(self, object)
 				end
 			else
 				self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-					message = "unable to create new socket",
+					message = "unable to create new socket due to error",
 					reason = "socket",
 					error = except,
 				}
