@@ -18,11 +18,13 @@
 --[[VERBOSE]] local unpack      = unpack
 --[[VERBOSE]] local rawget      = rawget
 --[[VERBOSE]] local select      = select
+--[[VERBOSE]] local tostring    = tostring
 --[[VERBOSE]] local string      = require "string"
 --[[VERBOSE]] local table       = require "table"
 --[[VERBOSE]] local math        = require "math"
 --[[VERBOSE]] local ObjectCache = require "loop.collection.ObjectCache"
 --[[VERBOSE]] local Verbose     = require "loop.debug.Verbose"
+--[[DEBUG]] local Inspector   = require "loop.debug.Inspector"
 
 local luaerror      = error
 local assert        = assert
@@ -44,11 +46,12 @@ module("loop.thread.Scheduler", oo.class)
 local WeakSet = oo.class{ __mode = "k" }
 function __init(class, self)
 	self = oo.rawnew(class, self)
-	self.traps           = WeakSet()
-	self.running         = OrderedSet()
-	self.sleeping        = PriorityQueue()
-	self.sleeping.wakeup = self.sleeping.priority
-	self.currentkey      = OrderedSet.firstkey
+	self.traps           = self.traps           or WeakSet()
+	self.running         = self.running         or OrderedSet()
+	self.sleeping        = self.sleeping        or PriorityQueue()
+	self.sleeping.wakeup = self.sleeping.wakeup or self.sleeping.priority
+	self.current         = self.current         or false
+	self.currentkey      = self.currentkey      or OrderedSet.firstkey
 	return self
 end
 __init(getmetatable(_M), _M)
@@ -99,6 +102,10 @@ function pcall(func, ...)
 	return resumepcall(pcall, coroutine.resume(pcall, ...))
 end
 
+function getpcall()
+	return pcall
+end
+
 function checkcurrent(self)
 	local current = self.current
 	local running = coroutine.running()
@@ -116,13 +123,12 @@ end
 function resumeall(self, success, ...)
 	local routine = self.current
 	if routine then                                                               --[[VERBOSE]] verbose:threads(false, routine," yielded")
-		if coroutine.status(routine) == "dead" then      														--[[VERBOSE]] verbose:threads(routine," has finished")
+		if coroutine.status(routine) == "dead" then                                 --[[VERBOSE]] verbose:threads(routine," has finished")
+			self:remove(routine, self.currentkey)
 			self.current = false
-			self.running:remove(routine, self.currentkey)
 			local trap = self.traps[routine]
 			if trap then                                                              --[[VERBOSE]] verbose:threads(true, "executing trap for ",routine)
 				trap(self, routine, success, ...)                                       --[[VERBOSE]] verbose:threads(false)
-				self.traps[routine] = nil
 			elseif not success then                                                   --[[VERBOSE]] verbose:threads("uncaptured error on ",routine)
 				self:error(routine, ...)
 			end
@@ -184,9 +190,13 @@ function register(self, routine, previous)                                      
 end
 
 function remove(self, routine)                                                  --[[VERBOSE]] verbose:threads("removing ",routine)
-	if self.current == routine
-		then return self.running:remove(routine, self.currentkey)
-		else return self.running:remove(routine) or self.sleeping:remove(routine)
+	if routine == self.current then
+		return self.running:remove(routine, self.currentkey)
+	elseif routine == self.currentkey then
+		self.currentkey = self.running:previous(routine)
+		return self.running:remove(routine, self.currentkey)
+	else
+		return self.running:remove(routine) or self.sleeping:remove(routine)
 	end
 end
 
@@ -206,7 +216,7 @@ function resume(self, routine, ...)                                             
 end
 
 function start(self, func, ...)
-	self.running:insert(coroutine.create(func), self:checkcurrent())
+	self.running:insert(coroutine.create(func), self:checkcurrent())              --[[VERBOSE]] verbose:threads("starting ",self.running[self.current])
 	return coroutine.yield(...)
 end
 
@@ -243,20 +253,24 @@ end
 -- Verbose Support -------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+--[[VERBOSE]] verbose = Verbose()
+--[[VERBOSE]] 
 --[[VERBOSE]] local LabelStart = string.byte("A")
---[[VERBOSE]] local labels = ObjectCache{ current = 0 }
---[[VERBOSE]] function labels:retrieve()
---[[VERBOSE]] 	local id = self.current
---[[VERBOSE]] 	local label = {}
---[[VERBOSE]] 	repeat
---[[VERBOSE]] 		table.insert(label, LabelStart + (id % 26))
---[[VERBOSE]] 		id = math.floor(id / 26)
---[[VERBOSE]] 	until id <= 0
---[[VERBOSE]] 	self.current = self.current + 1
---[[VERBOSE]] 	return string.char(unpack(label))
+--[[VERBOSE]] verbose.labels = ObjectCache{ current = 0 }
+--[[VERBOSE]] function verbose.labels:retrieve(value)
+--[[VERBOSE]] 	if type(value) == "thread" then
+--[[VERBOSE]] 		local id = self.current
+--[[VERBOSE]] 		local label = {}
+--[[VERBOSE]] 		repeat
+--[[VERBOSE]] 			table.insert(label, LabelStart + (id % 26))
+--[[VERBOSE]] 			id = math.floor(id / 26)
+--[[VERBOSE]] 		until id <= 0
+--[[VERBOSE]] 		self.current = self.current + 1
+--[[VERBOSE]] 		value = string.char(unpack(label))
+--[[VERBOSE]] 	end
+--[[VERBOSE]] 	return value
 --[[VERBOSE]] end
 --[[VERBOSE]] 
---[[VERBOSE]] verbose = Verbose()
 --[[VERBOSE]] verbose.groups.concurrency = { "scheduler", "threads", "copcall" }
 --[[VERBOSE]] function verbose.custom:threads(...)
 --[[VERBOSE]] 	local viewer  = self.viewer
@@ -268,7 +282,7 @@ end
 --[[VERBOSE]] 			output:write(value)
 --[[VERBOSE]] 		elseif type(value) == "thread" then
 --[[VERBOSE]] 			output:write("thread ")
---[[VERBOSE]] 			output:write(labels[value])
+--[[VERBOSE]] 			output:write(self.labels[value])
 --[[VERBOSE]] 		else
 --[[VERBOSE]] 			viewer:write(value)
 --[[VERBOSE]] 		end
@@ -276,24 +290,28 @@ end
 --[[VERBOSE]] 	
 --[[VERBOSE]] 	local scheduler = rawget(self, "schedulerdetails")
 --[[VERBOSE]] 	if scheduler then
---[[VERBOSE]] 		local newline = "\n"..viewer.prefix..viewer.identation
+--[[VERBOSE]] 		local newline = "\n"..viewer.prefix..viewer.indentation
 --[[VERBOSE]] 	
 --[[VERBOSE]] 		output:write(newline)
 --[[VERBOSE]] 		output:write("Current: ")
---[[VERBOSE]] 		output:write(labels[scheduler.current])
+--[[VERBOSE]] 		output:write(tostring(self.labels[scheduler.current]))
 --[[VERBOSE]] 	
 --[[VERBOSE]] 		output:write(newline)
 --[[VERBOSE]] 		output:write("Running:")
 --[[VERBOSE]] 		for current in scheduler.running:sequence() do
 --[[VERBOSE]] 			output:write(" ")
---[[VERBOSE]] 			output:write(labels[current])
+--[[VERBOSE]] 			output:write(tostring(self.labels[current]))
 --[[VERBOSE]] 		end
 --[[VERBOSE]] 	
 --[[VERBOSE]] 		output:write(newline)
 --[[VERBOSE]] 		output:write("Sleeping:")
 --[[VERBOSE]] 		for current in scheduler.sleeping:sequence() do
 --[[VERBOSE]] 			output:write(" ")
---[[VERBOSE]] 			output:write(labels[current])
+--[[VERBOSE]] 			output:write(tostring(self.labels[current]))
 --[[VERBOSE]] 		end
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end
+--[[VERBOSE]] 
+--[[DEBUG]] verbose.I = Inspector()
+--[[DEBUG]] function verbose.inspect:debug() self.I:stop(4) end
+--[[DEBUG]] verbose:flag("debug", true)

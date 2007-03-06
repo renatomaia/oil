@@ -343,5 +343,3 @@ function stop(self, level)
 		until not rawget(self, ".current")
 	end
 end
-
-oo.rawnew(_M, _M)

@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.5.5b
+-- Version:  0.6.0b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 26/07/2006
+-- Last modification: 28/09/2006
 -- Filename: lex.lua
 -- 
 

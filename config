@@ -1,7 +1,6 @@
 # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
 
-LUA_HOME= /usr/local
-#LUA_HOME= /home/l/maia/apps/lua-5.1a
+LUA_HOME= /Users/maia/Applications/lua-5.1.1
 LUA_INC= $(LUA_HOME)/include
 LUA_LIB= $(LUA_HOME)/lib
 LUA_BIN= $(LUA_HOME)/bin
@@ -14,8 +13,8 @@ INSTALL_TOP= $(LUA_HOME)
 INSTALL_BIN= $(INSTALL_TOP)/bin
 INSTALL_INC= $(INSTALL_TOP)/include
 INSTALL_LIB= $(INSTALL_TOP)/lib
-INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/5.1
 INSTALL_LMOD= $(INSTALL_TOP)/share/lua/5.1
+INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/5.1
 
 # How to install. You may prefer "install" instead of "cp" if you have it.
 # To remove debug information from binaries, use "install -s" in INSTALL_EXEC.
@@ -25,12 +24,24 @@ INSTALL_DATA= cp -r
 #INSTALL_EXEC= install -m 0755
 #INSTALL_DATA= install -m 0644
 
-#compilation for macosx
-MYLDFLAGS=-bundle -undefined dynamic_lookup 
-LD=export MACOSX_DEPLOYMENT_TARGET="10.4"; gcc
+# If you are using Lua-5.0.2 then uncomment the following line to include the
+# compatibility module.
+#
+#COMPAT_51= compat-5.1.o
+#INSTALL_LMOD= $(INSTALL_TOP)/share/lua/5.0
+#INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/5.0
+#MYCFLAGS= -DCOMPAT_51
+#MYLIBS= -llualib
+
+MYLDFLAGS=
 
 # == END OF USER SETTINGS. NO NEED TO CHANGE ANYTHING BELOW THIS LINE =========
-V= 0.3
+
+# Your platform. See PLATS for possible values.
+PLAT= none
+
+# Convenience platforms targets.
+PLATS= linux macosx
 
 CC= gcc
 CFLAGS= -O2 -Wall -I$(LUA_INC) $(MYCFLAGS)
@@ -39,6 +50,8 @@ AR= ar rcu
 RANLIB= ranlib
 RM= rm -f
 LIBS= -lm -ldl -llua $(MYLIBS)
+
+V= 0.3
 
 LUAINT= $(LUA_BIN)/lua
 

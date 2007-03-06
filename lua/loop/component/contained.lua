@@ -27,14 +27,15 @@ module("loop.component.contained", package.seeall)
 BaseType = oo.class({}, base.BaseType)
 
 function BaseType:__new(...)
-	local comp = self[1](...)
+	local comp = self.__component or self[1]
+	if comp then comp = comp(...) end
 	local state = {
 		__component = comp,
 		__home = self,
 	}
 	for port, class in pairs(self) do
-		if port ~= 1 then
-			state[port] = class(comp[port], comp)
+		if type(port) == "string" and port:match("^%a[%w_]*$") then
+			state[port] = class(comp and comp[port], comp)
 		end
 	end
 	return state

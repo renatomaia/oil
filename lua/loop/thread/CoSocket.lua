@@ -15,6 +15,7 @@
 --------------------------------------------------------------------------------
 
 --[[VERBOSE]] local verbose = require("loop.thread.Scheduler").verbose
+--[[VERBOSE]] verbose.groups.concurrency[#verbose.groups.concurrency+1] = "cosocket"
 
 local ipairs       = ipairs
 local assert       = assert
@@ -268,16 +269,20 @@ function select(self, recvt, sendt, timeout)                                    
 	local scheduler = self.scheduler
 	local current = scheduler:checkcurrent()
 		
-	if #recvt > 0 or #sendt > 0 then
+	if (recvt and #recvt > 0) or (sendt and #sendt > 0) then
 		local readlocks  = self.readlocks
 		local writelocks = self.writelocks
 		
 		-- assert that no thread is already blocked on these sockets
-		for _, socket in ipairs(recvt) do
-			assert(readlocks[socket] == nil, "attempt to read a socket in use")
+		if recvt then
+			for _, socket in ipairs(recvt) do
+				assert(readlocks[socket] == nil, "attempt to read a socket in use")
+			end
 		end
-		for _, socket in ipairs(sendt) do
-			assert(writelocks[socket] == nil, "attempt to write a socket in use")
+		if sendt then
+			for _, socket in ipairs(sendt) do
+				assert(writelocks[socket] == nil, "attempt to write a socket in use")
+			end
 		end
 		
 		local readok, writeok, errmsg = scheduler.select(recvt, sendt, 0)
@@ -294,13 +299,17 @@ function select(self, recvt, sendt, timeout)                                    
 			local writing = scheduler.writing
 	
 			-- block current thread on the sockets and lock them
-			for _, socket in ipairs(recvt) do
-				readlocks[socket] = current
-				reading:add(socket, current)                                            --[[VERBOSE]] verbose:threads(current," subscribed for read signal")
+			if recvt then
+				for _, socket in ipairs(recvt) do
+					readlocks[socket] = current
+					reading:add(socket, current)                                          --[[VERBOSE]] verbose:threads(current," subscribed for read signal")
+				end
 			end
-			for _, socket in ipairs(sendt) do
-				writelocks[socket] = current
-				writing:add(socket, current)                                            --[[VERBOSE]] verbose:threads(current," subscribed for write signal")
+			if sendt then
+				for _, socket in ipairs(sendt) do
+					writelocks[socket] = current
+					writing:add(socket, current)                                          --[[VERBOSE]] verbose:threads(current," subscribed for write signal")
+				end
 			end
 			
 			-- set to be waken at timeout, if specified
@@ -321,18 +330,26 @@ function select(self, recvt, sendt, timeout)                                    
 			end
 		
 			-- check which sockets are ready and remove block for other sockets
-			for _, socket in ipairs(recvt) do
-				readlocks[socket] = nil
-				if reading[socket] == current
-					then reading:remove(socket)                                           --[[VERBOSE]] verbose:threads(current," unsubscribed for read signal")
-					else readok[socket] = true
+			if recvt then
+				for _, socket in ipairs(recvt) do
+					readlocks[socket] = nil
+					if reading[socket] == current then
+						reading:remove(socket)                                              --[[VERBOSE]] verbose:threads(current," unsubscribed for read signal")
+					else
+						readok[#readok+1] = socket
+						readok[socket] = true
+					end
 				end
 			end
-			for _, socket in ipairs(sendt) do
-				writelocks[socket] = nil
-				if writing[socket] == current
-					then writing:remove(socket)                                           --[[VERBOSE]] verbose:threads(current," unsubscribed for write signal")
-					else writeok[socket] = true
+			if sendt then
+				for _, socket in ipairs(sendt) do
+					writelocks[socket] = nil
+					if writing[socket] == current then
+						writing:remove(socket)                                              --[[VERBOSE]] verbose:threads(current," unsubscribed for write signal")
+					else
+						writeok[#writeok+1] = socket
+						writeok[socket] = true
+					end
 				end
 			end
 		end                                                                         --[[VERBOSE]] verbose:cosocket(false, "returning selected sockets after waiting")

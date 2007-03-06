@@ -33,7 +33,7 @@ end
 function put(self, ...)
 	self.buffer = {}
 	self:serialize(...)
-	self.socket:send(table.concat(self.buffer).."\0\n")
+	assert(self.socket:send(table.concat(self.buffer).."\0\n"))
 	self.buffer = nil
 end
 
@@ -41,12 +41,12 @@ function get(self)
 	local lines = {}
 	local line
 	repeat
-		line = self.socket:receive()
+		line = assert(self.socket:receive())
 		if line and line:find("%z$") then
 			lines[#lines+1] = line:sub(1, #line-1)
 			break
 		end
 		lines[#lines+1] = line
 	until not line
-	return assert(self:load("return "..table.concat(lines)))()
+	return assert(self:load("return "..table.concat(lines, "\n")))()
 end

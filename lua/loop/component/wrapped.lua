@@ -62,18 +62,6 @@ function BaseType:__container(segments)
 	return container
 end
 
-function BaseType:__setcontext(segment, context)
-	if type(segment) == "table" then
-		local setcontext = segment.context
-		if setcontext ~= nil then
-			if type(setcontext) == "function"
-				then setcontext(segment, context)
-				else segment.context = context
-			end
-		end
-	end
-end
-
 function BaseType:__build(segments)
 	local container = self:__container(segments)
 	local state = container.__state

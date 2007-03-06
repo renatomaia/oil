@@ -18,13 +18,10 @@
 --   Storage of strings equal to the name of one method prevents its usage.   --
 --------------------------------------------------------------------------------
 
-local rawget         = rawget
-local oo             = require "loop.simple"
-local UnorderedArray = require "loop.collection.UnorderedArray"
+local rawget = rawget
+local oo     = require "loop.base"
 
-module "loop.collection.UnorderedArraySet"
-
-oo.class(_M, UnorderedArray)
+module("loop.collection.UnorderedArraySet", oo.class)
 
 valueat = rawget
 indexof = rawget
@@ -34,15 +31,22 @@ function contains(self, value)
 end
 
 function add(self, value)
-	UnorderedArray.add(self, value)
-	self[value] = size(self)
+	self[#self+1] = value
+	self[value] = #self
 end
 
 function remove(self, value)
-	removeat(self, self[value])
+	local size = #self
+	local last = self[size]
+	if value ~= last then
+		local index = self[value]
+		self[index], self[last] = last, index
+	end
+	self[value] = nil
+	self[size] = nil
+	return value
 end
 
 function removeat(self, index)
-	self[ self[index] ] = nil
-	return UnorderedArray.remove(self, index)
+	return self:remove(self[index])
 end

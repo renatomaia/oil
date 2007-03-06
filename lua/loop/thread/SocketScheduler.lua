@@ -30,7 +30,7 @@ oo.class(_M, IOScheduler)
 
 function __init(class, self)
 	self = IOScheduler.__init(class, self)
-	self.socket = CoSocket({ socketapi = luasocket }, self)
+	self.sockets = CoSocket({ socketapi = luasocket }, self)
 	return self
 end
 __init(getmetatable(_M), _M)

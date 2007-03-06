@@ -63,7 +63,7 @@ function __init(self, object)
 		for name, pack in pairs(self.package) do
 			if pack == self.globals then
 				self[pack] = self.namespace..".globals"
-			else
+			elseif type(pack) == "table" then
 				self[pack] = "require('"..name.."')"
 				for field, member in pairs(pack) do
 					local kind = type(member)

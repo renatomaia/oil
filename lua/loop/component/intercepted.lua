@@ -76,6 +76,7 @@ function MethodCache:retrieve(method)
 				context = self.__context,
 				port = self.__name,
 				object = object,
+				method = method,
 				event = "method",
 			}
 			return dobefore(iceptor, request, method, object, ...)
@@ -160,7 +161,7 @@ function Wrapper:__intercept(event, iceptor)
 end
 
 function intercept(scope, port, event, iceptor)
-	local container = getmetatable(scope)
+	local container = scope.__container
 	local wrapper = container and container[port]
 	if oo.instanceof(wrapper, Wrapper)
 		then rawset(wrapper, "  "..event, iceptor)
@@ -193,7 +194,7 @@ function Facet:__init(state, key, context)
 		__name = tostring(key),
 		__home = state.__home,
 	})
-	wrapper:__bind(state[key] or state.__component)
+	wrapper:__bind(state[key] or state.__component[key] or state.__component)
 	return wrapper
 end
 

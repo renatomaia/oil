@@ -15,16 +15,15 @@ Philosopher = oo.class{
 }
 
 function Philosopher:__init(name)
-	local comp = {
+	return oo.rawnew(self, {
 		name = name,
 		--time = 1.5 + math.random() * 3.6,
-	}
-	return oo.rawnew(self, comp)
+	})
 end
 
 function Philosopher:sleep()
-	--scheduler.sleep(self.time)
-	scheduler.sleep(1.5 + math.random() * 3.6)
+	--oil.sleep(self.time)
+	oil.sleep(1.5 + math.random() * 3.6)
 end
 
 function Philosopher:notify()
@@ -98,7 +97,7 @@ end
 function Philosopher:start()
 	if not self.running then
 		self.running = true
-		scheduler.new(function()
+		return oil.newthread(function()
 			while not self.stopped do
 				self:update()
 				self:sleep()
@@ -124,10 +123,10 @@ end
 -- Exporting
 --------------------------------------------------------------------------------
 
-local scheduler = require "scheduler"
-local oil       = require "oil"
-
-oil.loadidlfile("philo.idl")
-oil.writeIOR(oil.newobject(PhilosopherHome, "PhilosopherHome"), "philo.ior")
-scheduler.new(oil.run)
-scheduler.run()
+require "oil"
+oil.assemble "corba.typed.cooperative.base"
+oil.main(function()
+	oil.loadidlfile("philo.idl")
+	oil.writeto("philo.ior", oil.tostring(oil.newobject(PhilosopherHome, "PhilosopherHome")))
+	oil.run()
+end)

@@ -11,7 +11,7 @@
 -- Release: 2.2 alpha                                                         --
 -- Title  : Verbose/Log Mechanism for Layered Applications                    --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 24/02/2006 14:26                                                  --
+-- Date   : 30/01/2007 20:05                                                  --
 --[[----------------------------------------------------------------------------
 
 -------------------------------------
@@ -136,7 +136,7 @@ local function write(self, flag, ...)
 			io.read()
 		else
 			output:write("\n")
-			if type(inspect) == "function" then inspect() end
+			if type(inspect) == "function" then inspect(self) end
 		end
 	
 		output:flush()
@@ -184,7 +184,7 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function addgroup(self, name, group)
+function setgroup(self, name, group)
 	self.groups[name] = group
 end
 
@@ -192,8 +192,8 @@ function newlevel(self, level, group)
 	local groups = self.groups
 	local count = #groups
 	if not group then
-		groups[count+1] = group
-	elseif level > count then
+		groups[count+1] = level
+	elseif level <= count then
 		table.insert(groups, level, group)
 	else
 		self:setlevel(level, group)

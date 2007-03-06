@@ -22,7 +22,7 @@
 --   SetReceptacle                                                           --
 -------------------------------------------------------------------------------
 
-local oo         = require "loop.cached"
+local oo = require "loop.cached"
 
 module("loop.component.base", package.seeall)
 
@@ -35,20 +35,42 @@ function BaseType:__call(...)
 end
 
 function BaseType:__new(...)
-	local comp = self[1](...)
-	comp.__component = comp
-	comp.__home = self
+	local comp = self.__component or self[1]
+	if comp then
+		comp = comp(...)
+		comp.__home = self
+		comp.__component = comp
+	else
+		comp = { __home = self }
+	end
 	for port, class in pairs(self) do
-		if port ~= 1 then
+		if type(port) == "string" and port:match("^%a[%w_]*$") then
 			comp[port] = class(comp[port], comp)
 		end
 	end
 	return comp
 end
 
+local function tryindex(segment) return segment.context end
+function BaseType:__setcontext(segment, context)
+	local success, setcontext = pcall(tryindex, segment)
+	if success and setcontext ~= nil then
+		if type(setcontext) == "function"
+			then setcontext(segment, context)
+			else segment.context = context
+		end
+	end
+end
+
 function BaseType:__build(comp)
+	for port in pairs(self) do
+		if port == 1
+			then self:__setcontext(comp.__component, comp)
+			else self:__setcontext(comp[port], comp)
+		end
+	end
 	for port, class in oo.allmembers(oo.classof(self)) do
-		if port:find("^%a") then
+		if port:match("^%a") then
 			class(comp, port, comp)
 		end
 	end
@@ -85,10 +107,14 @@ function managedby(component, home)
 	return (component.__home == home)
 end
 
+typeof = oo.classof
+
 --------------------------------------------------------------------------------
 
 function Facet(segments, name)
-	segments[name] = segments[name] or segments.__component
+	segments[name] = segments[name] or
+	                 segments.__component[name] or
+	                 segments.__component
 	return false
 end
 

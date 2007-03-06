@@ -93,7 +93,7 @@ function remove(self, element, start)
 			then self[LAST] = prev
 			else self[element] = nil
 		end
-		return element
+		return element, prev
 	end
 end
 
@@ -106,7 +106,7 @@ function replace(self, old, new, start)
 			then self[LAST] = new
 			else self[old] = nil
 		end
-		return old
+		return old, prev
 	end
 end
 

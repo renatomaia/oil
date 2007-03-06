@@ -19,6 +19,7 @@
 --------------------------------------------------------------------------------
 
 local rawget         = rawget
+local table          = require "table"
 local oo             = require "loop.simple"
 local UnorderedArray = require "loop.collection.UnorderedArray"
 
@@ -35,6 +36,11 @@ end
 
 function add(self, key, value)
 	self[#self + 1] = key
+	self[key] = value or true
+end
+
+function addat(self, index, key, value)
+	table.insert(self, index, key)
 	self[key] = value or true
 end
 

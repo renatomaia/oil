@@ -14,6 +14,9 @@
 -- Date   : 05/03/2006 20:41                                                  --
 --------------------------------------------------------------------------------
 
+--[[VERBOSE]] local rawget   = rawget
+--[[VERBOSE]] local tostring = tostring
+
 local ipairs             = ipairs
 local getmetatable       = getmetatable
 local math               = require "math"
@@ -96,9 +99,13 @@ function register(self, routine, previous)
 end
 
 function remove(self, routine)                                                  --[[VERBOSE]] verbose:threads("removing ",routine)
-	if self.current == routine
-		then self.running:remove(routine, self.currentkey)
-		else self.running:remove(routine)
+	if routine == self.current then
+		self.running:remove(routine, self.currentkey)
+	elseif routine == self.currentkey then
+		self.currentkey = self.running:previous(routine)
+		self.running:remove(routine, self.currentkey)
+	else
+		self.running:remove(routine)
 	end
 	
 	self.sleeping:remove(routine)
@@ -132,3 +139,36 @@ function step(self)                                                             
 	local resumed = self:resumeall()                                              --[[VERBOSE]] verbose:scheduler(false, "scheduling step performed")
 	return signaled or wokenup or resumed
 end
+
+--------------------------------------------------------------------------------
+-- Verbose Support -------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+--[[VERBOSE]] local oldfunc = verbose.custom.threads
+--[[VERBOSE]] function verbose.custom:threads(...)
+--[[VERBOSE]] 	local viewer  = self.viewer
+--[[VERBOSE]] 	local output  = self.viewer.output
+--[[VERBOSE]] 	
+--[[VERBOSE]] 	oldfunc(self, ...)
+--[[VERBOSE]] 	
+--[[VERBOSE]] 	local scheduler = rawget(self, "schedulerdetails")
+--[[VERBOSE]] 	if scheduler then
+--[[VERBOSE]] 		local newline = "\n"..viewer.prefix..viewer.indentation
+--[[VERBOSE]] 	
+--[[VERBOSE]] 		output:write(newline)
+--[[VERBOSE]] 		output:write("Reading:")
+--[[VERBOSE]] 		for _, current in ipairs(scheduler.reading) do
+--[[VERBOSE]]				current = scheduler.reading[current]
+--[[VERBOSE]] 			output:write(" ")
+--[[VERBOSE]] 			output:write(tostring(self.labels[current]))
+--[[VERBOSE]] 		end
+--[[VERBOSE]] 	
+--[[VERBOSE]] 		output:write(newline)
+--[[VERBOSE]] 		output:write("Writing:")
+--[[VERBOSE]] 		for _, current in ipairs(scheduler.writing) do
+--[[VERBOSE]]				current = scheduler.writing[current]
+--[[VERBOSE]] 			output:write(" ")
+--[[VERBOSE]] 			output:write(tostring(self.labels[current]))
+--[[VERBOSE]] 		end
+--[[VERBOSE]] 	end
+--[[VERBOSE]] end

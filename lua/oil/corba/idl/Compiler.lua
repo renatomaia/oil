@@ -8,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.4 alpha                                                         --
+-- Release: 0.4                                                               --
 -- Title  : Interface Definition Language (IDL) compiler                      --
 -- Authors: Renato Maia   <maia@inf.puc-rio.br>                               --
 --          Ricardo Cosme <rcosme@tecgraf.puc-rio.br>                         --
@@ -27,7 +27,7 @@ local unpack = unpack
 local luaidl = require "luaidl"
 
 local oo  = require "oil.oo"
-local idl = require "oil.corba.idl"
+local idl = require "oil.corba.idl"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.corba.idl.Compiler", oo.class)
 
@@ -76,12 +76,7 @@ end
 
 function doresults(self, ...)
 	if ... then
-		local results = {}
-		local count = select("#", ...)
-		for i = 1, count do
-			results[i] = self.context.types:register(select(i, ...))
-		end
-		return unpack(results, 1, count)
+		return self.context.types:register(...)
 	end
 	return ...
 end

@@ -45,5 +45,5 @@ function get(self)
 		end
 		lines[#lines+1] = line
 	until not line or self.remains
-	return assert(self:load("return "..table.concat(lines)))()
+	return assert(self:load("return "..table.concat(lines, "\n")))()
 end

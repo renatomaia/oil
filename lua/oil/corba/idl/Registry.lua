@@ -8,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.4 alpha                                                         --
+-- Release: 0.4                                                               --
 -- Title  : IDL Definition Registry                                           --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
@@ -331,9 +331,6 @@ end
 
 function Container:lookup(search_name)
 	local scope
-
-if not search_name.find then verbose:debug() end
-
 	if search_name:find("^::") then
 		scope = self.containing_repository
 	else
@@ -689,7 +686,6 @@ OperationDef.definition_fields = {
 function OperationDef:update(new, registry)
 	self:_set_mode(new.oneway and "OP_ONEWAY" or "OP_NORMAL")
 	if new.result then
-		self.outputs = {}
 		self:_set_result_def(new.result)
 	end
 	
@@ -735,7 +731,11 @@ function OperationDef:_set_result_def(type_def)
 		self.result_def = type_def
 		self.result = newval
 		if current == idl.void then
-			table.insert(self.outputs, 1, newval)
+			if self.outputs == Empty then
+				self.outputs = { newval }
+			else
+				table.insert(self.outputs, 1, newval)
+			end
 		elseif newval == idl.void then
 			table.remove(self.outputs, 1)
 		else
