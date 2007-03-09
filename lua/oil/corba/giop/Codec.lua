@@ -224,9 +224,9 @@ local TypeCodeInfo = {
 		},
 	},
 	
-	[23] = {name = "longlong"  , type = "empty", unhandled = true}, 
-	[24] = {name = "ulonglong" , type = "empty", unhandled = true},
-	[25] = {name = "longdouble", type = "empty", unhandled = true},
+	[23] = {name = "longlong"  , type = "empty", idl = idl.longlong  }, 
+	[24] = {name = "ulonglong" , type = "empty", idl = idl.ulonglong },
+	[25] = {name = "longdouble", type = "empty", idl = idl.longdouble},
 	[26] = {name = "wchar"     , type = "empty", unhandled = true},
 	
 	[27] = {name = "wstring", type = "simple", unhandled = true, kind = "wstring",
@@ -324,7 +324,7 @@ function Decoder:indirection(unmarshall, ...)
 		pos = (self.start - 1) + self.cursor
 		value = self.history[pos + self:long()]
 		if value == nil then
-			assert.illegal(nil, "indirection value", "MARSHALL")
+			assert.illegal(nil, "indirection offset", "MARSHALL")
 		end
 	else
 		value = unmarshall(self, tag, ...)
@@ -346,13 +346,16 @@ local function numberunmarshaller(size, format)
 	end
 end
 
-Decoder.void     = function() end -- TODO:[maia] Should null be the same?
-Decoder.short    = numberunmarshaller(2, "s")
-Decoder.long     = numberunmarshaller(4, "l")
-Decoder.ushort   = numberunmarshaller(2, "S")
-Decoder.ulong    = numberunmarshaller(4, "L")
-Decoder.float    = numberunmarshaller(4, "f")
-Decoder.double   = numberunmarshaller(8, "d")
+Decoder.void       = function() end -- TODO:[maia] Should null be the same?
+Decoder.short      = numberunmarshaller( 2, "s")
+Decoder.long       = numberunmarshaller( 4, "l")
+Decoder.longlong   = numberunmarshaller( 8, "g")
+Decoder.ushort     = numberunmarshaller( 2, "S")
+Decoder.ulong      = numberunmarshaller( 4, "L")
+Decoder.ulonglong  = numberunmarshaller( 8, "G")
+Decoder.float      = numberunmarshaller( 4, "f")
+Decoder.double     = numberunmarshaller( 8, "d")
+Decoder.longdouble = numberunmarshaller(16, "D")
 
 function Decoder:boolean()                                                      --[[VERBOSE]] verbose:unmarshal(true, self, idl.boolean)
 	return (self:octet() ~= 0)                                                    --[[VERBOSE]],verbose:unmarshal(false)
@@ -388,7 +391,7 @@ function Decoder:Object(idltype)                                                
 		local proxies = self.context.proxies
 		if proxies then                                                             --[[VERBOSE]] verbose:unmarshal(true, "retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
-			ior = assert.check(proxies:proxy(ior, idltype))                           --[[VERBOSE]] verbose:unmarshal(false)
+			ior = assert.results(proxies:proxy(ior, idltype), "MARSHAL")              --[[VERBOSE]] verbose:unmarshal(false)
 		end
 	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return ior
@@ -598,13 +601,16 @@ local function numbermarshaller(size, format)
 	end
 end
 
-Encoder.void     = function() end -- TODO:[maia] Should null be the same?
-Encoder.short    = numbermarshaller(2, "s")
-Encoder.long     = numbermarshaller(4, "l")
-Encoder.ushort   = numbermarshaller(2, "S")
-Encoder.ulong    = numbermarshaller(4, "L")
-Encoder.float    = numbermarshaller(4, "f")
-Encoder.double   = numbermarshaller(8, "d")
+Encoder.void       = function() end -- TODO:[maia] Should null be the same?
+Encoder.short      = numbermarshaller( 2, "s")
+Encoder.long       = numbermarshaller( 4, "l")
+Encoder.longlong   = numbermarshaller( 8, "g")
+Encoder.ushort     = numbermarshaller( 2, "S")
+Encoder.ulong      = numbermarshaller( 4, "L")
+Encoder.ulonglong  = numbermarshaller( 8, "G")
+Encoder.float      = numbermarshaller( 4, "f")
+Encoder.double     = numbermarshaller( 8, "d")
+Encoder.longdouble = numbermarshaller(16, "D")
 	
 function Encoder:boolean(value)                                                 --[[VERBOSE]] verbose:marshal(true, self, idl.boolean)
 	if value
@@ -614,9 +620,9 @@ function Encoder:boolean(value)                                                 
 end
 
 function Encoder:char(value)                                                    --[[VERBOSE]] verbose:marshal(self, idl.char, value)
-	assert.type(value, "string", "char value", "MARSHAL")
+	assert.type(value, "string", "character", "MARSHAL")
 	if string.len(value) ~= 1 then
-		assert.illegal(value, "char value", "MARSHAL")
+		assert.illegal(value, "character", "MARSHAL")
 	end
 	self:rawput('"', value, 1)
 end
@@ -653,7 +659,7 @@ function Encoder:any(value)                                                     
 		end
 	end
 	if not idltype then
-		assert.illegal(value, "any, unable to map into an idl type", "MARSHAL")
+		assert.illegal(value, "any, unable to map to an idl type", "MARSHAL")
 	end                                                                           --[[VERBOSE]] verbose:marshal "[type of any]"
 	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose:marshal "[value of any]"
 	self:put(value, idltype)                                                      --[[VERBOSE]] verbose:marshal(false)
@@ -675,9 +681,9 @@ function Encoder:Object(value, idltype)                                         
 				if idl.istype(idltype) and idltype._type == "Object" then
 					idltype = idltype.repID
 				end
-				value = assert.check(objects:object(value, nil, idltype))               --[[VERBOSE]] verbose:marshal(false)
+				value = assert.results(objects:object(value, nil, idltype))               --[[VERBOSE]] verbose:marshal(false)
 			else
-				assert.illegal(value, "Object, unable to create from table", "MARHSALL")
+				assert.illegal(value, "Object, unable to create from value", "MARHSALL")
 			end
 		end
 	end
@@ -721,7 +727,7 @@ function Encoder:union(value, idltype)                                          
 			if switch == nil then
 				switch = idltype.options[idltype.default+1]
 				if switch == nil then
-					assert.illegal(value, "union (no discriminator)", "MARSHAL")
+					assert.illegal(value, "union value (no discriminator)", "MARSHAL")
 				end
 			end
 		end
@@ -734,7 +740,7 @@ function Encoder:union(value, idltype)                                          
 		if unionvalue == nil then
 			unionvalue = value[selection.name]
 			if unionvalue == nil then
-				assert.illegal(value, "union (no value)", "MARSHAL")
+				assert.illegal(value, "union value (none contents)", "MARSHAL")
 			end
 		end                                                                         --[[VERBOSE]] verbose:marshal("[field ",selection.name,"]")
 		self:put(unionvalue, selection.type)
@@ -890,10 +896,13 @@ end
 --[[VERBOSE]] local numtype = {
 --[[VERBOSE]] 	s = idl.short,
 --[[VERBOSE]] 	l = idl.long,
+--[[VERBOSE]] 	g = idl.longlong,
 --[[VERBOSE]] 	S = idl.ushort,
 --[[VERBOSE]] 	L = idl.ulong,
+--[[VERBOSE]] 	G = idl.ulonglong,
 --[[VERBOSE]] 	f = idl.float,
 --[[VERBOSE]] 	d = idl.double,
+--[[VERBOSE]] 	D = idl.double,
 --[[VERBOSE]] }
 --[[VERBOSE]] local codecop = {
 --[[VERBOSE]] 	[Encoder] = "marshal",

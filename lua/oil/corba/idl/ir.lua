@@ -11,7 +11,6 @@ local long      = idl.long
 local ulong     = idl.ulong
 local boolean   = idl.boolean
 local string    = idl.string
-local Object    = idl.Object
 local TypeCode  = idl.TypeCode
 local any       = idl.any
 local enum      = idl.enum

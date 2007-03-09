@@ -32,6 +32,8 @@ local rawget       = rawget
 local setmetatable = setmetatable
 local type         = type
 
+local math = require "math"
+
 local ObjectCache       = require "loop.collection.ObjectCache"
 local UnorderedArraySet = require "loop.collection.UnorderedArraySet"
 local OrderedSet        = require "loop.collection.OrderedSet"
@@ -220,12 +222,16 @@ function dispose(self, profile)                                                 
 	end
 end
 
+local PortLowerBound = 2809 -- inclusive (never at first attempt)
+local PortUpperBound = 9999 -- inclusive
+
 function default(self, profile)
 	profile = profile or {}
 	profile.host = profile.host or "*"
 	if not profile.port then
+		local start = PortLowerBound + math.random(PortUpperBound - PortLowerBound)
+		local count = start
 		local port
-		local count = 2809
 		repeat
 			port = self.cache[profile.host][count]
 			if port then
@@ -233,10 +239,15 @@ function default(self, profile)
 			else
 				local except = self.except
 				if except.reason == "listen" or except.reason == "bind" then
-					count = count + 1
+					if count >= PortUpperBound
+						then count = PortLowerBound
+						else count = count + 1
+					end
+				else
+					return nil, except
 				end
 			end
-		until port or count > 9999
+		until port or count == start
 	end
 	return profile
 end

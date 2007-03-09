@@ -2,8 +2,6 @@ require "oil"
 
 local Viewer = require "loop.debug.Viewer"
 
-oil.assemble "corba.typed.cooperative.base"
-
 --------------------------------------------------------------------------------
 
 local interceptor = {}

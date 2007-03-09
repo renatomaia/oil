@@ -51,7 +51,7 @@ ObjectOperations = {
 	},
 	_component = idl.operation{
 		name = "_component",
-		result = idl.Object("IDL:omg.org/CORBA/Object:1.0"),
+		result = idl.object,
 	},
 	_is_a = idl.operation{
 		name = "_is_a",

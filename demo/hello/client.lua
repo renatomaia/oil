@@ -1,7 +1,5 @@
 require "oil"                                             -- Load OiL package
 
-oil.assemble "corba.typed.base"                           -- Customize OiL
-
 oil.main(function()
 	hello = oil.newproxy(assert(oil.readfrom("hello.ref"))) -- Get proxy to object
 

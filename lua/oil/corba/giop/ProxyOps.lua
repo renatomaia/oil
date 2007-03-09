@@ -66,7 +66,7 @@ function context(self, context)
 			if handler then
 				return handler(self, operation, result)
 			else
-				assert.error(result)
+				assert.exception(result)
 			end
 		end
 	end
@@ -77,7 +77,7 @@ function context(self, context)
 		elseif type(iface) == "string" then
 			iface = context.types:resolve(iface)
 		else
-			assert.type(iface, "idlinterface", "narrowing interface")
+			assert.type(iface, "idl interface", "narrowing interface")
 			iface = context.types:register(iface)
 		end
 		return self.__context.proxies:proxyto(self, iface)
@@ -96,7 +96,7 @@ function importinterfaceof(self, reference)
 			success = context.types:register(result)
 		end
 	end
-	return success or assert.error(result)
+	return success or assert.exception(result)
 end
 
 --------------------------------------------------------------------------------

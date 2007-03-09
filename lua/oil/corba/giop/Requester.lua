@@ -88,9 +88,6 @@ end
 function getchannel(self, reference)                                            --[[VERBOSE]] verbose:invoke(true, "get communication channel")
 	local channel, except = reference[ChannelKey]
 	if not channel then
-	
-if not reference._profiles then verbose:debug() end
-	
 		for _, profile in ipairs(reference._profiles) do                            --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",profile.tag,"]")
 			local tag = profile.tag or 0
 			local channels = self.context.channels[tag]
@@ -220,7 +217,9 @@ function getreply(self, channel, probe)                                         
 					local repId = decoder:string()
 					local exception = operation.exceptions[repId]
 					if exception then
-						result[1] = Exception(decoder:except(exception))
+						exception = Exception(decoder:except(exception))
+						exception[1] = repId
+						result[1] = exception
 					else
 						result[1] = Exception{ "UNKNOWN", minor_code_value = 0,
 							message = "unexpected user-defined exception",

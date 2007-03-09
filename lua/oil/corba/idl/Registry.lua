@@ -20,6 +20,7 @@
 --------------------------------------------------------------------------------
 
 local error        = error
+local getmetatable = getmetatable
 local ipairs       = ipairs
 local pairs        = pairs
 local rawget       = rawget
@@ -44,10 +45,10 @@ module "oil.corba.idl.Registry"
 --------------------------------------------------------------------------------
 -- Internal classes ------------------------------------------------------------
 
-  IRObject                = oo.class()
-  Contained               = oo.class({}, IRObject)
-  Container               = oo.class({}, IRObject)
-  IDLType                 = oo.class({}, IRObject)
+  IRObject                = oo.class({__idltype = "IDL:omg.org/CORBA/IRObject:1.0"})
+  Contained               = oo.class({__idltype = "IDL:omg.org/CORBA/Contained:1.0"}, IRObject)
+  Container               = oo.class({__idltype = "IDL:omg.org/CORBA/Container:1.0"}, IRObject)
+  IDLType                 = oo.class({__idltype = "IDL:omg.org/CORBA/IDLType:1.0"  }, IRObject)
   
   PrimitiveDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/PrimitiveDef:1.0"            }, IDLType)
   ArrayDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/ArrayDef:1.0"                }, IDLType)
@@ -89,7 +90,7 @@ module "oil.corba.idl.Registry"
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local Empty = setmetatable({}, { __newindex = function(_, field) error("attempt to set table 'Empty'") end })
+local Empty = setmetatable({}, { __newindex = function(_, field) verbose:debug("attempt to set table 'Empty'") end })
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -118,38 +119,67 @@ end
 --
 -- Implementation
 --
-local DefaultRegistry = oo.class()
-function DefaultRegistry:__index(...) return ... end
 
-function IRObject:__init(definition, registry)
-	registry = registry or DefaultRegistry()
-	local object
-	local repository = definition.containing_repository
-	object = repository.definition_map[definition.repID]
+local function checktype(value, name, typespec, registry)
+	if type(typespec) == "string" then
+		assert.type(value, typespec, name)
+	elseif type(typespec) == "table" and getmetatable(typespec) then
+		value = registry[value]
+		assert.results(oo.instanceof(value, typespec), "type mismatch")
+	else
+		local new = {}
+		for fieldname, typespec in pairs(typespec) do
+			new[fieldname] = checktype(value[fieldname], fieldname, typespec, registry)
+		end
+		value = new
+	end
+	return value
+end
+
+function IRObject:__init(object, definition, registry)
+	local repository = registry.repository
+	object = repository.definition_map[definition.repID] or
+	         oo.rawnew(self, object)
 	if object ~= definition then                                                  --[[VERBOSE]] verbose:repository(true, definition._type," ",definition.repID or definition.name)
-		object = oo.rawnew(self, object)
 		object.containing_repository = repository
 		object.dependencies = object.dependencies or {}
 		registry[definition] = object
 		registry[object] = object
-		for class in iconstruct(self) do
+		for class in iconstruct(self) do                                            --[[VERBOSE]] verbose:repository("[",class.__idltype,"]")
+			local new
 			local fields = rawget(class, "definition_fields")
 			if fields then
+				new = {}
 				for name, field in pairs(fields) do
-					if definition[name] ~= nil or not field.optional then
-						if type(field.type) == "string" then
-							assert.type(definition[name], field.type, name)
+					local value = definition[name]
+					if value ~= nil or not field.optional then
+						if field.list then
+							assert.type(value, "table", name)
+							new[name] = {}
+							for index, value in ipairs(value) do
+								new[name][index] = checktype(value, name, field.type, registry)
+							end
 						else
-							definition[name] = registry[ definition[name] ]
+							new[name] = checktype(value, name, field.type, registry)
 						end
 					end
 				end
 			end
 			local update = rawget(class, "update")
 			if update then
-				update(object, definition, registry)
+				update(object, new, registry)
 			end
 		end                                                                         --[[VERBOSE]] verbose:repository(false)
+	end
+	if oo.instanceof(object, Container) then
+		if definition.definitions then
+			for name, member in pairs(definition.definitions) do
+				if type(name) == "string" and not name:match("^_") then
+					member = checktype(member, name, Contained, registry)
+					member:move(object, name, member.version)
+				end
+			end
+		end
 	end
 	return object
 end
@@ -198,23 +228,27 @@ end
 --
 -- Implementation
 --
-Contained.version    = "1.0"
+Contained.version = "1.0"
 Contained.definition_fields = {
-	repID                 = { type = "string", optional = true },
-	containing_repository = { type = Repository },
-	defined_in            = { type = Container, optional = true },
-	version               = { type = "string", optional = true },
-	name                  = { type = "string" },
+	defined_in = { type = Container, optional = true },
+	repID      = { type = "string" , optional = true },
+	version    = { type = "string" , optional = true },
+	name       = { type = "string" },
 }
 
 function Contained:update(new)
-	new.defined_in = new.defined_in or new.containing_repository
+
+if new == nil then verbose:debug() end
+
+	new.defined_in = new.defined_in or self.containing_repository
 	if new.defined_in.containing_repository ~= self.containing_repository then
 		assert.illegal(defined_in,
 		              "container, repository does not match",
 		              "BAD_PARAM")
 	end
-	if new.repID then self:_set_id(new.repID) end
+	if new.repID then
+		self:_set_id(new.repID)
+	end
 	self:move(new.defined_in, new.name, new.version)
 end
 
@@ -303,19 +337,8 @@ end
 --
 -- Implementation
 --
-Container.definition_fields = {
-	definitions = { type = "table", optional = true },
-}
-function Container:update(new, registry)
+function Container:update()
 	self.definitions = self.expandable and self.definitions or {}
-	if new.definitions then
-		for name, member in pairs(new.definitions) do
-			if type(name) == "string" and not name:match("^_") then
-				member = self:associate(registry[member], "definitions")
-				member:move(self, name, self.version)
-			end
-		end
-	end
 end
 
 local single
@@ -541,27 +564,30 @@ end
 --------------------------------------------------------------------------------
 
 local PrimitiveTypes = {
-	pk_null     = idl.null,
-	pk_void     = idl.void,
-	pk_short    = idl.short,
-	pk_long     = idl.long,
-	pk_ushort   = idl.ushort,
-	pk_ulong    = idl.ulong,
-	pk_float    = idl.float,
-	pk_double   = idl.double,
-	pk_boolean  = idl.boolean,
-	pk_char     = idl.char,
-	pk_octet    = idl.octet,
-	pk_any      = idl.any,
-	pk_TypeCode = idl.TypeCode,
-	pk_string   = idl.string,
-	pk_objref   = idl.Object("IDL:omg.org/CORBA/Object:1.0"),
+	pk_null       = idl.null,
+	pk_void       = idl.void,
+	pk_short      = idl.short,
+	pk_long       = idl.long,
+	pk_longlong   = idl.longlong,
+	pk_ushort     = idl.ushort,
+	pk_ulong      = idl.ulong,
+	pk_ulonglong  = idl.ulonglong,
+	pk_float      = idl.float,
+	pk_double     = idl.double,
+	pk_longdouble = idl.double,
+	pk_boolean    = idl.boolean,
+	pk_char       = idl.char,
+	pk_octet      = idl.octet,
+	pk_any        = idl.any,
+	pk_TypeCode   = idl.TypeCode,
+	pk_string     = idl.string,
+	pk_objref     = idl.object,
 }
 
 PrimitiveDef.def_kind = "dk_Primitive"
 
-function PrimitiveDef:__init(definition)
-	self = oo.rawnew(self, definition)
+function PrimitiveDef:__init(object)
+	self = oo.rawnew(self, object)
 	IDLType.update(self)
 	return self
 end
@@ -585,7 +611,7 @@ ArrayDef._type = "array"
 ArrayDef.def_kind = "dk_Array"
 ArrayDef.definition_fields = {
 	maxlength   = { type = "number" },
-	elementtype = { type = IDLType },
+	elementtype = { type = IDLType  },
 }
 
 function ArrayDef:update(new)
@@ -607,7 +633,7 @@ SequenceDef.def_kind = "dk_Sequence"
 SequenceDef.maxlength = 0
 SequenceDef.definition_fields = {
 	maxlength   = { type = "number", optional = true },
-	elementtype = { type = IDLType },
+	elementtype = { type = IDLType  },
 }
 
 SequenceDef.update = ArrayDef.update
@@ -676,41 +702,27 @@ OperationDef.exceptions = Empty
 OperationDef.result = idl.void
 OperationDef.definition_fields = {
 	defined_in = { type = InterfaceDef },
-	oneway = { type = "boolean", optional = true },
-	contexts = { type = "table", optional = true },
-	parameters = { type = "table", optional = true },
-	exceptions = { type = "table", optional = true },
-	result = { type = IDLType, optional = true },
+	oneway     = { type = "boolean"   , optional = true },
+	contexts   = { type = "table"     , optional = true },
+	exceptions = { type = ExceptionDef, optional = true, list = true },
+	result     = { type = IDLType     , optional = true },
+	parameters = { type = {
+		name = "string",
+		type = IDLType,
+	}, optional = true, list = true },
 }
 
-function OperationDef:update(new, registry)
+function OperationDef:update(new)
 	self:_set_mode(new.oneway and "OP_ONEWAY" or "OP_NORMAL")
-	if new.result then
-		self:_set_result_def(new.result)
-	end
-	
+	if new.exceptions then self:_set_exceptions(new.exceptions) end
+	if new.result then self:_set_result_def(new.result) end
 	if new.parameters then
-		local parameters = {}
-		for index, param in ipairs(new.parameters) do
-			local type_def = registry[param.type]
-			parameters[index] = {
-				name = param.name,
-				mode = param.mode,
-				type_def = type_def,
-				type = type_def.type,
-			}
+		for _, param in ipairs(new.parameters) do
+			param.type_def = param.type
+			param.type = param.type_def.type
 		end
-		self:_set_params(parameters)
+		self:_set_params(new.parameters)
 	end
-	
-	if new.exceptions then
-		local exceptions = {}
-		for index, except in ipairs(new.exceptions) do
-			exceptions[index] = registry[except]
-		end
-		self:_set_exceptions(exceptions)
-	end
-	
 	self.contexts = new.contexts
 end
 
@@ -783,16 +795,20 @@ function OperationDef:_set_exceptions(excepts)
 		exceptions[index] = except
 		exceptions[except.repID] = except:get_description().type
 	end
-	self.exceptions = excepts
+	self.exceptions = exceptions
 end
 
 function OperationDef:get_description()
+	local exceptions = {}
+	for _, except in ipairs(self.exceptions) do
+		exceptions[#exceptions+1] = except:describe().value
+	end
 	return setmetatable({
 		result     = self.result,
 		mode       = self.mode,
 		contexts   = self.contexts,
 		parameters = self.parameters,
-		exceptions = self.exceptions,
+		exceptions = exceptions,
 	}, iridl.OperationDescription)
 end
 
@@ -811,21 +827,23 @@ StructDef._type = "struct"
 StructDef.def_kind = "dk_Struct"
 StructDef.fields = Empty
 StructDef.definition_fields = {
-	fields = { type = "table", optional = true },
+	fields = {
+		type = {
+			name = "string",
+			type = IDLType,
+		},
+		optional = true,
+		list = true,
+	},
 }
 
-function StructDef:update(new, registry)
+function StructDef:update(new)
 	if new.fields then
-		local fields = {}
-		for index, field in ipairs(new.fields) do
-			local type_def = registry[field.type]
-			fields[index] = {
-				name = field.name,
-				type_def = type_def,
-				type = type_def.type,
-			}
+		for _, field in ipairs(new.fields) do
+			field.type_def = field.type
+			field.type = field.type_def.type
 		end
-		self:_set_members(fields)
+		self:_set_members(new.fields)
 	end
 end
 
@@ -852,24 +870,23 @@ UnionDef.default = -1
 UnionDef.options = Empty
 UnionDef.members = Empty
 UnionDef.definition_fields = {
-	switch = { type = IDLType },
-	options = { type = "table", optional = true },
+	switch  = { type = IDLType },
 	default = { type = "number", optional = true },
+	options = { type = {
+		label = nil,
+		name = "string",
+		type = IDLType,
+	}, optional = true, list = true },
 }
 
-function UnionDef:update(new, registry)
+function UnionDef:update(new)
 	self:_set_discriminator_type_def(new.switch)
 	
 	if new.options then
-		local members = {}
-		for index, option in ipairs(new.options) do
-			local type_def = registry[option.type]
-			members[index] = {
-				name = option.name,
-				label = setmetatable({ option.label }, self.switch),
-				type_def = type_def,
-				type = type_def.type,
-			}
+		for _, option in ipairs(new.options) do
+			option.label    = setmetatable({ option.label }, self.switch)
+			option.type_def = option.type
+			option.type     = option.type_def.type
 		end
 		self:_set_members(members)
 	end
@@ -908,7 +925,7 @@ end
 EnumDef._type = "enum"
 EnumDef.def_kind = "dk_Enum"
 EnumDef.definition_fields = {
-	enumvalues = { type = "table" },
+	enumvalues = { type = "string", list = true },
 }
 
 function EnumDef:update(new)
@@ -950,7 +967,7 @@ Repository.absolute_name = ""
 
 function Repository:__init(object)
 	self = oo.rawnew(self, object)
-	self.containing_repository = self.containing_repository or self
+	self.containing_repository = self
 	self.definition_map        = self.definition_map or {}
 	Container.update(self, self)
 	return self
@@ -1025,20 +1042,18 @@ ExceptionDef._type = "except"
 ExceptionDef.def_kind = "dk_Exception"
 ExceptionDef.members = Empty
 ExceptionDef.definition_fields = {
-	members = { type = "table", optional = true },
+	members = { type = {
+		name = "string",
+		type = IDLType,
+	}, optional = true, list = true },
 }
 
-function ExceptionDef:update(new, registry)
+function ExceptionDef:update(new)
 	self.type = self
 	if new.members then
-		local members = {}
-		for index, member in ipairs(new.members) do
-			local type_def = registry[member.type]
-			members[index] = {
-				name = member.name,
-				type_def = type_def,
-				type = type_def.type,
-			}
+		for _, member in ipairs(new.members) do
+			member.type_def = member.type
+			member.type     = member.type_def.type
 		end
 		self.members = members
 	end
@@ -1055,14 +1070,19 @@ InterfaceDef.def_kind = "dk_Interface"
 InterfaceDef.base_interfaces = Empty
 InterfaceDef.members = Empty
 InterfaceDef.definition_fields = {
-	base_interfaces = { type = "table", optional = true },
-	members = { type = "table", optional = true },
+	base_interfaces = { type = InterfaceDef, optional = true, list = true },
+	members         = { type = "table"     , optional = true },
 }
 
 InterfaceDef.hierarchy = idl.basesof
 
+function InterfaceDef:__init(object, definition, registry)
+	object = object or {}
+	object.members = object.members or {}
+	return IRObject.__init(self, object, definition, registry)
+end
+
 function InterfaceDef:update(new, registry)
-	self.members = {}
 	if new.members then
 		for name, member in pairs(new.members) do
 			if type(name) == "string" then
@@ -1071,11 +1091,7 @@ function InterfaceDef:update(new, registry)
 		end
 	end
 	if new.base_interfaces then
-		local base_interfaces = {}
-		for index, base in ipairs(new.base_interfaces) do
-			base_interfaces[index] = registry[base]
-		end
-		self:_set_base_interfaces(base_interfaces)
+		self:_set_base_interfaces(new.base_interfaces)
 	end
 end
 
@@ -1275,30 +1291,38 @@ local Registry = oo.class()
 
 function Registry:__init(object)
 	self = oo.rawnew(self, object)
-	self[PrimitiveTypes.pk_null    ] = PrimitiveTypes.pk_null
-	self[PrimitiveTypes.pk_void    ] = PrimitiveTypes.pk_void
-	self[PrimitiveTypes.pk_short   ] = PrimitiveTypes.pk_short
-	self[PrimitiveTypes.pk_long    ] = PrimitiveTypes.pk_long
-	self[PrimitiveTypes.pk_ushort  ] = PrimitiveTypes.pk_ushort
-	self[PrimitiveTypes.pk_ulong   ] = PrimitiveTypes.pk_ulong
-	self[PrimitiveTypes.pk_float   ] = PrimitiveTypes.pk_float
-	self[PrimitiveTypes.pk_double  ] = PrimitiveTypes.pk_double
-	self[PrimitiveTypes.pk_boolean ] = PrimitiveTypes.pk_boolean
-	self[PrimitiveTypes.pk_char    ] = PrimitiveTypes.pk_char
-	self[PrimitiveTypes.pk_octet   ] = PrimitiveTypes.pk_octet
-	self[PrimitiveTypes.pk_any     ] = PrimitiveTypes.pk_any
-	self[PrimitiveTypes.pk_TypeCode] = PrimitiveTypes.pk_TypeCode
-	self[PrimitiveTypes.pk_string  ] = PrimitiveTypes.pk_string
-	self[PrimitiveTypes.pk_objref  ] = PrimitiveTypes.pk_objref
-	self[self.repository           ] = self.repository
+	self[PrimitiveTypes.pk_null      ] = PrimitiveTypes.pk_null
+	self[PrimitiveTypes.pk_void      ] = PrimitiveTypes.pk_void
+	self[PrimitiveTypes.pk_short     ] = PrimitiveTypes.pk_short
+	self[PrimitiveTypes.pk_long      ] = PrimitiveTypes.pk_long
+	self[PrimitiveTypes.pk_longlong  ] = PrimitiveTypes.pk_longlong
+	self[PrimitiveTypes.pk_ushort    ] = PrimitiveTypes.pk_ushort
+	self[PrimitiveTypes.pk_ulong     ] = PrimitiveTypes.pk_ulong
+	self[PrimitiveTypes.pk_ulonglong ] = PrimitiveTypes.pk_ulonglong
+	self[PrimitiveTypes.pk_float     ] = PrimitiveTypes.pk_float
+	self[PrimitiveTypes.pk_double    ] = PrimitiveTypes.pk_double
+	self[PrimitiveTypes.pk_longdouble] = PrimitiveTypes.pk_longdouble
+	self[PrimitiveTypes.pk_boolean   ] = PrimitiveTypes.pk_boolean
+	self[PrimitiveTypes.pk_char      ] = PrimitiveTypes.pk_char
+	self[PrimitiveTypes.pk_octet     ] = PrimitiveTypes.pk_octet
+	self[PrimitiveTypes.pk_any       ] = PrimitiveTypes.pk_any
+	self[PrimitiveTypes.pk_TypeCode  ] = PrimitiveTypes.pk_TypeCode
+	self[PrimitiveTypes.pk_string    ] = PrimitiveTypes.pk_string
+	self[PrimitiveTypes.pk_objref    ] = PrimitiveTypes.pk_objref
+	self[self.repository             ] = self.repository
 	return self
 end
 
 function Registry:__index(definition)
-	local class = Classes[definition._type]
-	definition.containing_repository = self.repository
-	definition = class(definition, self)
-	return definition
+	if definition then
+		local class = Classes[definition._type]
+		if class then
+			definition = class(nil, definition, self)
+		elseif oo.classof(definition) == _M then
+			return self.repository
+		end
+		return definition
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -1322,8 +1346,8 @@ function resolve(self, typeref)
 		       self:lookup_id(typeref) or
 		       assert.exception{ "INTERNAL", minor_code_value = 0,
 		       	reason = "interface",
-		       	message = "unknown interface with reference",
-		       	reference = type,
+		       	message = "unknown interface",
+		       	interface = typeref,
 		       }
 	elseif typeref._type == "interface" then
 		return self:register(typeref)

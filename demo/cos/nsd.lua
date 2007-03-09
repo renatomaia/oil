@@ -1,6 +1,8 @@
 require "oil"
 require "oil.cos.naming"
 
+assemble "corba.typed.cooperative.base"
+
 local helpmsg = [[
 Usage:
 	nsd.lua [options]

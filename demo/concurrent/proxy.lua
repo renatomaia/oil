@@ -1,5 +1,4 @@
 require "oil"
-oil.assemble "corba.typed.cooperative.base"
 oil.main(function()
 	------------------------------------------------------------------------------
 	local server = oil.newproxy(assert(oil.readfrom("server.ior")))

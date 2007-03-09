@@ -5,7 +5,6 @@ end
 local arg = {...}
 --------------------------------------------------------------------------------
 require "oil"
-oil.assemble "corba.typed.cooperative.base"
 oil.main(function()
 	------------------------------------------------------------------------------
 	local proxy = oil.newproxy(assert(oil.readfrom("proxy.ior")))

@@ -1,6 +1,6 @@
 # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
 
-LUA_HOME= /Users/maia/Applications/lua-5.1.1
+LUA_HOME= /usr/local
 LUA_INC= $(LUA_HOME)/include
 LUA_LIB= $(LUA_HOME)/lib
 LUA_BIN= $(LUA_HOME)/bin
@@ -24,16 +24,25 @@ INSTALL_DATA= cp -r
 #INSTALL_EXEC= install -m 0755
 #INSTALL_DATA= install -m 0644
 
+# Add any necessary compilation flags.
+#
+MYCFLAGS=
+MYLDFLAGS=
+
+# If the lua_Number of your Lua compilation can store casted values of
+# 'long long', 'unsigned long long' and 'long double' then you can uncomment the
+# following line to add support for CORBA large numeric types.
+#
+#MYCFLAGS+= -DLARGE_NUMBERS
+
 # If you are using Lua-5.0.2 then uncomment the following line to include the
 # compatibility module.
 #
 #COMPAT_51= compat-5.1.o
 #INSTALL_LMOD= $(INSTALL_TOP)/share/lua/5.0
 #INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/5.0
-#MYCFLAGS= -DCOMPAT_51
-#MYLIBS= -llualib
-
-MYLDFLAGS=
+#MYCFLAGS+= -DCOMPAT_51
+#MYLIBS+= -llualib
 
 # == END OF USER SETTINGS. NO NEED TO CHANGE ANYTHING BELOW THIS LINE =========
 

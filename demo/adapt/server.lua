@@ -1,5 +1,4 @@
 require "oil"
-oil.assemble "corba.typed.cooperative.base"
 oil.main(function()
 	------------------------------------------------------------------------------
 	oil.loadidl [[

@@ -1,7 +1,5 @@
 require "oil"                                    -- Load OiL package
 
-oil.assemble "corba.typed.base"                  -- Customize OiL
-
 oil.loadidl [[                                   // Load the interface IDL
 	interface Hello {
 		attribute boolean quiet;

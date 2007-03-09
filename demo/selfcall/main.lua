@@ -1,7 +1,5 @@
 require "oil"
 
-oil.assemble "corba.typed.cooperative.base"
-
 oil.loadidl("interface MyObject { void shutdown(); };")
 
 oil.main(function()

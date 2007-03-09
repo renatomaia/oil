@@ -16,7 +16,7 @@ function create(factories, comps)
 	return comps
 end
 
-local NamePat    = "[^%.]+"
+local NamePat    = "[^;]+"
 local FactoryFrm = "oil.builder.%s"
 local ArchFrm    = "oil.arch.%s"
 function build(customization) -- corba.cooperative

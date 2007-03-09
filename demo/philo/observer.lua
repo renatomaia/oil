@@ -41,7 +41,6 @@ end
 --------------------------------------------------------------------------------
 
 require "oil"
-oil.assemble "corba.typed.cooperative.base"
 oil.main(function()
 	oil.loadidlfile("philo.idl")
 	oil.writeto("observer.ior", oil.tostring(oil.newobject(ObserverHome, "ObserverHome")))

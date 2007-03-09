@@ -2,11 +2,9 @@ if select("#", ...) == 0 then
 	io.stderr:write "usage: lua client.lua <time of client 1>, <time of client 2>, ..."
 	os.exit(-1)
 end
+local arg = {...}
 --------------------------------------------------------------------------------
 require "oil"
-oil.assemble "corba.typed.cooperative.base"
---------------------------------------------------------------------------------
-local arg = {...}
 oil.main(function()
 	------------------------------------------------------------------------------
 	oil.loadidl [[

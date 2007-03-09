@@ -21,7 +21,11 @@ static const char svn_id[] = "$Id$";
 
 typedef unsigned char byte;
 
+#ifdef LARGE_NUMBERS
+typedef unsigned long long bits;
+#else
 typedef unsigned long bits;
+#endif
 
 typedef void (*AddIntegerFunction)(luaL_Buffer*, lua_Number, size_t);
 
@@ -42,13 +46,21 @@ static bits to2comp(lua_Number value) {
 }
 
 static lua_Number putsign(bits value, size_t size) {
+#ifdef LARGE_NUMBERS
+	bits mask = (~0ULL)<<(size*8-1);
+#else
 	bits mask = (~0UL)<<(size*8-1);
+#endif
 	if (value & mask) return -(lua_Number)((value ^ ~(mask<<1)) + 1);
 	else              return  (lua_Number)value;
 }
 
 static int is_littleendian() {
+#ifdef LARGE_NUMBERS
+	bits i = 1ULL;
+#else
 	bits i = 1UL;
+#endif
 	return *((byte*)&i) == 1;
 }
 
@@ -161,7 +173,13 @@ static int b_pack(lua_State *L) {
 		size_t size = 1;
 		lua_rawgeti(L, 2, i);
 		switch (*format) {
+#ifdef LARGE_NUMBERS
+			case 'D':
+#endif
 			case 'f': case 'd': size = 0;
+#ifdef LARGE_NUMBERS
+			case 'g': case 'G': size *= 2;
+#endif
 			case 'l': case 'L': size *= 2;
 			case 's': case 'S': size *= 2;
 			case 'b': case 'B': {
@@ -172,14 +190,24 @@ static int b_pack(lua_State *L) {
 				if (size) {
 					add_integer(&b, number, size);
 				} else {
-					if (*format == 'f') {
-						float value;
-						value = (float)number;
-						luaL_addlstring(&b, (char*)&value, sizeof(value));
-					} else {
-						double value;
-						value = (double)number;
-						luaL_addlstring(&b, (char*)&value, sizeof(value));
+					switch (*format) {
+						case 'f': {
+							float value;
+							value = (float)number;
+							luaL_addlstring(&b, (char*)&value, sizeof(value));
+						} break;
+						case 'd': {
+							double value;
+							value = (double)number;
+							luaL_addlstring(&b, (char*)&value, sizeof(value));
+						} break;
+#ifdef LARGE_NUMBERS
+						case 'D': {
+							long double value;
+							value = (long double)number;
+							luaL_addlstring(&b, (char*)&value, sizeof(value));
+						} break;
+#endif
 					}
 				}
 			}	break;
@@ -214,16 +242,28 @@ static int b_unpack(lua_State *L) {
 			case 'b': case 'B': size = 1; break;
 			case 's': case 'S': size = 2; break;
 			case 'l': case 'L': size = 4; break;
+#ifdef LARGE_NUMBERS
+			case 'g': case 'G': size = 8; break;
+#endif
 			case 'f': size = sizeof(float); break;
 			case 'd': size = sizeof(double); break;
+#ifdef LARGE_NUMBERS
+			case 'D': size = sizeof(long double); break;
+#endif
 			default: luaL_error(L, "invalid format character, got '%c'", *format);
 		}
 		luaL_argcheck(L, stream + size <= strend, 2, "insufficient data in stream");
 		switch (*format) {
 			case 'b': case 's': case 'l':
+#ifdef LARGE_NUMBERS
+			case 'g':
+#endif
 				lua_pushnumber(L, putsign(get_integer((const byte*)stream, size), size));
 				break;
 			case 'B': case 'S': case 'L':
+#ifdef LARGE_NUMBERS
+			case 'G':
+#endif
 				lua_pushnumber(L, (lua_Number)get_integer((const byte*)stream, size));
 				break;
 			case 'f':
@@ -232,6 +272,11 @@ static int b_unpack(lua_State *L) {
 			case 'd':
 				lua_pushnumber(L, (lua_Number)*((double*)stream));
 				break;
+#ifdef LARGE_NUMBERS
+			case 'D':
+				lua_pushnumber(L, (lua_Number)*((long double*)stream));
+				break;
+#endif
 		}
 		stream += size;
 	}
@@ -258,7 +303,13 @@ static int b_invpack(lua_State *L) {
 		size_t size = 1;
 		lua_rawgeti(L, 2, i);
 		switch (*format) {
+#ifdef LARGE_NUMBERS
+			case 'D':
+#endif
 			case 'f': case 'd': size = 0;
+#ifdef LARGE_NUMBERS
+			case 'g': case 'G': size *= 2;
+#endif
 			case 'l': case 'L': size *= 2;
 			case 's': case 'S': size *= 2;
 			case 'b': case 'B': {
@@ -269,16 +320,27 @@ static int b_invpack(lua_State *L) {
 				if (size) {
 					add_inverted_integer(&b, number, size);
 				} else {
-					if (*format == 'f') {
-						float value;
-						value = (float)number;
-						invert_bytes((byte*)&value, sizeof(value));
-						luaL_addlstring(&b, (char*)&value, sizeof(value));
-					} else {
-						double value;
-						value = (double)number;
-						invert_bytes((byte*)&value, sizeof(value));
-						luaL_addlstring(&b, (char*)&value, sizeof(value));
+					switch (*format) {
+						case 'f': {
+							float value;
+							value = (float)number;
+							invert_bytes((byte*)&value, sizeof(value));
+							luaL_addlstring(&b, (char*)&value, sizeof(value));
+						} break;
+						case 'd': {
+							double value;
+							value = (double)number;
+							invert_bytes((byte*)&value, sizeof(value));
+							luaL_addlstring(&b, (char*)&value, sizeof(value));
+						} break;
+#ifdef LARGE_NUMBERS
+						case 'D': {
+							long double value;
+							value = (long double)number;
+							invert_bytes((byte*)&value, sizeof(value));
+							luaL_addlstring(&b, (char*)&value, sizeof(value));
+						} break;
+#endif
 					}
 				}
 			}	break;
@@ -313,16 +375,28 @@ static int b_invunpack(lua_State *L) {
 			case 'b': case 'B': size = 1; break;
 			case 's': case 'S': size = 2; break;
 			case 'l': case 'L': size = 4; break;
+#ifdef LARGE_NUMBERS
+			case 'g': case 'G': size = 8; break;
+#endif
 			case 'f': size = sizeof(float); break;
 			case 'd': size = sizeof(double); break;
+#ifdef LARGE_NUMBERS
+			case 'D': size = sizeof(long double); break;
+#endif
 			default: luaL_error(L, "invalid format character, got '%c'", *format);
 		}
 		luaL_argcheck(L, stream + size <= strend, 2, "data string too short");
 		switch (*format) {
 			case 'b': case 's': case 'l':
+#ifdef LARGE_NUMBERS
+			case 'g':
+#endif
 				lua_pushnumber(L, putsign(get_inverted_integer((const byte*)stream, size), size));
 				break;
 			case 'B': case 'S': case 'L':
+#ifdef LARGE_NUMBERS
+			case 'G':
+#endif
 				lua_pushnumber(L, (lua_Number)get_inverted_integer((const byte*)stream, size));
 				break;
 			case 'f': {
@@ -335,6 +409,13 @@ static int b_invunpack(lua_State *L) {
 				inverted_copy((const byte*)stream, (byte*)&value, sizeof(value));
 				lua_pushnumber(L, (lua_Number)value);
 			} break;
+#ifdef LARGE_NUMBERS
+			case 'D': {
+				long double value;
+				inverted_copy((const byte*)stream, (byte*)&value, sizeof(value));
+				lua_pushnumber(L, (lua_Number)value);
+			} break;
+#endif
 		}
 		stream += size;
 	}

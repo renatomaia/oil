@@ -94,7 +94,7 @@ local function to_string(n)
 	end
 	local sn = table.concat(n, "/")
 	if sn == "" then
-		assert.raise{"IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0" }
+		assert.exception{"IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0" }
 	end
 	return sn
 end
@@ -124,7 +124,7 @@ local function to_name(sn)
 				inKindMode = true
 			elseif cur == "/" or i == string.len(sn)+1 then
 				if last == "/" then
-					assert.raise{"IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0" }
+					assert.exception{"IDL:omg.org/CosNaming/NamingContext/InvalidName:1.0" }
 				else
 					table.insert(n, {id=id, kind=kind})
 					id = ""
@@ -147,7 +147,7 @@ end
 --------------------------------------------------------------------------------
 -- BindingIterator interface implementation ------------------------------------
 
-local BindingIterator = oo.class()
+BindingIterator = oo.class()
 
 function BindingIterator:__init(bindings)
 	return oo.rawnew(self, {bindings = bindings})
@@ -155,7 +155,7 @@ end
 
 function BindingIterator:next_one()
 	if not self.bindings then
-		assert.raise{"IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"}
+		assert.exception{"IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"}
 	end
 	local obj = table.remove(self.bindings, 1)
 	return (obj~=nil), obj
@@ -163,11 +163,11 @@ end
 
 function BindingIterator:next_n(how_many)
 	if not self.bindings then
-		assert.raise{"IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"}
+		assert.exception{"IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"}
 	end
 	local bl = {}
 	if how_many == 0 then
-		assert.raise{"IDL:omg.org/CORBA/BAD_PARAM:1.0"}
+		assert.exception{"IDL:omg.org/CORBA/BAD_PARAM:1.0"}
 	end
 	for i=1,table.getn(self.bindings) do
 		if i > how_many then break end
@@ -178,7 +178,7 @@ end
 
 function BindingIterator:destroy()
 	if not self.bindings then
-		assert.raise{"IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"}
+		assert.exception{"IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"}
 	end
 	self.bindings = nil
 end
@@ -186,7 +186,7 @@ end
 --------------------------------------------------------------------------------
 -- NamingContext interface implementation --------------------------------------
 
-local NamingContext = oo.class()
+NamingContext = oo.class()
 
 function NamingContext:__init()
 	return oo.rawnew(self, {bindings = MapWithKeyArray()})
@@ -197,13 +197,13 @@ function NamingContext:bind(n, obj)
 	local r = self.bindings:value(sn)
 	if table.getn(n) > 1 then
 		if not r then
-			assert.raise{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
+			assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 				why = "missing_node",
 				rest_of_name = n
 			}
 		else
 			if r.binding_type ~= "ncontext" then
-				assert.raise{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
+				assert.exception{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
 					cxt = self,
 					rest_of_name = n
 				}
@@ -214,7 +214,7 @@ function NamingContext:bind(n, obj)
 		end
 	else
 		if r then
-			assert.raise{"IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"}
+			assert.exception{"IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"}
 		else
 			self.bindings:add(sn, {binding_type="nobject", obj=obj})
 		end
@@ -226,13 +226,13 @@ function NamingContext:rebind(n, obj)
 	local r = self.bindings:value(sn)
 	if table.getn(n) > 1 then
 		if not r then
-			assert.raise{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
+			assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 				why = "missing_node",
 				rest_of_name = n
 			}
 		else
 			if r.binding_type ~= "ncontext" then
-				assert.raise{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
+				assert.exception{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
 					cxt = self,
 					rest_of_name = n
 				}
@@ -244,7 +244,7 @@ function NamingContext:rebind(n, obj)
 	else
 		if r then
 			if r.binding_type ~= "nobject" then
-				assert.raise{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
+				assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 					why = "not_object",
 					rest_of_name = {n[1]}
 				}
@@ -258,18 +258,18 @@ function NamingContext:rebind(n, obj)
 end
 
 function NamingContext:bind_context(n, nc)
-	if not nc then assert.raise{"IDL:omg.org/CORBA/BAD_PARAM:1.0"} end
+	if not nc then assert.exception{"IDL:omg.org/CORBA/BAD_PARAM:1.0"} end
 	local sn, except = to_string({n[1]})
 	local r = self.bindings:value(sn)
 	if table.getn(n) > 1 then
 		if not r then
-			assert.raise{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
+			assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 				why = "missing_node",
 				rest_of_name = n
 			}
 		else
 			if r.binding_type ~= "ncontext" then
-				assert.raise{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
+				assert.exception{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
 					cxt = self,
 					rest_of_name = n
 				}
@@ -280,7 +280,7 @@ function NamingContext:bind_context(n, nc)
 		end
 	else
 		if r then
-			assert.raise{"IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"}
+			assert.exception{"IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"}
 		else
 			self.bindings:add(sn, {binding_type="ncontext", obj=nc})
 		end
@@ -288,18 +288,18 @@ function NamingContext:bind_context(n, nc)
 end
 
 function NamingContext:rebind_context(n, nc)
-	if not nc then assert.raise{"IDL:omg.org/CORBA/BAD_PARAM:1.0"} end
+	if not nc then assert.exception{"IDL:omg.org/CORBA/BAD_PARAM:1.0"} end
 	local sn, except = to_string({n[1]})
 	local r = self.bindings:value(sn)
 	if table.getn(n) > 1 then
 		if not r then
-			assert.raise{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
+			assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 				why = "missing_node",
 				rest_of_name = n
 			}
 		else
 			if r.binding_type ~= "ncontext" then
-				assert.raise{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
+				assert.exception{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
 					cxt = self,
 					rest_of_name = n
 				}
@@ -311,7 +311,7 @@ function NamingContext:rebind_context(n, nc)
 	else
 		if r then
 			if r.binding_type ~= "ncontext" then
-				assert.raise{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
+				assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 					why = "not_context",
 					rest_of_name = {n[1]}
 				}
@@ -328,13 +328,13 @@ function NamingContext:resolve(n)
 	local sn, except = to_string({n[1]})
 	local r = self.bindings:value(sn)
 	if not r then
-		assert.raise{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
+		assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 			why = "missing_node",
 			rest_of_name = n
 		}
 	elseif table.getn(n) > 1 then
 		if r.binding_type ~= "ncontext" then
-			assert.raise{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
+			assert.exception{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
 				cxt = self,
 				rest_of_name = n
 			}
@@ -351,13 +351,13 @@ function NamingContext:unbind(n)
 	local sn, except = to_string({n[1]})
 	local r = self.bindings:value(sn)
 	if not r then
-		assert.raise{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
+		assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 			why = "missing_node",
 			rest_of_name = n
 		}
 	elseif table.getn(n) > 1 then
 		if r.binding_type ~= "ncontext" then
-			assert.raise{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
+			assert.exception{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
 				cxt = self,
 				rest_of_name = n
 			}
@@ -383,7 +383,7 @@ end
 
 function NamingContext:destroy()
 	if self.bindings:size() > 0 then
-		assert.raise{"IDL:omg.org/CosNaming/NamingContext/NotEmpty:1.0" }
+		assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotEmpty:1.0" }
 	else
 		self.bindings = nil
 	end
@@ -412,7 +412,7 @@ end
 --------------------------------------------------------------------------------
 -- NamingContextExt interface implementation -----------------------------------
 
-local NamingContextExt = oo.class({}, NamingContext)
+NamingContextExt = oo.class({}, NamingContext)
 
 function NamingContextExt:to_string(n)
 	return to_string(n)
@@ -425,7 +425,7 @@ end
 function NamingContextExt:to_url(addr, sn)
 	local url = {"corbaname:", addr}
 	if not addr or addr == "" then
-		assert.raise{"IDL:omg.org/CosNaming/NamingContextExt/InvalidAddress:1.0" }
+		assert.exception{"IDL:omg.org/CosNaming/NamingContextExt/InvalidAddress:1.0" }
 	end
 	if sn and string.len(sn) > 0 then
 		local esn = to_url_escape(sn)

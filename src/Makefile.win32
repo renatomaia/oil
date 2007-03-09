@@ -138,7 +138,7 @@ ALL_TRG=	$(OILBIT_LIB)
 ALL_LIB=	$(OILBIT_LIB)
 ALL_EXT=	$(OILBIT_EXT) $(PRECMP_EXT) $(PRELDR_EXT)
 
-all:	$(ALL_TRG)
+all:	$(ALL_TRG) bundles preload
 
 obj:	$(ALL_OBJ)
 

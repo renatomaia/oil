@@ -42,24 +42,31 @@ context = false
 --------------------------------------------------------------------------------
 -- connection management
 
-local function reset_wrapped_socket(self)
+local function reset_wrapped_socket(self)                                       --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
-	local success, errmsg = self.factory.context.sockets:connect(self.host,
-	                                                             self.port)
-	if success then
-		self.__object, success = success.__object, true
+	local sockets = self.factory.context.sockets
+	local result, errmsg = sockets:tcp()
+	if result then
+		local success
+		success, errmsg = success:connect(self.host, self.port)
+		if success then
+			self.__object, result  = result.__object, true
+		end
 	end
-	return success, errmsg
+	return result, errmsg
 end
 
-local function reset_plain_socket(self)
+local function reset_plain_socket(self)                                         --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
-	local success, errmsg = self.factory.context.sockets:connect(self.host,
-	                                                             self.port)
-	if success then
-		self.__object, success = success, true
+	local result, errmsg = sockets:tcp()
+	if result then
+		local success
+		success, errmsg = success:connect(self.host, self.port)
+		if success then
+			self.__object, result  = result, true
+		end
 	end
-	return success, errmsg
+	return result, errmsg
 end
 
 local empty = {}

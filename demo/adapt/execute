@@ -1,0 +1,39 @@
+#!/bin/sh
+
+echo "Starting server"
+
+rm -f *.ior
+
+lua server.lua &
+server_pid=$!
+
+trap "kill $server_pid > /dev/null 2> /dev/null" 0
+
+for((i=0;i<10;++i)); do
+	if test -r server.ior && test -r serveradaptor.ior
+		then break
+		else sleep 1
+	fi
+done
+
+echo "Starting server proxy"
+
+lua proxy.lua &
+proxy_pid=$!
+
+trap "kill $server_pid $proxy_pid > /dev/null 2> /dev/null" 0
+
+for((i=0;i<10;++i)); do
+	if test -r proxy.ior && test -r proxyadaptor.ior
+		then break
+		else sleep 1
+	fi
+done
+
+echo "Starting client"
+
+lua client.lua 4.9 1 3 2.9
+
+echo "Demo finished."
+
+rm -f *.ior

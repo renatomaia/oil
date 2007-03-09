@@ -86,19 +86,22 @@ module "oil.corba.idl"                                                          
 local DefaultTypeName = ""
 
 local BasicTypes = {
-	null     = true,
-	void     = true,
-	short    = true,
-	long     = true,
-	ushort   = true,
-	ulong    = true,
-	float    = true,
-	double   = true,
-	boolean  = true,
-	char     = true,
-	octet    = true,
-	any      = true,
-	TypeCode = true,
+	null       = true,
+	void       = true,
+	short      = true,
+	long       = true,
+	longlong   = true,
+	ushort     = true,
+	ulong      = true,
+	ulonglong  = true,
+	float      = true,
+	double     = true,
+	longdouble = true,
+	boolean    = true,
+	char       = true,
+	octet      = true,
+	any        = true,
+	TypeCode   = true,
 }
 
 local UserTypes = {
@@ -138,9 +141,21 @@ function isspec(object)
 	       )
 end
 
+assert.TypeCheckers["idl type"]    = istype
+assert.TypeCheckers["idl def."]    = isspec
+assert.TypeCheckers["^idl (%l+)$"] = function(value, name)
+	if istype(value)
+		then return (value._type == name), ("idl "..name.." type")
+		else return false, name
+	end
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
 local function checkfield(field)
 	assert.type(field.name, "string", "field name")
-	assert.type(field.type, "type", "field type")
+	assert.type(field.type, "idl type", "field type")
 end
 
 local function checkfields(fields)
@@ -245,7 +260,10 @@ function Object(def)
 		else assert.type(def, "table", "Object type definition")
 	end
 	assert.type(def.repID, "string", "Object type repository ID")
-	def._type = "Object"
+	if def.repID == "IDL:omg.org/CORBA/Object:1.0"
+		then def = object
+		else def._type = "Object"
+	end
 	return def
 end
 
@@ -260,7 +278,7 @@ end
 function union(def)
 	newdef(def, true)
 	if def.default == nil then def.default = -1 end -- indicates no default in CDR
-	assert.type(def.switch, "type", "union type discriminant")
+	assert.type(def.switch, "idl type", "union type discriminant")
 	assert.type(def.options, "table", "union options definition")
 	
 	def.selector = {} -- maps field names to labels (option selector)
@@ -309,7 +327,7 @@ function sequence(def)
 	if def.maxlength   == nil then def.maxlength = 0 end
 	if def.elementtype == nil then def.elementtype = def[1] end
 	assert.type(def.maxlength, "number", "sequence type maximum length ")
-	assert.type(def.elementtype, "type", "sequence element type")
+	assert.type(def.elementtype, "idl type", "sequence element type")
 	def._type = "sequence"
 	return def
 end
@@ -317,7 +335,7 @@ end
 function array(def)
 	assert.type(def.length, "number", "array type length")
 	if def.elementtype == nil then def.elementtype = def[1] end
-	assert.type(def.elementtype, "type", "array element type")
+	assert.type(def.elementtype, "idl type", "array element type")
 	def._type = "array"
 	return def
 end
@@ -325,7 +343,7 @@ end
 function typedef(def)
 	newdef(def)
 	if def.type  == nil then def.type  = def[1] end
-	assert.type(def.type, "type", "type in typedef definition")
+	assert.type(def.type, "idl type", "type in typedef definition")
 	def._type = "typedef"
 	return def
 end
@@ -346,7 +364,7 @@ end
 function attribute(def)
 	newdef(def)
 	if def.type  == nil then def.type = def[1] end
-	assert.type(def.type, "type", "attribute type")
+	assert.type(def.type, "idl type", "attribute type")
 
 	local mode = def.mode
 	if mode == "ATTR_READONLY" then
@@ -397,7 +415,7 @@ function operation(def)
 
 	if def.exceptions then
 		for _, except in ipairs(def.exceptions) do
-			assert.type(except, "idlexcept", "raised exception")
+			assert.type(except, "idl except", "raised exception")
 			if def.exceptions[except.repID] ~= nil then
 				assert.illegal(except.repID,
 					"exception raise defintion, got duplicated repository ID")
@@ -449,6 +467,10 @@ end
 --------------------------------------------------------------------------------
 -- IDL types used in the implementation of OiL ---------------------------------
 
+object = interface{
+	repID = "IDL:omg.org/CORBA/Object:1.0",
+	name = "Object",
+}
 OctetSeq = sequence{octet}
 Version = struct{{ type = octet, name = "major" },
                  { type = octet, name = "minor" }}

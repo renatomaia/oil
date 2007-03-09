@@ -1,5 +1,5 @@
 require "oil"
-oil.assemble "corba.typed.base"
+
 oil.main(function()
 	oil.loadidlfile("hello.idl")
 

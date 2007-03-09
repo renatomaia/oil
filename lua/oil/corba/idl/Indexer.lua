@@ -65,9 +65,9 @@ end
 -- Interface Operations --------------------------------------------------------
 
 function interfaceof(self, name)
-	local interfaces = self.context.interfaces
-	return interfaces:lookup_id(name) or
-	       interfaces:lookup(name) or
+	local types = self.context.types
+	return types:lookup_id(name) or
+	       types:lookup(name) or
 	       assert.exception{ "INTERNAL", minor_code_value = 0,
 	       	message = "unknown interface repository ID",
 	       	reason = "interface",

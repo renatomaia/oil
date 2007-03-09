@@ -141,7 +141,7 @@ ALL_SOL=	$(OILBIT_SOL)
 
 madefault: $(PLAT)
 
-all:	$(ALL_TRG)
+all:	$(ALL_TRG) bundle preload
 
 o:	$(ALL_OBJ)
 
@@ -161,11 +161,29 @@ oil.c oil.h: $(PRECMP_LUA)
 oilall.c oilall.h: $(PRELDR_LUA) $(PRECMP_INC) $(OILBIT_INC)
 	$(LUAINT) $(PRELDR_LUA) $(PLD_FLAGS) -f oilall $(PRECMP_INC) $(OILBIT_INC)
 
+# OIL BIT LIBRARY
+
 $(OILBIT_LIB): $(OILBIT_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
 
 $(OILBIT_SOL): $(OILBIT_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $?
+
+# BUNDLED LIBRARIES
+
+bundlelib: $(PRECMP_OBJ)
+	$(AR) libloop.a loop.o            ; $(RANLIB) libloop.a
+	$(AR) libluaidl.a luaidl.o        ; $(RANLIB) libluaidl.a
+	$(AR) liboil.a oil.o $(OILBIT_OBJ); $(RANLIB) liboil.a
+
+bundleso: $(OILBIT_OBJ) $(PRECMP_OBJ)
+	$(LD) $(LDFLAGS) -o libloop.$V.so      loop.o
+	$(LD) $(LDFLAGS) -o libluaidl.$V.so    luaidl.o
+	$(LD) $(LDFLAGS) -o liboil.$V.so       oil.o $(OILBIT_OBJ)
+
+bundle: bundlelib bundleso
+
+# PRELOAD LIBRARY
 
 $(PRELDR_LIB): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
@@ -173,20 +191,12 @@ $(PRELDR_LIB): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ)
 $(PRELDR_SOL): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $?
 
+preload: $(PRELDR_LIB) $(PRELDR_SOL)
+
+# STAND-ALONE CONSOLE
+
 $(OILBIN_TRG): $(COMPAT_51) $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ) $(OILBIN_OBJ)
 	$(CC) $(LDFLAGS) -o $@ $? $(LIBS)
-
-bundlelibs: $(OILBIT_OBJ) $(PRECMP_OBJ)
-	$(AR) libloop.a loop.o            ; $(RANLIB) libloop.a
-	$(AR) libluaidl.a luaidl.o        ; $(RANLIB) libluaidl.a
-	$(AR) liboil.a oil.o $(OILBIT_OBJ); $(RANLIB) liboil.a
-
-bundles: $(OILBIT_OBJ) $(PRECMP_OBJ)
-	$(LD) -shared -o libloop.$V.so      loop.o
-	$(LD) -shared -o libluaidl.$V.so    luaidl.o
-	$(LD) -shared -o liboil.$V.so       oil.o $(OILBIT_OBJ)
-
-preload: $(PRELDR_LIB) $(PRELDR_SOL)
 
 clean:
 	$(RM) $(ALL_TRG) $(ALL_OBJ) $(ALL_PRE)
@@ -210,11 +220,12 @@ none:
 	@echo "Please choose a platform: $(PLATS)"
 
 linux:
-	$(MAKE) all MYCFLAGS="-fpic" MYLDFLAGS="-Wl,-E -O -shared"
+	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
+	            MYLDFLAGS="-Wl,-E -O -shared $(MYLDFLAGS)"
 
 macosx:
-	$(MAKE) all MYCFLAGS="-fno-common" \
-	            MYLDFLAGS="-bundle -undefined dynamic_lookup" \
+	$(MAKE) all MYCFLAGS="-fno-common $(MYCFLAGS)" \
+	            MYLDFLAGS="-bundle -undefined dynamic_lookup $(MYLDFLAGS)" \
 	            LD='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc'
 
 # DO NOT DELETE

@@ -3,8 +3,6 @@ require "oil"                                   -- Load OiL package
 
 local Viewer = require "loop.debug.Viewer"
 
-oil.assemble "corba.typed.cooperative.base"
-
 --------------------------------------------------------------------------------
 
 local interceptor = {}
@@ -52,7 +50,7 @@ function interceptor:sendreply(reply)
 		start = reply.start_time,
 		ending = socket.gettime(),
 	}, send_context_idl)
-	reply._service_context = {
+	reply.service_context = {
 		{
 			context_id = 4321,
 			context_data = encoder:getdata()
