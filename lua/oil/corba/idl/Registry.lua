@@ -45,10 +45,12 @@ module "oil.corba.idl.Registry"
 --------------------------------------------------------------------------------
 -- Internal classes ------------------------------------------------------------
 
-  IRObject                = oo.class({__idltype = "IDL:omg.org/CORBA/IRObject:1.0"})
-  Contained               = oo.class({__idltype = "IDL:omg.org/CORBA/Contained:1.0"}, IRObject)
-  Container               = oo.class({__idltype = "IDL:omg.org/CORBA/Container:1.0"}, IRObject)
-  IDLType                 = oo.class({__idltype = "IDL:omg.org/CORBA/IDLType:1.0"  }, IRObject)
+  IRObject                = oo.class()
+  Contained               = oo.class({}, IRObject)
+  Container               = oo.class({}, IRObject)
+  IDLType                 = oo.class({}, IRObject)
+  
+  MemberDef               = oo.class({}, Contained)
   
   PrimitiveDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/PrimitiveDef:1.0"            }, IDLType)
   ArrayDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/ArrayDef:1.0"                }, IDLType)
@@ -57,8 +59,8 @@ module "oil.corba.idl.Registry"
 --WstringDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/WstringDef:1.0"              }, IDLType)
 --FixedDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/FixedDef:1.0"                }, IDLType)
   
-  AttributeDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, Contained)
-  OperationDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/OperationDef:1.0"            }, Contained)
+  AttributeDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, MemberDef)
+  OperationDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/OperationDef:1.0"            }, MemberDef)
 --ValueMemberDef          = oo.class({ __idltype = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, Contained)
 --ConstantDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
   TypedefDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, Contained, IDLType)
@@ -172,10 +174,14 @@ function IRObject:__init(object, definition, registry)
 		end                                                                         --[[VERBOSE]] verbose:repository(false)
 	end
 	if oo.instanceof(object, Container) then
-		if definition.definitions then
-			for name, member in pairs(definition.definitions) do
+		-- TODO:[maia] Unify this definition lists in LuaIDL represnetion
+		local lists = {}
+		lists[#lists+1] = definition.definitions
+		lists[#lists+1] = definition.declarations
+		for _, list in ipairs(lists) do
+			for name, member in pairs(list) do
 				if type(name) == "string" and not name:match("^_") then
-					member = checktype(member, name, Contained, registry)
+					member = checktype(member, "definition", Contained, registry)
 					member:move(object, name, member.version)
 				end
 			end
@@ -237,9 +243,6 @@ Contained.definition_fields = {
 }
 
 function Contained:update(new)
-
-if new == nil then verbose:debug() end
-
 	new.defined_in = new.defined_in or self.containing_repository
 	if new.defined_in.containing_repository ~= self.containing_repository then
 		assert.illegal(defined_in,
@@ -330,6 +333,13 @@ function Contained:move(new_container, new_name, new_version)
 	self.defined_in = new_container
 	self.version = new_version
 	self:_set_name(new_name)
+end
+
+--------------------------------------------------------------------------------
+
+function MemberDef:_set_name(name)
+	Contained._set_name(self, name)
+	self.defined_in.members[name] = self
 end
 
 --------------------------------------------------------------------------------
@@ -653,6 +663,7 @@ StringDef.definition_fields = {
 StringDef._set_bound = SequenceDef._set_bound
 StringDef._get_bound = SequenceDef._get_bound
 
+
 --------------------------------------------------------------------------------
 
 AttributeDef._type = "attribute"
@@ -666,11 +677,6 @@ AttributeDef.definition_fields = {
 function AttributeDef:update(new)
 	self:_set_mode(new.readonly and "ATTR_READONLY" or "ATTR_NORMAL")
 	self:_set_type_def(new.type)
-end
-
-function AttributeDef:_set_name(name)
-	Contained._set_name(self, name)
-	self.defined_in.members[name] = self
 end
 
 function AttributeDef:_set_mode(value)
@@ -724,11 +730,6 @@ function OperationDef:update(new)
 		self:_set_params(new.parameters)
 	end
 	self.contexts = new.contexts
-end
-
-function OperationDef:_set_name(name)
-	Contained._set_name(self, name)
-	self.defined_in.members[name] = self
 end
 
 function OperationDef:_set_mode(value)
@@ -1269,7 +1270,7 @@ end
 
 oo.class(_M, Repository)
 
-local Classes = {
+Classes = {
 	struct     = StructDef,
 	union      = UnionDef,
 	enum       = EnumDef,
@@ -1287,7 +1288,7 @@ local Classes = {
 
 --------------------------------------------------------------------------------
 
-local Registry = oo.class()
+Registry = oo.class()
 
 function Registry:__init(object)
 	self = oo.rawnew(self, object)
@@ -1315,7 +1316,7 @@ end
 
 function Registry:__index(definition)
 	if definition then
-		local class = Classes[definition._type]
+		local class = self.repository.Classes[definition._type]
 		if class then
 			definition = class(nil, definition, self)
 		elseif oo.classof(definition) == _M then
@@ -1329,7 +1330,7 @@ end
 
 function register(self, ...)
 	local repository = self
-	local registry = Registry{ repository = self }
+	local registry = self.Registry{ repository = self }
 	local results = {}
 	local count = select("#", ...)
 	for i = 1, count do

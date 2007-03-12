@@ -113,10 +113,9 @@ function __init(self, object)
 	function self.cache.retrieve(_, host)
 		local cache = SocketCache()
 		function cache.retrieve(_, port)
-			local socket, errmsg
-			socket, errmsg = self.context.sockets:tcp()
-			local success
+			local socket, errmsg = self.context.sockets:tcp()
 			if socket then                                                            --[[VERBOSE]] verbose:channels("new socket to ",host,":",port)
+				local success
 				success, errmsg = socket:connect(host, port)
 				if success then
 					if type(socket) ~= "table" then
@@ -141,6 +140,7 @@ function __init(self, object)
 				self.except = "too many open connections"
 			end
 		end
+		cache[cache.retrieve] = true -- avoid being collected as unused sockets
 		return cache
 	end
 	return self

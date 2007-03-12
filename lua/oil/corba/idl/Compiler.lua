@@ -36,7 +36,7 @@ context = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local Options = {
+Options = {
 	callbacks = {
 	--null      = idl.null,
 		VOID      = idl.void,
@@ -85,9 +85,9 @@ function doresults(self, ...)
 end
 
 function loadfile(self, filepath)
-	return self:doresults(luaidl.parsefile(filepath, Options))
+	return self:doresults(luaidl.parsefile(filepath, self.Options))
 end
 
 function load(self, idlspec)
-	return self:doresults(luaidl.parse(idlspec, Options))
+	return self:doresults(luaidl.parse(idlspec, self.Options))
 end

@@ -8,7 +8,7 @@ module "oil.arch.ludo"
 --
 -- COMMUNICATION
 --
-SocketChannels = component.Type{
+SocketChannels = component.Template{
 	channels = port.Facet--[[
 		channel:object retieve(configs:table)
 		configs:table default(configs:table)
@@ -18,7 +18,7 @@ SocketChannels = component.Type{
 	]],
 }
 
-ValueEncoder = component.Type{
+ValueEncoder = component.Template{
 	codec = port.Facet--[[
 		encoder:object encoder()
 		decoder:object decoder(stream:string)
@@ -28,7 +28,7 @@ ValueEncoder = component.Type{
 --
 -- REFERENCES
 --
-ObjectReferrer = component.Type{
+ObjectReferrer = component.Template{
 	references = port.Facet--[[
 		reference:table referenceto(objectkey:string, accesspointinfo:table...)
 		reference:string encode(reference:table)
@@ -40,7 +40,7 @@ ObjectReferrer = component.Type{
 -- REQUESTER
 --
 
-OperationRequester = component.Type{
+OperationRequester = component.Template{
 	requests = port.Facet--[[
 		channel:object getchannel(reference:table)
 		reply:object, [except:table], [requests:table] newrequest(channel:object, reference:table, operation:table, args...)
@@ -58,7 +58,7 @@ OperationRequester = component.Type{
 --
 -- LISTENER
 --
-RequestListener = component.Type{
+RequestListener = component.Template{
 	listener = port.Facet--[[
 		configs:table default([configs:table])
 		channel:object, [except:table] getchannel(configs:table)

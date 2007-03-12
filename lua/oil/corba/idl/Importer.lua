@@ -27,7 +27,7 @@
 -- remote:Recetacle
 -- 	[type:table] lookup(name:string)
 -- 	[type:table] lookup_id(repid:string)
---------------------------------------------------------------------------------
+------------------------------------------------------------------------------ --
 
 local error  = error
 local ipairs = ipairs
@@ -94,6 +94,7 @@ function register(self, object, history)
 		history = history or {}
 		local kind = object:_get_def_kind()
 		if IDLTypes[kind] then
+			object = object:_narrow("IDL:omg.org/CORBA/IDLType:1.0")
 			result = types:register(object:_get_type())
 		elseif kind == "dk_Repository" then
 			result = types

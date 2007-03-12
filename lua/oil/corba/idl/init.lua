@@ -85,7 +85,7 @@ module "oil.corba.idl"                                                          
 -- TODO:[maia] Why all type names are blank by default?
 local DefaultTypeName = ""
 
-local BasicTypes = {
+BasicTypes = {
 	null       = true,
 	void       = true,
 	short      = true,
@@ -104,7 +104,7 @@ local BasicTypes = {
 	TypeCode   = true,
 }
 
-local UserTypes = {
+UserTypes = {
 	string    = true,
 	Object    = true,
 	struct    = true,
@@ -117,7 +117,7 @@ local UserTypes = {
 	interface = true,
 }
 
-local InterfaceElements = {
+InterfaceElements = {
 	attribute = true,
 	operation = true,
 	module    = true,
@@ -174,7 +174,7 @@ end
 --------------------------------------------------------------------------------
 -- Scoped definitions management -----------------------------------------------
 
-local DefinitionList = oo.class()
+DefinitionList = oo.class()
 
 local function updatenames(idldef)
 	local container = idldef.defined_in
@@ -235,7 +235,7 @@ end
 
 --------------------------------------------------------------------------------
 
-local function newdef(def, scope)
+function newdef(def, scope)
 	assert.type(def, "table", "IDL definition")
 	if def.name  == nil then def.name = DefaultTypeName end
 	if def.repID == nil then updatenames(def) end

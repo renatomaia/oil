@@ -14,7 +14,7 @@
 -- Date   : 22/2/2006 16:18                                                  --
 -------------------------------------------------------------------------------
 -- Exported API:                                                             --
---   Type                                                                    --
+--   Template                                                                    --
 -------------------------------------------------------------------------------
 
 local oo          = require "loop.cached"
@@ -24,14 +24,14 @@ module("loop.component.contained", package.seeall)
 
 --------------------------------------------------------------------------------
 
-BaseType = oo.class({}, base.BaseType)
+BaseTemplate = oo.class({}, base.BaseTemplate)
 
-function BaseType:__new(...)
+function BaseTemplate:__new(...)
 	local comp = self.__component or self[1]
 	if comp then comp = comp(...) end
 	local state = {
 		__component = comp,
-		__home = self,
+		__factory = self,
 	}
 	for port, class in pairs(self) do
 		if type(port) == "string" and port:match("^%a[%w_]*$") then
@@ -41,14 +41,15 @@ function BaseType:__new(...)
 	return state
 end
 
-function Type(type, ...)
+function Template(template, ...)
 	if select("#", ...) > 0
-		then return oo.class(type, ...)
-		else return oo.class(type, BaseType)
+		then return oo.class(template, ...)
+		else return oo.class(template, BaseTemplate)
 	end
 end
 
 --------------------------------------------------------------------------------
 
-iports = base.iports
-managedby = base.managedby
+factoryof  = base.factoryof
+templateof = base.templateof
+ports      = base.ports

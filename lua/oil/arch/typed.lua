@@ -10,13 +10,13 @@ module "oil.arch.typed"
 -- CLIENT SIDE
 --
 
-ClientBroker = component.Type({
+ClientBroker = component.Template({
 	types = port.Receptacle--[[
 		[type:table] resolve(type:string)
 	]],
 }, arch.ClientBroker)
 
-ObjectProxies = component.Type({
+ObjectProxies = component.Template({
 	caches = port.Facet--[[
 		setexcepthandler(interface|proxy:table, handler)
 		resetfieldcache(interface|proxy:table)
@@ -31,7 +31,7 @@ ObjectProxies = component.Type({
 -- SERVER SIDE
 --
 
-ServerBroker = component.Type({
+ServerBroker = component.Template({
 	types = port.Receptacle--[[
 		[type:table] resolve(type:string)
 	]],
@@ -40,7 +40,7 @@ ServerBroker = component.Type({
 	]],
 }, arch.ServerBroker)
 
-RequestDispatcher = component.Type({
+RequestDispatcher = component.Template({
 	indexer = port.Receptacle--[[
 		???
 	]],

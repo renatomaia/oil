@@ -5,7 +5,7 @@ local component = require "oil.component"
 
 module "oil.arch.base"
 
-OperatingSystem = component.Type{
+OperatingSystem = component.Template{
 	sockets = port.Facet--[[
 	]],
 }
@@ -14,7 +14,7 @@ OperatingSystem = component.Type{
 -- CLIENT SIDE
 --
 
-ClientBroker = component.Type{
+ClientBroker = component.Template{
 	broker = port.Facet--[[
 		proxy:object fromstring(reference:string, [interface:string])
 	]],
@@ -26,7 +26,7 @@ ClientBroker = component.Type{
 	]],
 }
 
-ObjectProxies = component.Type{
+ObjectProxies = component.Template{
 	proxies = port.Facet--[[
 		proxy:object proxyto(reference:table, [interface:table])
 	]],
@@ -35,7 +35,7 @@ ObjectProxies = component.Type{
 	]],
 }
 
-OperationInvoker = component.Type{
+OperationInvoker = component.Template{
 	invoker = port.Facet--[[
 		[results:object], [except:table] invoke(reference:table, operation, args...)
 	]],
@@ -50,7 +50,7 @@ OperationInvoker = component.Type{
 -- SERVER SIDE
 --
 
-ServerBroker = component.Type{
+ServerBroker = component.Template{
 	broker = port.Facet--[[
 		[configs:table], [except:table] initialize([configs:table])
 		servant:object object(impl:object, [objectkey:string], [interface:string])
@@ -78,7 +78,7 @@ ServerBroker = component.Type{
 	]],
 }
 
-RequestDispatcher = component.Type{
+RequestDispatcher = component.Template{
 	objects = port.Facet--[[
 		servant:object register(impl:object, objectkey:string)
 		impl:object unregister(servant:object)
@@ -88,7 +88,7 @@ RequestDispatcher = component.Type{
 	]],
 }
 
-RequestReceiver = component.Type{
+RequestReceiver = component.Template{
 	acceptor = port.Facet--[[
 		success:boolean, [except:table] hasrequest()
 		success:boolean, [except:table] acceptone()

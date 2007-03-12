@@ -14,11 +14,11 @@
 -- Date   : 22/2/2006 16:18                                                  --
 -------------------------------------------------------------------------------
 -- Exported API:                                                             --
---   Type                                                                    --
+--   Template                                                                    --
 -------------------------------------------------------------------------------
 
-local oo          = require "loop.cached"
-local base        = require "loop.component.base"
+local oo   = require "loop.cached"
+local base = require "loop.component.base"
 
 module("loop.component.wrapped", package.seeall)
 
@@ -51,9 +51,9 @@ end
 
 --------------------------------------------------------------------------------
 
-BaseType = oo.class({}, base.BaseType)
+BaseTemplate = oo.class({}, base.BaseTemplate)
 
-function BaseType:__container(segments)
+function BaseTemplate:__container(segments)
 	local container = {
 		__state    = segments,
 		__internal = segments,
@@ -62,7 +62,7 @@ function BaseType:__container(segments)
 	return container
 end
 
-function BaseType:__build(segments)
+function BaseTemplate:__build(segments)
 	local container = self:__container(segments)
 	local state = container.__state
 	local context = container.__internal
@@ -80,26 +80,32 @@ function BaseType:__build(segments)
 	return container.__external
 end
 
-function Type(type, ...)
+function Template(template, ...)
 	if select("#", ...) > 0
-		then return oo.class(type, ...)
-		else return oo.class(type, BaseType)
+		then return oo.class(template, ...)
+		else return oo.class(template, BaseTemplate)
 	end
 end
 --------------------------------------------------------------------------------
 
-function iports(component)
+function factoryof(component)
 	local container = component.__container
-	return base.iports(container and container.__state or component)
+	return base.factoryof(container and container.__state or component)
 end
 
-function managedby(component, home)
-	local container = component.__container
-	return base.managedby(container and container.__state or component, home)
+function templateof(object)
+	return oo.classof(factoryof(object) or object)
+end
+
+function ports(template)
+	if not oo.subclassof(template, BaseTemplate) then
+		template = templateof(template)
+	end
+	return base.ports(template)
 end
 
 --[[----------------------------------------------------------------------------
-MyCompType = comp.Type{
+MyCompTemplate = comp.Template{
 	[<portname>] = <PortClass>,
 	[<portname>] = <PortClass>,
 	[<portname>] = <PortClass>,

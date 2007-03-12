@@ -112,9 +112,8 @@ function getchannel(self, reference)                                            
 							protocol = tag,
 						}
 					end
-				else
-					break
 				end
+				break
 	 		end
 		end
 		if not channel and not except then

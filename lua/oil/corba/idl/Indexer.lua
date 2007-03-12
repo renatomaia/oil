@@ -44,21 +44,21 @@ end
 patterns = { "^_([gs]et)_(.+)$" }
 
 builders = {}
-function builders:get(interface, attribute, opname)
-	return idl.operation{
-		name = opname,
-		result = attribute.type,
-		attribute = attribute,
-		attribop = "get",
-	}
+function builders:get(interface, attribute, opname, attribop)
+	if attribute._type == "attribute" then
+		return idl.operation{ attribute = attribute, attribop = attribop,
+			name = opname,
+			result = attribute.type,
+		}
+	end
 end
-function builders:set(interface, attribute, opname)
-	return idl.operation{
-		name = opname,
-		parameters = { {type = attribute.type, name = "value"} },
-		attribute = attribute,
-		attribop = "set",
-	}
+function builders:set(interface, attribute, opname, attribop)
+	if attribute._type == "attribute" then
+		return idl.operation{ attribute = attribute, attribop = attribop,
+			name = opname,
+			parameters = { {type = attribute.type, name = "value"} },
+		}
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ function valueof(self, interface, name)
 		for _, pattern in ipairs(self.patterns) do
 			action, member = name:match(pattern)
 			if action then
-				member = self:findmember(interface, member)
+				member, interface = self:findmember(interface, member)
 				if member then
 					member = self.builders[action](self, interface, member, name, action)
 					interface.members[name] = member

@@ -1,3 +1,6 @@
+local verbose = require "oil.verbose"
+
+
 -------------------------------------------------------------------------------
 ---------------------- ##       #####    #####   ######  ----------------------
 ---------------------- ##      ##   ##  ##   ##  ##   ## ----------------------
@@ -14,7 +17,7 @@
 -- Date   : 22/2/2006 16:18                                                  --
 -------------------------------------------------------------------------------
 -- Exported API:                                                             --
---   Type                                                                    --
+--   Template                                                                    --
 --   Facet                                                                   --
 --   Receptacle                                                              --
 --   ListReceptacle                                                          --
@@ -28,20 +31,20 @@ module("loop.component.base", package.seeall)
 
 --------------------------------------------------------------------------------
 
-BaseType = oo.class()
+BaseTemplate = oo.class()
 
-function BaseType:__call(...)
+function BaseTemplate:__call(...)
 	return self:__build(self:__new(...))
 end
 
-function BaseType:__new(...)
+function BaseTemplate:__new(...)
 	local comp = self.__component or self[1]
 	if comp then
 		comp = comp(...)
-		comp.__home = self
+		comp.__factory = self
 		comp.__component = comp
 	else
-		comp = { __home = self }
+		comp = { __factory = self }
 	end
 	for port, class in pairs(self) do
 		if type(port) == "string" and port:match("^%a[%w_]*$") then
@@ -52,7 +55,7 @@ function BaseType:__new(...)
 end
 
 local function tryindex(segment) return segment.context end
-function BaseType:__setcontext(segment, context)
+function BaseTemplate:__setcontext(segment, context)
 	local success, setcontext = pcall(tryindex, segment)
 	if success and setcontext ~= nil then
 		if type(setcontext) == "function"
@@ -62,32 +65,39 @@ function BaseType:__setcontext(segment, context)
 	end
 end
 
-function BaseType:__build(comp)
+function BaseTemplate:__build(segments)
 	for port in pairs(self) do
 		if port == 1
-			then self:__setcontext(comp.__component, comp)
-			else self:__setcontext(comp[port], comp)
+			then self:__setcontext(segments.__component, segments)
+			else self:__setcontext(segments[port], segments)
 		end
 	end
 	for port, class in oo.allmembers(oo.classof(self)) do
 		if port:match("^%a") then
-			class(comp, port, comp)
+			class(segments, port, segments)
 		end
 	end
-	return comp
+	return segments
 end
 
-function Type(type, ...)
+function Template(template, ...)
 	if select("#", ...) > 0
-		then return oo.class(type, ...)
-		else return oo.class(type, BaseType)
+		then return oo.class(template, ...)
+		else return oo.class(template, BaseTemplate)
 	end
 end
 
 --------------------------------------------------------------------------------
 
-local nextmember
+function factoryof(component)
+	return component.__factory
+end
 
+function templateof(object)
+	return oo.classof(factoryof(object) or object)
+end
+
+local nextmember
 local function portiterator(state, name)
 	local port
 	repeat
@@ -96,18 +106,14 @@ local function portiterator(state, name)
 	until name:find("^%a")
 	return name, port
 end
-
-function iports(component)
+function ports(template)
+	if not oo.subclassof(template, BaseTemplate) then
+		template = templateof(template)
+	end
 	local state, var
-	nextmember, state, var = oo.allmembers(oo.classof(component.__home))
+	nextmember, state, var = oo.allmembers(template)
 	return portiterator, state, var
 end
-
-function managedby(component, home)
-	return (component.__home == home)
-end
-
-typeof = oo.classof
 
 --------------------------------------------------------------------------------
 

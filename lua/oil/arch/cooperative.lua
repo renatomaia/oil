@@ -6,7 +6,7 @@ local arch      = require "oil.arch.base"                                       
 
 module "oil.arch.cooperative"
 
-TaskManager = component.Type({
+TaskManager = component.Template({
 	control = port.Facet--[[
 	]],
 	tasks = port.Facet--[[
@@ -15,7 +15,7 @@ TaskManager = component.Type({
 	]],
 }, arch.OperatingSystem)
 
-OperationInvoker = component.Type({
+OperationInvoker = component.Template({
 	mutex = port.Facet--[[
 		locksend(channel:object)
 		releasesend(channel:object)
@@ -29,7 +29,7 @@ OperationInvoker = component.Type({
 	]],
 }, arch.OperationInvoker)
 
-RequestReceiver = component.Type({
+RequestReceiver = component.Template({
 	mutex = port.Facet--[[
 		locksend(channel:object)
 		releasesend(channel:object)

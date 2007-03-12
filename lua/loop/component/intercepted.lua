@@ -70,7 +70,7 @@ MethodCache = ObjectCache()
 function MethodCache:retrieve(method)
 	return function(self, ...)
 		local object = self:__get()
-		local iceptor = rawget(self, "  method") or self.__home[self.__methodkey]
+		local iceptor = rawget(self, "  method") or self.__factory[self.__methodkey]
 		if iceptor then
 			local request = {
 				context = self.__context,
@@ -94,8 +94,8 @@ function Wrapper:__index(field)
 	if class[field] then return class[field] end
 
 	local object = self:__get()
-	local home = self.__home
-	local iceptor = rawget(self, "  index") or home[self.__indexkey]
+	local factory = self.__factory
+	local iceptor = rawget(self, "  index") or factory[self.__indexkey]
 
 	local value
 	if iceptor then
@@ -123,8 +123,8 @@ local function setfield(table, field, value)
 end
 function Wrapper:__newindex(field, value)
 	local object = self:__get()
-	local home = self.__home
-	local interceptor = rawget(self, "  newindex") or home[self.__newindex]
+	local factory = self.__factory
+	local interceptor = rawget(self, "  newindex") or factory[self.__newindex]
 	if interceptor then
 		local request = {
 			context = self.__context,
@@ -141,8 +141,8 @@ end
 
 function Wrapper:__call(...)
 	local object = self:__get()
-	local home = self.__home
-	local iceptor = rawget(self, "  call") or home[self.__callkey]
+	local factory = self.__factory
+	local iceptor = rawget(self, "  call") or factory[self.__callkey]
 	if iceptor then
 		local request = {
 			context = self.__context,
@@ -178,7 +178,7 @@ loop.component.intercepted.Facet:__intercept(event, iceptor)
 -- Intercept a particular port of a component type
 loop.component.intercepted.intercept(MyCompType, "MyPort", event, iceptor)
 -- Intercept a particular port of a component implementation
-loop.component.intercepted.intercept(MyCompHome, "MyPort", event, iceptor)
+loop.component.intercepted.intercept(MyCompFactory, "MyPort", event, iceptor)
 -- Intercept a particular port of a component instance
 loop.component.intercepted.intercept(MyComponent, "MyPort", event, iceptor)
 
@@ -192,7 +192,7 @@ function Facet:__init(state, key, context)
 		__context = context,
 		__key = key,
 		__name = tostring(key),
-		__home = state.__home,
+		__factory = state.__factory,
 	})
 	wrapper:__bind(state[key] or state.__component[key] or state.__component)
 	return wrapper
@@ -216,7 +216,7 @@ function Receptacle:__init(state, key, context)
 		__context = context,
 		__key = key,
 		__name = tostring(key),
-		__home = state.__home,
+		__factory = state.__factory,
 	})
 	wrapper:__bind(state[key])
 	return wrapper
@@ -252,12 +252,12 @@ local ReceptacleWrapper = oo.class()
 function ReceptacleWrapper:__init(state, key, context)
 	local wrapper = oo.rawnew(self, state[key])
 	rawset(wrapper, "__new", oo.class(Wrapper:__init{
-		__get     = Receptacle.__get,
-		__state   = state,
+		__get = Receptacle.__get,
+		__state = state,
 		__context = context,
-		__key     = key,
-		__name    = tostring(key),
-		__home    = state.__home,
+		__key = key,
+		__name = tostring(key),
+		__factory = state.__factory,
 	}, Wrapper))
 	return wrapper
 end

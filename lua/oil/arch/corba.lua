@@ -11,7 +11,7 @@ module "oil.arch.corba"
 --
 -- COMMUNICATION
 --
-SocketChannels = component.Type{
+SocketChannels = component.Template{
 	channels = port.Facet--[[
 		channel:object retieve(configs:table)
 		configs:table default(configs:table)
@@ -22,7 +22,7 @@ SocketChannels = component.Type{
 	]],
 }
 
-ValueEncoder = component.Type{
+ValueEncoder = component.Template{
 	codec = port.Facet--[[
 		encoder:object encoder()
 		decoder:object decoder(stream:string)
@@ -38,7 +38,7 @@ ValueEncoder = component.Type{
 --
 -- REFERENCES
 --
-ReferenceProfiler = component.Type{
+ReferenceProfiler = component.Template{
 	profiler = port.Facet--[[
 		stream:string encode(profile:table, [version:number])
 		profile:table decode(stream:string)
@@ -50,7 +50,7 @@ ReferenceProfiler = component.Type{
 	]],
 }
 
-ObjectReferrer = component.Type{
+ObjectReferrer = component.Template{
 	references = port.Facet--[[
 		reference:table referenceto(objectkey:string, accesspointinfo:table...)
 		reference:string encode(reference:table)
@@ -73,7 +73,7 @@ ObjectReferrer = component.Type{
 -- MESSENGER
 --
 
-MessageMarshaler = component.Type{
+MessageMarshaler = component.Template{
 	messenger = port.Facet--[[
 		success:booelan, [except:table] = sendmsg(channel:object, type:number, header:table, types:table, values...)
 		type:number, header:table, decoder:object = receivemsg(channel:object , [wait:boolean])
@@ -88,7 +88,7 @@ MessageMarshaler = component.Type{
 -- REQUESTER
 --
 
-OperationRequester = component.Type{
+OperationRequester = component.Template{
 	requests = port.Facet--[[
 		channel:object getchannel(reference:table)
 		reply:object, [except:table], [requests:table] newrequest(channel:object, reference:table, operation:table, args...)
@@ -110,7 +110,7 @@ OperationRequester = component.Type{
 	]],
 }
 
-ProxyIndexer = component.Type{
+ProxyIndexer = component.Template{
 	indexer = port.Facet--[[
 		interface:table typeof(reference:table)
 		member:table, [islocal:function], [cached:boolean] valueof(interface:table, name:string)
@@ -131,7 +131,7 @@ ProxyIndexer = component.Type{
 --
 -- LISTENER
 --
-RequestListener = component.Type{
+RequestListener = component.Template{
 	listener = port.Facet--[[
 		configs:table default([configs:table])
 		channel:object, [except:table] getchannel(configs:table)
@@ -150,7 +150,7 @@ RequestListener = component.Type{
 	]],
 }
 
-ServantIndexer = component.Type{
+ServantIndexer = component.Template{
 	indexer = port.Facet--[[
 		inteface:object typeof(objectkey:string)
 		[member:table], [value:function] valueof(interface:object, membername:string)
@@ -166,7 +166,7 @@ ServantIndexer = component.Type{
 --
 -- TYPES
 --
-TypeRepository = component.Type{
+TypeRepository = component.Template{
 	types = port.Facet--[[
 		type:table register(definition:table)
 		type:table remove(definition:table)

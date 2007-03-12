@@ -272,6 +272,9 @@ end
 --[[VERBOSE]] end
 --[[VERBOSE]] 
 --[[VERBOSE]] verbose.groups.concurrency = { "scheduler", "threads", "copcall" }
+--[[VERBOSE]] verbose:newlevel{"threads"}
+--[[VERBOSE]] verbose:newlevel{"scheduler"}
+--[[VERBOSE]] verbose:newlevel{"copcall"}
 --[[VERBOSE]] function verbose.custom:threads(...)
 --[[VERBOSE]] 	local viewer  = self.viewer
 --[[VERBOSE]] 	local output  = self.viewer.output

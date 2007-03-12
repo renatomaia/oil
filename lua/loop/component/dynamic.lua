@@ -14,7 +14,7 @@
 -- Date   : 22/2/2006 16:18                                                  --
 -------------------------------------------------------------------------------
 -- Exported API:                                                             --
---   Type                                                                    --
+--   Template                                                                    --
 -------------------------------------------------------------------------------
 
 local oo   = require "loop.cached"
@@ -50,13 +50,13 @@ function InternalState:__index(name)
 	local state = self.__state
 	local port, manager = state[name], self[name]
 	if manager == nil then
-		local home = state.__home
-		local class = home[name]
+		local factory = state.__factory
+		local class = factory[name]
 		if oo.classof(class) == DynamicPort then
 			local context = self.__internal
 			self[class] = class(state, class, context)
 			port, manager = state[class], self[class]
-			home:__setcontext(port, context)
+			factory:__setcontext(port, context)
 		end
 	end
 	return port, manager
@@ -67,13 +67,13 @@ function InternalState:__newindex(name, value)
 	local state = self.__state
 	local manager = self[name]
 	if manager == nil then
-		local home = state.__home
-		local class = home[name]
+		local factory = state.__factory
+		local class = factory[name]
 		if oo.classof(class) == DynamicPort then
 			local context = self.__internal
 			self[class] = class(state, class, context)
 			manager = self[class]
-			home:__setcontext(state[class], context)
+			factory:__setcontext(state[class], context)
 		end
 	end
 	if manager and manager.__bind then
@@ -99,28 +99,31 @@ end
 
 --------------------------------------------------------------------------------
 
-BaseType = oo.class({}, base.BaseType)
+BaseTemplate = oo.class({}, base.BaseTemplate)
 
-function BaseType:__container(comp)
-	local container = WeakTable(oo.superclass(BaseType).__container(self, comp))
+function BaseTemplate:__container(comp)
+	local container = WeakTable(oo.superclass(BaseTemplate).__container(self, comp))
 	container.__state = WeakTable(container.__state)
 	container.__internal = InternalState{ __container = container }
 	container.__external = ExternalState{ __container = container }
 	return container
 end
 
-function Type(type, ...)
+function Template(template, ...)
 	if select("#", ...) > 0
-		then return oo.class(type, ...)
-		else return oo.class(type, BaseType)
+		then return oo.class(template, ...)
+		else return oo.class(template, BaseTemplate)
 	end
 end
 
 --------------------------------------------------------------------------------
 
+factoryof = base.factoryof
+templateof = base.templateof
+
 local function portiterator(container, name)
-	local home = container.__state.__home
-	local port = home[name]
+	local factory = container.__state.__factory
+	local port = factory[name]
 	if oo.classof(port) == DynamicPort then
 		name = port
 	end
@@ -132,29 +135,21 @@ local function portiterator(container, name)
 			return name.name, name.port
 		end
 	until name:find("^%a")
-	return name, oo.classof(home)[name]
+	return name, oo.classof(factory)[name]
 end
 
-function iports(component)
+function ports(component)
 	local container = component.__container
 	if container
 		then return portiterator, container
-		else return base.iport(component)
-	end
-end
-
-function managedby(component, home)
-	local container = component.__container
-	if container
-		then return (container.__state.__home == home)
-		else return base.managedby(component, home)
+		else return base.port(component)
 	end
 end
 
 --------------------------------------------------------------------------------
 
 function addport(scope, name, port, class)
-	if oo.isclass(scope) or oo.instanceof(scope, BaseType) then
+	if oo.isclass(scope) or oo.instanceof(scope, BaseTemplate) then
 		scope[name] = DynamicPort{
 			name = name,
 			port = port,
@@ -165,19 +160,19 @@ function addport(scope, name, port, class)
 		if container then
 			local context = container.__internal
 			local state = container.__state
-			local home = state.__home
+			local factory = state.__factory
 			if class then
 				local comp = state.__component
 				state[name] = class(comp[name], comp)
 			end
-			container[name] = port(state, name, context, home)
-			home:__setcontext(state[name], context)
+			container[name] = port(state, name, context, factory)
+			factory:__setcontext(state[name], context)
 		end
 	end
 end
 
 function removeport(scope, name)
-	if oo.isclass(scope) or oo.instanceof(scope, BaseType) then
+	if oo.isclass(scope) or oo.instanceof(scope, BaseTemplate) then
 		scope[name] = nil
 	else
 		local container = scope.__container
@@ -190,7 +185,7 @@ function removeport(scope, name)
 end
 
 --[[----------------------------------------------------------------------------
-MyCompType = comp.Type{
+MyCompTemplate = comp.Template{
 	[<portname>] = <PortClass>,
 	[<portname>] = <PortClass>,
 	[<portname>] = <PortClass>,
@@ -205,7 +200,7 @@ MyContainer = WeakKeyTable{
 		[<portname>] = <portimpl>,
 		[<dynaport>] = <portimpl>,
 	},
-	__home = {
+	__factory = {
 		[<portname>] = <portclass>,
 		[<portname>] = <portclass>,
 		[<portname>] = <dynaport>,
