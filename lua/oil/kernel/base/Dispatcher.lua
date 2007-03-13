@@ -110,9 +110,9 @@ function dispatch(self, key, operation, ...)
 		local method = object[operation] or
 		               type(operation) == "function" and operation
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",operation," for object with key ",key)
-			success, except = self.pcall(method, object, ...)
+			return self.pcall(method, object, ...)
 		else
-			success, except = false, Exception{
+			return false, Exception{
 				reason = "noimplement",
 				message = "no implementation for operation of object with key",
 				operation = operation,
@@ -120,11 +120,10 @@ function dispatch(self, key, operation, ...)
 			}
 		end
 	else
-		success, except = false, Exception{
+		return false, Exception{
 			reason = "badkey",
 			message = "no object with key",
 			key = key,
 		}
 	end
-	return success, except
 end

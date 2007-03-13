@@ -42,14 +42,14 @@ function dispatch(self, key, operation, ...)
 	local member, implement = indexer:valueof(indexer:typeof(key), operation)
 	local success, except
 	if member then
-		success, except = Dispatcher.dispatch(self, key, implement or operation, ...)
+		return Dispatcher.dispatch(self, key, implement or operation, ...)
 	else
-		success, except = false, Exception{
+		return false, Exception{
 			reason = "badoperation",
 			message = "operation is illegal for object with key",
 			operation = operation,
 			key = key,
 		}
 	end
-	return success, except
 end
+
