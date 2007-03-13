@@ -727,7 +727,6 @@ function OperationDef:update(new)
 	if new.parameters then
 		for _, param in ipairs(new.parameters) do
 			param.type_def = param.type
-			param.type = param.type_def.type
 		end
 		self:_set_params(new.parameters)
 	end
@@ -844,7 +843,6 @@ function StructDef:update(new)
 	if new.fields then
 		for _, field in ipairs(new.fields) do
 			field.type_def = field.type
-			field.type = field.type_def.type
 		end
 		self:_set_members(new.fields)
 	end
@@ -889,7 +887,6 @@ function UnionDef:update(new)
 		for _, option in ipairs(new.options) do
 			option.label    = setmetatable({ option.label }, self.switch)
 			option.type_def = option.type
-			option.type     = option.type_def.type
 		end
 		self:_set_members(members)
 	end
@@ -1056,7 +1053,6 @@ function ExceptionDef:update(new)
 	if new.members then
 		for _, member in ipairs(new.members) do
 			member.type_def = member.type
-			member.type     = member.type_def.type
 		end
 		self.members = members
 	end
