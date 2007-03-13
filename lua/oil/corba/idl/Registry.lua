@@ -122,6 +122,8 @@ end
 -- Implementation
 --
 
+local checkfield
+
 local function checktype(value, name, typespec, registry)
 	if type(typespec) == "string" then
 		assert.type(value, typespec, name)
@@ -130,10 +132,26 @@ local function checktype(value, name, typespec, registry)
 		assert.results(oo.instanceof(value, typespec), "type mismatch")
 	else
 		local new = {}
-		for fieldname, typespec in pairs(typespec) do
-			new[fieldname] = checktype(value[fieldname], fieldname, typespec, registry)
+		for name, field in pairs(typespec) do
+			new[name] = checkfield(value[name], name, field, registry)
 		end
 		value = new
+	end
+	return value
+end
+
+function checkfield(value, name, field, registry)
+	if value ~= nil or not field.optional then
+		if field.list then
+			assert.type(value, "table", name)
+			local new = {}
+			for index, value in ipairs(value) do
+				new[index] = checktype(value, name, field.type, registry)
+			end
+			value = new
+		else
+			value = checktype(value, name, field.type, registry)
+		end
 	end
 	return value
 end
@@ -148,27 +166,10 @@ function IRObject:__init(object, definition, registry)
 		registry[definition] = object
 		registry[object] = object
 		for class in iconstruct(self) do                                            --[[VERBOSE]] verbose:repository("[",class.__idltype,"]")
-			local new
-			local fields = rawget(class, "definition_fields")
-			if fields then
-				new = {}
-				for name, field in pairs(fields) do
-					local value = definition[name]
-					if value ~= nil or not field.optional then
-						if field.list then
-							assert.type(value, "table", name)
-							new[name] = {}
-							for index, value in ipairs(value) do
-								new[name][index] = checktype(value, name, field.type, registry)
-							end
-						else
-							new[name] = checktype(value, name, field.type, registry)
-						end
-					end
-				end
-			end
 			local update = rawget(class, "update")
 			if update then
+				local fields = rawget(class, "definition_fields")
+				local new = fields and checktype(definition, "object", fields, registry)
 				update(object, new, registry)
 			end
 		end                                                                         --[[VERBOSE]] verbose:repository(false)
@@ -713,8 +714,9 @@ OperationDef.definition_fields = {
 	exceptions = { type = ExceptionDef, optional = true, list = true },
 	result     = { type = IDLType     , optional = true },
 	parameters = { type = {
-		name = "string",
-		type = IDLType,
+		name = { type = "string" },
+		type = { type = IDLType },
+		mode = { type = "string", optional = true },
 	}, optional = true, list = true },
 }
 
@@ -830,8 +832,8 @@ StructDef.fields = Empty
 StructDef.definition_fields = {
 	fields = {
 		type = {
-			name = "string",
-			type = IDLType,
+			name = { type = "string" },
+			type = { type = IDLType },
 		},
 		optional = true,
 		list = true,
@@ -875,8 +877,8 @@ UnionDef.definition_fields = {
 	default = { type = "number", optional = true },
 	options = { type = {
 		label = nil,
-		name = "string",
-		type = IDLType,
+		name = { type = "string" },
+		type = { type = IDLType },
 	}, optional = true, list = true },
 }
 
@@ -1044,8 +1046,8 @@ ExceptionDef.def_kind = "dk_Exception"
 ExceptionDef.members = Empty
 ExceptionDef.definition_fields = {
 	members = { type = {
-		name = "string",
-		type = IDLType,
+		name = { type = "string" },
+		type = { type = IDLType },
 	}, optional = true, list = true },
 }
 
