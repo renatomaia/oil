@@ -36,12 +36,12 @@ end
 
 function add(self, key, value)
 	self[#self + 1] = key
-	self[key] = value or true
+	self[key] = value
 end
 
 function addat(self, index, key, value)
 	table.insert(self, index, key)
-	self[key] = value or true
+	self[key] = value
 end
 
 function remove(self, key)
