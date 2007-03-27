@@ -75,13 +75,14 @@ function object(self, object, key, type)
 	end
 	local result, except = context.types:resolve(type)
 	if result then
-		result = context.mapper:register(result, key)
+		result, except = context.mapper:register(result, key)
 		if result then
-			result = context.objects:register(object, key)
+			result, except = context.objects:register(object, key)
 			if result then
-				result = context.references:referenceto(key, self.config)
+				object = result
+				result, except = context.references:referenceto(key, self.config)
 				if result then
-					result = table.copy(result, object)
+					result, except = table.copy(result, object)
 				end
 			end
 		end
