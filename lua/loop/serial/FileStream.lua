@@ -31,7 +31,7 @@ end
 
 function put(self, ...)
 	self:serialize(...)
-	self.file:write("\0\n")
+	self.file:write("\0")
 end
 
 function get(self)
@@ -40,10 +40,10 @@ function get(self)
 	repeat
 		line = self.remains or self.file:read(self.buffersize)
 		self.remains = nil
-		if line and line:find("\0") then
+		if line and line:find("%z") then
 			line, self.remains = line:match("^([^%z]*)%z(.*)$")
 		end
 		lines[#lines+1] = line
 	until not line or self.remains
-	return assert(self:load("return "..table.concat(lines, "\n")))()
+	return assert(self:load("return "..table.concat(lines)))()
 end
