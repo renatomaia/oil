@@ -141,7 +141,7 @@ end
 
 function serialtable(self, table)
 	-- serialize contents
-	self:write("{")
+	self:write(",{")
 	for key, val in pairs(table) do
 		self:write("[")
 		self:serialize(key)
@@ -163,7 +163,7 @@ end
 
 function serialfunction(self, func)
 	-- serialize bytecodes
-	self:write('"')
+	self:write(',"')
 	local bytecodes = string.dump(func)
 	for i = 1, #bytecodes do
 		self:write("\\",string.byte(bytecodes, i))
@@ -195,7 +195,7 @@ function serialfunction(self, func)
 end
 
 function serialcustom(self, name, ...)
-	self:write('"',name,'")')
+	self:write(',"',name,'")')
 	if select("#", ...) > 0 then
 		self:write(",")
 		self:serialize(...)
@@ -204,8 +204,13 @@ end
 
 function serialuserdata(self, userdata)
 	local serializer = getmetatable(userdata)
-	if serializer then serializer = serializer.__serialize end
-	if serializer then self:serialcustom(serializer(userdata)) end
+	if serializer then
+		serializer = serializer.__serialize
+		if serializer then
+			return self:serialcustom(serializer(userdata))
+		end
+	end
+	error("unable to serialize a userdata without custom serialization")
 end
 
 local function getidfor(value)
@@ -241,7 +246,7 @@ function serialize(self, ...)
 				if type ~= "table" then
 					self:write(self.namespace,":setup(")
 				end
-				self:write(self.namespace,":value(",id,",'",type,"',")
+				self:write(self.namespace,":value(",id,",'",type,"'")
 				self[type](self, value)
 				self:write(")")
 			else
