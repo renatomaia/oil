@@ -195,8 +195,10 @@ function remove(self, routine)                                                  
 	elseif routine == self.currentkey then
 		self.currentkey = self.running:previous(routine)
 		return self.running:remove(routine, self.currentkey)
+	elseif self.running:remove(routine) then
+		return routine
 	else
-		return self.running:remove(routine) or self.sleeping:remove(routine)
+		return self.sleeping:remove(routine)
 	end
 end
 

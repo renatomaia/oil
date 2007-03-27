@@ -98,35 +98,32 @@ function register(self, routine, previous)
 	return Scheduler.register(self, routine, previous)
 end
 
-function remove(self, routine)                                                  --[[VERBOSE]] verbose:threads("removing ",routine)
-	if routine == self.current then
-		self.running:remove(routine, self.currentkey)
-	elseif routine == self.currentkey then
-		self.currentkey = self.running:previous(routine)
-		self.running:remove(routine, self.currentkey)
-	else
-		self.running:remove(routine)
-	end
-	
-	self.sleeping:remove(routine)
-
+local function handleremoved(self, routine, removed, ...)
 	local reading, writing = self.reading, self.writing
 	local index = 1
 	while index <= #reading do
 		local channel = reading[index]
-		if reading[channel] == routine
-			then reading:removeat(index)
-			else index = index + 1
+		if reading[channel] == routine then
+			reading:removeat(index)
+			removed = routine
+		else
+			index = index + 1
 		end
 	end
 	index = 1
 	while index <= #writing do
 		local channel = writing[index]
-		if writing[channel] == routine
-			then writing:removeat(index)         
-			else index = index + 1
+		if writing[channel] == routine then
+			writing:removeat(index)
+			removed = routine
+		else
+			index = index + 1
 		end
 	end
+	return removed, ...
+end
+function remove(self, routine)                                                  --[[VERBOSE]] verbose:threads("removing ",routine)
+	return handleremoved(self, routine, Scheduler.remove(self, routine))
 end
 
 --------------------------------------------------------------------------------
