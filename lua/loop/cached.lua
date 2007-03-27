@@ -287,6 +287,14 @@ function instanceof(object, class)
 	return subclassof(classof(object), class)
 end
 --------------------------------------------------------------------------------
+function memberof(class, name)
+	local cached = getclass(class)
+	if cached
+		then return cached.members[name]
+		else return base.member(class, name)
+	end
+end
+--------------------------------------------------------------------------------
 function members(class)
 	local cached = getclass(class)
 	if cached

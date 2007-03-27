@@ -25,6 +25,7 @@
 local type         = type
 local pairs        = pairs
 local unpack       = unpack
+local rawget       = rawget
 local setmetatable = setmetatable
 local getmetatable = getmetatable
 
@@ -62,5 +63,7 @@ end
 function instanceof(object, class)
 	return classof(object) == class
 end
+--------------------------------------------------------------------------------
+memberof = rawget
 --------------------------------------------------------------------------------
 members = pairs
