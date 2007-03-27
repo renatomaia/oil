@@ -90,9 +90,9 @@ function register(self, impl, key)
 end
 
 function unregister(self, key)
-	local map = self.mpa
+	local map = self.map
 	local impl = map[key]
-	if impl then                                                                  --[[VERBOSE]] verbose:dispatcher("object with key ",key" unregistered")
+	if impl then                                                                  --[[VERBOSE]] verbose:dispatcher("object with key ",key," unregistered")
 		impl = impl.__newindex
 		map[key] = nil
 	end
@@ -103,7 +103,6 @@ end
 -- Dispatcher facet
 
 function dispatch(self, key, operation, ...)
-	local success, except
 	local object = self.map[key]
 	if object then
 		object = object.__newindex

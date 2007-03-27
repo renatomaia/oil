@@ -40,7 +40,6 @@ context = false
 function dispatch(self, key, operation, ...)
 	local indexer = self.context.indexer
 	local member, implement = indexer:valueof(indexer:typeof(key), operation)
-	local success, except
 	if member then
 		return Dispatcher.dispatch(self, key, implement or operation, ...)
 	else
