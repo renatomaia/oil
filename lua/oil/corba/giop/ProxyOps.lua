@@ -93,7 +93,8 @@ function importinterfaceof(self, reference)
 	if success then
 		success, result = success:results()
 		if success then
-			success = context.types:register(result)
+			success = context.types:resolve(result:_get_id()) or
+			          context.types:register(result)
 		end
 	end
 	return success or assert.exception(result)
