@@ -63,7 +63,7 @@ module "oil.corba.idl.Registry"
   OperationDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/OperationDef:1.0"            }, MemberDef)
 --ValueMemberDef          = oo.class({ __idltype = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, Contained)
 --ConstantDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
-  TypedefDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, Contained, IDLType)
+  TypedefDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, IDLType, Contained)
   
   StructDef               = oo.class({ __idltype = "IDL:omg.org/CORBA/StructDef:1.0"               }, TypedefDef , Container)
   UnionDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/UnionDef:1.0"                }, TypedefDef , Container)
@@ -130,10 +130,10 @@ local function checktype(value, name, typespec, registry)
 	elseif type(typespec) == "table" and getmetatable(typespec) then
 		value = registry[value]
 		assert.results(oo.instanceof(value, typespec), "type mismatch")
-	else
+	elseif typespec then
 		local new = {}
 		for name, field in pairs(typespec) do
-			new[name] = checkfield(value[name], name, field, registry)
+			new[name] = checkfield(value[name], name, field, registry, new)
 		end
 		value = new
 	end
@@ -156,11 +156,11 @@ function checkfield(value, name, field, registry)
 	return value
 end
 
-function IRObject:__init(object, definition, registry)
+function IRObject:__init(definition, registry)
 	local repository = registry.repository
-	object = repository.definition_map[definition.repID] or
-	         oo.rawnew(self, object)
+	local object = repository:lookup_id(definition.repID)
 	if object ~= definition then                                                  --[[VERBOSE]] verbose:repository(true, definition._type," ",definition.repID or definition.name)
+		object = oo.rawnew(self, object)
 		object.containing_repository = repository
 		object.dependencies = object.dependencies or {}
 		registry[definition] = object
@@ -201,7 +201,7 @@ function IRObject:associate(object, field)
 		--end
 		--dependencies[self][field] = true
 		if dependencies[self] and dependencies[self] ~= field then
-			assert.error("ÃŠpa! Isso nÃ£o deveria acontecer:"..dependencies[self].." -> "..field)
+			assert.error("Êpa! Isso não deveria acontecer:"..dependencies[self].." -> "..field)
 		end
 		dependencies[self] = field
 	end
@@ -609,9 +609,10 @@ end
 
 --------------------------------------------------------------------------------
 
-function ObjectRef:update(new)
-	if new.repID ~= ObjectRef.repID then
-		assert.illegal(new, "Object type, use interface definition instead")
+function ObjectRef:__init(object, registry)
+	if object.repID ~= ObjectRef.repID then
+		return registry.repository:lookup_id(object.repID) or
+		       assert.illegal(new, "Object type, use interface definition instead")
 	end
 	return PrimitiveTypes.pk_objref
 end
@@ -874,9 +875,9 @@ UnionDef.definition_fields = {
 	switch  = { type = IDLType },
 	default = { type = "number", optional = true },
 	options = { type = {
-		label = nil,
-		name = { type = "string" },
-		type = { type = IDLType },
+		label = { type = nil },
+		name  = { type = "string" },
+		type  = { type = IDLType },
 	}, optional = true, list = true },
 }
 
@@ -885,10 +886,10 @@ function UnionDef:update(new)
 	
 	if new.options then
 		for _, option in ipairs(new.options) do
-			option.label    = setmetatable({ option.label }, self.switch)
+			option.label    = setmetatable({ _anyval = option.label }, self.switch)
 			option.type_def = option.type
 		end
-		self:_set_members(members)
+		self:_set_members(new.options)
 	end
 end
 
@@ -903,6 +904,7 @@ function UnionDef:_set_members(members)
 	local options = {}
 	local selector = {}
 	local selection = {}
+	
 	for index, member in ipairs(members) do
 		local option = {
 			label = member.label._anyval,
@@ -968,7 +970,7 @@ Repository.absolute_name = ""
 function Repository:__init(object)
 	self = oo.rawnew(self, object)
 	self.containing_repository = self
-	self.definition_map        = self.definition_map or {}
+	self.definition_map = self.definition_map or {}
 	Container.update(self, self)
 	return self
 end
@@ -1075,10 +1077,11 @@ InterfaceDef.definition_fields = {
 
 InterfaceDef.hierarchy = idl.basesof
 
-function InterfaceDef:__init(object, definition, registry)
-	object = object or {}
-	object.members = object.members or {}
-	return IRObject.__init(self, object, definition, registry)
+function InterfaceDef:__init(definition, registry)
+	local map = registry.repository.definition_map
+	local object = map[definition.repID]
+	if not object then map[definition.repID] = { members = {} } end
+	return IRObject.__init(self, definition, registry)
 end
 
 function InterfaceDef:update(new, registry)
@@ -1150,15 +1153,13 @@ end
 
 function InterfaceDef:_set_base_interfaces(bases)
 	for _, interface in ipairs(bases) do
-		for base in interface:hierarchy() do
-			for _, member in pairs(base.members) do
-				if self.members[member.name] then
-					assert.illegal(bases,
-					               "base interfaces, member '"..
-					               member.name..
-					               "' override not allowed",
-					               "BAD_PARAM", 5)
-				end
+		for _, member in pairs(self.definitions) do
+			if #interface:lookup_name(member.name, -1, "dk_All", false) > 0 then
+				assert.illegal(bases,
+				               "base interfaces, member '"..
+				               member.name..
+				               "' override not allowed",
+				               "BAD_PARAM", 5)
 			end
 		end
 	end
@@ -1316,7 +1317,7 @@ function Registry:__index(definition)
 	if definition then
 		local class = self.repository.Classes[definition._type]
 		if class then
-			definition = class(nil, definition, self)
+			definition = class(definition, self)
 		elseif oo.classof(definition) == _M then
 			return self.repository
 		end
