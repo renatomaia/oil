@@ -106,6 +106,7 @@ function register(self, object, history)
 				desc.repID = desc.id
 				desc.defined_in = nil
 				if kind == "dk_Interface" then
+					desc.base_interfaces = nil
 					desc = types:register(idl.interface(desc))
 					history[desc.repID] = desc
 					object = object:_narrow("IDL:omg.org/CORBA/InterfaceDef:1.0")
