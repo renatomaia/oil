@@ -241,8 +241,28 @@ local TypeCodeInfo = {
 		},
 	},
 	
-	[29] = {name = "value"             , type = "complex", unhandled = true},
-	[30] = {name = "value_box"         , type = "complex", unhandled = true},
+	[29] = {name = "value" , type = "complex", unhandled = true,
+		parameters = {
+			{name = "repID"     , type = idl.string  },
+			{name = "name"      , type = idl.string  },
+			{name = "kind"      , type = idl.short   },
+			{name = "base_value", type = idl.TypeCode},
+			{name = "members", type = idl.sequence{
+				idl.struct{
+					{name = "name"  , type = idl.string  },
+					{name = "type"  , type = idl.TypeCode},
+					{name = "access", type = idl.short   },
+				},
+			}},
+		},
+	},
+	[30] = {name = "value_box", type = "complex", unhandled = true,
+		parameters = {
+			{name = "repID"            , type = idl.string  },
+			{name = "name"             , type = idl.string  },
+			{name = "original_type_def", type = idl.TypeCode},
+		},
+	},
 	[31] = {name = "native"            , type = "complex", unhandled = true},
 	[32] = {name = "abstract_interface", type = "complex", unhandled = true},
 	
@@ -766,7 +786,7 @@ function Encoder:sequence(value, idltype)                                       
 	local length = #value
 	self:ulong(length)
 	if type(value) == "string" then
-		while elementtype._type == "typecode" do elementtype = elementtype.type end
+		while elementtype._type == "typedef" do elementtype = elementtype.type end
 		if elementtype == idl.octet or elementtype == idl.char then                 --[[VERBOSE]] verbose:marshal("got ", verbose.viewer:tostring(value))
 			self:rawput('"', value, length)
 		else
@@ -788,7 +808,7 @@ function Encoder:array(value, idltype)                                          
 		assert.illegal(value, "array value (wrong length)", "MARSHAL")
 	end
 	if type(value) == "string" then
-		while elementtype._type == "typecode" do elementtype = elementtype.type end
+		while elementtype._type == "typedef" do elementtype = elementtype.type end
 		if elementtype == idl.octet or elementtype == idl.char then                 --[[VERBOSE]] verbose:marshal("got ", verbose.viewer:tostring(value))
 			self:rawput('"', value, length)
 		else
