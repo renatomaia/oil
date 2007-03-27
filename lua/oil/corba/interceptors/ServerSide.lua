@@ -40,10 +40,11 @@ function before(self, request, object, ...)
 	if request.port == "messenger" then
 		if request.method == request.object.sendmsg then
 			local type, header = select(2, ...)
-			if type == ReplyID and self.message.service_context then
-				header.service_context = self.message.service_context
+			if type == ReplyID and self.message then
+				header.service_context = self.message.service_context or 
+				                         header.service_context
+				self.message = nil
 			end
-			self.message = nil
 		end
 	elseif request.port == "dispatcher" then
 		if request.method == request.object.dispatch then
