@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.6.0b
+-- Version:  0.7.1b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 28/09/2006
+-- Last modification: 30/03/2007
 -- Filename: init.lua
 -- 
 
@@ -21,6 +21,8 @@ module 'luaidl'
 
 local _pre    = require 'luaidl.pre'
 local sin     = require 'luaidl.sin'
+
+VERSION = '0.7b'
 
 --- Preprocesses an IDL code. 
 -- 

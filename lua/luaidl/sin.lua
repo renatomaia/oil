@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.6.0b
+-- Version:  0.7.1b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 11/12/2006
+-- Last modification: 02/04/2007
 -- Filename: sin.lua
 -- 
 
@@ -181,10 +181,10 @@
 --(195) <abstract_tail>         :=    TK_INTERFACE TK_ID <interface_tail>
 --(196)                         |     TK_VALUETYPE TK_ID <valueinhe_export_empty>
 --(197)                         |     TK_EVENTTYPE TK_ID <valueinhe_export_empty>
---(198) <interface_tail>        :=    ":" <scoped_name> <inter_name_seq2> "{" <export_l> "}"
+--(198) <interface_tail>        :=    ":" <scoped_name> <bases> "{" <export_l> "}"
 --(199)                         |     "{" <export_l> "}"
 --(200)                         |     empty
---(205) <inter_name_seq2>       :=    "," <scoped_name> <inter_name_seq2>
+--(205) <bases>                 :=    "," <scoped_name> <bases>
 --(206)                         |     empty
 --(207) <export_l>              :=    <export> <export_l>
 --(208)                         |     empty
@@ -324,7 +324,7 @@
 --(344) <home_dcl>              :=    TK_HOME TK_ID <home_dcl_tail>
 --(345) <home_dcl_tail>         :=    <home_inh_spec> <supp_inter_spec>
 --                                    TK_MANAGES <home_name> <primary_key_spec_e>
---                                    "{" <home_export_l> "}"
+--                                    "{" <home_export_l> "}"raises_expr>
 --(346)                         |     <supp_inter_spec> TK_MANAGES <home_name> <primary_key_spec_e>
 --                                    "{" <home_export_l> "}"
 --(347)                         |     TK_MANAGES <home_name> <primary_key_spec_e>
@@ -521,7 +521,7 @@ tab_firsts.rule_150  = set_firsts { 'TK_LONG' }
 tab_firsts.rule_151  = set_firsts { 'TK_CHAR' }
 tab_firsts.rule_152  = set_firsts { 'TK_BOOLEAN' }
 tab_firsts.rule_153  = set_firsts { 'TK_ENUM' }
-tab_firsts.rule_154  = set_firsts { 'TK_ID', '::' }
+tab_firsts.rule_154  = set_firsts { 'TK_ID', ':' }
 tab_firsts.rule_155  = set_firsts { 'TK_CASE', 'TK_DEFAULT' }
 tab_firsts.rule_156  = set_firsts { 'TK_CASE', 'TK_DEFAULT' }
 
@@ -873,19 +873,24 @@ local function goto_father_scope()
   tab_curr_scope = tab_namespaces[ tab_curr_scope.absolute_name ].father_scope
 end
 
-local function dclName( name, tab_scope, tab_namespace, error_msg )
-  if tab_namespaces[ name ] then
+local function get_absolutename(tab_scope, name)
+  return tab_scope.absolute_name..'::'..name
+end
+
+local function dclName(name, target, tab, error_msg)
+  local absolutename = get_absolutename(tab_curr_scope, name)
+  if tab_namespaces[ absolutename ] then
     if not error_msg then
       error_msg = ERRMSG_DECLARED
     end --if
     sem_error( string.format( error_msg, name ) )
   else
-    local scope = tab_scope.absolute_name
-    if ( not tab_namespace ) then
-      tab_namespaces[ scope..'::'..name ] = true
+    if (tab) then
+      tab.name = name
+      table.insert(target, tab)
     else
-      tab_namespaces[ scope..'::'..name ] = { }
-      tab_namespaces[ scope..'::'..name ].tab_namespace = tab_namespace
+      tab_namespaces[absolutename] = {tab_namespace = name}
+      table.insert(target, name)
     end --if
   end --if
 end
@@ -893,10 +898,13 @@ end
 ------
 local function new_name( key, name, tab, value, error_msg, keyv )
   key = tab_curr_scope.absolute_name..'.'..key
-  if ( tab_namespaces[ key ] ) then
+  local absolutename = get_absolutename( tab_curr_scope, name )
+--  if ( tab_namespaces[ key ] ) then
+  if ( tab_namespaces[ absolutename ] ) then
     sem_error( string.format( error_msg, name ) )
   else
-    tab_namespaces[ key ] = { }
+--    tab_namespaces[ key ] = { }
+    tab_namespaces[ absolutename ] = { }
     if keyv then
       tab[ keyv ] = value
     else
@@ -920,12 +928,7 @@ local function get_scope( part )
   return s
 end
 
-local function get_absolutename( tab_scope, name )
-  return tab_scope.absolute_name..'::'..name
-end
-
-local function is_legal_type( type )
-  local tab_legal_type = { 
+local tab_legal_type = { 
     [ TAB_TYPEID.TYPEDEF ] = true,
     [ TAB_TYPEID.STRUCT ] = true,
     [ TAB_TYPEID.ENUM ] = true,
@@ -952,76 +955,52 @@ local function is_legal_type( type )
     [ TAB_TYPEID.TYPECODE ] = true,
     [ TAB_TYPEID.SEQUENCE ] = true,
     [ TAB_TYPEID.STRING ] = true,
-  }
-  if ( tab_legal_type[ type ] ) then
-    return true
-  else
-    return false
-  end --if
-end
+}
 
-local tab_accept_member_type = { 
+local tab_accept_definition = { 
+    [ TAB_TYPEID.STRUCT] = true,
+    [ TAB_TYPEID.EXCEPTION ] = true,
     [ TAB_TYPEID.INTERFACE ] = true,
+    [ TAB_TYPEID.MODULE ] = true,
+
     [ TAB_TYPEID.HOME ] = true,
     [ TAB_TYPEID.VALUETYPE ] = true,
     [ TAB_TYPEID.EVENTTYPE ] = true,
 }
 
-local tab_accept_definition_type = { 
-    [ TAB_TYPEID.MODULE ] = true,
-    [ TAB_TYPEID.STRUCT ] = true,
-    [ TAB_TYPEID.INTERFACE ] = true,
-    [ TAB_TYPEID.UNION ] = true,
-    [ TAB_TYPEID.EXCEPTION ] = true,
-    [ TAB_TYPEID.HOME ] = true,
-    [ TAB_TYPEID.VALUETYPE ] = true,
-    [ TAB_TYPEID.EVENTTYPE ] = true,
+local tab_define_scope = {
+  [ TAB_TYPEID.INTERFACE ] = true,
+  [ TAB_TYPEID.EXCEPTION ] = true,
+  [ TAB_TYPEID.OPERATION ] = true,
+  [ TAB_TYPEID.STRUCT ] = true,
+  [ TAB_TYPEID.UNION ] = true,
+  [ TAB_TYPEID.ENUM ] = true,
+  [ TAB_TYPEID.MODULE ] = true,
 }
 
-local tab_definition_type = { 
-    [ TAB_TYPEID.MODULE ] = true,
-    [ TAB_TYPEID.STRUCT ] = true,
-    [ TAB_TYPEID.ENUM ] = true,
-    [ TAB_TYPEID.INTERFACE ] = true,
-    [ TAB_TYPEID.UNION ] = true,
-    [ TAB_TYPEID.EXCEPTION ] = true,
-    [ TAB_TYPEID.INTERFACE ] = true,
+local tab_is_contained = { 
+    [ TAB_TYPEID.ATTRIBUTE ] = true,
     [ TAB_TYPEID.TYPEDEF ] = true,
+    [ TAB_TYPEID.INTERFACE ] = true,
+    [ TAB_TYPEID.OPERATION ] = true,
+    [ TAB_TYPEID.CONST ] = true,
+
+    [ TAB_TYPEID.STRUCT ] = true,
+    [ TAB_TYPEID.EXCEPTION ] = true,
+    [ TAB_TYPEID.MODULE ] = true,
+    [ TAB_TYPEID.ENUM ] = true,
+    [ TAB_TYPEID.UNION ] = true,
     [ TAB_TYPEID.COMPONENT ] = true,
     [ TAB_TYPEID.HOME ] = true, 
     [ TAB_TYPEID.VALUETYPE ] = true,
     [ TAB_TYPEID.EVENTTYPE ] = true,
 }
 
-local function is_accept_members( type )
-  if ( tab_accept_member_type[ type ] ) then
-    return true
-  else
-    return false
-  end --if
-end
-
-local function is_accept_definition( type )
-  if ( tab_accept_definition_type[ type ] ) then
-    return true
-  else
-    return false
-  end --if
-end
-
-local function is_definition( type )
-  if ( tab_definition_type[ type ] ) then
-    return true
-  else
-    return false
-  end --if
-end
-
-local function define( name, type )
-  local absolutename = get_absolutename( tab_curr_scope, name )
+local function define(name, type, value)
+  local absolutename = get_absolutename(tab_curr_scope, name)
   local tab_scope
   local tab_members
-  local tab_definitions
+  local tab_contents
   -- Is there this scope ? Whenever exist and it is a module, then we
   -- must reopen this module...
   if tab_namespaces[ absolutename ] then
@@ -1033,15 +1012,15 @@ local function define( name, type )
     then
       tab_scope = tab_namespaces[ absolutename ].tab_namespace
       tab_members = tab_namespaces[ absolutename ].tab_namespace.members
-      tab_definitions = tab_namespaces[ absolutename ].tab_namespace.definitions
+      tab_contents = tab_namespaces[ absolutename ].tab_namespace.contents
     else
       sem_error( string.format( ERRMSG_REDEFINITION, name ) )
     end --if
   end --if
 
-  if tab_forward[ absolutename ] then
-    tab_scope = tab_forward[ absolutename ]
-    tab_forward[ absolutename ] = nil
+  if tab_forward[absolutename] then
+    value = tab_forward[absolutename]
+    tab_forward[absolutename] = nil
   end --if
     
   local curr_root  = get_scope( 'curr_root' )
@@ -1059,45 +1038,47 @@ local function define( name, type )
     if curr_scope ~= '' then curr_scope = curr_scope..'::' end
     curr_scope = curr_scope..name
   end --if
-  
-  if ( not tab_members and is_accept_members( type ) ) then
-    tab_members = { }
+
+  if ( not tab_contents and tab_accept_definition[type] ) then
+    tab_contents = {}
   end --if
-  
-  if not tab_scope then
-    tab_scope = { }
-  end --if
-  
-  if ( not tab_definitions and is_accept_definition( type ) ) then
-    tab_definitions = { }
-  end --if
-  
+
   local separator
   if curr_root ~= '' and curr_scope ~= '' then
     separator = '/'
   else
     separator = ''
   end --if
-  tab_scope.name = name
-  tab_scope.absolute_name = absolutename
-  tab_scope._type = type
-  tab_scope.repID = "IDL:"..string.gsub( curr_root, '::', '/' )..separator..string.gsub( curr_scope, '::', '/' )..
-  ":"..lex.version_pragma
-  tab_scope.members = tab_members
-  tab_scope.definitions = tab_definitions
-  if ( is_definition( type ) and tab_curr_scope ~= tab_output ) then
-    tab_curr_scope.definitions[ name ] = tab_scope
+
+  if (not value) then
+    value = {}
+  end --if 
+
+  value.name = name
+  value._type = type
+  value.absolute_name = absolutename
+  value.repID = "IDL:"..string.gsub( curr_root, '::', '/' )..separator..string.gsub( curr_scope, '::', '/' )..
+    ":"..lex.version_pragma
+  value.contents = tab_contents
+
+-- tab_curr_scope ~= tab_output ????
+  if ( tab_is_contained[type] and tab_curr_scope ~= tab_output ) then
+    table.insert(tab_curr_scope.contents, value)
   else
-    table.insert( tab_curr_scope, tab_scope )
-  end --if
-   
-  tab_namespaces[ absolutename ] = { 
-                                      father_scope = tab_curr_scope, 
-                                      tab_namespace = tab_scope,
-                                      curr_root = curr_root,
-                                      curr_scope = curr_scope
+    table.insert(tab_curr_scope, value)
+  end --if  
+
+  if (tab_define_scope[type]) then
+    tab_namespaces[absolutename] = { 
+                                        father_scope = tab_curr_scope, 
+                                        tab_namespace = value,
+                                        curr_root = curr_root,
+                                        curr_scope = curr_scope
                                    }
-  tab_curr_scope = tab_scope
+    tab_curr_scope = value
+  else
+    tab_namespaces[absolutename] = {tab_namespace = value}
+  end --if
 end
 
 local function get_tab_legal_type( namespace )
@@ -1113,7 +1094,7 @@ local function get_tab_legal_type( namespace )
     end --if
     if tab_scope._type == TAB_TYPEID.INTERFACE then
       for _, v in ipairs( tab_scope ) do
-        tab_scope = tab_namespaces[ v.absolute_name ].tab_namespace
+        local tab_scope = tab_namespaces[ v.absolute_name ].tab_namespace
         absolutename = get_absolutename( tab_scope, namespace )
         if ( type( tab_namespaces[ absolutename ] ) == 'table' ) then
           return tab_namespaces[ absolutename ].tab_namespace
@@ -1127,6 +1108,13 @@ local function get_tab_legal_type( namespace )
     if tab_scope ~= tab_output then
       tab_scope = tab_namespaces[ tab_scope.absolute_name ].father_scope
     else
+      if (tab_curr_scope._type == TAB_TYPEID.UNION) then
+        if (tab_curr_scope.switch) then
+          if (tab_curr_scope.switch._type == TAB_TYPEID.ENUM) then
+            return tab_namespaces[get_absolutename(tab_curr_scope.switch, namespace)].tab_namespace
+          end --if
+        end -- if
+      end --if
       break
     end -- if
   end -- while
@@ -1146,14 +1134,15 @@ local function get_tab_global_legal_type( global_namespace )
 end
 
 local function get_tab_legal_type_spec(fullnamespace)
-  if ( type( tab_namespaces[ fullnamespace ] ) == 'table' ) then
-    return tab_namespaces[ fullnamespace ].tab_namespace
+  if (type(tab_namespaces[fullnamespace]) == 'table') then
+    return tab_namespaces[fullnamespace].tab_namespace
+  else
   end -- if
-  local forward = tab_forward[ fullnamespace ]
+  local forward = tab_forward[fullnamespace]
   if forward then
     return forward
   end --if
-  sem_error( string.format( ERRMSG_UNDECLARED, fullnamespace ) )
+  sem_error(string.format(ERRMSG_UNDECLARED, fullnamespace))
 end
 
 local function get_token()
@@ -1199,12 +1188,12 @@ local function get_token()
   return token
 end
 
-local function dclForward( name, type)
-  local absolute_name = get_absolutename( tab_curr_scope, name )
-  local def = tab_namespaces[ absolute_name ] or tab_forward[ absolute_name ]
-  if not def then
-    def = { name = name, _type = type, absolute_name = absolute_name }
-    tab_forward[ absolute_name ] = def
+local function dclForward(name, type)
+  local absolute_name = get_absolutename(tab_curr_scope, name)
+  local def = tab_namespaces[absolute_name] or tab_forward[absolute_name]
+  if (not def) then
+    def = {name = name, _type = type, absolute_name = absolute_name}
+    tab_forward[absolute_name] = def
   end --if
   return def
 end
@@ -1290,133 +1279,111 @@ local specification, definition_l, definition_l_r, definition, type_dcl, type_de
       struct_type, member_l, member, member_r, union_type, switch_type_spec, case_l, case,
       case_label_l, case_label, case_label_l_r, case_l_r, element_spec, component, component_tail
 
--- ok2
--- disable import declaration
 function specification()
 --  import_l()
   definition_l()
 end	
 
--- ok2
 function definition_l()
-  if tab_firsts.rule_11[ token ] then
+  if (tab_firsts.rule_11[token]) then
     definition()
     definition_l_r()
   else
-  --ok2
-    sin_error( tab_ERRORMSG[ 01 ] )
+    sin_error(tab_ERRORMSG[01])
   end --if
 end
 
--- ok2
 function definition_l_r()
-  if tab_firsts.rule_12[ token ] then
+  if (tab_firsts.rule_12[token]) then
     definition()
     definition_l_r()
-  elseif token == nil then
+  elseif (token == nil) then
     --empty
   else
-    sin_error( tab_ERRORMSG[ 01 ] )
+    sin_error(tab_ERRORMSG[01])
   end --if
 end
 
 function definition()
-  if tab_firsts.rule_14[ token ] then
+  if (tab_firsts.rule_14[token]) then
     type_dcl()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_15[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_15[token]) then
     const_dcl()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_16[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_16[token]) then
     except_dcl()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_17[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_17[token]) then
     inter_value_event()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_18[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_18[token]) then
     module()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_19[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_19[token]) then
     type_id_dcl()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_20[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_20[token]) then
     type_prefix_dcl()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_21[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_21[token]) then
     component()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_22[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_22[token]) then
     home_dcl()
-    reconhecer( ";", "';'" )
+    reconhecer(";", "';'")
   end --if
 end
 
 function const_dcl()
-  if tab_firsts.rule_174[ token ] then
-    reconhecer( lex.tab_tokens.TK_CONST, "'const'" )
-    local tab_type = const_type()
-    reconhecer( lex.tab_tokens.TK_ID, "'identifier'" )
-    local const_name = lex.tokenvalue_previous
-    define( const_name, TAB_TYPEID.CONST )
-    tab_curr_scope.type = tab_type
-    reconhecer( '=', "'='" )
-    local value = positive_int_const( 143 )
-    tab_curr_scope.value = value
-    local tab_constscope = tab_curr_scope
-    goto_father_scope()
+  if (tab_firsts.rule_174[token]) then
+    reconhecer(lex.tab_tokens.TK_CONST, "'const'")
+    local type = const_type()
+    reconhecer(lex.tab_tokens.TK_ID, "'identifier'")
+    local name = lex.tokenvalue_previous
+    reconhecer('=', "'='")
+    local value = positive_int_const(143)
+    local const = {type = type, value = value}
+    define(name, TAB_TYPEID.CONST, const)
     if tab_callbacks.const then
-      tab_callbacks.const( tab_constscope )
+      tab_callbacks.const(const)
     end --if
   end --if
 end
 
 function const_type()
-  if tab_firsts.rule_175[ token ] then
+  if (tab_firsts.rule_175[token]) then
     return float_type_or_int_type()
-  elseif tab_firsts.rule_176[ token ] then
-    reconhecer( lex.tab_tokens.TK_CHAR, "'char'" )
+  elseif (tab_firsts.rule_176[token]) then
+    reconhecer(lex.tab_tokens.TK_CHAR, "'char'")
     return TAB_BASICTYPE.CHAR
-  elseif tab_firsts.rule_177[ token ] then
-    reconhecer( lex.tab_tokens.TK_BOOLEAN, "'boolean'" )
+  elseif (tab_firsts.rule_177[token]) then
+    reconhecer(lex.tab_tokens.TK_BOOLEAN, "'boolean'")
     return TAB_BASICTYPE.BOOLEAN
-  elseif tab_firsts.rule_178[ token ] then
-    reconhecer( lex.tab_tokens.TK_STRING, "'string'" )
+  elseif (tab_firsts.rule_178[token]) then
+    reconhecer(lex.tab_tokens.TK_STRING, "'string'")
     return TAB_BASICTYPE.STRING
-  elseif tab_firsts.rule_179[ token ] then
-    return scoped_name( 32 )
-  elseif tab_firsts.rule_180[ token ] then
-    reconhecer( lex.tab_tokens.TK_OCTET, "'octet'" )
+  elseif (tab_firsts.rule_179[token]) then
+    return scoped_name(32)
+  elseif (tab_firsts.rule_180[token]) then
+    reconhecer(lex.tab_tokens.TK_OCTET, "'octet'")
     return TAB_BASICTYPE.OCTET
-  elseif tab_firsts.rule_181[ token ] then
-    reconhecer( lex.tab_tokens.TK_FIXED, "'fixed'" )   
+  elseif (tab_firsts.rule_181[token]) then
+    reconhecer(lex.tab_tokens.TK_FIXED, "'fixed'")
     return TAB_BASICTYPE.FIXED
   end
 end
 
-
 function type_dcl()
   if tab_firsts.rule_23[ token ] then
     reconhecer( lex.tab_tokens.TK_TYPEDEF, "'typedef'" )
-    --local tab_dcls = type_declarator()
     type_declarator()
---    if tab_callbacks.typedef then
---      tab_callbacks.typedef( tab_dcls )
---    end --if
   elseif tab_firsts.rule_24[ token ] then
-    local tab_enumscope = enum_type()
-    if tab_callbacks.enum then
-      tab_callbacks.enum( tab_enumscope )
-    end --if
+    enum_type()
   elseif tab_firsts.rule_25[ token ] then
     reconhecer( lex.tab_tokens.TK_NATIVE, "'native'" )
     reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local name = lex.tokenvalue_previous
-    define( name, TAB_TYPEID.NATIVE )
-    local tab_nativescope = tab_curr_scope
-    goto_father_scope()
-    if tab_callbacks.native then
-      tab_callbacks.native( tab_nativescope )
-    end --if
+    define(lex.tokenvalue_previous, TAB_TYPEID.NATIVE, {})
   elseif tab_firsts.rule_26[ token ] then
     union_or_struct()
   else
@@ -1425,11 +1392,11 @@ function type_dcl()
 end
 
 function type_declarator()
-  local tab_type = type_spec()
-  if not is_legal_type( tab_type._type ) then
-    sem_error( string.format( ERRMSG_NOTTYPE, tab_type._type ) )
+  local type = type_spec()
+  if (not tab_legal_type[type._type]) then
+    sem_error(string.format(ERRMSG_NOTTYPE, type._type))
   end --if
-  return type_dcl_name_l( tab_type )
+  type_dcl_name_l(type)
 end
 
 function type_spec()
@@ -1442,40 +1409,40 @@ function type_spec()
   end --if
 end
 
-function simple_type_spec( numrule )
-  if tab_firsts.rule_30[ token ] then
+function simple_type_spec(numrule)
+  if (tab_firsts.rule_30[token]) then
     return base_type_spec()
-  elseif tab_firsts.rule_31[ token ] then
+  elseif (tab_firsts.rule_31[token]) then
     return template_type_spec()
-  elseif tab_firsts.rule_32[ token ] then 
+  elseif (tab_firsts.rule_32[token]) then 
     return scoped_name( numrule or 32 )
   else
-    sin_error( tab_ERRORMSG[ 04 ] )
+    sin_error(tab_ERRORMSG[04])
   end --if
 end
 
 function base_type_spec()
-  if tab_firsts.rule_36[ token ] then
+  if (tab_firsts.rule_36[token]) then
     return float_type_or_int_type()
-  elseif tab_firsts.rule_37[ token ] then
-    reconhecer( lex.tab_tokens.TK_CHAR, "'char'" )
+  elseif (tab_firsts.rule_37[token]) then
+    reconhecer(lex.tab_tokens.TK_CHAR, "'char'")
     return TAB_BASICTYPE.CHAR
-  elseif tab_firsts.rule_38[ token ] then
-    reconhecer( lex.tab_tokens.TK_BOOLEAN, "'boolean'" )
+  elseif (tab_firsts.rule_38[token]) then
+    reconhecer(lex.tab_tokens.TK_BOOLEAN, "'boolean'")
     return TAB_BASICTYPE.BOOLEAN
-  elseif tab_firsts.rule_39[ token ] then
-    reconhecer( lex.tab_tokens.TK_OCTET, "'octet'" )
+  elseif (tab_firsts.rule_39[token]) then
+    reconhecer(lex.tab_tokens.TK_OCTET, "'octet'")
     return TAB_BASICTYPE.OCTET
-  elseif tab_firsts.rule_40[ token ] then
-    reconhecer( lex.tab_tokens.TK_ANY, "'any'" )
+  elseif (tab_firsts.rule_40[token]) then
+    reconhecer(lex.tab_tokens.TK_ANY, "'any'")
     return TAB_BASICTYPE.ANY
-  elseif tab_firsts.rule_41[ token ] then
-    reconhecer( lex.tab_tokens.TK_OBJECT, "'Object'" )
+  elseif (tab_firsts.rule_41[token]) then
+    reconhecer(lex.tab_tokens.TK_OBJECT, "'Object'")
     return TAB_BASICTYPE.OBJECT
-  elseif tab_firsts.rule_42[ token ] then
-    reconhecer( lex.tab_tokens.TK_VALUEBASE, "'ValueBase'" )
+  elseif (tab_firsts.rule_42[token]) then
+    reconhecer(lex.tab_tokens.TK_VALUEBASE, "'ValueBase'")
     return TAB_BASICTYPE.VALUEBASE
-  elseif token == lex.tab_tokens[ 'TK_TYPECODE' ] then
+  elseif (token == lex.tab_tokens['TK_TYPECODE']) then
     reconhecer( lex.tab_tokens.TK_TYPECODE, "'TypeCode'" )
     return TAB_BASICTYPE.TYPECODE
 --  else
@@ -1484,127 +1451,98 @@ function base_type_spec()
 end
 
 function float_type_or_int_type()
-  if tab_firsts.rule_43[ token ] then
+  if (tab_firsts.rule_43[token]) then
     return floating_pt_type()
-  elseif tab_firsts.rule_44[ token ] then
-    return integer_type( 54 )
-  elseif tab_firsts.rule_45[ token ] then
-    reconhecer( lex.tab_tokens.TK_LONG, "'long'" )
+  elseif (tab_firsts.rule_44[token]) then
+    return integer_type(54)
+  elseif (tab_firsts.rule_45[token]) then
+    reconhecer(lex.tab_tokens.TK_LONG, "'long'")
     return long_or_double()
   else
-    sin_error( tab_ERRORMSG[ 06 ] )
+    sin_error(tab_ERRORMSG[06])
   end -- if
 end
 
 function floating_pt_type()
-  if tab_firsts.rule_46[ token ] then
-    reconhecer( lex.tab_tokens.TK_FLOAT, "'float'" )
+  if (tab_firsts.rule_46[token]) then
+    reconhecer(lex.tab_tokens.TK_FLOAT, "'float'")
     return TAB_BASICTYPE.FLOAT
-  elseif tab_firsts.rule_47[ token ] then
-    reconhecer( lex.tab_tokens.TK_DOUBLE, "'double'" )
+  elseif (tab_firsts.rule_47[token]) then
+    reconhecer(lex.tab_tokens.TK_DOUBLE, "'double'")
     return TAB_BASICTYPE.DOUBLE
 --  else
 --    sin_error( tab_ERRORMSG[ 07 ] ) 
   end --if
 end
 
-function integer_type( numrule )
-  if tab_firsts.rule_48[ token ] then
-    reconhecer( lex.tab_tokens.TK_SHORT, "'short'" )
+function integer_type(numrule)
+  if (tab_firsts.rule_48[token]) then
+    reconhecer(lex.tab_tokens.TK_SHORT, "'short'")
     return TAB_BASICTYPE.SHORT
-  elseif tab_firsts.rule_49[ token ] then
-    return unsigned_int( numrule )
+  elseif (tab_firsts.rule_49[token]) then
+    return unsigned_int(numrule)
 --  else
 --    sin_error( tab_ERRORMSG[ 08 ] )
   end --if
 end
 
-function unsigned_int( numrule )
-  reconhecer( lex.tab_tokens.TK_UNSIGNED, "'unsigned'" )
-  return unsigned_int_tail( numrule )
+function unsigned_int(numrule)
+  reconhecer(lex.tab_tokens.TK_UNSIGNED, "'unsigned'")
+  return unsigned_int_tail(numrule)
 end
 
-function unsigned_int_tail( numrule )
-  if tab_firsts.rule_51[ token ] then
-    reconhecer( lex.tab_tokens.TK_LONG, "'long'" )
-    return long_e( numrule )
-  elseif tab_firsts.rule_52[ token ] then
-    reconhecer( lex.tab_tokens.TK_SHORT, "'short'" )
+function unsigned_int_tail(numrule)
+  if (tab_firsts.rule_51[token]) then
+    reconhecer(lex.tab_tokens.TK_LONG, "'long'")
+    return long_e(numrule)
+  elseif (tab_firsts.rule_52[token]) then
+    reconhecer(lex.tab_tokens.TK_SHORT, "'short'")
     return TAB_BASICTYPE.USHORT
   else
-    sin_error( tab_ERRORMSG[ 09 ] )
+    sin_error( tab_ERRORMSG[09] )
   end --if
 end
 
-function long_e( numrule )
-  if tab_firsts.rule_53[ token ] then
-    reconhecer( lex.tab_tokens.TK_LONG, "'long'" )
-    return TAB_BASICTYPE.ULLONG
-  elseif tab_follow[ 'rule_'..numrule ][ token ] then
-    return TAB_BASICTYPE.ULONG
+function long_e(numrule)
+  if (tab_firsts.rule_53[token]) then
+    reconhecer(lex.tab_tokens.TK_LONG, "'long'")
+    return TAB_BASICTYPE.LLONG
+  elseif (tab_follow['rule_'..numrule][token]) then
+    return TAB_BASICTYPE.LONG
     --empty
   else
-    sin_error( tab_ERRORMSG[ 10 ] )
+    sin_error( tab_ERRORMSG[10] )
   end --if
 end
 
-function type_dcl_name_l( tab_type_spec )
-  local tab_dcls = { }
-  type_dcl_name( tab_type_spec, tab_dcls )
-  type_dcl_name_l_r( tab_type_spec, tab_dcls )
-  return tab_dcls
+function type_dcl_name_l(type)
+  type_dcl_name(type)
+  type_dcl_name_l_r(type)
 end
 
-function type_dcl_name_l_r( tab_type_spec, tab_dcls )
-  if tab_firsts.rule_142[ token ] then
-    reconhecer( ",", "','" )
-    type_dcl_name( tab_type_spec, tab_dcls )
-    type_dcl_name_l_r( tab_type_spec, tab_dcls )
-  elseif tab_follow.rule_143 [ token ] then
+function type_dcl_name_l_r(type)
+  if (tab_firsts.rule_142[token]) then
+    reconhecer(",", "','")
+    type_dcl_name(type)
+    type_dcl_name_l_r(type)
+  elseif (tab_follow.rule_143 [token]) then
     --empty
   else
-    sin_error( tab_ERRORMSG[ 11 ] )
+    sin_error(tab_ERRORMSG[11])
   end --if
 end
 
-function type_dcl_name( tab_type_spec, tab_dcls )
-  reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-  define( lex.tokenvalue_previous, TAB_TYPEID.TYPEDEF )
-  tab_curr_scope.type = fixed_array_size_l( tab_type_spec )
-  tab_curr_scope.name = lex.tokenvalue_previous
-  --tab_dcls[lex.tokenvalue_previous] = tab_curr_scope
-  if tab_callbacks.typedef then
-    tab_callbacks.typedef( tab_curr_scope )
-  end --if
-  goto_father_scope()
-end
-
-function declarator_l( tab_type_spec, tab_dcls )
-  declarator( tab_type_spec, tab_dcls )
-  declarator_l_r( tab_type_spec, tab_dcls )
-end
-
-function declarator_l_r( tab_type_spec, tab_dcls )
-  if tab_firsts.rule_142[ token ] then
-    reconhecer( ",", "','" )
-    declarator( tab_type_spec, tab_dcls )
-    declarator_l_r( tab_type_spec, tab_dcls )
-  elseif tab_follow.rule_143 [ token ] then
-    --empty
-  else
-    sin_error( tab_ERRORMSG[ 11 ] )
-  end --if
-end
-
-function declarator( tab_type_spec, tab_dcls )
-  reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+function type_dcl_name(type)
+  reconhecer(lex.tab_tokens.TK_ID, "identifier")
   local name = lex.tokenvalue_previous
-  dclName( name, tab_curr_scope )
-  local type = fixed_array_size_l( tab_type_spec )
-  table.insert( tab_curr_scope, { name =  name, type = type } )
-  tab_dcls[ name ] = type
+  local typedef = {type = fixed_array_size_l(type)}
+  define(name, TAB_TYPEID.TYPEDEF, typedef)
+  if (tab_callbacks.typedef) then
+    tab_callbacks.typedef(typedef)
+  end --if
 end
 
+-- without revision
 function fixed_array_size_l( tab_type_spec )
   if tab_firsts.rule_145[ token ] then
     local array =  { 
@@ -1631,6 +1569,7 @@ function fixed_array_size( tab_type_spec )
   return const
 end
 
+-- without revision
 --without revision
 --without bitwise logical operations
 function positive_int_const( numrule )
@@ -1742,62 +1681,16 @@ function unary_operator()
   end --if
 end
 
-function scoped_name_primaryexp_l( tab_scope, full_namespace, num_follow_rule )
-  if token == ":" then
-    reconhecer( ":" , "':'" )
-    if token ~= ":" then
-      return tab_scope.value
-    end --if
-    reconhecer( ":" , "':'" )
-    reconhecer( lex.tab_tokens.TK_ID , "identifier" )
-    local namespace = lex.tokenvalue_previous
-    label = namespace
-    full_namespace = tab_scope.absolute_name..'::'..namespace
-    if ( type( tab_namespaces[ full_namespace ] ) == 'table' ) then
-      tab_scope = tab_namespaces[ full_namespace ].tab_namespace
-    else
---      sem_error(  string.format( ERRMSG_UNDECLARED, full_namespace ) )
-      return namespace
-    end --if
-    scoped_name_primaryexp_l( tab_scope, full_namespace, num_follow_rule )
-  elseif ( tab_follow[ 'rule_'..num_follow_rule ][ token ] ) then
-    -- empty
-  else
-    sin_error( "':' or "..tab_follow_rule_error_msg[ num_follow_rule ] )
-  end
---  return tab_scope
-  return tab_scope.value
-end
-
-function scoped_name_primaryexp( num_follow_rule )
-  local namespace = ''
-  local tab_scope = { }
-  if token == lex.tab_tokens.TK_ID then
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local namespace = lex.tokenvalue_previous
-    label = namespace
-    tab_scope = get_tab_legal_type( namespace )
-    tab_scope = scoped_name_primaryexp_l( tab_scope, namespace, num_follow_rule )
-  elseif token == ":" then
-    reconhecer( ":", "':'" )
-    if token ~= ":" then
-      return tab_scope.value
---      return tab_scope
-    end --if
-    reconhecer( ":", "':'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local namespace = lex.tokenvalue_previous
-    tab_scope = get_tab_global_legal_type( namespace )
-    tab_scope = scoped_name_primaryexp_l( tab_scope, namespace, num_follow_rule )
-  end
-  return tab_scope
-end
 
 function primary_expr()
   if tab_firsts.rule_117[ token ] then
-    return scoped_name_primaryexp( 147 )
+    return case_label_tail()
   elseif tab_firsts.rule_118[ token ] then
-    return literal()
+    local value = literal()
+    if tab_curr_scope._type == TAB_TYPEID.UNION then
+      reconhecer( ":", "':'" )
+    end --if
+    return value 
   elseif tab_firsts.rule_119[ token ] then
     reconhecer( "(", "'('" )
     local const = positive_int_const( 119 )
@@ -2049,74 +1942,40 @@ function constr_type_spec()
 end
 
 function struct_type()
-  reconhecer( lex.tab_tokens.TK_STRUCT, "'struct'" )
-  reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-  define( lex.tokenvalue_previous, TAB_TYPEID.STRUCT )
-  local tab_struct = tab_curr_scope
-  tab_curr_scope.fields = tab_curr_scope
-  reconhecer( "{", "'{'" )
+  reconhecer(lex.tab_tokens.TK_STRUCT, "'struct'")
+  reconhecer(lex.tab_tokens.TK_ID, "identifier")
+  define(lex.tokenvalue_previous, TAB_TYPEID.STRUCT)
+  reconhecer("{", "'{'")
   member_l()
-  local tab_structscope = tab_curr_scope
+  local struct = tab_curr_scope
   goto_father_scope()
-  reconhecer( "}", "'}'" )
+  reconhecer("}", "'}'")
   if tab_callbacks.struct then
-    tab_callbacks.struct( tab_structscope )
+    tab_callbacks.struct(struct)
   end --if
-  return tab_struct
-end
-
-function member_l()
-  if tab_firsts.rule_137[ token ] then
-    member()
-    member_r()
-  else
-    sin_error( tab_ERRORMSG[ 03 ] )
-  end --if
-end
-
-function member()
-  if tab_firsts.rule_140[ token ] then
-    local tab_dcls = { }
-    declarator_l( type_spec(), tab_dcls )
-    reconhecer( ";", "';'" ) 
-  else
-    sin_error( tab_ERRORMSG[ 03 ] )
-  end --if
-end
-
-function member_r()
-  if tab_firsts.rule_138[ token ] then
-    member()
-    member_r()
-  elseif tab_follow.rule_139[ token ] then
-    -- empty
-  else
-    sin_error( tab_ERRORMSG[ 28 ] )
-  end --if
+  return struct
 end
 
 function union_type()
   if tab_firsts.rule_148[ token ] then
-    reconhecer( lex.tab_tokens.TK_UNION, "'union'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+    reconhecer(lex.tab_tokens.TK_UNION, "'union'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
     local union_name = lex.tokenvalue_previous
-    reconhecer( lex.tab_tokens.TK_SWITCH, "'switch'" )
-    define( union_name, TAB_TYPEID.UNION )
-    reconhecer( "(", "'('" )
+    reconhecer(lex.tab_tokens.TK_SWITCH, "'switch'")
+    define(union_name, TAB_TYPEID.UNION )
+    reconhecer("(", "'('")
     tab_curr_scope.switch = switch_type_spec()
-    tab_curr_scope.options = { }
-    reconhecer( ")", "')'" )
-    reconhecer( "{" )
-    tmp = -1
+    reconhecer(")", "')'")
+    reconhecer("{")
+    tab_curr_scope.default = -1
     case_l()
-    tab_curr_scope.default = tmp
-    reconhecer( "}" )
-    local tab_unionscope = tab_curr_scope
+    reconhecer("}")
+    local union = tab_curr_scope
     goto_father_scope()
     if tab_callbacks.union then
-      tab_callbacks.union( tab_unionscope )
+      tab_callbacks.union( union )
     end --if
-    return tab_unionscope
+    return tab_union
   else
     sin_error( tab_ERRORMSG[ 29 ] )
   end --if
@@ -2155,8 +2014,8 @@ end
 
 function case()
   if tab_firsts.rule_158[ token ] then
-    case_label_l()
-    element_spec()
+    local cases = case_label_l()
+    element_spec(cases)
     reconhecer( ";", "';'" )
   else
     sin_error( tab_ERRORMSG[ 31 ] )
@@ -2164,45 +2023,74 @@ function case()
 end
 
 function case_label_l()
-  local cases = { }
+  local cases = {}
   if tab_firsts.rule_159[ token ] then
-    case_label()
-    case_label_l_r()
+    case_label(cases)
+    case_label_l_r(cases)
   else
     sin_error( tab_ERRORMSG[ 31 ] )
   end --if
   return cases
 end
 
-function case_label()
-  if tab_firsts.rule_162[ token ] then
-    reconhecer( lex.tab_tokens.TK_CASE, "'case'" )
-    local value = positive_int_const( 162 )
-    if ( not label ) then
-      label = value
-    end --if
-    dclName( label, tab_curr_scope)
-    table.insert( tab_curr_scope.options, { label = label } )
-    label = nil
-    if ( lex.tokenvalue_previous ~= ':' ) then
-      reconhecer( ":", "':'" )
-    end --if
-  elseif tab_firsts.rule_163[ token ] then
-    reconhecer( lex.tab_tokens.TK_DEFAULT, "'default'" )
-    dclName( 'none', tab_curr_scope)
-    table.insert( tab_curr_scope.options, { label = 'none' } )
+function tail(tab_scope, namespace)
+  if token == ':' then
     reconhecer( ":", "':'" )
-    tmp = table.getn( tab_curr_scope.options )
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local namespace = lex.tokenvalue_previous
+    reconhecer( ":", "':'" )
+    full_namespace = tab_scope.absolute_name..'::'..namespace
+    tab_scope = get_tab_legal_type_spec(full_namespace)
+    tab_scope = tail(tab_scope, namespace)
+  elseif (not (tab_firsts.rule_164[token] or token == lex.tab_tokens.TK_CASE)) then
+    sin_error("':'")
+  end --if
+  return tab_scope
+end
+
+function case_label_tail()
+  if token == ':' then
+    reconhecer( ":", "':'" )
+    reconhecer( ":", "':'" )
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local namespace = lex.tokenvalue_previous
+    reconhecer( ":", "':'" )
+    tab_scope = get_tab_global_legal_type(namespace)
+    tab_scope = tail(tab_scope, namespace)
+  elseif token == lex.tab_tokens.TK_ID then
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local namespace = lex.tokenvalue_previous
+    reconhecer( ":", "':'" )
+    tab_scope = get_tab_legal_type(namespace)
+    tab_scope = tail(tab_scope, namespace)
+  end --if
+  return tab_scope
+end
+
+function case_label(cases)
+  if (tab_firsts.rule_162[token]) then
+    reconhecer(lex.tab_tokens.TK_CASE, "'case'")
+--    local value = case_label_tail()
+    local value = positive_int_const(162)
+    table.insert(cases, value)
+  elseif (tab_firsts.rule_163[token]) then
+    reconhecer(lex.tab_tokens.TK_DEFAULT, "'default'")
+    reconhecer( ":", "':'" )
+    if (tab_curr_scope.default ~= -1) then
+      sem_error("A default case can appear at most once.")
+    else
+      table.insert(cases, 'none')
+      tab_curr_scope.default = 1
+    end --if
   else
     sin_error( tab_ERRORMSG[ 31 ] )
   end -- if
 end
 
---
-function case_label_l_r()
+function case_label_l_r(cases)
   if tab_firsts.rule_160[ token ] then
-    case_label()
-    case_label_l_r()
+    case_label(cases)
+    case_label_l_r(cases)
   elseif tab_follow.rule_161[ token ] then
     --empty
   else 
@@ -2221,71 +2109,75 @@ function case_l_r()
   end --if
 end
 
-function element_spec()
-  if tab_firsts.rule_164[ token ] then
+function element_spec(cases)
+  if (tab_firsts.rule_164[token]) then
     local tab_type_spec = type_spec()
     reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    dclName( lex.tokenvalue_previous, tab_curr_scope )
-    local x = table.getn( tab_curr_scope.options )
-    while ( x > 0 and not tab_curr_scope.options[ x ].name ) do
-      tab_curr_scope.options[ x ].name = lex.tokenvalue_previous
-      tab_curr_scope.options[ x ].type = tab_type_spec
-      x = x - 1
-    end --while
+    local name = lex.tokenvalue_previous
+    for i, case in pairs(cases) do
+      if i == 1 then
+        dclName(name, tab_curr_scope, {type = tab_type_spec, label = case})
+      else
+        table.insert(tab_curr_scope, {name = name, type = tab_type_spec, label = case})
+      end --if
+      if case == 'none' then
+        tab_curr_scope.default = table.getn(tab_curr_scope)
+      end --if
+    end --for
   else
     sin_error( tab_ERRORMSG[ 03 ] )
   end --if
 end
 
 function enum_type()
-  reconhecer( lex.tab_tokens.TK_ENUM, "'enum'" )
-  reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-  local enum_name = lex.tokenvalue_previous
-  define( enum_name, TAB_TYPEID.ENUM )
-  tab_curr_scope.enumvalues = tab_curr_scope
-  local tab_enumscope = tab_curr_scope
-  reconhecer( "{", "'{'" )
+  reconhecer(lex.tab_tokens.TK_ENUM, "'enum'")
+  reconhecer(lex.tab_tokens.TK_ID, "identifier")
+  local name = lex.tokenvalue_previous
+  define(name, TAB_TYPEID.ENUM)
+--  tab_curr_scope.enumvalues = tab_curr_scope
+  reconhecer("{", "'{'")
   enumerator()
   enumerator_l()
-  reconhecer( "}", "'}'" )
+  reconhecer("}", "'}'")
+  local enum = tab_curr_scope
   goto_father_scope()
-  return tab_enumscope
+  if tab_callbacks.enum then
+    tab_callbacks.enum(enum)
+  end --if
+  return enum
 end
 
 function enumerator()
-  reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-  local enum_name = lex.tokenvalue_previous
-  local tab_namespace = { }
-  dclName( enum_name, tab_curr_scope, tab_namespace )
-  table.insert( tab_curr_scope, enum_name )
-  tab_namespace.value = table.getn( tab_curr_scope )
+  reconhecer(lex.tab_tokens.TK_ID, "identifier")
+  local name = lex.tokenvalue_previous
+  dclName(name, tab_curr_scope)
 end
 
 function enumerator_l()
-  if tab_firsts.rule_166[ token ] then
-    reconhecer( ",", "','" )
+  if (tab_firsts.rule_166[token]) then
+    reconhecer(",", "','")
     enumerator()
     enumerator_l()
-  elseif tab_follow.rule_167[ token ] then
+  elseif (tab_follow.rule_167[token]) then
     -- empty
   else
-    sin_error( "',' or '}'" )
+    sin_error("',' or '}'")
   end --if
 end
 
 function module()
-  if tab_firsts.rule_305[ token ] then
-    reconhecer( lex.tab_tokens.TK_MODULE, "'module'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local modulename = lex.tokenvalue_previous
-    define( modulename, TAB_TYPEID.MODULE )
-    reconhecer( "{", "'{'" )
+  if (tab_firsts.rule_305[token]) then
+    reconhecer(lex.tab_tokens.TK_MODULE, "'module'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local name = lex.tokenvalue_previous
+    define(name, TAB_TYPEID.MODULE)
+    reconhecer("{", "'{'")
     definition_l_module()
-    local tab_modulescope = tab_curr_scope
+    local module = tab_curr_scope
     goto_father_scope()
-    reconhecer( "}" , "'}'" )
+    reconhecer("}" , "'}'")
     if tab_callbacks.module then
-      tab_callbacks.module( tab_modulescope )
+      tab_callbacks.module(module)
     end --if
   end -- if
 end
@@ -2302,53 +2194,139 @@ function long_or_double()
   end -- if
 end
 
-function scoped_name_l( tab_scope, full_namespace, num_follow_rule )
-  if token == ":" then
-    reconhecer( ":" , "':'" )
-    reconhecer( ":" , "':'" )
-    reconhecer( lex.tab_tokens.TK_ID , "identifier" )
+function scoped_name_l(tab_scope, full_namespace, num_follow_rule)
+  if (token == ":") then
+    reconhecer(":", "':'")
+--    if token ~= ':' then
+--      return tab_scope
+--    end --if
+    reconhecer(":", "':'")
+    reconhecer(lex.tab_tokens.TK_ID , "identifier")
     local namespace = lex.tokenvalue_previous
     full_namespace = tab_scope.absolute_name..'::'..namespace
     tab_scope = get_tab_legal_type_spec(full_namespace)
+--    tab_scope = get_tab_legal_type(full_namespace)
     tab_scope = scoped_name_l( tab_scope, full_namespace, num_follow_rule )
-  elseif ( tab_follow[ 'rule_'..num_follow_rule ][ token ] ) then
+  elseif (tab_follow['rule_'..num_follow_rule][token]) then
     -- empty
   else
-    sin_error( "':' or "..tab_follow_rule_error_msg[ num_follow_rule ] )
+    sin_error("':' or "..tab_follow_rule_error_msg[num_follow_rule])
   end
   return tab_scope
 end
 
-function scoped_name( num_follow_rule )
+function scoped_name(num_follow_rule)
   local namespace = ''
   local tab_scope = { }
   if token == lex.tab_tokens.TK_ID then
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
     local namespace = lex.tokenvalue_previous
-    tab_scope = get_tab_legal_type( namespace )
-    tab_scope = scoped_name_l( tab_scope, namespace, num_follow_rule )
+    tab_scope = get_tab_legal_type(namespace)
+    tab_scope = scoped_name_l(tab_scope, namespace, num_follow_rule)
   elseif token == ":" then
-    reconhecer( ":", "':'" )
-    reconhecer( ":", "':'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+    reconhecer(":", "':'")
+    reconhecer(":", "':'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
     local namespace = lex.tokenvalue_previous
-    tab_scope = get_tab_global_legal_type( namespace )
-    tab_scope = scoped_name_l( tab_scope, namespace, num_follow_rule )
+    tab_scope = get_tab_global_legal_type(namespace)
+    tab_scope = scoped_name_l(tab_scope, namespace, num_follow_rule)
   end
   return tab_scope
 end
 
--- falta struct forward
-function struct_tail()
-  if ( tab_firsts.rule_170[ token ] ) then
-    reconhecer( "{", "'{'" )
+function union_or_struct()
+  if (tab_firsts.rule_168[token]) then
+    reconhecer(lex.tab_tokens.TK_STRUCT, "'struct'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local name = lex.tokenvalue_previous
+    return struct_tail(name)
+  elseif (tab_firsts.rule_169[token]) then
+    reconhecer(lex.tab_tokens.TK_UNION, "'union'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    define(lex.tokenvalue_previous, TAB_TYPEID.UNION)
+    union_tail()
+    local union = tab_curr_scope
+    goto_father_scope()
+    if tab_callbacks.union then
+      tab_callbacks.union(union)
+    end --if
+    return union
+  else
+    sin_error("'struct' or 'union'")
+  end -- if
+end
+
+function struct_tail(name)
+  if (tab_firsts.rule_170[token]) then
+    define(name, TAB_TYPEID.STRUCT)
+    reconhecer("{", "'{'")
     member_l()
-    reconhecer( "}", "'}'" )
-  elseif token == ";" then
+    reconhecer("}", "'}'")
+    local struct = tab_curr_scope
+    goto_father_scope()
+    if tab_callbacks.struct then
+      tab_callbacks.struct(struct)
+    end --if
+    return struct
+  elseif (token == ";") then
+    return dclForward(name, TAB_TYPEID.STRUCT)
+  else
+    sin_error(" '{' or ';' ")
+  end -- if
+end
+
+function member_l()
+  if (tab_firsts.rule_137[token]) then
+    member()
+    member_r()
+  else
+    sin_error(tab_ERRORMSG[03])
+  end --if
+end
+
+function member()
+  if (tab_firsts.rule_140[token]) then
+    declarator_l(type_spec())
+    reconhecer(";", "';'") 
+  else
+    sin_error(tab_ERRORMSG[03])
+  end --if
+end
+
+function member_r()
+  if tab_firsts.rule_138[ token ] then
+    member()
+    member_r()
+  elseif tab_follow.rule_139[ token ] then
     -- empty
   else
-    sin_error( " '{' or ';' " )
-  end -- if
+    sin_error( tab_ERRORMSG[ 28 ] )
+  end --if
+end
+
+function declarator_l(type)
+  local declarators = {}
+  declarator(type)
+  declarator_l_r(type)
+end
+
+function declarator_l_r(type)
+  if (tab_firsts.rule_142[token]) then
+    reconhecer(",", "','")
+    declarator(type)
+    declarator_l_r(type)
+  elseif (tab_follow.rule_143[token]) then
+    --empty
+  else
+    sin_error(tab_ERRORMSG[11])
+  end --if
+end
+
+--array - missing
+function declarator(type)
+  reconhecer(lex.tab_tokens.TK_ID, "identifier")
+  local name = lex.tokenvalue_previous
+  dclName(name, tab_curr_scope, {type = fixed_array_size_l(type)})
 end
 
 function union_tail()
@@ -2356,82 +2334,42 @@ function union_tail()
     reconhecer( lex.tab_tokens.TK_SWITCH, "'switch'" )
     reconhecer( "(", "'('" )
     tab_curr_scope.switch  = switch_type_spec()
-    tab_curr_scope.options = { }
     reconhecer( ")", "')'" )
     reconhecer( "{", "'{'" )
-    tmp = -1
+    tab_curr_scope.default = -1
     case_l()
-    tab_curr_scope.default = tmp
     reconhecer( "}", "'}'" )
-    --return tab_curr_scope[ union_name ]
   else
     sin_error( "'switch'" )
   end -- if
 end
 
-function union_or_struct()
-  if ( tab_firsts.rule_168[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_STRUCT, "'struct'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local structname = lex.tokenvalue_previous
-    define( structname, TAB_TYPEID.STRUCT )
-    tab_curr_scope.fields = tab_curr_scope
-    struct_tail()
-    local tab_structscope = tab_curr_scope
-    goto_father_scope()
-    if tab_callbacks.struct then
-      tab_callbacks.struct( tab_structscope )
-    end --if
-    return tab_structscope
-  elseif ( tab_firsts.rule_169[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_UNION, "'union'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local unionname = lex.tokenvalue_previous
-    define( unionname, TAB_TYPEID.UNION )
-    union_tail()
-    local tab_unionscope = tab_curr_scope
-    goto_father_scope()
-    if tab_callbacks.union then
-      tab_callbacks.union( tab_unionscope )
-    end --if
-    return tab_unionscope
-  else
-    sin_error( "'struct' or 'union'" )
-  end -- if
-end
-
--- Fi Fo OK1
 function except_dcl()
   reconhecer(lex.tab_tokens.TK_EXCEPTION, "'exception'")
-  reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-  local exception_name = lex.tokenvalue_previous
-  define( exception_name, TAB_TYPEID.EXCEPTION )
-  tab_curr_scope.members = tab_curr_scope
-  reconhecer( "{", "'{'" )
+  reconhecer(lex.tab_tokens.TK_ID, "identifier")
+  local name = lex.tokenvalue_previous
+  define(name, TAB_TYPEID.EXCEPTION)
+  reconhecer("{", "'{'")
   member_l_empty()
-  local tab_exceptscope = tab_curr_scope
+  local except = tab_curr_scope
   goto_father_scope()
-  reconhecer( "}", "'}'" )
+  reconhecer("}", "'}'")
   if tab_callbacks.except then
-    tab_callbacks.except( tab_exceptscope )
+    tab_callbacks.except(except)
   end --if
-  return tab_curr_scope[ exception_name ]
 end
 
--- Fi Fo OK1
 function member_l_empty()
-  if ( tab_firsts.rule_187[ token ] ) then
+  if (tab_firsts.rule_187[token]) then
     member()
     member_l_empty()
-  elseif ( token == "}" ) then
+  elseif (token == "}") then
     -- empty
   else
-    sin_error( "member list { ... } or '}'" )
+    sin_error("member list { ... } or '}'")
   end -- if
 end
 
-
--- Fi Fo OK1
 function definition_l_r_module()
   if ( tab_firsts.rule_12[ token ] ) then
     definition()
@@ -2453,60 +2391,30 @@ function definition_l_module()
   end -- if
 end
 
-function abstract_tail()
-  if tab_firsts.rule_195[ token ] then
-    reconhecer( lex.tab_tokens.TK_INTERFACE, "'interface'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local name = lex.tokenvalue_previous
-    local tab_interfacescope = interface_tail( name, { ['abstract'] = true } )    
-    if tab_callbacks.interface then
-      tab_callbacks.interface( tab_interfacescope )
-    end --if
-  elseif tab_firsts.rule_196[ token ] then
-    reconhecer( lex.tab_tokens.TK_VALUETYPE, "'valuetype'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local name = lex.tokenvalue_previous
-    define( name, TAB_TYPEID.VALUETYPE )
-    tab_curr_scope.abstract = true
-    local tab_valuetypescope = value_tail( name )
-    if tab_callbacks.valuetype then
-      tab_callbacks.valuetype( tab_valuetypescope )
-    end --if    
-  elseif tab_firsts.rule_197[ token ] then
-    reconhecer( lex.tab_tokens.TK_EVENTTYPE, "'eventtype'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local name = lex.tokenvalue_previous
-    define( name, TAB_TYPEID.EVENTTYPE )
-    tab_curr_scope.abstract = true
-    local tab_eventtypescope = eventtype_tail( name )
-    if tab_callbacks.eventtype then
-      tab_callbacks.eventtype( tab_eventtypescope )
-    end --if
-  else
-    sin_error( "'interface', 'valuetype' or 'event'" )
-  end --if
-end
+--------------------------------------------------------------------------
+-- INTERFACE DECLARATION
+--------------------------------------------------------------------------
 
 function inter_value_event()
-  if ( tab_firsts.rule_192[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_INTERFACE, "'interface'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+  if (tab_firsts.rule_192[token]) then
+    reconhecer(lex.tab_tokens.TK_INTERFACE, "'interface'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
     local name = lex.tokenvalue_previous
-    local tab_interfacescope = interface_tail( name )
+    local interface = interface_tail(name)
     if tab_callbacks.interface then
-      tab_callbacks.interface( tab_interfacescope )
+      tab_callbacks.interface( interface )
     end --if
-  elseif ( tab_firsts.rule_189[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_ABSTRACT, "'abstract'" )
+  elseif (tab_firsts.rule_189[token]) then
+    reconhecer(lex.tab_tokens.TK_ABSTRACT, "'abstract'")
     abstract_tail()
   elseif ( tab_firsts.rule_190[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_LOCAL, "'local'" )
-    reconhecer( lex.tab_tokens.TK_INTERFACE, "'interface'" )
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+    reconhecer(lex.tab_tokens.TK_LOCAL, "'local'")
+    reconhecer(lex.tab_tokens.TK_INTERFACE, "'interface'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
     local name = lex.tokenvalue_previous
-    local tab_interfacescope = interface_tail( name, { ['local'] = true } )
-    if tab_callbacks.interface and tab_interfacescope then
-      tab_callbacks.interface( tab_interfacescope )
+    local interface = interface_tail(name, 'local')
+    if tab_callbacks.interface and interface then
+      tab_callbacks.interface( interface )
     end --if
   elseif ( tab_firsts.rule_193[ token ] ) then
     reconhecer( lex.tab_tokens.TK_VALUETYPE, "'valuetype'" )
@@ -2534,484 +2442,457 @@ function inter_value_event()
   end --if
 end
 
-function store_ops_attrs( tab_interface_inh, tab_ops_attrs_inh )
-  for _, v in ipairs( tab_interface_inh ) do
-    if ( v._type == TAB_TYPEID.ATTRIBUTE
-        or
-        v._type == TAB_TYPEID.OPERATION
-      ) then
-      if ( tab_ops_attrs_inh[ v.name ] ) then
-        sem_error( "redefinition of '"..v.name.."'."..
-                " You do not redefine an operation or attribute, of a derived interface"
-        )
-      else
-        tab_ops_attrs_inh[ v.name ] = true
-        new_name( v.name, v.name, tab_curr_scope, v, ERRMSG_REDEFINITION )
-      end -- if
-    else
-      tab_namespaces [ tab_curr_scope.absolute_name.."::"..string.gsub( v.absolute_name, ".*::(.*)", "%1" )] = { tab_namespaces = tab_namespaces[ v.absolute_name ], inherited = true }
-    end -- if
-  end -- for
+function abstract_tail()
+  if (tab_firsts.rule_195[token]) then
+    reconhecer(lex.tab_tokens.TK_INTERFACE, "'interface'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local name = lex.tokenvalue_previous
+    local interface = interface_tail(name, 'abstract') 
+    if tab_callbacks.interface then
+      tab_callbacks.interface( interface )
+    end --if
+  elseif (tab_firsts.rule_196[token]) then
+    reconhecer(lex.tab_tokens.TK_VALUETYPE, "'valuetype'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local name = lex.tokenvalue_previous
+    define(name, TAB_TYPEID.VALUETYPE)
+    tab_curr_scope.abstract = true
+    local tab_valuetypescope = value_tail( name )
+    if tab_callbacks.valuetype then
+      tab_callbacks.valuetype( tab_valuetypescope )
+    end --if
+  elseif tab_firsts.rule_197[ token ] then
+    reconhecer( lex.tab_tokens.TK_EVENTTYPE, "'eventtype'" )
+    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
+    local name = lex.tokenvalue_previous
+    define( name, TAB_TYPEID.EVENTTYPE )
+    tab_curr_scope.abstract = true
+    local tab_eventtypescope = eventtype_tail( name )
+    if tab_callbacks.eventtype then
+      tab_callbacks.eventtype( tab_eventtypescope )
+    end --if
+  else
+    sin_error( "'interface', 'valuetype' or 'event'" )
+  end --if
 end
 
--- Fi Fo OK1
-function inter_name_seq2()
-  if ( tab_firsts.rule_254[ token ] ) then
-    reconhecer( ",", "','" )
-    local tab_base = scoped_name( 204 )
-    table.insert( tab_curr_scope, tab_base )
-    inter_name_seq2()
-  elseif token == '{' then
+function interface_tail(name, header)
+  if (tab_firsts.rule_198[token]) then
+    reconhecer(":", "':'")
+    local base = scoped_name(204)
+    define(name, TAB_TYPEID.INTERFACE)
+    table.insert(tab_curr_scope, base)
+    bases()
+    reconhecer("{", "'{'")
+    export_l()
+    reconhecer("}", "'}'")
+    local interface = tab_curr_scope
+    verifyHeader(header)
+    goto_father_scope()
+    return interface
+  elseif (tab_firsts.rule_199[token]) then
+    reconhecer("{", "'{'")
+    define(name, TAB_TYPEID.INTERFACE)
+    export_l()
+    reconhecer("}", "'}'")
+    local interface = tab_curr_scope
+    verifyHeader(header)
+    goto_father_scope()
+    return interface
+  elseif (token == ';') then
+    return dclForward(name, TAB_TYPEID.INTERFACE)
+  else
+    sin_error("'{', ':' or ';'")
+  end -- if
+end
+
+function bases()
+  if (tab_firsts.rule_254[token]) then
+    reconhecer(",", "','")
+    local base = scoped_name(204)
+    table.insert(tab_curr_scope, base)
+    bases()
+  elseif (token == '{') then
     -- empty
   else
     sin_error( "',' or '{'" )
-	  end -- if
+    end -- if
 end 
 
-function verifyFlag( flag )
-  if flag then
-    if flag['local'] then
-      tab_curr_scope['local'] = true
-    elseif flag.abstract then
-      tab_curr_scope.abstract = true
-    end --if
+function verifyHeader(header)
+  if (header == 'local') then
+    tab_curr_scope['header'] = true
+  elseif (header == 'abstract') then
+    tab_curr_scope['abstract'] = true
   end --if
 end
 
-function interface_tail( interface_name, flag )
-  if ( tab_firsts.rule_198[ token ] ) then
-    reconhecer( ":", "':'" )
-    local tab_base = scoped_name( 204 )
-    define( interface_name, TAB_TYPEID.INTERFACE )
-    table.insert( tab_curr_scope, tab_base )
-    inter_name_seq2()
-    reconhecer( "{", "'{'" )
-    export_l()
-    reconhecer( "}", "'}'" )
-    local tab_interfacescope = tab_curr_scope
-    verifyFlag( flag )
-    goto_father_scope()
-    return tab_interfacescope
-  elseif ( tab_firsts.rule_199[ token ] ) then
-    reconhecer( "{", "'{'" )
-    define( interface_name, TAB_TYPEID.INTERFACE )
-    export_l()
-    reconhecer( "}", "'}'" )
-    local tab_interfacescope = tab_curr_scope
-    verifyFlag( flag )
-    goto_father_scope()
-    return tab_interfacescope
-  elseif ( token == ';' ) then
-    return dclForward( interface_name, TAB_TYPEID.INTERFACE )
---    tab_forward[ get_absolutename( tab_curr_scope, interface_name ) ] = { }
-    -- empty
-  else
-    sin_error( "'{', ':' or ';'" )
-  end -- if
-end
-
--- Fi Fo
 function export_l()
-  if tab_firsts.rule_207[ token ] then
+  if (tab_firsts.rule_207[token]) then
     export()
     export_l()
-  elseif token == "}" then
+  elseif (token == "}") then
     --empty
   else
-    sin_error( "empty interface, a declaration or '}'" )
+    sin_error("empty interface, a declaration or '}'")
   end
 end
 
--- Fi Fo
--- falta implementar: attr_dcl, constants, type_id e type_prefix
 function export()
-  if tab_firsts.rule_209[ token ] then
+  if (tab_firsts.rule_209[token]) then
     type_dcl()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_211[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_211[token]) then
     except_dcl()
-    reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_212[ token ] then
+    reconhecer(";", "';'")
+  elseif (tab_firsts.rule_212[token]) then
     attr_dcl()
     reconhecer( ";", "';'" )
-  elseif tab_firsts.rule_213[ token ] then
+  elseif (tab_firsts.rule_213[token]) then
     op_dcl()
-    reconhecer( ";", "';'" )
+    reconhecer(";", "';'")
   else
-    sin_error( "constant, type, exception, attribute or operation declaration" )
+    sin_error("constant, type, exception, attribute or operation declaration")
   end --if
 end
 
--- Fi Fo
--- falta ver as restri��es sem�nticas de oneway
+--------------------------------------------------------------------------
+-- OPERATION DECLARATION
+--------------------------------------------------------------------------
+
 function op_dcl()
-  if tab_firsts.rule_243[ token ] then
-    reconhecer( lex.tab_tokens.TK_ONEWAY, "'oneway'" )
-    local result_type = op_type_spec()
-    if result_type._type ~= 'void' then
+  if (tab_firsts.rule_243[token]) then
+    reconhecer(lex.tab_tokens.TK_ONEWAY, "'oneway'")
+    local result = op_type_spec()
+    if (result._type ~= 'void') then
       sem_error( "An operation with the oneway attribute must specify a 'void' return type." )
     end --if
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local operation_name = lex.tokenvalue_previous
-    local tab_op = { _type = TAB_TYPEID.OPERATION, name = operation_name,
-                     oneway = true }
-    new_name( operation_name, operation_name,
-           tab_curr_scope.members, tab_op, ERRMSG_OPDECLARED, operation_name )
-    parameter_dcls( tab_op )
-    raises_expr_e( tab_op )
-    context_expr_e( tab_op )
-    if tab_callbacks.operation then 
-      tab_callbacks.operation( tab_op )
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local name = lex.tokenvalue_previous
+    define(name, TAB_TYPEID.OPERATION)
+    tab_curr_scope.name = name
+    tab_curr_scope.oneway = true
+    parameter_dcls()
+    raises_expr_e(tab_curr_scope)
+    context_expr_e()
+    local operation = tab_curr_scope
+    goto_father_scope()
+    if (tab_callbacks.operation) then 
+      tab_callbacks.operation(operation)
     end --if
-  elseif tab_firsts.rule_244[ token ] then
-    local result_type = op_type_spec()
-    reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-    local operation_name = lex.tokenvalue_previous
-    if result_type == 'void' then 
-      result_type = nil 
-    end --if
-    local tab_op = { _type = TAB_TYPEID.OPERATION, name = operation_name,
-                result = result_type }
-    new_name( operation_name, operation_name,
-           tab_curr_scope.members, tab_op, ERRMSG_OPDECLARED, operation_name )
-    parameter_dcls( tab_op )
-    raises_expr_e( tab_op )
-    context_expr_e( tab_op )
+  elseif tab_firsts.rule_244[token] then
+    local result = op_type_spec()
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local name = lex.tokenvalue_previous
+    define(name, TAB_TYPEID.OPERATION)
+    tab_curr_scope.name = name
+    tab_curr_scope.result = result
+    parameter_dcls()
+    raises_expr_e(tab_curr_scope)
+    context_expr_e()
+    local operation = tab_curr_scope
+    goto_father_scope()
     if tab_callbacks.operation then 
-      tab_callbacks.operation( tab_op )
+      tab_callbacks.operation(operation)
     end --if
   else
-    sin_error( "'oneway' or type specification" )
+    sin_error("'oneway' or type specification")
   end --if
 end
 
--- Fi Fo OK1
 function op_type_spec()
-  if ( tab_firsts.rule_245[ token ] ) then
+  if (tab_firsts.rule_245[token]) then
     return param_type_spec()
-  elseif tab_firsts.rule_246[ token ] then
-    reconhecer( lex.tab_tokens.TK_VOID, "'void'" )
+  elseif (tab_firsts.rule_246[token]) then
+    reconhecer(lex.tab_tokens.TK_VOID, "'void'")
     return TAB_BASICTYPE.VOID
   else
-    sin_error( "type return" )
+    sin_error("type return")
   end --if
 end
 
--- Fi Fo OK1
-function parameter_dcls( tab_op )
-  reconhecer( "(", "'('" )
-  parameter_dcls_tail( tab_op )
+function parameter_dcls()
+  reconhecer("(", "'('")
+  parameter_dcls_tail()
 end
 
--- Fi Fo OK1
-function parameter_dcls_tail( tab_op )
-  if ( tab_firsts.rule_248[ token ] ) then
-    tab_op.parameters = { }
-    param_dcl( tab_op )
-    param_dcl_l( tab_op )
-    reconhecer( ")", "')'" )
-  elseif ( tab_firsts.rule_249[ token ] ) then
-    reconhecer( ")", "')'" )
+function parameter_dcls_tail()
+  if (tab_firsts.rule_248[token]) then
+    tab_curr_scope.parameters = {}
+    param_dcl()
+    param_dcl_l()
+    reconhecer(")", "')'")
+  elseif (tab_firsts.rule_249[token]) then
+    reconhecer(")", "')'")
   else
-    sin_error( "'in', 'out', 'inout' or ')'" )
+    sin_error("'in', 'out', 'inout' or ')'")
   end -- if
 end
 
--- Fi Fo OK1
-function param_dcl( tab_op )
+function param_dcl()
   local attribute = param_attribute()
-  local tab_type_spec = param_type_spec()
-  reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-  local param_name = lex.tokenvalue_previous
-  new_name( tab_op.name..'._parameters.'..param_name,
-         param_name, tab_op.parameters,
-         { mode = 'PARAM_'..string.upper( attribute ), type = tab_type_spec, name = param_name },
-         ERRMSG_PARAMDECLARED 
-  )
+  local type = param_type_spec()
+  reconhecer(lex.tab_tokens.TK_ID, "identifier")
+  local name = lex.tokenvalue_previous
+  dclName(name, tab_curr_scope.parameters, {mode = attribute, type = type})
 end
 
--- Fi
-function param_dcl_l( tab_op )
-  if ( tab_firsts.rule_254[ token ] ) then
-    reconhecer( ",", "','" )
-    param_dcl( tab_op )
-    param_dcl_l( tab_op )
-  elseif --token == lex.tab_tokens.TK_RAISES or 
-       --token == lex.tab_tokens.TK_CONTEXT or 
+function param_dcl_l()
+  if (tab_firsts.rule_254[token]) then
+    reconhecer(",", "','")
+    param_dcl()
+    param_dcl_l()
+  elseif token == lex.tab_tokens.TK_RAISES or 
+       token == lex.tab_tokens.TK_CONTEXT or 
        token == ')' then
     -- empty
   else
-    sin_error( "',', ')'" )
+    sin_error("',', ')', 'raises' or 'context'")
   end -- if
-end 
+end
 
--- Fi Fo OK1
 function param_attribute()
-  if ( tab_firsts.rule_251[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_IN, "'in'" )
-    return 'in'
-  elseif ( tab_firsts.rule_252[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_OUT, "'out'" )
-    return 'out'
-  elseif ( tab_firsts.rule_253[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_INOUT, "'inout'" )
-    return 'inout'
+  if (tab_firsts.rule_251[token]) then
+    reconhecer(lex.tab_tokens.TK_IN, "'in'")
+    return 'PARAM_IN'
+  elseif (tab_firsts.rule_252[token]) then
+    reconhecer(lex.tab_tokens.TK_OUT, "'out'")
+    return 'PARAM_OUT'
+  elseif (tab_firsts.rule_253[token]) then
+    reconhecer(lex.tab_tokens.TK_INOUT, "'inout'")
+    return 'PARAM_INOUT'
   end --if
 end
 
--- Fi Fo
 function param_type_spec()
-  if ( tab_firsts.rule_219[ token ] ) then
-    return base_type_spec()    
-  elseif ( tab_firsts.rule_220[ token ] ) then
+  if (tab_firsts.rule_219[token]) then
+    return base_type_spec()
+  elseif (tab_firsts.rule_220[token]) then
     return string_type()
-  elseif ( tab_firsts.rule_221[ token ] ) then
+  elseif (tab_firsts.rule_221[token]) then
     return scoped_name( 221 )
   else
-    sin_error( 'type specification' )
+    sin_error('type specification')
   end -- if
 end
 
-function raises( tab_op )
-  local tab_raises = scoped_name( 229 )
-  if tab_raises._type ~= TAB_TYPEID.EXCEPTION then
+function raises_expr( tab )
+  reconhecer(lex.tab_tokens.TK_RAISES, "'raises'")
+  reconhecer("(", "'('")
+  tab.raises = {}
+  raises(tab.raises)
+  inter_name_seq(tab.raises)
+  reconhecer( ")", "')'" )
+end
+
+function raises(raises)
+  local exception = scoped_name( 229 )
+  if exception._type ~= TAB_TYPEID.EXCEPTION then
     sem_error( string.format( "The type of '%s' is %s, but it should be exception.",
-          tab_raises.absolute_name, tab_raises._type ) )
+          exception.absolute_name, exception._type ) )
   end -- if
-  new_name( tab_op.name..'_raises.'..tab_raises.absolute_name,
-         tab_raises.absolute_name, tab_op.exceptions, tab_raises,
-         ERRMSG_RAISESDECLARED
-  )
+  table.insert(raises, exception)
 end
 
--- Fi Fo OK1
-function inter_name_seq( tab_op )
-  if ( tab_firsts.rule_254[ token ] ) then
-    reconhecer( ",", "','" )
-    raises( tab_op )
-    inter_name_seq( tab_op )
-  elseif token == ')' then
+function inter_name_seq(_raises)
+  if (tab_firsts.rule_254[token]) then
+    reconhecer(",", "','")
+    raises(_raises)
+    inter_name_seq(_raises)
+  elseif (token == ')') then
     -- empty
   else
-    sin_error( "')'" )
+    sin_error("')'")
   end -- if
 end 
 
--- Fi Fo OK1
-function raises_expr( tab_op )
-  reconhecer( lex.tab_tokens.TK_RAISES, "'raises'" )
-  reconhecer( "(", "'('" )
-  tab_op.exceptions = { }
-  raises( tab_op )
-  inter_name_seq( tab_op )
-  reconhecer( ")", "')'" )
-end
-
--- Fi Fo OK1
-function raises_expr_e( tab_op )
-  if ( tab_firsts.rule_370[ token ] ) then
-    raises_expr( tab_op )
-  elseif token == ';' or token == lex.tab_tokens.TK_CONTEXT then
+function raises_expr_e(tab)
+  if (tab_firsts.rule_370[token]) then
+    raises_expr(tab)
+  elseif (token == ';' or token == lex.tab_tokens.TK_CONTEXT) then
     -- empty
   else
-    sin_error( "'raises', 'context', ';'" )
+    sin_error("'raises', 'context', ';'")
   end -- if
 end
 
--- Fi Fo OK1
-function context( tab_op )
-  reconhecer( lex.tab_tokens.TK_STRING_LITERAL, "string literal" )
-  local string = lex.tokenvalue_previous
-  new_name( '_context.'..string, string,
-         tab_op.context, string, ERRMSG_DECLARED )
-end
-
--- Fi Fo OK1
-function string_literal_l( tab_op )
-  if ( tab_firsts.rule_257[ token ] ) then
-    reconhecer( ",", "','" )
-    context( tab_op )
-    string_literal_l( tab_op )
-  elseif token == ')' then
+function context_expr_e()
+  if (tab_firsts.rule_377[token]) then
+    context_expr()
+  elseif (token == ';') then
     -- empty
   else
-    sin_error( "',' or ')'" )
+    sin_error("'context' or ';'")
   end -- if
 end
 
--- Fi Fo 
--- sem regras semanticas...
-function context_expr( tab_op )
-  reconhecer( lex.tab_tokens.TK_CONTEXT, "'context'" )
-  reconhecer( "(", "'('" )
-  tab_op.context = { }
-  context( tab_op )
-  string_literal_l( tab_op )
-  reconhecer( ")", "')'" )
+function context_expr()
+  reconhecer(lex.tab_tokens.TK_CONTEXT, "'context'")
+  reconhecer("(", "'('")
+  tab_curr_scope.contexts = {}
+  context()
+  string_literal_l()
+  reconhecer(")", "')'")
 end
 
--- Fi Fo OK1
-function context_expr_e( tab_op )
-  if ( tab_firsts.rule_377[ token ] ) then
-    context_expr( tab_op )
-  elseif token == ';' then
+function context()
+  reconhecer(lex.tab_tokens.TK_STRING_LITERAL, "string literal")
+  dclName(lex.tokenvalue_previous, tab_curr_scope.contexts, {})
+end
+
+function string_literal_l()
+  if (tab_firsts.rule_257[token]) then
+    reconhecer(",", "','")
+    context()
+    string_literal_l()
+  elseif (token == ')') then
     -- empty
   else
-    sin_error( "'context' or ';'" )
+    sin_error("',' or ')'")
   end -- if
-
 end
 
--- Fi Fo OK1
-function attr_dcl( tab_dest )
-  if ( tab_firsts.rule_216[ token ] ) then
-    readonly_attr_spec( tab_dest )
-  elseif ( tab_firsts.rule_217[ token ] ) then
-    attr_spec( tab_dest )
+--------------------------------------------------------------------------
+-- ATTRIBUTE
+--------------------------------------------------------------------------
+
+function attr_dcl()
+  if (tab_firsts.rule_216[token]) then
+    readonly_attr_spec()
+  elseif (tab_firsts.rule_217[token] ) then
+    attr_spec()
   else
     sin_error( "'readonly' or 'attribute'" )
   end -- if
 end
 
--- Fi Fo
-function readonly_attr_spec( tab_dest )
-  reconhecer( lex.tab_tokens.TK_READONLY, "'readonly'" )
+function readonly_attr_spec()
+  reconhecer(lex.tab_tokens.TK_READONLY, "'readonly'")
+  reconhecer(lex.tab_tokens.TK_ATTRIBUTE, "'attribute'")
+  local type = param_type_spec()
+  readonly_attr_spec_dec(type)
+end
+
+function attr_spec()
   reconhecer( lex.tab_tokens.TK_ATTRIBUTE, "'attribute'" )
-  local tab_type_spec = param_type_spec()
-  local tab_attr = readonly_attr_spec_dec( tab_type_spec, tab_dest )
+  local type = param_type_spec()
+  attr_declarator(type)
+end
+
+function readonly_attr_spec_dec(type)
+  local attribute = {type = type, readonly = true}
+  local name = simple_dcl()
+  define(name, TAB_TYPEID.ATTRIBUTE, attribute)
+--  dclName(name, attribute)
+  readonly_attr_spec_dec_tail(attribute)
   if tab_callbacks.attribute then
-    tab_callbacks.attribute( tab_attr )
+    tab_callbacks.attribute(attribute)
   end --if
 end
 
--- Fi Fo OK1    
-function attr_spec( tab_dest )
-  reconhecer( lex.tab_tokens.TK_ATTRIBUTE, "'attribute'" )
-  local tab_type_spec = param_type_spec()
-  local tab_attr = attr_declarator( tab_type_spec, tab_dest )
+function attr_declarator(type)
+  local attribute = {type = type}
+  local name = simple_dcl()
+--  dclName(name, attribute)
+  define(name, TAB_TYPEID.ATTRIBUTE, attribute)
+  attr_declarator_tail(attribute)
   if tab_callbacks.attribute then
-    tab_callbacks.attribute( tab_attr )
+    tab_callbacks.attribute(attribute)
   end --if
 end
 
-function readonly_attr_spec_dec( tab_type_spec, tab_dest )
-  local tab_attr = { _type = TAB_TYPEID.ATTRIBUTE , type = tab_type_spec, readonly = true }
-  simple_dcl( tab_attr )
-  --provisorio...
-  if not tab_dest then
-    tab_dest = tab_curr_scope.members
-  end --if
-  new_name( tab_attr.name, tab_attr.name, tab_dest, tab_attr, ERRMSG_DECLARED, tab_attr.name )
-  readonly_attr_spec_dec_tail( tab_attr )
-  return tab_attr
-end
-
--- Fi Fo
-function attr_declarator( tab_type_spec, tab_dest  )
-  local tab_attr = { _type = TAB_TYPEID.ATTRIBUTE , type = tab_type_spec }
-  simple_dcl( tab_attr )
-  --provisorio...
-  if not tab_dest then
-    tab_dest = tab_curr_scope.members
-  end --if
-  new_name( tab_attr.name, tab_attr.name, tab_dest, tab_attr, ERRMSG_DECLARED, tab_attr.name )
-  attr_declarator_tail( tab_attr )
-  return tab_attr
-end
-
--- Fi Fo
-function readonly_attr_spec_dec_tail( tab_attr )
-  if ( tab_firsts.rule_227[ token ] ) then
-    tab_attr.raises = { }
-    raises_expr( tab_attr )
-  elseif ( tab_firsts.rule_228[ token ] ) then
-    simple_dcl_l( tab_attr )
-  elseif ( token == ';' ) then
+function readonly_attr_spec_dec_tail(attribute)
+  if (tab_firsts.rule_227[token]) then
+    raises_expr(attribute)
+  elseif (tab_firsts.rule_228[token]) then
+    simple_dcl_l(type, true)
+  elseif (token == ';') then
     -- empty
   else
     sin_error( "'raises', ',' or ';'" )
   end -- if
 end
 
--- Fi Fo
-function attr_declarator_tail( tab_attr )
-  if ( tab_firsts.rule_234[ token ] ) then
-    attr_raises_expr( tab_attr )
-  elseif ( tab_firsts.rule_235[ token ] ) then
-    simple_dcl_l( tab_attr )
-  elseif ( token == ';' ) then
+function attr_declarator_tail(attribute)
+  if (tab_firsts.rule_234[token]) then
+    attr_raises_expr(attribute)
+  elseif (tab_firsts.rule_235[token]) then
+    simple_dcl_l(attribute.type)
+  elseif (token == ';') then
     -- empty
   else
     sin_error( "'getraises', 'setraises', ',' or ';'" )
   end -- if
 end
 
--- Fi Fo OK1
-function simple_dcl( tab_attr )
+function simple_dcl()
   reconhecer( lex.tab_tokens.TK_ID, "identifier" )
-  tab_attr.name = lex.tokenvalue_previous
+  return lex.tokenvalue_previous
 end
 
--- Fi Fo OK1
-function simple_dcl_l( t )
+function simple_dcl_l(type, readonly)
   if ( tab_firsts.rule_142[ token ] ) then
     reconhecer( ",", "','" )
-    local tab_attr = { }
-    for k, v in pairs( t ) do
-      tab_attr[ k ] = v
-    end --for
-    simple_dcl( tab_attr )
-    new_name( tab_attr.name, tab_attr.name, tab_curr_scope.members, 
-              tab_attr, ERRMSG_DECLARED, tab_attr.name )
-    simple_dcl_l( t )
-  elseif ( token == ';' ) then
+    local attribute = {type = type, readonly = readonly}
+    local name = simple_dcl()
+    define(name, TAB_TYPEID.ATTRIBUTE, attribute)
+--    dclName(name, attribute)
+    simple_dcl_l(type)
+  elseif (token == ';') then
     -- empty
   end -- if
 end
 
-function attr_raises_expr( tab_attr )
-  if ( tab_firsts.rule_236[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_GETRAISES, "'getraises'" )
-    tab_attr.getraises = { }
-    exception_l( tab_attr, 'getraises' )
-    attr_raises_expr_tail( attribute_name )
-  elseif ( tab_firsts.rule_237[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_SETRAISES, "'setraises'" )
-    tab_attr.setraises = { }
-    exception_l( tab_attr, 'setraises' )  
+function attr_raises_expr(attribute)
+  if (tab_firsts.rule_236[token]) then
+    reconhecer(lex.tab_tokens.TK_GETRAISES, "'getraises'")
+    attribute.raises = {}
+    exception_l(attribute, 'getraises')
+    attr_raises_expr_tail(attribute)
+  elseif (tab_firsts.rule_237[token]) then
+    reconhecer(lex.tab_tokens.TK_SETRAISES, "'setraises'")
+    attribute.raises = {}
+    exception_l(attribute, 'setraises')
   end -- if
 end
 
-function exception( tab_attr, raises_type )
-  local tab_scope = scoped_name( 229 )
-  new_name( '_'..raises_type..'.'..tab_scope.absolute_name, tab_scope.absolute_name,
-         tab_attr[ raises_type ], tab_scope, ERRMSG_DECLARED 
-  )
+function attr_raises_expr_tail(attribute)
+  if (tab_firsts.rule_238[token]) then
+    reconhecer(lex.tab_tokens.TK_SETRAISES, "'setraises'")
+    exception_l(attribute, 'setraises')
+  elseif (token == ';') then
+    --empty
+  else
+    sin_error("'setraises' or ';'")
+  end --if
 end
 
--- Fi Fo OK1
-function exception_l_seq( tab_attr, raises_type )
-  if ( tab_firsts.rule_142[ token ] ) then
-    reconhecer( ",", "','" )
-    exception( tab_attr, raises_type )
-    exception_l_seq( tab_attr, raises_type )
-  elseif ( token == ';' ) then
+function exception(attribute, raises_type)
+  local exception = {type = raises_type, exception = scoped_name(229)}
+  table.insert(attribute.raises, exception)
+end
+
+function exception_l(attribute, raises_type)
+  reconhecer("(", "'('")
+  exception(attribute, raises_type)
+  exception_l_seq(attribute, raises_type)
+  reconhecer( ")", "')'")
+end
+
+function exception_l_seq(attribute, raises_type)
+  if (tab_firsts.rule_142[token]) then
+    reconhecer(",", "','")
+    exception(attribute, raises_type)
+    exception_l_seq(attribute, raises_type)
+  elseif (token == ';') then
     -- empty
   end -- if
-end
-
-function exception_l( attribute_name, raises_type )
-  reconhecer( "(", "'('" )
-  exception( attribute_name, raises_type )
-  exception_l_seq( attribute_name, raises_type )
-  reconhecer( ")", "')'" )
 end
 
 --------------------------------------------------------------------------
 -- COMPONENT DECLARATION
 --------------------------------------------------------------------------
 
---17
 function component()
   reconhecer( lex.tab_tokens.TK_COMPONENT, "'component'" )
   reconhecer( lex.tab_tokens.TK_ID, "identifier" )
@@ -3118,7 +2999,7 @@ function component_export()
     consumes_dcl()
     reconhecer( ';', "';'" )
   elseif ( tab_firsts.rule_330[ token ] ) then
-    attr_dcl( tab_curr_scope.declarations )
+    attr_dcl()
     reconhecer( ';', "';'" )
   end
 end
@@ -3200,18 +3081,6 @@ function consumes_dcl()
   tab_uses.event_type = scoped_name( 343 ) 
   reconhecer( lex.tab_tokens.TK_ID, "<identifier>" )
   tab_uses.evtsink = lex.tokenvalue_previous
-end
-
-function attr_raises_expr_tail( attribute_name )
-  if ( tab_firsts.rule_238[ token ] ) then
-    reconhecer( lex.tab_tokens.TK_SETRAISES, "'setraises'" )
-    tab_curr_scope[ attribute_name ].setraises = { }
-    exception_l( attribute_name, 'setraises' )  
-  elseif ( token == ';' ) then
-    --empty
-  else
-    sin_error( "'setraises' or ';'" )
-  end --if
 end
 
 --------------------------------------------------------------------------
