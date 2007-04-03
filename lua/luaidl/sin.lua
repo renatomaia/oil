@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.7.1b
+-- Version:  0.7.3b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 02/04/2007
+-- Last modification: 03/04/2007
 -- Filename: sin.lua
 -- 
 
@@ -998,23 +998,21 @@ local tab_is_contained = {
 
 local function define(name, type, value)
   local absolutename = get_absolutename(tab_curr_scope, name)
-  local tab_scope
-  local tab_members
-  local tab_contents
+  local tab_definitions
   -- Is there this scope ? Whenever exist and it is a module, then we
   -- must reopen this module...
-  if tab_namespaces[ absolutename ] then
+  if (tab_namespaces[absolutename]) then
     if ( 
-        tab_namespaces[ absolutename ].tab_namespace._type == TAB_TYPEID.MODULE
+        tab_namespaces[absolutename].tab_namespace._type == TAB_TYPEID.MODULE
         and
         type == TAB_TYPEID.MODULE 
        ) 
     then
-      tab_scope = tab_namespaces[ absolutename ].tab_namespace
-      tab_members = tab_namespaces[ absolutename ].tab_namespace.members
-      tab_contents = tab_namespaces[ absolutename ].tab_namespace.contents
+      value = tab_namespaces[absolutename].tab_namespace
+      tab_curr_scope = value
+      return false, value
     else
-      sem_error( string.format( ERRMSG_REDEFINITION, name ) )
+      sem_error(string.format(ERRMSG_REDEFINITION, name))
     end --if
   end --if
 
@@ -1022,10 +1020,10 @@ local function define(name, type, value)
     value = tab_forward[absolutename]
     tab_forward[absolutename] = nil
   end --if
-    
+
   local curr_root  = get_scope( 'curr_root' )
   local curr_scope = get_scope( 'curr_scope' )
-  
+
   local prefix = tab_prefix_pragma_stack[ table.getn( tab_prefix_pragma_stack ) ]
   if tab_namespaces[ tab_curr_scope.absolute_name ].prefix then
     curr_root = prefix
@@ -1039,8 +1037,8 @@ local function define(name, type, value)
     curr_scope = curr_scope..name
   end --if
 
-  if ( not tab_contents and tab_accept_definition[type] ) then
-    tab_contents = {}
+  if ( not tab_definitions and tab_accept_definition[type] ) then
+    tab_definitions = {}
   end --if
 
   local separator
@@ -1059,11 +1057,11 @@ local function define(name, type, value)
   value.absolute_name = absolutename
   value.repID = "IDL:"..string.gsub( curr_root, '::', '/' )..separator..string.gsub( curr_scope, '::', '/' )..
     ":"..lex.version_pragma
-  value.contents = tab_contents
+  value.definitions = tab_definitions
 
 -- tab_curr_scope ~= tab_output ????
   if ( tab_is_contained[type] and tab_curr_scope ~= tab_output ) then
-    table.insert(tab_curr_scope.contents, value)
+    table.insert(tab_curr_scope.definitions, value)
   else
     table.insert(tab_curr_scope, value)
   end --if  
@@ -1079,6 +1077,8 @@ local function define(name, type, value)
   else
     tab_namespaces[absolutename] = {tab_namespace = value}
   end --if
+
+  return true
 end
 
 local function get_tab_legal_type( namespace )
@@ -2170,7 +2170,7 @@ function module()
     reconhecer(lex.tab_tokens.TK_MODULE, "'module'")
     reconhecer(lex.tab_tokens.TK_ID, "identifier")
     local name = lex.tokenvalue_previous
-    define(name, TAB_TYPEID.MODULE)
+    local status, _module = define(name, TAB_TYPEID.MODULE)
     reconhecer("{", "'{'")
     definition_l_module()
     local module = tab_curr_scope
