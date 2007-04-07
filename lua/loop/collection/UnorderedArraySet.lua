@@ -31,20 +31,25 @@ function contains(self, value)
 end
 
 function add(self, value)
-	self[#self+1] = value
-	self[value] = #self
+	if self[value] == nil then
+		self[#self+1] = value
+		self[value] = #self
+		return value
+	end
 end
 
 function remove(self, value)
-	local size = #self
-	local last = self[size]
-	if value ~= last then
-		local index = self[value]
-		self[index], self[last] = last, index
+	local index = self[value]
+	if index then
+		local size = #self
+		if index ~= size then
+			local last = self[size]
+			self[index], self[last] = last, index
+		end
+		self[value] = nil
+		self[size] = nil
+		return value
 	end
-	self[value] = nil
-	self[size] = nil
-	return value
 end
 
 function removeat(self, index)
