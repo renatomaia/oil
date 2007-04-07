@@ -120,7 +120,7 @@ end
 
 function excepthandler(self, type, handler)
 	local class = self.classes[type]
-	class._exceptions = handler
+	class.__exceptions = handler
 end
 
 function resetcache(self, interface)
@@ -133,18 +133,28 @@ end
 --------------------------------------------------------------------------------
 
 --[[VERBOSE]] function verbose.custom:proxies(...)
---[[VERBOSE]] 	local params = false
+--[[VERBOSE]] 	local params
 --[[VERBOSE]] 	for i = 1, select("#", ...) do
 --[[VERBOSE]] 		local value = select(i, ...)
 --[[VERBOSE]] 		local type = type(value)
---[[VERBOSE]] 		if type == "string" and not params then
---[[VERBOSE]] 			self.viewer.output:write(value)
---[[VERBOSE]] 		elseif type == "table" and rawget(value, "name") then
---[[VERBOSE]] 			self.viewer.output:write(value.name,"(")
---[[VERBOSE]] 			params = true
+--[[VERBOSE]] 		if type == "string" then
+--[[VERBOSE]] 			if params
+--[[VERBOSE]] 				then self.viewer:write(value:gsub("[^%w%p%s]", "?"))
+--[[VERBOSE]] 				else self.viewer.output:write(value)
+--[[VERBOSE]] 			end
+--[[VERBOSE]] 		elseif not params and type == "table" and
+--[[VERBOSE]] 		       value._type == "operation" then
+--[[VERBOSE]] 			params = "("
+--[[VERBOSE]] 			self.viewer.output:write(value.name)
 --[[VERBOSE]] 		else
+--[[VERBOSE]] 			if params then
+--[[VERBOSE]] 				self.viewer.output:write(params)
+--[[VERBOSE]] 				params = ", "
+--[[VERBOSE]] 			end
 --[[VERBOSE]] 			self.viewer:write(value)
 --[[VERBOSE]] 		end
 --[[VERBOSE]] 	end
---[[VERBOSE]] 	if params then self.viewer.output:write(")") end
+--[[VERBOSE]] 	if params then
+--[[VERBOSE]] 		self.viewer.output:write(params == "(" and "()" or ")")
+--[[VERBOSE]] 	end
 --[[VERBOSE]] end

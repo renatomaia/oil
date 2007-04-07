@@ -92,23 +92,3 @@ function proxyto(self, reference)
 	reference.__context = self.context
 	return Proxy(reference)
 end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
---[[VERBOSE]] function verbose.custom:proxies(...)
---[[VERBOSE]] 	local params = false
---[[VERBOSE]] 	for i = 1, select("#", ...) do
---[[VERBOSE]] 		local value = select(i, ...)
---[[VERBOSE]] 		local type = type(value)
---[[VERBOSE]] 		if type == "string" and not params then
---[[VERBOSE]] 			self.viewer.output:write(value)
---[[VERBOSE]] 		elseif type == "table" and rawget(value, "name") then
---[[VERBOSE]] 			self.viewer.output:write(value.name,"(")
---[[VERBOSE]] 			params = true
---[[VERBOSE]] 		else
---[[VERBOSE]] 			self.viewer:write(value)
---[[VERBOSE]] 		end
---[[VERBOSE]] 	end
---[[VERBOSE]] 	if params then self.viewer.output:write(")") end
---[[VERBOSE]] end
