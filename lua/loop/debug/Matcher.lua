@@ -42,7 +42,7 @@ envkey = newproxy()
 
 function error(self, message)
 	local path = { "value" }
-	for i = 1, #self do
+	for i = 2, #self do
 		local key = self[i]
 		if key == metakey then
 			table.insert(path, 1, "getmetatable(")
@@ -74,6 +74,7 @@ function matchtable(self, value, other)
 			matched = false
 			for otherkey, otherfield in pairs(other) do
 				local matcher = setmetatable(table.copy(self), getmetatable(self))
+				matcher.error = nil
 				if
 					matcher:match(key, otherkey) and
 					matcher:match(field, otherfield)
@@ -151,6 +152,8 @@ function matchfunction(self, func, other)
 end
 
 function match(self, value, other)
+	self[0] = self[0] or other
+	self[1] = self[1] or value
 	local matched, errmsg = false
 	local kind = type(value)
 	local matcher = self[kind]
@@ -174,7 +177,7 @@ function match(self, value, other)
 					errmsg = self:error "not matched"
 				end
 			else
-			errmsg = self:error "wrong match"
+				errmsg = self:error "wrong match"
 			end
 		end
 	elseif value == other then
