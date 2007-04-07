@@ -49,7 +49,10 @@ groups.transport = { "marshal", "unmarshal" }
 groups.idltypes = { "idl", "repository" }
 
 _M:newlevel{ "broker" }
-_M:newlevel{ "communication" }
+_M:newlevel{ "invoke", "listen" }
+_M:newlevel{ "mutex" }
+_M:newlevel{ "message" }
+_M:newlevel{ "channels" }
 _M:newlevel{ "transport" }
 _M:newlevel{ "hexastream" }
 _M:newlevel{ "idltypes" }
