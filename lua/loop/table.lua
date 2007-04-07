@@ -19,6 +19,7 @@
 
 local next = next
 local pairs = pairs
+local rawset = rawset
 local setmetatable = setmetatable
 
 local table = require "table"
@@ -46,7 +47,7 @@ function copy(source, destiny)
 	if source then
 		if not destiny then destiny = {} end
 		for field, value in pairs(source) do
-			destiny[field] = value
+			rawset(destiny, field, value)
 		end
 	end
 	return destiny
