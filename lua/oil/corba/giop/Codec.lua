@@ -428,7 +428,8 @@ end
 function Decoder:union(idltype)                                                 --[[VERBOSE]] verbose:unmarshal(true, self, idltype) verbose:unmarshal "[union switch]"
 	local switch = self:get(idltype.switch)
 	local value = { _switch = switch }
-	local option = idltype.selection[switch]
+	local option = idltype.selection[switch] or
+	               idltype.options[idltype.default+1]
 	if option then                                                                --[[VERBOSE]] verbose:unmarshal("[field",option.name,"]")
 		value._field = option.name
 		value._value = self:get(option.type)
@@ -738,7 +739,7 @@ function Encoder:union(value, idltype)                                          
 		switch = idltype.selector[value._field]
 		if switch == nil then
 			for _, option in ipairs(idltype.options) do
-				if value[option.name] then
+				if value[option.name] ~= nil then
 					switch = option.label
 					unionvalue = value[option.name]
 					break
