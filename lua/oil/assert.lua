@@ -70,7 +70,7 @@ end
 --------------------------------------------------------------------------------
 
 function results(result, ...)
-	if not result then exception(..., 2) end
+	if result == nil then exception(..., 2) end
 	return result, ...
 end
 

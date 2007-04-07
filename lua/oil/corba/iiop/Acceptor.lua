@@ -99,7 +99,7 @@ function Port:__init(object)
 			socket.probe   = probe_wrapped_socket
 			socket.release = release_wrapped_socket
 		end
-		socket.conext = self.context
+		socket.context = self.context
 		socket.port   = self
 		socket.close  = release_socket
 		return socket
@@ -124,7 +124,7 @@ function Port:accept(probe)                                                     
 		end
 	end
 	if probe then
-		return OrderedSet.empty(self)
+		return not OrderedSet.empty(self)
 	elseif not except then
 		return self.wrapped[ OrderedSet.dequeue(self) ]
 	else

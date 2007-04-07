@@ -96,7 +96,7 @@ end
 function getchannel(self, configs, probe)                                       --[[VERBOSE]] verbose:listen(true, "get channel with config ",configs)
 	local result, except = self.context.channels[configs.tag or 0]
 	if result then
-		result, except = result:retrieve(configs)
+		result, except = result:retrieve(configs, probe)
 	else
 		except = nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
 			message = "no supported GIOP profile found for configuration",

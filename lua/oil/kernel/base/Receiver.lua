@@ -54,22 +54,23 @@ function acceptone(self, channelinfo)                                           
 	local context = self.context
 	local listener = context.listener
 	local result, except
-	repeat
-		result, except = listener:getchannel(channelinfo)
-		if result then
-			local channel = result
-			result, except = listener:getrequest(channel)
-			channel:release()
-			if result then                                                            --[[VERBOSE]] verbose:acceptor "dispatching request from accepted channel"
-				local dispatcher = context.dispatcher
-				result, except = listener:sendreply(channel, result,
-					dispatcher:dispatch(result.object_key,
-					                    result.operation,
-					                    result:params())
-				)
-			end
+	result, except = listener:getchannel(channelinfo)
+	if result then
+		local channel = result
+		result, except = listener:getrequest(channel, true)
+		channel:release()
+		if result then                                                              --[[VERBOSE]] verbose:acceptor(true, "dispatching request from accepted channel")
+			local dispatcher = context.dispatcher
+			result, except = listener:sendreply(channel, result,
+				dispatcher:dispatch(result.object_key,
+				                    result.operation,
+				                    result:params())
+			)                                                                         --[[VERBOSE]] verbose:acceptor(false)
 		end
-	until result or except.reason ~= "closed"                                     --[[VERBOSE]] verbose:acceptor(false)
+	end
+	if except and except.reason == "closed" then
+		result, except = false, nil
+	end                                                                           --[[VERBOSE]] verbose:acceptor(false)
 	return result, except
 end
 
