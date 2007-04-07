@@ -254,7 +254,7 @@ end
 
 function narrow(object, interface)
 	assert.type(object, "table", "object proxy")
-	assert.type(interface, "string", "interface definition")
+	if interface then assert.type(interface, "string", "interface definition") end
 	return object and object:_narrow(interface)
 end
 

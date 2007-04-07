@@ -93,7 +93,7 @@ function importinterfaceof(self, reference)
 	if success then
 		success, result = success:results()
 		if success then
-			success = context.types:resolve(result:_get_id()) or
+			success = context.types:lookup_id(result:_get_id()) or
 			          context.types:register(result)
 		end
 	end
