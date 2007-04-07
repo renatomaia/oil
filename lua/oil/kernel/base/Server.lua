@@ -58,23 +58,26 @@ function initialize(self, config)
 	return self.config, except
 end
 
+function hashof(self, object)
+	local meta = getmetatable(object)
+	local backup
+	if meta then
+		backup = rawget(meta, "__tostring")
+		if backup ~= nil then rawset(meta, "__tostring", nil) end
+	end
+	local hash = luatostring(object)
+	if meta then
+		if backup ~= nil then rawset(meta, "__tostring", backup) end
+	end
+	return hash:match("%l+: (%w+)") or hash
+end
+
 function object(self, object, key)
 	local context = self.context
-	if not key then
-		local meta = getmetatable(object)
-		local backup
-		if meta then
-			backup = rawget(meta, "__tostring")
-			if backup ~= nil then rawset(meta, "__tostring", nil) end
-		end
-		key = luatostring(object):match("%l+: (%w+)")
-		if meta then
-			if backup ~= nil then rawset(meta, "__tostring", backup) end
-		end
-	end
+	key = key or "\0"..self:hashof(object)
 	local result, except = context.objects:register(object, key)
 	if result then
-		local object = result
+		object = result
 		result, except = context.references:referenceto(key, self.config)
 		if result then
 			result = table.copy(result, object)

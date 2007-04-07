@@ -59,22 +59,13 @@ context = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+local KeyFmt = "\0%s%s"
+
 function object(self, object, key, type)
 	local context = self.context
-	if not key then
-		local meta = getmetatable(object)
-		local backup
-		if meta then
-			backup = rawget(meta, "__tostring")
-			if backup ~= nil then rawset(meta, "__tostring", nil) end
-		end
-		key = luatostring(object):match("%l+: (%w+)")
-		if meta then
-			if backup ~= nil then rawset(meta, "__tostring", backup) end
-		end
-	end
 	local result, except = context.types:resolve(type)
 	if result then
+		key = key or KeyFmt:format(self:hashof(object), self:hashof(result))
 		result, except = context.mapper:register(result, key)
 		if result then
 			result, except = context.objects:register(object, key)
