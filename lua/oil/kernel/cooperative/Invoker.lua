@@ -67,7 +67,7 @@ function Request:ready()                                                        
 end
 
 function Request:results()                                                      --[[VERBOSE]] verbose:invoke(true, "get reply")
-		self[InvokerKey]:lockedreceive(self[ChannelKey], self)                      --[[VERBOSE]] verbose:invoke(false)
+	self[InvokerKey]:lockedreceive(self[ChannelKey], self)                        --[[VERBOSE]] verbose:invoke(false)
 	return self.success, unpack(self, 1, self.resultcount)
 end
 

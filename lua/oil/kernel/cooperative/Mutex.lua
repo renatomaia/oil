@@ -123,8 +123,8 @@ function freereceive(self, channel)
 	local lock = self.locks[channel]
 	local thread = select(2, next(lock.receivers))
 	if thread then                                                                --[[VERBOSE]] verbose:mutex "resuming sending thread"
-		lock.receiving = tasks.current
-		tasks:register(thread, true)
+		lock.receiving = thread
+		tasks:register(thread)
 	else
 		lock.receiving = false                                                      --[[VERBOSE]] verbose:mutex "releasing receive lock"
 	end
