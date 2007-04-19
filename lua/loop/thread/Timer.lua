@@ -34,11 +34,13 @@ function timer(self)
 		self:action()
 		local now = scheduler:time()
 		if now < next
-			then scheduler:wait(next - now)
-			else scheduler:wait(rate - math.fmod(now - next, rate))
+			then scheduler:suspend(next - now)
+			else scheduler:suspend(rate - math.fmod(now - next, rate))
 		end
-		return self:timer()
+	else
+		scheduler:suspend()
 	end
+	return self:timer()
 end
 
 function enable(self)
