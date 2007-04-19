@@ -139,7 +139,7 @@ local OneWayRequest = {
 	success              = true,
 }
 
-function newrequest(self, channel, reference, operation, ...)                   --[[VERBOSE]] verbose:invoke(true, "request for operation '",operation.name,"'")
+function newrequest(self, channel, reference, operation, ...)
 	local request
 	if operation.oneway then
 		request = OneWayRequest
@@ -152,7 +152,7 @@ function newrequest(self, channel, reference, operation, ...)                   
 			...,
 		}
 		request.request_id = register(channel, request)
-	end
+	end                                                                           --[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",operation.name,"'")
 	request.object_key = reference._object
 	request.operation  = operation.name
 	request.opidl      = operation
