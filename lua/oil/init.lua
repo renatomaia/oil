@@ -57,7 +57,8 @@ module "oil"
 function assemble(flavor)
 	assert.type(flavor, "string", "OiL flavor name")
 	Components = builder.build(flavor)
-	pcall = Components.TaskManager and Components.TaskManager.pcall or luapcall
+	scheduler = Components.TaskManager
+	pcall = scheduler and scheduler.pcall or luapcall
 end
 
 assemble(OIL_FLAVOR or "corba;typed;cooperative;base")
