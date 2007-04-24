@@ -1,8 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.7.3b
+-- Version:  0.7.4b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 03/04/2007
+-- Last modification: 24/04/2007
 -- Filename: sin.lua
 -- 
 
@@ -2679,9 +2679,9 @@ end
 function raises_expr( tab )
   reconhecer(lex.tab_tokens.TK_RAISES, "'raises'")
   reconhecer("(", "'('")
-  tab.raises = {}
-  raises(tab.raises)
-  inter_name_seq(tab.raises)
+  tab.exceptions = {}
+  raises(tab.exceptions)
+  inter_name_seq(tab.exceptions)
   reconhecer( ")", "')'" )
 end
 
