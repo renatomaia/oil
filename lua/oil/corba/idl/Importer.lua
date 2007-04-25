@@ -138,7 +138,7 @@ function register(self, object, history)
 						self:register(contained, history)
 					end
 				elseif kind == "dk_Attribute" or kind == "dk_Operation" then
-					desc = self:register(object:_get_defined_in(), history).members[desc.name]
+					desc = self:register(object:_get_defined_in(), history).definitions[desc.name]
 					history[desc.repID] = desc
 				else
 					error("unable to import "..kind:match("^dk_(.+)$"))

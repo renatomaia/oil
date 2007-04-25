@@ -13,7 +13,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- indexer:Facet
--- 	[interface:table] interfaceof(name:string)
+-- 	[interface:table] typeof(name:string)
 -- 	member:table valueof(interface:table, name:string)
 -- 
 -- interfaces:Receptacle
@@ -36,8 +36,13 @@ context = false
 
 function findmember(self, interface, name)
 	for interface in interface:hierarchy() do
-		local member = interface.members[name]
-		if member then return member, interface end
+		local contained = interface.definitions[name]
+		if
+			contained and
+			(contained._type == "operation" or contained._type == "attribute")
+		then
+			return contained, interface
+		end
 	end
 end
 
@@ -64,15 +69,8 @@ end
 --------------------------------------------------------------------------------
 -- Interface Operations --------------------------------------------------------
 
-function interfaceof(self, name)
-	local types = self.context.types
-	return types:lookup_id(name) or
-	       types:lookup(name) or
-	       assert.exception{ "INTERNAL", minor_code_value = 0,
-	       	message = "unknown interface repository ID",
-	       	reason = "interface",
-	       	repID = name,
-	       }
+function typeof(self, name)
+	return assert.results(self.context.types:resolve(name))
 end
 
 function valueof(self, interface, name)
@@ -85,7 +83,6 @@ function valueof(self, interface, name)
 				member, interface = self:findmember(interface, member)
 				if member then
 					member = self.builders[action](self, interface, member, name, action)
-					interface.members[name] = member
 				end
 			end
 		end

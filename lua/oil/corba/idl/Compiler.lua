@@ -21,6 +21,7 @@
 -- 	types:table register(definition:table)
 --------------------------------------------------------------------------------
 
+local pairs  = pairs
 local select = select
 local unpack = unpack
 
@@ -38,7 +39,6 @@ context = false
 
 Options = {
 	callbacks = {
-	--null      = idl.null,
 		VOID      = idl.void,
 		SHORT     = idl.short,
 		LONG      = idl.long,
@@ -58,7 +58,6 @@ Options = {
 		OBJECT    = idl.object,
 		operation = idl.operation,
 		attribute = idl.attribute,
-		module    = idl.module,
 		except    = idl.except,
 		union     = idl.union,
 		struct    = idl.struct,
@@ -70,14 +69,21 @@ Options = {
 }
 function Options.callbacks.interface(def)
 	if def.definitions then -- not forward declarations
-		idl.interface(def)
+		return idl.interface(def)
 	end
+	return def
+end
+local Modules
+function Options.callbacks.module(def)
+	Modules[def] = true
+	return def
 end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 function doresults(self, ...)
+	for module in pairs(Modules) do idl.module(module) end
 	if ... then
 		return self.context.types:register(...)
 	end
@@ -85,9 +91,11 @@ function doresults(self, ...)
 end
 
 function loadfile(self, filepath)
+	Modules = {}
 	return self:doresults(luaidl.parsefile(filepath, self.Options))
 end
 
 function load(self, idlspec)
+	Modules = {}
 	return self:doresults(luaidl.parse(idlspec, self.Options))
 end

@@ -25,12 +25,6 @@ local operation = idl.operation
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-module{
-	name = "CORBA",
-	repID = "IDL:omg.org/CORBA:1.0",
-	definitions = _M,
-}
-
 Identifier   = typedef{string}
 ScopedName   = typedef{string}
 RepositoryId = typedef{string}
@@ -56,7 +50,7 @@ DefinitionKind = enum{
 }
 
 IRObject = interface{
-	members = {
+	definitions = {
 		-- read interface
 		def_kind = attribute{ DefinitionKind, readonly = true },
 		-- write interface
@@ -74,26 +68,26 @@ Contained.base_interfaces = { IRObject }
 
 -- read/write interface
 
-Contained.members.id      = attribute{ RepositoryId }
-Contained.members.name    = attribute{ Identifier   }
-Contained.members.version = attribute{ VersionSpec  }
+Contained.definitions.id      = attribute{ RepositoryId }
+Contained.definitions.name    = attribute{ Identifier   }
+Contained.definitions.version = attribute{ VersionSpec  }
 
 -- read interface
 
-Contained.members.defined_in            = attribute{ Container , readonly=true }
-Contained.members.absolute_name         = attribute{ ScopedName, readonly=true }
-Contained.members.containing_repository = attribute{ Repository, readonly=true }
+Contained.definitions.defined_in            = attribute{ Container , readonly=true }
+Contained.definitions.absolute_name         = attribute{ ScopedName, readonly=true }
+Contained.definitions.containing_repository = attribute{ Repository, readonly=true }
 
 Contained.definitions.Description = struct{
 	{ type = DefinitionKind, name = "kind"  },
 	{ type = any           , name = "value" },
 }
 
-Contained.members.describe = operation{ result = Contained.definitions.Description }
+Contained.definitions.describe = operation{ result = Contained.definitions.Description }
 
 -- write interface
 
-Contained.members.move = operation{
+Contained.definitions.move = operation{
 	parameters = {
 		{ type = Container  , name = "new_container" },
 		{ type = Identifier , name = "new_name"      },
@@ -174,12 +168,12 @@ Container.base_interfaces = { IRObject }
 
 -- read interface
 
-Container.members.lookup = operation{
+Container.definitions.lookup = operation{
 	result = Contained,
 	parameters = {{ type = ScopedName, name = "search_name" }},
 }
 
-Container.members.contents = operation{
+Container.definitions.contents = operation{
 	result = ContainedSeq,
 	parameters = {
 		{ type = DefinitionKind, name = "limit_type"        },
@@ -187,7 +181,7 @@ Container.members.contents = operation{
 	},
 }
 
-Container.members.lookup_name = operation{
+Container.definitions.lookup_name = operation{
 	result = ContainedSeq,
 	parameters = {
 		{ type = Identifier    , name = "search_name"       },
@@ -204,7 +198,7 @@ Container.definitions.Description = struct{
 }
 
 Container.definitions.DescriptionSeq = typedef{ sequence{Container.definitions.Description} }
-Container.members.describe_contents = operation{
+Container.definitions.describe_contents = operation{
 	result = Container.definitions.DescriptionSeq,
 	parameters = {
 		{ type = DefinitionKind, name = "limit_type"        },
@@ -215,7 +209,7 @@ Container.members.describe_contents = operation{
 
 -- write interface
 
-Container.members.create_module = operation {
+Container.definitions.create_module = operation {
 	result = ModuleDef,
 	parameters = {
 		{ type = RepositoryId, name = "id"      },
@@ -223,7 +217,7 @@ Container.members.create_module = operation {
 		{ type = VersionSpec,  name = "version" },
 	},
 }
-Container.members.create_constant = operation {
+Container.definitions.create_constant = operation {
 	result = ConstantDef,
 	parameters = {
 		{ type = RepositoryId, name = "id"      },
@@ -233,7 +227,7 @@ Container.members.create_constant = operation {
 		{ type = any,          name = "value"   },
 	},
 }
-Container.members.create_struct = operation {
+Container.definitions.create_struct = operation {
 	result = StructDef,
 	parameters = {
 		{ type = RepositoryId,    name = "id"      },
@@ -242,7 +236,7 @@ Container.members.create_struct = operation {
 		{ type = StructMemberSeq, name = "members" },
 	},
 }
-Container.members.create_union = operation {
+Container.definitions.create_union = operation {
 	result = UnionDef,
 	parameters = {
 		{ type = RepositoryId,   name = "id"                 },
@@ -252,7 +246,7 @@ Container.members.create_union = operation {
 		{ type = UnionMemberSeq, name = "members"            },
 	},
 }
-Container.members.create_enum = operation {
+Container.definitions.create_enum = operation {
 	result = EnumDef,
 	parameters = {
 		{ type = RepositoryId,  name = "id"      },
@@ -261,7 +255,7 @@ Container.members.create_enum = operation {
 		{ type = EnumMemberSeq, name = "members" },
 	},
 }
-Container.members.create_alias = operation {
+Container.definitions.create_alias = operation {
 	result = AliasDef,
 	parameters = {
 		{ type = RepositoryId, name = "id"            },
@@ -270,7 +264,7 @@ Container.members.create_alias = operation {
 		{ type = IDLType,      name = "original_type" },
 	},
 }
-Container.members.create_interface = operation {
+Container.definitions.create_interface = operation {
 	result = InterfaceDef,
 	parameters = {
 		{ type = RepositoryId,    name = "id"              },
@@ -279,7 +273,7 @@ Container.members.create_interface = operation {
 		{ type = InterfaceDefSeq, name = "base_interfaces" },
 	},
 }
-Container.members.create_value = operation{
+Container.definitions.create_value = operation{
 	result = ValueDef,
 	parameters = {
 		{ type = RepositoryId,    name = "id"                   },
@@ -294,7 +288,7 @@ Container.members.create_value = operation{
 		{ type = InitializerSeq,  name = "initializers"         },
 	},
 }
-Container.members.create_value_box = operation{
+Container.definitions.create_value_box = operation{
 	result = ValueBoxDef,
 	parameters = {
 		{ type = RepositoryId, name = "id"                },
@@ -303,7 +297,7 @@ Container.members.create_value_box = operation{
 		{ type = IDLType,      name = "original_type_def" },
 	},
 }
-Container.members.create_exception = operation{
+Container.definitions.create_exception = operation{
 	result = ExceptionDef,
 	parameters = {
 		{ type = RepositoryId,    name = "id"      },
@@ -312,7 +306,7 @@ Container.members.create_exception = operation{
 		{ type = StructMemberSeq, name = "members" },
 	},
 }
-Container.members.create_native = operation{
+Container.definitions.create_native = operation{
 	result = NativeDef,
 	parameters = {
 		{ type = RepositoryId, name = "id"      },
@@ -320,7 +314,7 @@ Container.members.create_native = operation{
 		{ type = VersionSpec,  name = "version" },
 	},
 }
-Container.members.create_abstract_interface = operation {
+Container.definitions.create_abstract_interface = operation {
 	result = AbstractInterfaceDef,
 	parameters = {
 		{ type = RepositoryId,            name = "id"              },
@@ -329,7 +323,7 @@ Container.members.create_abstract_interface = operation {
 		{ type = AbstractInterfaceDefSeq, name = "base_interfaces" },
 	},
 }
-Container.members.create_local_interface = operation {
+Container.definitions.create_local_interface = operation {
 	result = LocalInterfaceDef,
 	parameters = {
 		{ type = RepositoryId,    name = "id"              },
@@ -338,7 +332,7 @@ Container.members.create_local_interface = operation {
 		{ type = InterfaceDefSeq, name = "base_interfaces" },
 	},
 }
-Container.members.create_ext_value = operation {
+Container.definitions.create_ext_value = operation {
 	result = ExtValueDef,
 	parameters = {
 		{ type = RepositoryId,      name = "id"                   },
@@ -355,7 +349,7 @@ Container.members.create_ext_value = operation {
 }
 
 IDLType.base_interfaces = { IRObject }
-IDLType.members.type = attribute{ TypeCode, readonly = true }
+IDLType.definitions.type = attribute{ TypeCode, readonly = true }
 
 PrimitiveDef = interface{}
 StringDef    = interface{}
@@ -376,44 +370,44 @@ Repository.base_interfaces = { Container }
 
 -- read interface
 
-Repository.members.lookup_id = operation{
+Repository.definitions.lookup_id = operation{
 	result = Contained,
 	parameters = {{ type = RepositoryId , name = "search_id" }},
 }
-Repository.members.get_canonical_typecode = operation{
+Repository.definitions.get_canonical_typecode = operation{
 	result = TypeCode,
 	parameters = {{ type = TypeCode, name = "tc" }},
 }
-Repository.members.get_primitive = operation{
+Repository.definitions.get_primitive = operation{
 	result = PrimitiveDef,
 	parameters = {{ type = PrimitiveKind, name = "kind" }},
 }
 
 -- write interface
 
-Repository.members.create_string = operation{
+Repository.definitions.create_string = operation{
 	result = StringDef,
 	parameters = {{ type = ulong, name = "bound" }},
 }
-Repository.members.create_wstring = operation{
+Repository.definitions.create_wstring = operation{
 	result = WstringDef,
 	parameters = {{ type = ulong, name = "bound" }},
 }
-Repository.members.create_sequence = operation{
+Repository.definitions.create_sequence = operation{
 	result = SequenceDef,
 	parameters = {
 		{ type = ulong,   name = "bound"        },
 		{ type = IDLType, name = "element_type" },
 	},
 }
-Repository.members.create_array = operation{
+Repository.definitions.create_array = operation{
 	result = ArrayDef,
 	parameters = {
 		{ type = ulong,   name = "length"       },
 		{ type = IDLType, name = "element_type" },
 	},
 }
-Repository.members.create_fixed = operation{
+Repository.definitions.create_fixed = operation{
 	result = FixedDef,
 	parameters = {
 		{ type = ushort, name = "digits" },
@@ -432,9 +426,9 @@ ModuleDescription = struct{
 
 ConstantDef.base_interfaces = { Contained }
 
-ConstantDef.members.type     = attribute{ TypeCode, readonly = true }
-ConstantDef.members.type_def = attribute{ IDLType }
-ConstantDef.members.value    = attribute{ any }
+ConstantDef.definitions.type     = attribute{ TypeCode, readonly = true }
+ConstantDef.definitions.type_def = attribute{ IDLType }
+ConstantDef.definitions.value    = attribute{ any }
 
 ConstantDescription = struct{
 	{ type = Identifier  , name = "name"       },
@@ -456,52 +450,52 @@ TypeDescription = struct{
 }
 
 StructDef.base_interfaces = { TypedefDef, Container }
-StructDef.members.members = attribute{ StructMemberSeq }
+StructDef.definitions.members = attribute{ StructMemberSeq }
 
 UnionDef.base_interfaces = { TypedefDef, Container }
-UnionDef.members.discriminator_type     = attribute{ TypeCode, readonly = true }
-UnionDef.members.discriminator_type_def = attribute{ IDLType }
-UnionDef.members.members                = attribute{ UnionMemberSeq }
+UnionDef.definitions.discriminator_type     = attribute{ TypeCode, readonly = true }
+UnionDef.definitions.discriminator_type_def = attribute{ IDLType }
+UnionDef.definitions.members                = attribute{ UnionMemberSeq }
 
 EnumDef.base_interfaces = { TypedefDef }
-EnumDef.members.members = attribute{ EnumMemberSeq }
+EnumDef.definitions.members = attribute{ EnumMemberSeq }
 
 AliasDef.base_interfaces = { TypedefDef }
-AliasDef.members.original_type_def = attribute{ IDLType }
+AliasDef.definitions.original_type_def = attribute{ IDLType }
 
 NativeDef.base_interfaces = { TypedefDef }
 
 PrimitiveDef.base_interfaces = { IDLType }
-PrimitiveDef.members.kind = attribute{ PrimitiveKind, readonly = true }
+PrimitiveDef.definitions.kind = attribute{ PrimitiveKind, readonly = true }
 
 StringDef.base_interfaces = { IDLType }
-StringDef.members.bound = attribute{ ulong }
+StringDef.definitions.bound = attribute{ ulong }
 
 WstringDef.base_interfaces = { IDLType }
-WstringDef.members.bound = attribute{ ulong }
+WstringDef.definitions.bound = attribute{ ulong }
 
 FixedDef.base_interfaces = { IDLType }
-FixedDef.members.digits = attribute{ ushort }
-FixedDef.members.scale = attribute{ short }
+FixedDef.definitions.digits = attribute{ ushort }
+FixedDef.definitions.scale = attribute{ short }
 
 SequenceDef.base_interfaces = { IDLType }
-SequenceDef.members.bound = attribute{ ulong }
-SequenceDef.members.element_type = attribute{ TypeCode, readonly = true }
-SequenceDef.members.element_type_def = attribute{ IDLType }
+SequenceDef.definitions.bound = attribute{ ulong }
+SequenceDef.definitions.element_type = attribute{ TypeCode, readonly = true }
+SequenceDef.definitions.element_type_def = attribute{ IDLType }
 
 ArrayDef.base_interfaces = { IDLType }
-ArrayDef.members.length = attribute{ ulong }
-ArrayDef.members.element_type = attribute{ TypeCode, readonly = true }
-ArrayDef.members.element_type_def = attribute{ IDLType }
+ArrayDef.definitions.length = attribute{ ulong }
+ArrayDef.definitions.element_type = attribute{ TypeCode, readonly = true }
+ArrayDef.definitions.element_type_def = attribute{ IDLType }
 
 ExceptionDef.base_interfaces = { Contained, Container }
-ExceptionDef.members.type = attribute{ TypeCode, readonly = true }
-ExceptionDef.members.members = attribute{ StructMemberSeq }
+ExceptionDef.definitions.type = attribute{ TypeCode, readonly = true }
+ExceptionDef.definitions.members = attribute{ StructMemberSeq }
 
 AttributeMode = enum{ "ATTR_NORMAL", "ATTR_READONLY" }
 
 AttributeDef = interface{ Contained,
-	members = {
+	definitions = {
 		type     = attribute{ TypeCode, readonly = true },
 		type_def = attribute{ IDLType },
 		mode     = attribute{ AttributeMode },
@@ -532,12 +526,12 @@ ExtAttributeDef = interface{ AttributeDef }
 
 -- read/write interface
 
-ExtAttributeDef.members.get_exceptions = attribute{ ExcDescriptionSeq }
-ExtAttributeDef.members.set_exceptions = attribute{ ExcDescriptionSeq }
+ExtAttributeDef.definitions.get_exceptions = attribute{ ExcDescriptionSeq }
+ExtAttributeDef.definitions.set_exceptions = attribute{ ExcDescriptionSeq }
 
 -- read interface
 
-ExtAttributeDef.members.describe_attribute = operation{
+ExtAttributeDef.definitions.describe_attribute = operation{
 	result = ExtAttributeDescription,
 }
 
@@ -557,14 +551,12 @@ ContextIdSeq = typedef{ sequence{ContextIdentifier} }
 ExceptionDefSeq = typedef{ sequence{ExceptionDef} }
 
 OperationDef = interface { Contained,
-	members = {
-		result     = attribute{ TypeCode, readonly = true },
-		result_def = attribute{ IDLType },
-		params     = attribute{ ParDescriptionSeq },
-		mode       = attribute{ OperationMode },
-		contexts   = attribute{ ContextIdSeq },
-		exceptions = attribute{ ExceptionDefSeq },
-	},
+	result     = attribute{ TypeCode, readonly = true },
+	result_def = attribute{ IDLType },
+	params     = attribute{ ParDescriptionSeq },
+	mode       = attribute{ OperationMode },
+	contexts   = attribute{ ContextIdSeq },
+	exceptions = attribute{ ExceptionDefSeq },
 }
 
 OperationDescription = struct{
@@ -588,11 +580,11 @@ InterfaceDef.base_interfaces = { Container, Contained, IDLType }
 
 -- read/write interface
 
-InterfaceDef.members.base_interfaces = attribute{ InterfaceDefSeq }
+InterfaceDef.definitions.base_interfaces = attribute{ InterfaceDefSeq }
 
 -- read interface
 
-InterfaceDef.members.is_a = operation{
+InterfaceDef.definitions.is_a = operation{
 	result = boolean,
 	parameters = {{ type = RepositoryId, name = "interface_id" }},
 }
@@ -606,13 +598,13 @@ InterfaceDef.definitions.FullInterfaceDescription = struct{
 	{ type = RepositoryIdSeq   , name = "base_interfaces" },
 	{ type = TypeCode          , name = "type"            },
 }
-InterfaceDef.members.describe_interface = operation{
+InterfaceDef.definitions.describe_interface = operation{
 	result = InterfaceDef.definitions.FullInterfaceDescription
 }
 
 -- write interface
 
-InterfaceDef.members.create_attribute = operation{
+InterfaceDef.definitions.create_attribute = operation{
 	result = AttributeDef,
 	parameters = {
 		{ type = RepositoryId , name = "id"      },
@@ -623,7 +615,7 @@ InterfaceDef.members.create_attribute = operation{
 	},
 }
 
-InterfaceDef.members.create_operation = operation{
+InterfaceDef.definitions.create_operation = operation{
 	result = OperationDef,
 	parameters = {
 		{ type = RepositoryId     , name = "id"         },
@@ -660,12 +652,12 @@ InterfaceAttrExtension.definitions.ExtFullInterfaceDescription = struct{
 }
 
 -- read interface
-InterfaceAttrExtension.members.describe_ext_interface = operation{
+InterfaceAttrExtension.definitions.describe_ext_interface = operation{
 	result = InterfaceAttrExtension.definitions.ExtFullInterfaceDescription,
 }
 
 -- write interface
-InterfaceAttrExtension.members.create_ext_attribute = operation{
+InterfaceAttrExtension.definitions.create_ext_attribute = operation{
 	result = ExtAttributeDef,
 	parameters = {
 		{ type = RepositoryId   , name = "id"             },
@@ -694,7 +686,7 @@ ValueMember = struct{
 ValueMemberSeq = typedef{ sequence{ValueMember} }
 
 ValueMemberDef = interface{ Contained,
-	members = {
+	definitions = {
 		type     = attribute{ TypeCode, readonly = true },
 		type_def = attribute{ IDLType },
 		access   = attribute{ Visibility },
@@ -705,17 +697,17 @@ ValueDef.base_interfaces = { Container, Contained, IDLType }
 
 -- read/write interface
 
-ValueDef.members.supported_interfaces = attribute{ InterfaceDefSeq }
-ValueDef.members.initializers         = attribute{ InitializerSeq  }
-ValueDef.members.base_value           = attribute{ ValueDef        }
-ValueDef.members.abstract_base_values = attribute{ ValueDefSeq     }
-ValueDef.members.is_abstract          = attribute{ boolean         }
-ValueDef.members.is_custom            = attribute{ boolean         }
-ValueDef.members.is_truncatable       = attribute{ boolean         }
+ValueDef.definitions.supported_interfaces = attribute{ InterfaceDefSeq }
+ValueDef.definitions.initializers         = attribute{ InitializerSeq  }
+ValueDef.definitions.base_value           = attribute{ ValueDef        }
+ValueDef.definitions.abstract_base_values = attribute{ ValueDefSeq     }
+ValueDef.definitions.is_abstract          = attribute{ boolean         }
+ValueDef.definitions.is_custom            = attribute{ boolean         }
+ValueDef.definitions.is_truncatable       = attribute{ boolean         }
 
 -- read interface
 
-ValueDef.members.is_a = operation{
+ValueDef.definitions.is_a = operation{
 	result = boolean,
 	parameters = {{ type = RepositoryId, name = "id" }},
 }
@@ -736,13 +728,13 @@ ValueDef.definitions.FullValueDescription = struct{
 	{ type = RepositoryId      , name = "base_value"           },
 	{ type = TypeCode          , name = "type"                 },
 }
-ValueDef.members.describe_value = operation{
+ValueDef.definitions.describe_value = operation{
 	result = ValueDef.definitions.FullValueDescription,
 }
 
 -- write interface
 
-ValueDef.members.create_value_member = operation{
+ValueDef.definitions.create_value_member = operation{
 	result = ValueMemberDef,
 	parameters = {
 		{ type = RepositoryId, name = "id"      },
@@ -752,7 +744,7 @@ ValueDef.members.create_value_member = operation{
 		{ type = Visibility  , name = "access"  },
 	},
 }
-ValueDef.members.create_attribute = operation{
+ValueDef.definitions.create_attribute = operation{
 	result = AttributeDef,
 	parameters = {
 		{ type = RepositoryId , name = "id"      },
@@ -762,7 +754,7 @@ ValueDef.members.create_attribute = operation{
 		{ type = AttributeMode, name = "mode"    },
 	},
 }
-ValueDef.members.create_operation = operation{
+ValueDef.definitions.create_operation = operation{
 	result = OperationDef,
 	parameters = {
 		{ type = RepositoryId     , name = "id"         },
@@ -793,7 +785,7 @@ ExtValueDef.base_interfaces = { ValueDef }
 
 -- read/write interface
 
-ExtValueDef.members.ext_initializers = attribute{ ExtInitializerSeq }
+ExtValueDef.definitions.ext_initializers = attribute{ ExtInitializerSeq }
 
 -- read interface
 
@@ -814,13 +806,13 @@ ExtValueDef.definitions.ExtFullValueDescription = struct{
 	{ type = RepositoryId         , name = "base_value"           },
 	{ type = TypeCode             , name = "type"                 },
 }
-ExtValueDef.members.describe_ext_value = operation{
+ExtValueDef.definitions.describe_ext_value = operation{
 	result = ExtValueDef.definitions.ExtFullValueDescription,
 }
 
 -- write interface
 
-ExtValueDef.members.create_ext_attribute = operation{
+ExtValueDef.definitions.create_ext_attribute = operation{
 	result = ExtAttributeDef,
 	parameters = {
 		{ type = RepositoryId   , name = "id"             },
@@ -834,9 +826,23 @@ ExtValueDef.members.create_ext_attribute = operation{
 }
 
 ValueBoxDef.base_interfaces = { TypedefDef }
-ValueBoxDef.members.original_type_def = attribute{ IDLType }
+ValueBoxDef.definitions.original_type_def = attribute{ IDLType }
 
 AbstractInterfaceDef.base_interfaces    = { InterfaceDef }
 ExtAbstractInterfaceDef.base_interfaces = { AbstractInterfaceDef, InterfaceAttrExtension }
 LocalInterfaceDef.base_interfaces       = { InterfaceDef }
 ExtLocalInterfaceDef.base_interfaces    = { LocalInterfaceDef, InterfaceAttrExtension }
+
+--------------------------------------------------------------------------------
+
+local definitions = _M
+
+_M = nil
+_NAME = nil
+_PACKAGE = nil
+
+module{
+	name = "CORBA",
+	repID = "IDL:omg.org/CORBA:1.0",
+	definitions = definitions,
+}

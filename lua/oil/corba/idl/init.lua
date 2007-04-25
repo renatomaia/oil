@@ -69,10 +69,12 @@ local require  = require
 local rawget   = rawget
 
 -- backup of string package functions to avoid name crash with string IDL type
-local match = require("string").match
-local table = require "table"
+local match  = require("string").match
+local format = require("string").format
+local table  = require "table"
 
-local OrderedSet = require "loop.collection.OrderedSet"
+local OrderedSet        = require "loop.collection.OrderedSet"
+local UnorderedArraySet = require "loop.collection.UnorderedArraySet"
 
 local oo     = require "oil.oo"
 local assert = require "oil.assert"
@@ -81,9 +83,6 @@ module "oil.corba.idl"                                                          
 
 --------------------------------------------------------------------------------
 -- IDL element types -----------------------------------------------------------
-
--- TODO:[maia] Why all type names are blank by default?
-local DefaultTypeName = ""
 
 BasicTypes = {
 	null       = true,
@@ -174,77 +173,92 @@ end
 --------------------------------------------------------------------------------
 -- Scoped definitions management -----------------------------------------------
 
-DefinitionList = oo.class()
-
-local function updatenames(idldef)
-	local container = idldef.defined_in
-	local version = idldef.version
+function setnameof(contained, name)
+	contained.name = name
+	local container = contained.defined_in
 	if container then
 		local start, default = match(container.repID, "^(IDL:.*):(%d+%.%d+)$")
 		if not start then
 			assert.illegal(container.repID, "parent scope repository ID")
 		end
-		rawset(idldef, "repID", start.."/"..idldef.name..":"..(version or default))
-	elseif idldef.name then
-		if not version then version = "1.0" end
-		rawset(idldef, "repID", "IDL:"..idldef.name..":"..version)
-	end
-	for _, member in pairs(idldef) do
-		if oo.classof(member) == DefinitionList then
-			for name, member in pairs(member) do
-				if type(name) == "string" then
-					updatenames(member)
-				end
-			end
-		end
-	end
-	return idldef.repID
-end
-
-local ScopeKey = newproxy()
-
-function DefinitionList:__init(list, scope)
-	if list then
-		local members = {}
-		for field, value in pairs(list) do
-			if type(field) == "string" and isspec(value) then
-				members[field] = value
-			end
-		end
-		rawset(list, ScopeKey, scope)
-		for field, value in pairs(members) do
-			self.__newindex(list, field, value)
-		end
+		contained.repID = format("%s/%s:%s", start, contained.name,
+		                                     contained.version or default)
 	else
-		list = { [ScopeKey] = scope }
+		contained.repID = format("IDL:%s:%s", contained.name,
+		                                      contained.version or "1.0")
 	end
-	return oo.rawnew(self, list)
-end
-
-function DefinitionList:__newindex(name, value)
-	if isspec(value) then
-		value.defined_in = self[ScopeKey]
-		if type(name) == "string"
-			then value.name = name
-			else name = value.name
+	if contained.definitions then
+		for _, contained in ipairs(contained.definitions) do
+			setnameof(contained, contained.name)
 		end
-		updatenames(value)
 	end
-	return rawset(self, name, value)
 end
 
 --------------------------------------------------------------------------------
 
-function newdef(def, scope)
-	assert.type(def, "table", "IDL definition")
-	if def.name  == nil then def.name = DefaultTypeName end
-	if def.repID == nil then updatenames(def) end
-	assert.type(def.name, "string", "IDL definition name")
-	assert.type(def.repID, "string", "repository ID")
-	if scope then
-		def.definitions = DefinitionList(def.definitions, def)
-		assert.type(def.definitions, "table", "scoped definition list")
+local ContainerKey = newproxy()
+
+Contents = oo.class()
+
+function Contents:__newindex(name, contained)
+	if type(name) == "string" then
+		contained.defined_in = self[ContainerKey]
+		setnameof(contained, name)
+		return self:_add(contained)
 	end
+	rawset(self, name, contained)
+end
+
+function Contents:_add(contained)
+	UnorderedArraySet.add(self, contained)
+	rawset(self, contained.name, contained)
+	return contained
+end
+
+function Contents:_remove(contained)
+	contained = UnorderedArraySet.remove(self, contained)
+	if contained then self[contained.name] = nil end
+end
+
+function Contents:_removeat(index)
+	return self:remove(self[index])
+end
+
+Contents._removebyname = Contents._removeat
+
+--------------------------------------------------------------------------------
+
+function Container(self)
+	if not oo.instanceof(self.definitions, Contents) then
+		local contents = Contents()
+		contents[ContainerKey] = self
+		if self.definitions then
+			for _, value in ipairs(self.definitions) do
+				assert.type(value.name, "string", "IDL definition name")
+				contents:__newindex(value.name, value)
+			end
+			for field, value in pairs(self.definitions) do
+				if type(field) == "string" then
+					contents:__newindex(field, value)
+				end
+			end
+		end
+		self.definitions = contents
+	end
+
+
+	return self
+end
+
+--------------------------------------------------------------------------------
+
+function Contained(self)
+	assert.type(self, "table", "IDL definition")
+	if self.name  == nil then self.name = "" end
+	if self.repID == nil then setnameof(self, self.name) end
+	assert.type(self.name, "string", "IDL definition name")
+	assert.type(self.repID, "string", "repository ID")
+	return self
 end
 
 --------------------------------------------------------------------------------
@@ -254,49 +268,53 @@ end
 
 string = { _type = "string", maxlength = 0 }
 
-function Object(def)
-	if type(def) == "string"
-		then def = {repID = def}
-		else assert.type(def, "table", "Object type definition")
+function Object(self)
+	if type(self) == "string"
+		then self = {repID = self}
+		else assert.type(self, "table", "Object type definition")
 	end
-	assert.type(def.repID, "string", "Object type repository ID")
-	if def.repID == "IDL:omg.org/CORBA/Object:1.0"
-		then def = object
-		else def._type = "Object"
+	assert.type(self.repID, "string", "Object type repository ID")
+	if self.repID == "IDL:omg.org/CORBA/Object:1.0"
+		then self = object
+		else self._type = "Object"
 	end
-	return def
+	return self
 end
 
-function struct(def)
-	newdef(def, true)
-	if def.fields == nil then def.fields = def end
-	checkfields(def.fields)
-	def._type = "struct"
-	return def
+function struct(self)
+	self = Container(Contained(self))
+	if self.fields == nil then self.fields = self end
+	checkfields(self.fields)
+	self._type = "struct"
+	return self
 end
 
-function union(def)
-	newdef(def, true)
-	if def.default == nil then def.default = -1 end -- indicates no default in CDR
-	assert.type(def.switch, "idl type", "union type discriminant")
-	assert.type(def.options, "table", "union options definition")
+function union(self)
+	self = Container(Contained(self))
+	if self.options == nil then self.options = self end
+	if self.default == nil then self.default = -1 end -- indicates no default in CDR
+	assert.type(self.switch, "idl type", "union type discriminant")
+	assert.type(self.options, "table", "union options definition")
+	assert.type(self.default, "number", "union default option definition")
 	
-	def.selector = {} -- maps field names to labels (option selector)
-	def.selection = {} -- maps labels (option selector) to options
-	for _, option in ipairs(def.options) do
+	self.selector = {} -- maps field names to labels (option selector)
+	self.selection = {} -- maps labels (option selector) to options
+	for index, option in ipairs(self.options) do
 		checkfield(option)
 		if option.label == nil then assert.illegal(nil, "option label value") end
-		def.selector[option.name] = option.label
-		def.selection[option.label] = option
+		self.selector[option.name] = option.label
+		if index ~= self.default + 1 then
+			self.selection[option.label] = option
+		end
 	end
 
-	function def:__index(field)
-		if rawget(self, "_switch") == def.selector[field] then
+	function self:__index(field)
+		if rawget(self, "_switch") == self.selector[field] then
 			return rawget(self, "_value")
 		end
 	end
-	function def:__newindex(field, value)
-		local label = def.selector[field]
+	function self:__newindex(field, value)
+		local label = self.selector[field]
 		if label then
 			rawset(self, "_switch", label)
 			rawset(self, "_value", value)
@@ -304,56 +322,56 @@ function union(def)
 		end
 	end
 
-	def._type = "union"
-	return def
+	self._type = "union"
+	return self
 end
 
-function enum(def)
-	newdef(def)
-	if def.enumvalues == nil then def.enumvalues = def end
-	assert.type(def.enumvalues, "table", "enumeration values definition")
+function enum(self)
+	self = Contained(self)
+	if self.enumvalues == nil then self.enumvalues = self end
+	assert.type(self.enumvalues, "table", "enumeration values definition")
 
-	def.labelvalue = {}
-	for index, label in ipairs(def.enumvalues) do
+	self.labelvalue = {}
+	for index, label in ipairs(self.enumvalues) do
 		assert.type(label, "string", "enumeration value label")
-		def.labelvalue[label] = index - 1
+		self.labelvalue[label] = index - 1
 	end
 
-	def._type = "enum"
-	return def
+	self._type = "enum"
+	return self
 end
 
-function sequence(def)
-	if def.maxlength   == nil then def.maxlength = 0 end
-	if def.elementtype == nil then def.elementtype = def[1] end
-	assert.type(def.maxlength, "number", "sequence type maximum length ")
-	assert.type(def.elementtype, "idl type", "sequence element type")
-	def._type = "sequence"
-	return def
+function sequence(self)
+	if self.maxlength   == nil then self.maxlength = 0 end
+	if self.elementtype == nil then self.elementtype = self[1] end
+	assert.type(self.maxlength, "number", "sequence type maximum length ")
+	assert.type(self.elementtype, "idl type", "sequence element type")
+	self._type = "sequence"
+	return self
 end
 
-function array(def)
-	assert.type(def.length, "number", "array type length")
-	if def.elementtype == nil then def.elementtype = def[1] end
-	assert.type(def.elementtype, "idl type", "array element type")
-	def._type = "array"
-	return def
+function array(self)
+	assert.type(self.length, "number", "array type length")
+	if self.elementtype == nil then self.elementtype = self[1] end
+	assert.type(self.elementtype, "idl type", "array element type")
+	self._type = "array"
+	return self
 end
 
-function typedef(def)
-	newdef(def)
-	if def.type  == nil then def.type  = def[1] end
-	assert.type(def.type, "idl type", "type in typedef definition")
-	def._type = "typedef"
-	return def
+function typedef(self)
+	self = Contained(self)
+	if self.type  == nil then self.type  = self[1] end
+	assert.type(self.type, "idl type", "type in typedef definition")
+	self._type = "typedef"
+	return self
 end
 
-function except(def)
-	newdef(def, true)
-	if def.members == nil then def.members = def end
-	checkfields(def.members)
-	def._type = "except"
-	return def
+function except(self)
+	self = Container(Contained(self))
+	if self.members == nil then self.members = self end
+	checkfields(self.members)
+	self._type = "except"
+	return self
 end
 
 --------------------------------------------------------------------------------
@@ -361,79 +379,79 @@ end
 
 -- Note: construtor syntax is optimized for use with Interface Repository
 
-function attribute(def)
-	newdef(def)
-	if def.type  == nil then def.type = def[1] end
-	assert.type(def.type, "idl type", "attribute type")
+function attribute(self)
+	self = Contained(self)
+	if self.type  == nil then self.type = self[1] end
+	assert.type(self.type, "idl type", "attribute type")
 
-	local mode = def.mode
+	local mode = self.mode
 	if mode == "ATTR_READONLY" then
-		def.readonly = true
+		self.readonly = true
 	elseif mode ~= nil and mode ~= "ATTR_NORMAL" then
-		assert.illegal(def.mode, "attribute mode")
+		assert.illegal(self.mode, "attribute mode")
 	end
 	
-	def._type = "attribute"
-	return def
+	self._type = "attribute"
+	return self
 end
 
-function operation(def)
-	newdef(def)
+function operation(self)
+	self = Contained(self)
 	
-	local mode = def.mode
+	local mode = self.mode
 	if mode == "OP_ONEWAY" then
-		def.oneway = true
+		self.oneway = true
 	elseif mode ~= nil and mode ~= "OP_NORMAL" then
-		assert.illegal(def.mode, "operation mode")
+		assert.illegal(self.mode, "operation mode")
 	end
 
-	def.inputs = {}
-	def.outputs = {}
-	if def.result and def.result ~= void then
-		table.insert(def.outputs, def.result)
+	self.inputs = {}
+	self.outputs = {}
+	if self.result and self.result ~= void then
+		table.insert(self.outputs, self.result)
 	end
-	if def.parameters then
-		for _, param in ipairs(def.parameters) do
+	if self.parameters then
+		for _, param in ipairs(self.parameters) do
 			checkfield(param)
 			if param.mode then
 				assert.type(param.mode, "string", "operation parameter mode")
 				if param.mode == "PARAM_IN" then
-					table.insert(def.inputs, param.type)
+					table.insert(self.inputs, param.type)
 				elseif param.mode == "PARAM_OUT" then
-					table.insert(def.outputs, param.type)
+					table.insert(self.outputs, param.type)
 				elseif param.mode == "PARAM_INOUT" then
-					table.insert(def.inputs, param.type)
-					table.insert(def.outputs, param.type)
+					table.insert(self.inputs, param.type)
+					table.insert(self.outputs, param.type)
 				else
 					assert.illegal(param.mode, "operation parameter mode")
 				end
 			else
-				table.insert(def.inputs, param.type)
+				table.insert(self.inputs, param.type)
 			end
 		end
 	end
 
-	if def.exceptions then
-		for _, except in ipairs(def.exceptions) do
+	if self.exceptions then
+		for _, except in ipairs(self.exceptions) do
 			assert.type(except, "idl except", "raised exception")
-			if def.exceptions[except.repID] ~= nil then
+			if self.exceptions[except.repID] ~= nil then
 				assert.illegal(except.repID,
 					"exception raise defintion, got duplicated repository ID")
 			end
-			def.exceptions[except.repID] = except
+			self.exceptions[except.repID] = except
 		end
 	else
-		def.exceptions = {}
+		self.exceptions = {}
 	end
 
-	def._type = "operation"
-	return def
+	self._type = "operation"
+	return self
 end
 
-function module(def)
-	newdef(def, true)
-	def._type = "module"
-	return def
+function module(self)
+	self = Container(Contained(self))
+	self._type = "module"
+	return self
 end
 
 --------------------------------------------------------------------------------
@@ -447,22 +465,21 @@ local function ibases(queue, interface)
 		return interface
 	end
 end
-function basesof(interface)
+function basesof(self)
 	local queue = OrderedSet()
-	queue:enqueue(interface)
+	queue:enqueue(self)
 	return ibases, queue, OrderedSet.firstkey
 end
 
-function interface(def)
-	newdef(def, true)
-	if def.base_interfaces == nil then def.base_interfaces = def end
-	def.members = DefinitionList(def.members, def)
-	assert.type(def.base_interfaces, "table", "base interface list")
-	assert.type(def.members, "table", "interface member list")
-	def._type = "interface"
-	def.hierarchy = basesof
-	return def
+function interface(self)
+	self = Container(Contained(self))
+	if self.base_interfaces == nil then self.base_interfaces = self end
+	assert.type(self.base_interfaces, "table", "base interface list")
+	self._type = "interface"
+	self.hierarchy = basesof
+	return self
 end
+
 
 --------------------------------------------------------------------------------
 -- IDL types used in the implementation of OiL ---------------------------------

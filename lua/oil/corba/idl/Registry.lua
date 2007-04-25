@@ -36,6 +36,7 @@ local ObjectCache = require "loop.collection.ObjectCache"
 local OrderedSet  = require "loop.collection.OrderedSet"
 
 local oo        = require "oil.oo"
+local Exception = require "oil.Exception"
 local assert    = require "oil.assert"
 local idl       = require "oil.corba.idl"
 local iridl     = require "oil.corba.idl.ir"                                    --[[VERBOSE]] local verbose = require "oil.verbose"
@@ -50,8 +51,6 @@ module "oil.corba.idl.Registry"
   Container               = oo.class({}, IRObject)
   IDLType                 = oo.class({}, IRObject)
   
-  MemberDef               = oo.class({}, Contained)
-  
   PrimitiveDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/PrimitiveDef:1.0"            }, IDLType)
   ArrayDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/ArrayDef:1.0"                }, IDLType)
   SequenceDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/SequenceDef:1.0"             }, IDLType)
@@ -59,8 +58,8 @@ module "oil.corba.idl.Registry"
 --WstringDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/WstringDef:1.0"              }, IDLType)
 --FixedDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/FixedDef:1.0"                }, IDLType)
   
-  AttributeDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, MemberDef)
-  OperationDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/OperationDef:1.0"            }, MemberDef)
+  AttributeDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, Contained)
+  OperationDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/OperationDef:1.0"            }, Contained)
 --ValueMemberDef          = oo.class({ __idltype = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, Contained)
 --ConstantDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
   TypedefDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, IDLType, Contained)
@@ -175,17 +174,8 @@ function IRObject:__init(definition, registry)
 		end                                                                         --[[VERBOSE]] verbose:repository(false)
 	end
 	if oo.instanceof(object, Container) then
-		-- TODO:[maia] Unify this definition lists in LuaIDL represnetion
-		local lists = {}
-		lists[#lists+1] = definition.definitions
-		lists[#lists+1] = definition.declarations
-		for _, list in ipairs(lists) do
-			for name, member in pairs(list) do
-				if type(name) == "string" and not name:match("^_") then
-					member = checktype(member, "definition", Contained, registry)
-					member:move(object, name, member.version)
-				end
-			end
+		for _, contained in ipairs(definition.definitions) do
+			checktype(contained, "contained", Contained, registry)
 		end
 	end
 	return object
@@ -264,10 +254,8 @@ function Contained:updatename()
 		                                self.version))
 	end
 	if self.definitions then
-		for name, member in pairs(self.definitions) do
-			if oo.instanceof(member, Contained) then
-				member:updatename()
-			end
+		for _, contained in ipairs(self.definitions) do
+			contained:updatename()
 		end
 	end
 end
@@ -289,15 +277,13 @@ function Contained:_set_id(id)
 end
 
 function Contained:_set_name(name)
-	local definitions = self.defined_in.definitions
-	if definitions[name] and definitions[name] ~= self then
+	local contents = self.defined_in.definitions
+	if contents[name] and contents[name] ~= self then
 		assert.illegal(name, "contained name, name clash", "BAD_PARAM", 1)
 	end
-	if self.name then
-		definitions[self.name] = nil
-	end
+	contents:_remove(self)
 	self.name = name
-	definitions[name] = self
+	contents:_add(self)
 	self:updatename()
 end
 
@@ -324,23 +310,19 @@ function Contained:move(new_container, new_name, new_version)
 	if new_container.containing_repository ~= self.containing_repository then
 		assert.illegal(new_container, "container", "BAD_PARAM", 4)
 	end
-	local oldcontained = new_container.definitions[new_name]
-	if oldcontained and oldcontained ~= self then
+	
+	local new = new_container.definitions
+	if new[new_name] and new[new_name] ~= self then
 		assert.illegal(new_name, "contained name, already exists", "BAD_PARAM", 3)
 	end
+	
 	if self.defined_in then
-		self.defined_in.definitions[self.name] = nil
+		self.defined_in.definitions:_remove(self)
 	end
+	
 	self.defined_in = new_container
 	self.version = new_version
 	self:_set_name(new_name)
-end
-
---------------------------------------------------------------------------------
-
-function MemberDef:_set_name(name)
-	Contained._set_name(self, name)
-	self.defined_in.members[name] = self
 end
 
 --------------------------------------------------------------------------------
@@ -349,7 +331,8 @@ end
 -- Implementation
 --
 function Container:update()
-	self.definitions = self.expandable and self.definitions or {}
+	if not self.expandable then self.definitions = nil end
+	idl.Container(self)
 end
 
 local single
@@ -382,16 +365,11 @@ function Container:contents(limit_type, exclude_inherited, max_returned_objs)
 	max_returned_objs = max_returned_objs or -1
 	local contents = {}
 	for container in self:hierarchy() do
-		for _, list in ipairs{ container.definitions, container.members } do
-			for name, member in pairs(list)	do
-				if
-					type(name) == "string" and not name:match("^_") and
-					(limit_type == "dk_all" or member.def_kind == limit_type)
-				then
-					if max_returned_objs == 0 then break end
-					contents[#contents+1] = member
-					max_returned_objs = max_returned_objs - 1
-				end
+		for _, contained in ipairs(container.definitions)	do
+			if limit_type == "dk_all" or contained.def_kind == limit_type then
+				if max_returned_objs == 0 then break end
+				contents[#contents+1] = contained
+				max_returned_objs = max_returned_objs - 1
 			end
 		end
 		if exclude_inherited then break end
@@ -404,14 +382,12 @@ function Container:lookup_name(search_name, levels_to_search,
 	-- TODO:[maia] should return contents in the order they were created
 	local results = {}
 	for container in self:hierarchy() do
-		for _, list in ipairs{ container.definitions, container.members } do
-			for name, member in pairs(list)	do
-				if
-					type(name) == "string" and not name:match("^_") and
-					(limit_type == "dk_all" or member.def_kind == limit_type)
-				then
-					results[#results+1] = member
-				end
+		for _, contained in ipairs(container.definitions)	do
+			if
+				contained.name == search_name and
+				(limit_type == "dk_all" or contained.def_kind == limit_type)
+			then
+				results[#results+1] = contained
 			end
 		end
 		if exclude_inherited then break end
@@ -610,7 +586,7 @@ end
 --------------------------------------------------------------------------------
 
 function ObjectRef:__init(object, registry)
-	if object.repID ~= ObjectRef.repID then
+	if object.repID ~= PrimitiveTypes.pk_objref.repID then
 		return registry.repository:lookup_id(object.repID) or
 		       assert.illegal(new, "Object type, use interface definition instead")
 	end
@@ -1069,29 +1045,13 @@ end
 InterfaceDef._type = "interface"
 InterfaceDef.def_kind = "dk_Interface"
 InterfaceDef.base_interfaces = Empty
-InterfaceDef.members = Empty
 InterfaceDef.definition_fields = {
 	base_interfaces = { type = InterfaceDef, optional = true, list = true },
-	members         = { type = "table"     , optional = true },
 }
 
 InterfaceDef.hierarchy = idl.basesof
 
-function InterfaceDef:__init(definition, registry)
-	local map = registry.repository.definition_map
-	local object = map[definition.repID]
-	if not object then map[definition.repID] = { members = {} } end
-	return IRObject.__init(self, definition, registry)
-end
-
 function InterfaceDef:update(new, registry)
-	if new.members then
-		for name, member in pairs(new.members) do
-			if type(name) == "string" then
-				self.members[member.name] = registry[member]
-			end
-		end
-	end
 	if new.base_interfaces then
 		self:_set_base_interfaces(new.base_interfaces)
 	end
@@ -1127,11 +1087,11 @@ function InterfaceDef:describe_interface()
 		base_interfaces[index] = base.repID
 	end
 	for base in self:hierarchy() do
-		for _, member in pairs(base.members) do
-			if member._type == "attribute" then
-				attributes[#attributes+1] = member:describe().value
-			elseif member._type == "operation" and not member.name:match("^_") then
-				operations[#operations+1] = member:describe().value
+		for _, contained in ipairs(base.definitions) do
+			if contained._type == "attribute" then
+				attributes[#attributes+1] = contained:describe().value
+			elseif contained._type == "operation" then
+				operations[#operations+1] = contained:describe().value
 			end
 		end
 	end
@@ -1153,8 +1113,8 @@ end
 
 function InterfaceDef:_set_base_interfaces(bases)
 	for _, interface in ipairs(bases) do
-		for _, member in pairs(self.definitions) do
-			if #interface:lookup_name(member.name, -1, "dk_All", false) > 0 then
+		for _, contained in ipairs(self.definitions) do
+			if #interface:lookup_name(contained.name, -1, "dk_All", false) > 0 then
 				assert.illegal(bases,
 				               "base interfaces, member '"..
 				               member.name..
@@ -1341,21 +1301,24 @@ function register(self, ...)
 end
 
 function resolve(self, typeref)
+	local result, errmsg
 	if type(typeref) == "string" then
-		return self:lookup(typeref) or
-		       self:lookup_id(typeref) or
-		       assert.exception{ "INTERNAL", minor_code_value = 0,
-		       	reason = "interface",
-		       	message = "unknown interface",
-		       	interface = typeref,
-		       }
+		result = self:lookup(typeref) or self:lookup_id(typeref)
+		if not result then
+			errmsg = Exception{ "INTERNAL", minor_code_value = 0,
+				reason = "interface",
+				message = "unknown interface",
+				interface = typeref,
+			}
+		end
 	elseif typeref._type == "interface" then
 		return self:register(typeref)
 	else
-		assert.exception{ "INTERNAL", minor_code_value = 0,
+		errmsg = Exception{ "INTERNAL", minor_code_value = 0,
 			reason = "interface",
 			message = "illegal IDL type",
 			type = typeref,
 		}
 	end
+	return result, errmsg
 end
