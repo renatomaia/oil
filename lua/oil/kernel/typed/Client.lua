@@ -44,14 +44,10 @@ function fromstring(self, reference, type)
 end
 
 function proxy(self, reference, type)                                           --[[VERBOSE]] verbose:client "creating proxy"
-	local result, except
+	local result, except = true
 	if type then
-		result, success = self.context.types:resolve(type)
-		if result then
-			type = result
-		end
-	else
-		result = true
+		result, except = self.context.types:resolve(type)
+		if result then type = result end
 	end
 	if result then
 		result, except = self.context.proxies:proxyto(reference, type)
