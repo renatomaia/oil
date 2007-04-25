@@ -32,6 +32,7 @@ local type = type
 
 local oo        = require "oil.oo"
 local assert    = require "oil.assert"
+local idl       = require "oil.corba.idl"
 local giop      = require "oil.corba.giop"
 local Indexer   = require "oil.corba.giop.Indexer"                              --[[VERBOSE]] local verbose = require "oil.verbose"
 
@@ -74,11 +75,8 @@ function context(self, context)
 	function self.localops:_narrow(iface)
 		if iface == nil then
 			iface = context.__component:importinterfaceof(self)
-		elseif type(iface) == "string" then
-			iface = context.types:resolve(iface)
 		else
-			assert.type(iface, "idl interface", "narrowing interface")
-			iface = context.types:register(iface)
+			iface = assert.results(context.types:resolve(iface))
 		end
 		return self.__context.proxies:proxyto(self, iface)
 	end
@@ -104,7 +102,10 @@ end
 --------------------------------------------------------------------------------
 
 function typeof(self, reference)
-	return self.context.types:lookup_id(reference._type_id) or
+	local type = reference._type_id
+	local types = self.context.types
+	return type == idl.object.repID and types:resolve(idl.object) or
+	       self.context.types:lookup_id(type) or
 	       self:importinterfaceof(reference)
 end
 
