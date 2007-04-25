@@ -29,6 +29,7 @@
 local ipairs       = ipairs
 local next         = next
 local rawget       = rawget
+local rawset       = rawset
 local setmetatable = setmetatable
 local type         = type
 
@@ -141,25 +142,33 @@ function __init(self, object)
 	-- cache of active channels
 	-- self.cache[host][port] == <channel accepted at host:port>
 	--
-	self.cache = ObjectCache()
-	function self.cache.retrieve(_, host)
-		local cache = ObjectCache()
-		function cache.retrieve(_, port)
-			local socket, errmsg
-			socket, errmsg = self.context.sockets:tcp()
-			if socket then
-				_, errmsg = socket:bind(host, port)
-				if _ then
-					_, errmsg = socket:listen()
-					if _ then                                                             --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
-						return Port{
-							context = self.context,
-							__object = socket,
-						}
+	self.cache = setmetatable({}, {
+		__index = function(hosts, host)
+			local cache = ObjectCache()
+			function cache.retrieve(_, port)
+				local socket, errmsg = self.context.sockets:tcp()
+				if socket then
+					_, errmsg = socket:bind(host, port)
+					if _ then
+						_, errmsg = socket:listen()
+						if _ then                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
+							return Port{
+								context = self.context,
+								__object = socket,
+							}
+						else
+							self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
+								message = "unable to listen to port of host",
+								reason = "listen",
+								error = errmsg,
+								host = host, 
+								port = port,
+							}
+						end
 					else
 						self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-							message = "unable to listen to port of host",
-							reason = "listen",
+							message = "unable to bind to port of host",
+							reason = "bind",
 							error = errmsg,
 							host = host, 
 							port = port,
@@ -167,24 +176,16 @@ function __init(self, object)
 					end
 				else
 					self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-						message = "unable to bind to port of host",
-						reason = "bind",
-						error = errmsg,
-						host = host, 
-						port = port,
+						message = "unable to create new socket due to error",
+						reason = "socket",
+						error = except,
 					}
 				end
-			else
-				self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-					message = "unable to create new socket due to error",
-					reason = "socket",
-					error = except,
-				}
 			end
-		end
-		return cache
-	end
-	
+			rawset(hosts, host, cache)
+			return cache
+		end,
+	})
 	return self
 end
 
