@@ -29,6 +29,7 @@
 local luaerror      = error
 local assert        = assert
 local getmetatable  = getmetatable
+local rawget        = rawget
 local coroutine     = require "coroutine"
 local os            = require "os"
 local oo            = require "loop.base"
@@ -46,12 +47,12 @@ module("loop.thread.Scheduler", oo.class)
 local WeakSet = oo.class{ __mode = "k" }
 function __init(class, self)
 	self = oo.rawnew(class, self)
-	self.traps           = self.traps           or WeakSet()
-	self.running         = self.running         or OrderedSet()
-	self.sleeping        = self.sleeping        or PriorityQueue()
+	if rawget(self, "traps"     ) == nil then self.traps      = WeakSet()           end
+	if rawget(self, "running"   ) == nil then self.running    = OrderedSet()        end
+	if rawget(self, "sleeping"  ) == nil then self.sleeping   = PriorityQueue()     end
+	if rawget(self, "current"   ) == nil then self.current    = false               end
+	if rawget(self, "currentkey") == nil then self.currentkey = OrderedSet.firstkey end
 	self.sleeping.wakeup = self.sleeping.wakeup or self.sleeping.priority
-	self.current         = self.current         or false
-	self.currentkey      = self.currentkey      or OrderedSet.firstkey
 	return self
 end
 __init(getmetatable(_M), _M)
