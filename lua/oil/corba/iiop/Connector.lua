@@ -47,10 +47,10 @@ local function reset_wrapped_socket(self)                                       
 	local sockets = self.factory.context.sockets
 	local result, errmsg = sockets:tcp()
 	if result then
-		local success
-		success, errmsg = success:connect(self.host, self.port)
-		if success then
-			self.__object, result  = result.__object, true
+		local socket = result
+		result, errmsg = socket:connect(self.host, self.port)
+		if result then
+			self.__object = socket.__object
 		end
 	end
 	return result, errmsg
@@ -58,12 +58,13 @@ end
 
 local function reset_plain_socket(self)                                         --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
+	local sockets = self.factory.context.sockets
 	local result, errmsg = sockets:tcp()
 	if result then
-		local success
-		success, errmsg = success:connect(self.host, self.port)
-		if success then
-			self.__object, result  = result, true
+		local socket = result
+		result, errmsg = socket:connect(self.host, self.port)
+		if result then
+			self.__object = socket
 		end
 	end
 	return result, errmsg
