@@ -122,7 +122,7 @@ local function handleremoved(self, routine, removed, ...)
 	end
 	return removed, ...
 end
-function remove(self, routine)                                                  --[[VERBOSE]] verbose:threads("removing ",routine)
+function remove(self, routine)
 	return handleremoved(self, routine, Scheduler.remove(self, routine))
 end
 
