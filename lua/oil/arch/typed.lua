@@ -22,7 +22,7 @@ ObjectProxies = component.Template({
 		resetfieldcache(interface|proxy:table)
 	]],
 	indexer = port.Receptacle--[[
-		[interface:table] interfaceof(reference:table)
+		[interface:table] typeof(reference:table)
 		operation, [value:function], [static:boolean] valueof(interface|reference:table, field:string)
 	]],
 }, arch.ObjectProxies)
