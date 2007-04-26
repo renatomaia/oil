@@ -15,6 +15,7 @@
 -- objects:Facet
 -- 	object:object register(impl:object, key:string)
 -- 	impl:object unregister(key:string)
+-- 	impl:object retrieve(key:string)
 -- 
 -- dispatcher:Facet
 -- 	success:boolean, [except:table]|results... dispatch(key:string, operation:string|function, params...)
@@ -101,6 +102,10 @@ function unregister(self, key)
 	return impl
 end
 
+function retrieve(self, key)
+	return self.map[key]
+end
+
 --------------------------------------------------------------------------------
 -- Dispatcher facet
 
@@ -145,7 +150,9 @@ end
 --[[VERBOSE]] 			end
 --[[VERBOSE]] 		elseif type == "string" then
 --[[VERBOSE]] 			if params then
---[[VERBOSE]] 				self.viewer:write(value:gsub("[^%w%p%s]", "?"))
+--[[VERBOSE]] 				self.viewer.output:write(params)
+--[[VERBOSE]] 				params = ", "
+--[[VERBOSE]] 				self.viewer:write((value:gsub("[^%w%p%s]", "?")))
 --[[VERBOSE]] 			else
 --[[VERBOSE]] 				self.viewer.output:write(value)
 --[[VERBOSE]] 				if value == ":" then params = true end
