@@ -30,7 +30,7 @@
 -- profiler:HashReceptacle
 -- 	info:table decode(stream:string)
 -- 
--- mutex:Facet
+-- mutex:Receptacle
 -- 	locksend(channel:object)
 -- 	freesend(channel:object)
 --------------------------------------------------------------------------------
