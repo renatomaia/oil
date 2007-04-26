@@ -34,29 +34,53 @@ module("oil.kernel.base.Proxies", oo.class)
 context = false
 
 --------------------------------------------------------------------------------
+
+Results = oo.class{}
+
+function Results:results()
+	return unpack(self, 1, self.resultcount)
+end
+
+--------------------------------------------------------------------------------
+
+local function callhandler(self, ...)
+	local handler = rawget(self, "__exceptions") or
+	                rawget(oo.classof(self), "__exceptions") or
+	                rawget(Proxy, "__exceptions")
+	return handler(self, ...)
+end
+
+local function packresults(...)
+	return Results{ resultcount = select("#", ...) + 1, true, ... }
+end
+
 --------------------------------------------------------------------------------
 
 Proxy = oo.class()
 
-local function raiseerror(except)
+function Proxy:__exceptions(except)
 	error(except)
 end
-function Proxy:doresult(operation, success, ...)
+
+function Proxy:checkcall(operation, reply, except)
+	return reply or packresults(callhandler(self, except, operation))
+end
+
+function Proxy:checkresults(operation, success, ...)
 	if not success then
-		return (rawget(self, "__exceptions") or raiseerror)(..., operation)
+		return callhandler(self, ..., operation)
 	end
-	return success, ...
+	return ...
 end
 
 function Proxy:deferredresults()                                                --[[VERBOSE]] verbose:proxies("getting deferred results of ",self.operation)
-	return select(2, Proxy.doresult(self.proxy, self.operation,
-	                                unpack(self, 1, self.resultcount)))
+	return Proxy.checkresults(self.proxy, self.operation, Results.results(self))
 end
 
 local operation
 
 function Proxy:defer(...)                                                       --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
-	local reply = Proxy.doresult(self, operation,
+	local reply = Proxy.checkcall(self, operation,
 		self.__context.invoker:invoke(self, operation, ...))
 	reply.proxy = self
 	reply.operation = operation
@@ -65,11 +89,11 @@ function Proxy:defer(...)                                                       
 end
 
 function Proxy:invoke(...)                                                      --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-	return select(2, Proxy.doresult(self, operation, 
-	                 	Proxy.doresult(self, operation,
-	                 		self.__context.invoker:invoke(self, operation, ...)
-	                 	):results()
-	                 ))
+	return Proxy.checkresults(self, operation, 
+	       	Proxy.checkcall(self, operation,
+	       		self.__context.invoker:invoke(self, operation, ...)
+	       	):results()
+	       )
 end
 
 function Proxy:currentop(value)
@@ -91,4 +115,9 @@ end
 function proxyto(self, reference)
 	reference.__context = self.context
 	return Proxy(reference)
+end
+
+function excepthandler(self, handler)
+	Proxy.__exceptions = handler
+	return true
 end
