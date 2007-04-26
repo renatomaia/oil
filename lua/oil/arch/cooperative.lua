@@ -18,8 +18,8 @@ TaskManager = component.Template({
 OperationInvoker = component.Template({
 	mutex = port.Facet--[[
 		locksend(channel:object)
-		releasesend(channel:object)
-		lockedreceive(channel:object, request:table, [probe:boolean])
+		freesend(channel:object)
+		lockreceive(channel:object, request:table, [probe:boolean])
 	]],
 	tasks = port.Receptacle--[[
 		current:thread
@@ -32,8 +32,8 @@ OperationInvoker = component.Template({
 RequestReceiver = component.Template({
 	mutex = port.Facet--[[
 		locksend(channel:object)
-		releasesend(channel:object)
-		lockedreceive(channel:object)
+		freesend(channel:object)
+		lockreceive(channel:object)
 	]],
 	tasks = port.Receptacle--[[
 		current:thread
