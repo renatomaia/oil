@@ -22,7 +22,10 @@
 -- 	success:boolean, [except:table] shutdown()
 -- 
 -- objects:Receptacle
--- 	objectkey:string register(impl:object, objectkey:string)
+-- 	configs:table
+-- 	object:object register(impl:object, key:string)
+-- 	impl:object unregister(key:string)
+-- 	impl:object retrieve(key:string)
 -- 
 -- acceptor:Receptacle
 -- 	configs:table, [except:table] setup([configs:table])
@@ -86,8 +89,27 @@ function object(self, object, key)
 	return result, except
 end
 
+function remove(self, key)
+	local type = type(key)
+	if type == "table" then
+		key = rawget(key, "_key") or key
+	end
+	if type ~= "string" then
+		key = "\0"..self:hashof(key)
+	end
+	return context.objects:unregister(key)
+end
+
 function tostring(self, object)
 	return self.context.references:encode(object)
+end
+
+function retrieve(self, key)
+	local object = self.context.objects:retrieve(key)
+	if object and key:sub(1, 1) == "\0" then
+		object = object.__newindex
+	end
+	return object
 end
 
 --------------------------------------------------------------------------------
