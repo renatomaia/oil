@@ -90,6 +90,7 @@
 
 local getmetatable = getmetatable
 local ipairs       = ipairs
+local pairs        = pairs
 local setmetatable = setmetatable
 local tonumber     = tonumber
 local type         = type
@@ -126,7 +127,7 @@ local UnionLabelInfo = { name = "label", type = idl.void }
 --           sequence (i.e. which endianess may differ).
 
 local TypeCodeInfo = {
-	[0]  = {name = "null"     , type = "empty", idl = idl.null     , unhandled = true}, 
+	[0]  = {name = "null"     , type = "empty", idl = idl.null     }, 
 	[1]  = {name = "void"     , type = "empty", idl = idl.void     }, 
 	[2]  = {name = "short"    , type = "empty", idl = idl.short    },
 	[3]  = {name = "long"     , type = "empty", idl = idl.long     },
@@ -310,7 +311,7 @@ end
 
 function Decoder:jump(shift)
 	self.cursor = self.cursor + shift
-	if self.cursor - 1 > string.len(self.data) then
+	if self.cursor - 1 > #self.data then
 		assert.illegal(self.data, "data stream, insufficient data", "MARSHALL")
 	end
 end
@@ -332,7 +333,7 @@ function Decoder:getdata()
 end
 
 function Decoder:pointto(buffer)
-	self.start = (buffer.start - 1) + (buffer.cursor - string.len(self.data))
+	self.start = (buffer.start - 1) + (buffer.cursor - #self.data)
 	self.history = buffer.history
 end
 
@@ -366,7 +367,8 @@ local function numberunmarshaller(size, format)
 	end
 end
 
-Decoder.void       = function() end -- TODO:[maia] Should null be the same?
+Decoder.null       = function() end
+Decoder.void       = Decoder.null
 Decoder.short      = numberunmarshaller( 2, "s")
 Decoder.long       = numberunmarshaller( 4, "l")
 Decoder.longlong   = numberunmarshaller( 8, "g")
@@ -408,7 +410,24 @@ function Decoder:Object(idltype)                                                
 	if ior._type_id == "" then                                                    --[[VERBOSE]] verbose:unmarshal "got a null reference"
 		ior = nil
 	else
-		local proxies = self.context.proxies
+		local context = self.context
+		local objects = context.objects
+		local profilers = context.profiler
+		if objects and profilers then
+			for _, profile in ipairs(ior._profiles) do
+				local profiler = profilers[profile.tag]
+				if profiler then
+					local object = profiler:match(profile.profile_data, objects.config)
+					if object then
+						object = objects:retrieve(object)
+						if object then                                                      --[[VERBOSE]] verbose:unmarshal "local object implementation restored"
+							return object
+						end
+					end
+				end
+			end
+		end
+		local proxies = context.proxies
 		if proxies then                                                             --[[VERBOSE]] verbose:unmarshal(true, "retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
 			ior = assert.results(proxies:proxy(ior, idltype), "MARSHAL")              --[[VERBOSE]] verbose:unmarshal(false)
@@ -622,7 +641,8 @@ local function numbermarshaller(size, format)
 	end
 end
 
-Encoder.void       = function() end -- TODO:[maia] Should null be the same?
+Encoder.null       = function() end
+Encoder.void       = Encoder.null
 Encoder.short      = numbermarshaller( 2, "s")
 Encoder.long       = numbermarshaller( 4, "l")
 Encoder.longlong   = numbermarshaller( 8, "g")
@@ -642,7 +662,7 @@ end
 
 function Encoder:char(value)                                                    --[[VERBOSE]] verbose:marshal(self, idl.char, value)
 	assert.type(value, "string", "character", "MARSHAL")
-	if string.len(value) ~= 1 then
+	if #value ~= 1 then
 		assert.illegal(value, "character", "MARSHAL")
 	end
 	self:rawput('"', value, 1)
@@ -657,6 +677,7 @@ local DefaultMapping = {
 	number  = idl.double,
 	string  = idl.string,
 	boolean = idl.boolean,
+	["nil"] = idl.null,
 }
 function Encoder:any(value)                                                     --[[VERBOSE]] verbose:marshal(true, self, idl.any)
 	local luatype = type(value)
@@ -673,8 +694,8 @@ function Encoder:any(value)                                                     
 		if luatype == "table" then
 			if not idltype and idl.istype(value._anytype) then
 				idltype = value._anytype
-			end
-			if value._anyval ~= nil then
+				value = value._anyval
+			elseif value._anyval ~= nil then
 				value = value._anyval
 			end
 		end
@@ -695,11 +716,16 @@ function Encoder:Object(value, idltype)                                         
 		if not value._type_id or not value._profiles then
 			local objects = self.context.objects
 			if objects then                                                           --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
-				local metatable = getmetatable(value)
-				if metatable then
-					idltype = metatable.__idltype or idltype
+				local objtype = value.__idltype
+				if objtype then
+					idltype = objtype
+				else
+					local metatable = getmetatable(value)
+					if metatable then
+						idltype = metatable.__idltype or idltype
+					end
 				end
-				if idl.istype(idltype) and idltype._type == "Object" then
+				if idltype._type == "Object" then
 					idltype = idltype.repID
 				end
 				value = assert.results(objects:object(value, nil, idltype))               --[[VERBOSE]] verbose:marshal(false)
@@ -716,7 +742,8 @@ function Encoder:struct(value, idltype)                                         
 	for _, field in ipairs(idltype.fields) do
 		local val = value[field.name]                                               --[[VERBOSE]] verbose:marshal("[field ",field.name,"]")
 		if
-			not val and
+			val == nil and
+			field.type ~= idl.any and
 			field.type ~= idl.boolean and
 			field.type._type ~= "Object" and
 			field.type._type ~= "interface"
@@ -833,7 +860,8 @@ function Encoder:except(value, idltype)                                         
 	for _, member in ipairs(idltype.members) do                                    --[[VERBOSE]] verbose:marshal{"[member ", member.name, "]"}
 		local val = value[member.name]
 		if
-			not val and
+			val == nil and
+			member.type ~= idl.any and
 			member.type ~= idl.boolean and
 			member.type._type ~= "Object" and
 			member.type._type ~= "interface"
@@ -849,7 +877,7 @@ end
 Encoder.interface = Encoder.Object
 
 local TypeCodes = { interface = 14 }
-for tcode, info in ipairs(TypeCodeInfo) do TypeCodes[info.name] = tcode end
+for tcode, info in pairs(TypeCodeInfo) do TypeCodes[info.name] = tcode end
 
 local function puttype(encoder, value, kind, tcinfo)
 	
