@@ -18,6 +18,7 @@
 -- profiler:Facet
 -- 	stream:string encode(profile:table, [version:number])
 -- 	profile:table decode(stream:string)
+-- 	objkey:string match(profile:string, orbcfg:table)
 -- 	profile:table decodeurl(url:string)
 -- 
 -- codec:Receptacle
@@ -116,6 +117,19 @@ function decode(self, profile)
 	profile.iiop_version = version -- add read version directly
 
 	return profile, profile.object_key
+end
+
+--------------------------------------------------------------------------------
+-- IIOP profile and local ORB config match
+
+function match(self, profile, config)
+	local objectkey
+	profile, objectkey = self:decode(profile)
+	local host = config.host
+	if host == "*" then host = socket.dns.gethostname() end
+	if profile.host == host and profile.port == config.port then
+		return objectkey
+	end
 end
 
 --------------------------------------------------------------------------------
