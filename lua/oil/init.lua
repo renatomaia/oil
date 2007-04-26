@@ -191,6 +191,14 @@ function newobject(object, interface, key)
 	return assert.results(Components.ServerBroker.broker:object(object, key, interface))
 end
 
+function deactivate(object, interface)
+	if not object then
+		assert.illegal(object,
+			"object reference (servant, implementation or object key expected)")
+	end
+	return assert.results(Components.ServerBroker.broker:remove(object, interface))
+end
+
 function tostring(object)
 	assert.type(object, "table", "servant object")
 	return assert.results(Components.ServerBroker.broker:tostring(object))
@@ -411,6 +419,10 @@ end
 function newexcept(body)
 	assert.type(body, "table", "exception body")
 	return Exception(body)
+end
+
+function setexcepthandler(handler, type)
+	assert.results(Components.ObjectProxies.proxies:excepthandler(handler, type))
 end
 
 --------------------------------------------------------------------------------
