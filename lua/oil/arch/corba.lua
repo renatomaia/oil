@@ -31,7 +31,12 @@ ValueEncoder = component.Template{
 		reference:table proxyto(ior:table, iface:table|string)
 	]],
 	objects = port.Receptacle--[[
+		configs:table
 		reference:table register(impl:object, iface:table|string)
+		impl:object retrieve(key:string)
+	]],
+	profiler = port.HashReceptacle--[[
+		objkey:string match(profile:string, orbcfg:table)
 	]],
 }
 
@@ -42,6 +47,7 @@ ReferenceProfiler = component.Template{
 	profiler = port.Facet--[[
 		stream:string encode(profile:table, [version:number])
 		profile:table decode(stream:string)
+		objkey:string match(profile:string, orbcfg:table)
 		profile:table decodeurl(url:string)
 	]],
 	codec = port.Receptacle--[[
@@ -105,8 +111,8 @@ OperationRequester = component.Template{
 		info:table decode(stream:string)
 	]],
 	mutex = port.Receptacle--[[
-		waittowrite(channel:object)
-		writedone(channel:object)
+		locksend(channel:object)
+		freesend(channel:object)
 	]],
 }
 
@@ -137,16 +143,20 @@ RequestListener = component.Template{
 		channel:object, [except:table] getchannel(configs:table)
 		request:object, [except:table], [requests:table] = getrequest(channel:object, [probe:boolean])
 	]],
-	channels = port.HashReceptacle--[[
-		channel:object retieve(configs:table)
-	]],
 	messenger = port.Receptacle--[[
 		success:booelan, [except:table] = sendmsg(channel:object, type:number, header:table, types:table, values...)
 		type:number, header:table, decoder:object = receivemsg(channel:object , [wait:boolean])
 	]],
+	channels = port.HashReceptacle--[[
+		channel:object retieve(configs:table)
+	]],
 	indexer = port.Receptacle--[[
 		interface:table typeof(objectkey:string)
 		[member:table], [value:function] valueof(interface:object, membername:string)
+	]],
+	mutex = port.Receptacle--[[
+		locksend(channel:object)
+		freesend(channel:object)
 	]],
 }
 
@@ -213,6 +223,11 @@ function assemble(components)
 	if ValueEncoder then
 		ValueEncoder.proxies = ClientBroker and ClientBroker.broker
 		ValueEncoder.objects = ServerBroker and ServerBroker.broker
+		if ReferenceProfilers then
+			for tag, profiler in pairs(ReferenceProfilers) do
+				ValueEncoder.profiler[tag] = profiler.profiler
+			end
+		end
 	end
 	-- REFERENCES
 	if ObjectReferrer then
@@ -261,6 +276,8 @@ function assemble(components)
 	if RequestListener then
 		RequestListener.messenger = MessageMarshaler.messenger
 		RequestListener.indexer = ServantIndexer.indexer
+		RequestListener.mutex = RequestReceiver and
+		                        RequestReceiver.mutex
 		if ServerChannels then
 			for tag, channels in pairs(ServerChannels) do
 				RequestListener.channels[tag] = channels.channels
