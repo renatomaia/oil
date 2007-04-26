@@ -53,22 +53,20 @@ function CachedIndex:__index(field)
 				if value == nil then
 					if deferred then
 						value = function(self, ...)                                         --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
-							local reply = CachedIndex.doresult(self, operation,
+							local reply = CachedIndex.checkcall(self, operation,
 								self.__context.invoker:invoke(self, operation, ...))
 							reply.proxy = self
 							reply.operation = operation
-							reply.results = CachedIndex.results
+							reply.results = CachedIndex.deferredresults
 							return reply
 						end
 					else
 						value = function(self, ...)                                         --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-							return select(2,
-								CachedIndex.doresult(self, operation, 
-									CachedIndex.doresult(self, operation,
-										self.__context.invoker:invoke(self, operation, ...)
-									):results()
-								)
-							)
+							return CachedIndex.checkresults(self, operation, 
+							       	CachedIndex.checkcall(self, operation,
+							       		self.__context.invoker:invoke(self, operation, ...)
+							       	):results()
+							       )
 						end
 					end
 				end
@@ -118,9 +116,22 @@ function proxyto(self, reference, type)                                         
 	return result, except
 end
 
-function excepthandler(self, type, handler)
-	local class = self.classes[type]
-	class.__exceptions = handler
+function excepthandler(self, handler, type)
+	if type then
+		local result, except = self.classes[type]
+		if result then
+			result.__exceptions = handler
+		else
+			except = Exception{
+				reason = "type",
+				message = "unknown type",
+				type = type,
+			}
+		end
+		return result, except
+	else
+		return Proxies.excepthandler(self, handler)
+	end
 end
 
 function resetcache(self, interface)
@@ -138,9 +149,12 @@ end
 --[[VERBOSE]] 		local value = select(i, ...)
 --[[VERBOSE]] 		local type = type(value)
 --[[VERBOSE]] 		if type == "string" then
---[[VERBOSE]] 			if params
---[[VERBOSE]] 				then self.viewer:write(value:gsub("[^%w%p%s]", "?"))
---[[VERBOSE]] 				else self.viewer.output:write(value)
+--[[VERBOSE]] 			if params then
+--[[VERBOSE]] 				self.viewer.output:write(params)
+--[[VERBOSE]] 				params = ", "
+--[[VERBOSE]] 				self.viewer:write((value:gsub("[^%w%p%s]", "?")))
+--[[VERBOSE]] 			else
+--[[VERBOSE]] 				self.viewer.output:write(value)
 --[[VERBOSE]] 			end
 --[[VERBOSE]] 		elseif not params and type == "table" and
 --[[VERBOSE]] 		       value._type == "operation" then
