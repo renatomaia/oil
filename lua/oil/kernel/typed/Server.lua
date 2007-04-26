@@ -22,7 +22,9 @@
 -- 	success:boolean, [except:table] shutdown()
 -- 
 -- objects:Receptacle
--- 	objectkey:string register(impl:object, objectkey:string)
+-- 	object:object register(impl:object, key:string)
+-- 	impl:object unregister(key:string)
+-- 	impl:object retrieve(key:string)
 -- 
 -- acceptor:Receptacle
 -- 	configs:table, [except:table] setup([configs:table])
@@ -39,11 +41,8 @@
 -- 	type:table resolve(type:string)
 --------------------------------------------------------------------------------
 
-local getmetatable = getmetatable
-local rawget       = rawget
-local rawset       = rawset
-local setmetatable = setmetatable
-local luatostring  = tostring
+local rawget = rawget
+local type   = type
 
 local table = require "loop.table"
 
@@ -79,4 +78,20 @@ function object(self, object, key, type)
 		end
 	end
 	return result, except
+end
+
+function remove(self, key, objtype)
+	local temp = type(key)
+	if temp == "table" then
+		key = rawget(key, "_key") or key
+	end
+	if temp ~= "string" then
+		objtype, temp = self.context.types:resolve(objtype)
+		if objtype then
+			key = KeyFmt:format(self:hashof(key), self:hashof(objtype))
+		else
+			return objtype, temp
+		end
+	end
+	return self.context.objects:unregister(key)
 end
