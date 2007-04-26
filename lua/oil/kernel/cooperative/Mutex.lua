@@ -22,8 +22,8 @@
 -- 
 -- mutex:Facet
 -- 	locksend(channel:object)
--- 	releasesend(channel:object)
--- 	lockedreceive(channel:object, request:table, [probe:boolean])
+-- 	freesend(channel:object)
+-- 	lockreceive(channel:object, request:table, [probe:boolean])
 -- 
 -- tasks:Receptacle
 -- 	current:thread
