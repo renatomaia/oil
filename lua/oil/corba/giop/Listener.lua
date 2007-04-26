@@ -34,6 +34,10 @@
 -- indexer:Receptacle
 -- 	interface:table typeof(objectkey:string)
 -- 	member:table valueof(interface:table, name:string)
+-- 
+-- mutex:Receptacle
+-- 	locksend(channel:object)
+-- 	freesend(channel:object)
 --------------------------------------------------------------------------------
 
 local ipairs = ipairs
@@ -145,23 +149,33 @@ local SysExReply = {
 
 local SysExType = { giop.SystemExceptionIDL }
 
-function sendsysex(self, channel, requestid, body)                              --[[VERBOSE]] verbose:listen("sending system exception ",body[1]," for request ",requestid)
+function sysexreply(self, requestid, body)                                      --[[VERBOSE]] verbose:listen("new system exception ",body[1]," for request ",requestid)
 	SysExReply.request_id = requestid
 	body.exception_id = SystemExceptionIDs[ body[1] ]
-	return self.context.messenger:sendmsg(channel, ReplyID, SysExReply,
-	                                      SysExType, body)
+	return ReplyID, SysExReply, SysExType, body
 end
 
 --------------------------------------------------------------------------------
 
-local OneWayRequest = oo.class()
-
---------------------------------------------------------------------------------
-
-local Request = oo.class({}, OneWayRequest)
+local Request = oo.class()
 
 function Request:params()
 	return unpack(self, 1, #self.member.inputs)
+end
+
+--------------------------------------------------------------------------------
+
+function bypass(self, channel, request, ...)
+	local result, except = true
+	request.bypassed = true
+	if request.response_expected then
+		local context = self.context
+		local mutex = context.mutex
+		if mutex then mutex:locksend(channel) end
+		result, except = context.messenger:sendmsg(channel, ...)
+		if mutex then mutex:freesend(channel) end
+	end
+	return result, except
 end
 
 --------------------------------------------------------------------------------
@@ -172,12 +186,13 @@ function getrequest(self, channel, probe)                                       
 			return false
 		end
 	end
-	local result, except
-	local msgid, header, decoder = self.context.messenger:receivemsg(channel)
-	if msgid == RequestID then
+	local context = self.context
+	local except
+	local result, header, decoder = context.messenger:receivemsg(channel)
+	if result == RequestID then
 		local requestid = header.request_id
 		if not channel[requestid] then
-			local indexer = self.context.indexer
+			local indexer = context.indexer
 			local iface = indexer:typeof(header.object_key)
 			if iface then
 				local member = indexer:valueof(iface, header.operation)
@@ -192,54 +207,42 @@ function getrequest(self, channel, probe)                                       
 					end
 					result = header
 				else                                                                    --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
-					result, except = self:sendsysex(channel, requestid, { "BAD_OPERATION",
-						minor_code_value  = 1, -- TODO:[maia] Which value?
-						completion_status = COMPLETED_NO,
-					})
-					if result then                                                        --[[VERBOSE]] verbose:listen(false, "reissuing request read")
-						return self:getrequest(channel, probe)
-					end
+					result, except = self:bypass(channel, header,
+						self:sysexreply(requestid, { "BAD_OPERATION",
+							minor_code_value  = 1, -- TODO:[maia] Which value?
+							completion_status = COMPLETED_NO,
+						}))
 				end
 			else                                                                      --[[VERBOSE]] verbose:listen("got illegal object ",header.object_key)
-				result, except = self:sendsysex(channel, requestid, { "OBJECT_NOT_EXIST",
-					minor_code_value  = 1, -- TODO:[maia] Which value?
-					completion_status = COMPLETED_NO,
-				})
-				if result then                                                          --[[VERBOSE]] verbose:listen(false, "reissuing request read")
-					return self:getrequest(channel, probe)
-				end
+				result, except = self:bypass(channel, header,
+					self:sysexreply(requestid, { "OBJECT_NOT_EXIST",
+						minor_code_value  = 1, -- TODO:[maia] Which value?
+						completion_status = COMPLETED_NO,
+					}))
 			end
 		else                                                                        --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
-			result, except = self:sendsysex(channel, requestid, { "INTERNAL",
-				minor_code_value = 0, -- TODO:[maia] Which value?
-				completion_status = COMPLETED_NO,
-			})
-			if result then                                                            --[[VERBOSE]] verbose:listen(false, "reissuing request read")
-				return self:getrequest(channel, probe)
-			end
+			result, except = self:bypass(channel, header,
+				self:sysexreply(requestid, { "INTERNAL",
+					minor_code_value = 0, -- TODO:[maia] Which value?
+					completion_status = COMPLETED_NO,
+				}))
 		end
-	elseif msgid == CancelRequestID then                                          --[[VERBOSE]] verbose:listen("got cancelling of request ",header.request_id)
+	elseif result == CancelRequestID then                                          --[[VERBOSE]] verbose:listen("got cancelling of request ",header.request_id)
 		channel[header.request_id] = nil
-		return self:getrequest(channel, probe)
-	elseif msgid == LocateRequestID then
+		header.bypassed = true
+	elseif result == LocateRequestID then
 		LocateReply.request_id = header.request_id
-		result, except = self:sendmsg(channel, LocateReplyID, LocateReply)
-		if result then                                                              --[[VERBOSE]] verbose:listen(false, "reissuing request read")
-			return self:getrequest(channel, probe)
-		end
-	elseif msgid == MessageErrorID then                                           --[[VERBOSE]] verbose:listen "got message error notification"
-		result, except = self:sendmsg(channel, CloseConnectionID)
-		if result then                                                              --[[VERBOSE]] verbose:listen(false, "reissuing request read")
-			return self:getrequest(channel, probe)
-		end
-	elseif MessageType[msgid] then                                                --[[VERBOSE]] verbose:listen("got unknown message ",msgid,", sending message error notification")
-		result, except = self:sendmsg(channel, MessageErrorID)
-		if result then                                                              --[[VERBOSE]] verbose:listen(false, "reissuing request read")
-			return self:getrequest(channel, probe)
-		end
+		result, except = self:bypass(channel, header, LocateReplyID, LocateReply)
+	elseif result == MessageErrorID then                                           --[[VERBOSE]] verbose:listen "got message error notification"
+		result, except = self:bypass(channel, header, CloseConnectionID)
+	elseif MessageType[result] then                                                --[[VERBOSE]] verbose:listen("got unknown message ",result,", sending message error notification")
+		result, except = self:bypass(channel, header, MessageErrorID)
 	else
 		except = header
 	end                                                                           --[[VERBOSE]] verbose:listen(false)
+	if result and header.bypassed then                                            --[[VERBOSE]] verbose:listen("reissuing request read")
+		return self:getrequest(channel, probe)
+	end
 	return result, except, except and channel
 end
 
@@ -270,48 +273,49 @@ function sendreply(self, channel, request, success, ...)                        
 					success, except = messenger:sendmsg(channel, ReplyID, request,
 					                                    ExceptionReplyTypes,
 					                                    except[1], except)
-				elseif SystemExceptionIDs[ except[1] ] then                             --[[VERBOSE]] verbose:listen("got system exception ",except)
-					except.completion_status = COMPLETED_MAYBE
-					success, except = listener:sendsysex(channel, requestid, except)
-				elseif except.reason == "badkey" then
-					except[1] = "OBJECT_NOT_EXIST"
-					except.minor_code_value  = 1
-					except.completion_status = COMPLETED_NO
-					success, except = listener:sendsysex(channel, requestid, except)
-				elseif except.reason == "noimplement" then
-					except[1] = "NO_IMPLEMENT"
-					except.minor_code_value  = 1
-					except.completion_status = COMPLETED_NO
-					success, except = listener:sendsysex(channel, requestid, except)
-				elseif except.reason == "badoperation" then
-					except[1] = "BAD_OPERATION"
-					except.minor_code_value  = 1
-					except.completion_status = COMPLETED_NO
-					success, except = listener:sendsysex(channel, requestid, except)
-				else                                                                    --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
-					except[1] = "UNKNOWN"
-					except.minor_code_value  = 0
-					except.completion_status = COMPLETED_MAYBE
-					success, except = listener:sendsysex(channel, requestid, except)
+				else
+					if SystemExceptionIDs[ except[1] ] then                             --[[VERBOSE]] verbose:listen("got system exception ",except)
+						except.completion_status = COMPLETED_MAYBE
+					elseif except.reason == "badkey" then
+						except[1] = "OBJECT_NOT_EXIST"
+						except.minor_code_value  = 1
+						except.completion_status = COMPLETED_NO
+					elseif except.reason == "noimplement" then
+						except[1] = "NO_IMPLEMENT"
+						except.minor_code_value  = 1
+						except.completion_status = COMPLETED_NO
+					elseif except.reason == "badoperation" then
+						except[1] = "BAD_OPERATION"
+						except.minor_code_value  = 1
+						except.completion_status = COMPLETED_NO
+					else                                                                    --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
+						except[1] = "UNKNOWN"
+						except.minor_code_value  = 0
+						except.completion_status = COMPLETED_MAYBE
+					end
+					success, except = messenger:sendmsg(channel,
+						listener:sysexreply(requestid, except))
 				end
 			elseif type(except) == "string" then                                      --[[VERBOSE]] verbose:listen("got unexpected error ", except)
-				success, except = listener:sendsysex(channel, requestid, {
-					"UNKNOWN", minor_code_value = 0,
-					completion_status = COMPLETED_MAYBE,
-					message = "servant error: "..except,
-					reason = "servant",
-					operation = operation,
-					servant = servant,
-					error = except,
-				})
+				success, except = messenger:sendmsg(channel,
+					listener:sysexreply(requestid, {
+						"UNKNOWN", minor_code_value = 0,
+						completion_status = COMPLETED_MAYBE,
+						message = "servant error: "..except,
+						reason = "servant",
+						operation = operation,
+						servant = servant,
+						error = except,
+					}))
 			else                                                                      --[[VERBOSE]] verbose:listen("got illegal exception ", except)
-				success, except = listener:sendsysex(channel, requestid, {
-					"UNKNOWN", minor_code_value = 0,
-					completion_status = COMPLETED_MAYBE,
-					message = "invalid exception, got "..type(except),
-					reason = "exception",
-					exception = except,
-				})
+				success, except = messenger:sendmsg(channel,
+					listener:sysexreply(requestid, {
+						"UNKNOWN", minor_code_value = 0,
+						completion_status = COMPLETED_MAYBE,
+						message = "invalid exception, got "..type(except),
+						reason = "exception",
+						exception = except,
+					}))
 			end
 		end
 		if success then
