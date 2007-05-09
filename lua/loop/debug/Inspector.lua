@@ -24,7 +24,6 @@ local setfenv      = setfenv
 local getfenv      = getfenv
 local tostring     = tostring
 local loadstring   = loadstring
-local getmetatable = getmetatable
 local _G           = _G
 
 local coroutine = require "coroutine"
@@ -211,6 +210,11 @@ function Command.curr()
 	end
 end
 
+function Command.step()
+	rawset(self, ".hook", true)
+	Command.done()
+end
+
 function Command.done()
 	while #self > 0 do
 		self[#self] = nil
@@ -305,11 +309,11 @@ local function results(self, success, ...)
 		self.viewer.output:write("\n")
 	end
 end
-function stop(self, level)
+function stop(self, level, steplevel)
 	if self.active then
 		level = level or 1
 		rawset(self, ".thread", coroutine.running() or false)
-		rawset(self, ".current", call(self, debug.getinfo, level + 2, infoflags))
+		rawset(self, ".current", call(self, debug.getinfo, level + 2, infoflags)) -- call, stop
 		rawset(self, ".level", level + 5) -- call, command, <inspection>, xpcall, stop
 		local viewer = self.viewer
 		local input = self.input
@@ -341,5 +345,19 @@ function stop(self, level)
 				io.stderr:write(errmsg, "\n")
 			end
 		until not rawget(self, ".current")
+		
+		if rawget(self, ".hook") then
+			rawset(self, ".hook", nil)
+			local ignore = 1
+			local hook, mask, count = debug.gethook()
+			return debug.sethook(function()
+				if ignore > 0 then
+					ignore = ignore - 1
+				else
+					debug.sethook(hook, mask, count)
+					self:stop(2) -- for the hook function
+				end
+			end, "l")
+		end
 	end
 end
