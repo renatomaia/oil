@@ -14,9 +14,9 @@
 -- Date   : 01/03/2006 12:53                                                  --
 --------------------------------------------------------------------------------
 
-local math         = require "math"
-local coroutine    = require "coroutine"
-local oo           = require "loop.base"
+local math      = require "math"
+local coroutine = require "coroutine"
+local oo        = require "loop.base"
 
 module("loop.thread.Timer", oo.class)
 
@@ -27,9 +27,9 @@ function __init(class, self)
 end
 
 function timer(self)
+	local scheduler = self.scheduler
 	if self.enabled then
 		local rate = self.rate
-		local scheduler = self.scheduler
 		local next = scheduler:time() + rate
 		self:action()
 		local now = scheduler:time()
