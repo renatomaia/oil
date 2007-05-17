@@ -65,6 +65,7 @@ local pairs        = pairs
 local error        = error
 local select       = select
 
+local io        = require "io"
 local os        = require "os"
 local math      = require "math"
 local table     = require "table"
