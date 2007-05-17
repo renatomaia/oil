@@ -23,6 +23,8 @@
 --   superclass(class)                                                        --
 --   subclassof(class, super)                                                 --
 --   supers(class)                                                            --
+--   memberof(class, name)                                                    --
+--   allmembers(class)                                                        --
 --------------------------------------------------------------------------------
 
 local type         = type
@@ -226,7 +228,7 @@ function rawnew(class, object)
 end
 --------------------------------------------------------------------------------
 function new(class, ...)
-	if type(class.__init) == "function"
+	if class.__init
 		then return class:__init(...)
 		else return rawnew(class, ...)
 	end

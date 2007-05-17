@@ -119,7 +119,6 @@ end
 local ConditionalCompiler = require "loop.compiler.Conditional"
 
 local indexer = ConditionalCompiler {
-	{[[local Protected                                      ]],"private" },
 	{[[local Public   = select(1, ...)                      ]],"private or protected" },
 	{[[local meta     = select(2, ...)                      ]],"not (newindex and public and nilindex)" },
 	{[[local class    = select(3, ...)                      ]],"newindex or private" },
@@ -137,7 +136,7 @@ local indexer = ConditionalCompiler {
 	{[[	if result == nil then                               ]],"index and (private or protected)" },
 	{[[	if meta[name] == nil then                           ]],"newindex and (private or protected or not nilindex)" },
 	{[[		state = Public[state]                             ]],"private or protected" },
-	{[[		Protected = registry[getmetatable(state)]         ]],"private" },
+	{[[		local Protected = registry[getmetatable(state)]   ]],"private" },
 	{[[		if Protected then state = Protected[state] end    ]],"private" },
 	{[[		return state[name]                                ]],"index and (private or protected)" },
 	{[[		state[name] = bindto(class, value)                ]],"newindex and (private or protected) and nilindex" },
@@ -282,10 +281,8 @@ function ScopedClass:removesubclass(class)
 	for super in hierarchyof(self) do
 		local registry = super.registry
 		if registry then -- if super is a scoped class
-			if public then
-				registry[public] = nil
-				super[public] = nil
-			end
+			registry[public] = nil
+			super[public] = nil
 			if protected then
 				registry[protected] = nil
 				super[protected] = nil

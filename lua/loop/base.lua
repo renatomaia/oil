@@ -22,7 +22,6 @@
 --   members(class)                                                           --
 --------------------------------------------------------------------------------
 
-local type         = type
 local pairs        = pairs
 local unpack       = unpack
 local rawget       = rawget
@@ -37,7 +36,7 @@ function rawnew(class, object)
 end
 --------------------------------------------------------------------------------
 function new(class, ...)
-	if type(class.__init) == "function"
+	if class.__init
 		then return class:__init(...)
 		else return rawnew(class, ...)
 	end
