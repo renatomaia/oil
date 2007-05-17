@@ -1032,7 +1032,7 @@ function ExceptionDef:update(new)
 		for _, member in ipairs(new.members) do
 			member.type_def = member.type
 		end
-		self.members = members
+		self.members = new.members
 	end
 end
 
