@@ -125,7 +125,7 @@ function after(self, request, ...)
 					for i = 1, message.count do
 						reply[i] = message[i]
 					end
-					return message
+					return reply
 				end
 			end
 		end
