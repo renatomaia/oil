@@ -62,20 +62,6 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function setfailed(self, channel, requests, except)
-	local tasks = self.context.tasks
-	local lock = self.locks[channel]
-	for _, request in ipairs(requests) do
-		request.success = false
-		request.resultcount = 1
-		request[1] = except
-		local thread = lock[request]
-		if thread then
-			tasks:resume(thread)
-		end
-	end
-end
-
 function locksend(self, channel)
 	local tasks = self.context.tasks
 	local lock = self.locks[channel]
@@ -100,13 +86,13 @@ end
 function lockreceive(self, channel, key)
 	local tasks = self.context.tasks
 	local lock = self.locks[channel]
-	if lock.receiving then                                                        --[[VERBOSE]] verbose:mutex(true, "channel being used, waiting notification")
+	if not lock.receiving then                                                    --[[VERBOSE]] verbose:mutex "channel free for receiving"
+		lock.receiving = tasks.current
+	elseif lock.receiving ~= tasks.current then                                   --[[VERBOSE]] verbose:mutex(true, "channel being used, waiting notification")
 		key = key or #lock.receivers+1
 		lock.receivers[key] = tasks.current
 		tasks:suspend()                                                             --[[VERBOSE]] verbose:mutex(false, "notification received")
 		lock.receivers[key] = nil
-	else                                                                          --[[VERBOSE]] verbose:mutex "channel free for receiving"
-		lock.receiving = tasks.current
 	end
 	return lock.receiving == tasks.current
 end
@@ -125,7 +111,7 @@ function freereceive(self, channel)
 	if thread then                                                                --[[VERBOSE]] verbose:mutex "resuming sending thread"
 		lock.receiving = thread
 		tasks:register(thread)
-	else
-		lock.receiving = false                                                      --[[VERBOSE]] verbose:mutex "releasing receive lock"
+	else                                                                          --[[VERBOSE]] verbose:mutex "releasing receive lock"
+		lock.receiving = false
 	end
 end

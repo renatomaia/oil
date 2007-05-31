@@ -37,20 +37,50 @@ context = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local ChannelKey = newproxy()
-local RequesterKey = newproxy()
+ChannelKey = newproxy()
+InvokerKey = newproxy()
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local function setfailed(requests, except)
-	for requestid, request in pairs(requests) do
-		if type(requestid) == "number" then
-			request.success = false
-			request.resultcount = 1
-			request[1] = except
-		end
+function forward(self, channel, request, probe)
+	local result, except = self.context.requester:getchannel(request[1])
+	if result then
+		request.success = nil
+		request[1] = nil
+		return self:receivefrom(channel, request, probe)
+	else
+		request.success = false
+		request[1] = except
 	end
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function receivefrom(self, channel, request, probe)
+	if request.success == nil then
+		local requester = self.context.requester
+		local result, except, failed
+		repeat
+			result, except, failed = requester:getreply(channel, probe)
+			if result == nil then
+				for requestid, request in pairs(failed) do
+					if type(requestid) == "number" then
+						request.success = false
+						request.resultcount = 1
+						request[1] = except
+					end
+				end
+				break
+			end
+		until result == request or probe
+	end                                                                           --[[VERBOSE]] verbose:invoke(false)
+	local handler = self[request.success]
+	if handler then
+		return handler(self, channel, request, probe)
+	end
+	return true
 end
 
 --------------------------------------------------------------------------------
@@ -59,20 +89,12 @@ end
 Request = oo.class()
 
 function Request:ready()                                                        --[[VERBOSE]] verbose:invoke(true, "check reply")
-	local requester = self[RequesterKey]
-	local channel = self[ChannelKey]
-	local request, except, failed = requester:getreply(channel, true)
-	if request == nil then setfailed(failed, except) end                          --[[VERBOSE]] verbose:invoke(false)
+	self[InvokerKey]:receivefrom(self[ChannelKey], self, true)                    --[[VERBOSE]] verbose:invoke(false)
 	return self.success ~= nil
 end
 
 function Request:results()                                                      --[[VERBOSE]] verbose:invoke(true, "get reply")
-	local requester = self[RequesterKey]
-	local channel = self[ChannelKey]
-	while self.success == nil do
-		local request, except, failed = requester:getreply(channel)
-		if request == nil then setfailed(failed, except) end
-	end                                                                           --[[VERBOSE]] verbose:invoke(false)
+	self[InvokerKey]:receivefrom(self[ChannelKey], self)                          --[[VERBOSE]] verbose:invoke(false)
 	return self.success, unpack(self, 1, self.resultcount)
 end
 
@@ -86,7 +108,7 @@ function invoke(self, reference, operation, ...)                                
 		local channel = result
 		result, except = requester:newrequest(channel, reference, operation, ...)
 		if result then
-			result[RequesterKey] = requester
+			result[InvokerKey] = self
 			result[ChannelKey] = channel
 			result = Request(result)
 		end
