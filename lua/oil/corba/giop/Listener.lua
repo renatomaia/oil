@@ -168,7 +168,7 @@ end
 function bypass(self, channel, request, ...)
 	local result, except = true
 	request.bypassed = true
-	if request.response_expected then
+	if request.response_expected ~= false then
 		local context = self.context
 		local mutex = context.mutex
 		if mutex then mutex:locksend(channel) end
@@ -230,9 +230,13 @@ function getrequest(self, channel, probe)                                       
 	elseif result == CancelRequestID then                                          --[[VERBOSE]] verbose:listen("got cancelling of request ",header.request_id)
 		channel[header.request_id] = nil
 		header.bypassed = true
-	elseif result == LocateRequestID then
-		LocateReply.request_id = header.request_id
-		result, except = self:bypass(channel, header, LocateReplyID, LocateReply)
+	elseif result == LocateRequestID then                                          --[[VERBOSE]] verbose:listen("got locate request ",header.request_id)
+		local reply = { request_id = header.request_id }
+		if context.indexer:typeof(header.object_key)
+			then reply.locate_status = "OBJECT_HERE"
+			else reply.locate_status = "UNKNOWN_OBJECT"
+		end
+		result, except = self:bypass(channel, header, LocateReplyID, reply)
 	elseif result == MessageErrorID then                                           --[[VERBOSE]] verbose:listen "got message error notification"
 		result, except = self:bypass(channel, header, CloseConnectionID)
 	elseif MessageType[result] then                                                --[[VERBOSE]] verbose:listen("got unknown message ",result,", sending message error notification")
@@ -240,6 +244,7 @@ function getrequest(self, channel, probe)                                       
 	else
 		except = header
 	end                                                                           --[[VERBOSE]] verbose:listen(false)
+	
 	if result and header.bypassed then                                            --[[VERBOSE]] verbose:listen("reissuing request read")
 		return self:getrequest(channel, probe)
 	end
@@ -274,7 +279,7 @@ function sendreply(self, channel, request, success, ...)                        
 					                                    ExceptionReplyTypes,
 					                                    except[1], except)
 				else
-					if SystemExceptionIDs[ except[1] ] then                             --[[VERBOSE]] verbose:listen("got system exception ",except)
+					if SystemExceptionIDs[ except[1] ] then                               --[[VERBOSE]] verbose:listen("got system exception ",except)
 						except.completion_status = COMPLETED_MAYBE
 					elseif except.reason == "badkey" then
 						except[1] = "OBJECT_NOT_EXIST"
@@ -288,7 +293,7 @@ function sendreply(self, channel, request, success, ...)                        
 						except[1] = "BAD_OPERATION"
 						except.minor_code_value  = 1
 						except.completion_status = COMPLETED_NO
-					else                                                                    --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
+					else                                                                  --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
 						except[1] = "UNKNOWN"
 						except.minor_code_value  = 0
 						except.completion_status = COMPLETED_MAYBE
