@@ -88,15 +88,7 @@ local function release_socket(self)
 	if next(ports) == nil then
 		self.cache[self.host] = nil
 	end
-	self.__object:close()
-	self.__object = nil
-	self.factory  = nil
-	self.host     = nil
-	self.port     = nil
-	self.probe    = nil
-	self.reset    = nil
-	self.close    = nil
-	return setmetatable(self, nil)
+	return self.__object:close()
 end
 
 --------------------------------------------------------------------------------

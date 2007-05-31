@@ -53,7 +53,8 @@ function context(self, context)
 			success, result = success:results()
 			if
 				not success and
-				result.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
+				( result.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" or
+				  result.reason == "closed" )
 			then
 				success, result = true, true
 			end

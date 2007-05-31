@@ -73,12 +73,7 @@ end
 
 local function release_socket(self)
 	self.__object:close()
-	self.__object = nil
-	self.context  = nil
-	self.probe    = nil
 	self.release  = dummy
-	self.close    = nil
-	return setmetatable(self, nil)
 end
 
 --------------------------------------------------------------------------------

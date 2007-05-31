@@ -83,9 +83,21 @@ function sendmsg(self, channel, type, message, types, ...)                      
 	--
 	-- Send stream over the channel
 	--
-	local success, except = channel:send(stream)
-	if not success then
-		if except == "closed" then channel:close() end
+	local success, except, reset
+	repeat
+		success, except = channel:send(stream)
+		if not success then
+			if except == "closed" then
+				if reset == nil and channel.reset and channel:reset() then
+					-- only clients have 'reset' op.
+					reset, success, except = true, nil, nil 
+				else
+					channel:close()
+				end
+			end
+		end
+	until success or except
+	if except then
 		except = Exception{ "COMM_FAILURE", minor_code_value = 0,
 			message = "unable to write into connection",
 			reason = except,
