@@ -87,71 +87,6 @@ end
 
 --------------------------------------------------------------------------------
 
--- TODO:[maia] review this procedure. have too much knowledge from concurrency
---             control.
-
-function validatechannel(self, channel, reference)
-	local context = self.context
-	local messenger = context.messenger
-	local mutex = context.mutex
-	local result, except
-	repeat                                                                        --[[VERBOSE]] verbose:invoke(true, "validating channel")
-		-- send locate request
-		local request = { object_key = reference._object }
-		request.request_id = register(channel, request)                             --[[VERBOSE]] verbose:invoke("new locate request with id ",request.request_id)
-		if mutex then mutex:locksend(channel) end
-		result, except = messenger:sendmsg(channel, LocateRequestID, request)
-		if mutex then mutex:freesend(channel) end
-		if result then
-			-- receive locate reply
-			if not mutex or mutex:lockreceive(channel, request) then
-				local failed
-				repeat
-					result, except, failed = self:getreply(channel)
-					if result then
-						if mutex then mutex:notifyreceived(channel, result) end
-					else
-						for requestid, request in pairs(failed) do
-							if type(requestid) == "number" then
-								request.success = false
-								request.resultcount = 1
-								request[1] = except
-								if mutex then mutex:notifyreceived(channel, request) end
-							end
-						end
-						break
-					end
-				until result == request
-				if mutex then mutex:freereceive(channel) end
-			end
-			-- handle locate reply
-			if request.locate_status == "OBJECT_HERE" then
-				result = channel
-			elseif request.locate_status == "OBJECT_FORWARD" then
-				channel = self:getchannel(request[1])
-				result = nil
-			elseif request.locate_status == "UNKNOWN_OBJECT" then
-				result, except = nil, Exception{ "COMM_FAILURE",
-					minor_code_value = 0,
-					reason = "object unknown",
-					message = "object not found through this connection",
-					reference = reference,
-				}
-			else
-				result, except = nil, Exception{ "COMM_FAILURE",
-					minor_code_value = 0,
-					reason = "channel validation",
-					message = "unable to receive validation reply",
-					exception = except,
-				}
-			end
-		end
-	until result or except                                                        --[[VERBOSE]] verbose:invoke(false)
-	return result, except
-end
-
---------------------------------------------------------------------------------
-
 function getchannel(self, reference)                                            --[[VERBOSE]] verbose:invoke(true, "get communication channel")
 	local channel, except = reference[ChannelKey]
 	if not channel then
@@ -164,24 +99,20 @@ function getchannel(self, reference)                                            
 				profiler, except = profiler:decode(profile.profile_data)
 				if profiler then
 					reference._object = except
-					repeat
-						channel, except = channels:retrieve(profiler)
-						if channel then
-							channel = self:validatechannel(channel, reference)
-						elseif except == "connection refused" then
-							except = Exception{ "COMM_FAILURE", minor_code_value = 1,
-								reason = "connect",
-								message = "connection to profile refused",
-								profile = profiler,
-							}
-						elseif except == "too many open connections" then
-							except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-								reason = "resources",
-								message = "too many open connections by protocol",
-								protocol = tag,
-							}
-						end
-					until channel or except
+					channel, except = channels:retrieve(profiler)
+					if except == "connection refused" then
+						except = Exception{ "COMM_FAILURE", minor_code_value = 1,
+							reason = "connect",
+							message = "connection to profile refused",
+							profile = profiler,
+						}
+					elseif except == "too many open connections" then
+						except = Exception{ "NO_RESOURCES", minor_code_value = 0,
+							reason = "resources",
+							message = "too many open connections by protocol",
+							protocol = tag,
+						}
+					end
 				end
 				break
 	 		end
@@ -228,7 +159,7 @@ function newrequest(self, channel, reference, operation, ...)
 	request.opidl      = operation
 	local success, except = self.context.messenger:sendmsg(channel,
 	                                                       RequestID, request,
-	                                                       operation.inputs, ...)
+	                                                       request.inputs, ...)
 	if not success then
 		request = nil
 	end	                                                                          --[[VERBOSE]] verbose:invoke(false)
@@ -312,13 +243,14 @@ function getreply(self, channel, request, probe)                                
 				id = header.request_id,
 			}
 		end
-	elseif msgid == LocateReplyID then                                          --[[VERBOSE]] verbose:invoke("got object location reply for ",header.request_id)
+	elseif msgid == LocateReplyID then                                            --[[VERBOSE]] verbose:invoke("got object location reply for ",header.request_id)
 		result = unregister(channel, header.request_id)
 		result.locate_status = header.locate_status
 		if result.locate_status == "OBJECT_FORWARD" then
 			result[1] = decoder:struct(IOR)
 		end
-	elseif msgid == CloseConnectionID then                                        --[[VERBOSE]] verbose:invoke("got remote request to close channel")
+	elseif (msgid == CloseConnectionID) or
+	       (msgid == nil and header.reason == "closed") then                      --[[VERBOSE]] verbose:invoke("got remote request to close channel or channel was broken")
 		result, except = channel:reset()
 		if result then                                                              --[[VERBOSE]] verbose:invoke(true, "reissue all pending requests")
 			for id, request in pairs(channel) do
