@@ -53,3 +53,4 @@ end
 factoryof  = base.factoryof
 templateof = base.templateof
 ports      = base.ports
+segmentof  = base.segmentof

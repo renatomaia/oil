@@ -93,8 +93,11 @@ function factoryof(component)
 	return base.factoryof(container and container.__state or component)
 end
 
-function templateof(object)
-	return oo.classof(factoryof(object) or object)
+function templateof(factory)
+	if not oo.instanceof(factory, BaseTemplate) then
+		factory = factoryof(factory)
+	end
+	return oo.classof(factory)
 end
 
 function ports(template)
@@ -102,6 +105,10 @@ function ports(template)
 		template = templateof(template)
 	end
 	return base.ports(template)
+end
+
+function segmentof(comp, port)
+	return comp.__container.__state[port]
 end
 
 --[[----------------------------------------------------------------------------

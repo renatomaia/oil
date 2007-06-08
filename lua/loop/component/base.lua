@@ -115,6 +115,10 @@ function ports(template)
 	return portiterator, state, var
 end
 
+function segmentof(comp, port)
+	return comp[port]
+end
+
 --------------------------------------------------------------------------------
 
 function Facet(segments, name)

@@ -102,7 +102,7 @@ end
 BaseTemplate = oo.class({}, base.BaseTemplate)
 
 function BaseTemplate:__container(comp)
-	local container = WeakTable(oo.superclass(BaseTemplate).__container(self, comp))
+	local container = WeakTable(base.BaseTemplate.__container(self, comp))
 	container.__state = WeakTable(container.__state)
 	container.__internal = InternalState{ __container = container }
 	container.__external = ExternalState{ __container = container }
@@ -144,6 +144,15 @@ function ports(component)
 		then return portiterator, container
 		else return base.port(component)
 	end
+end
+
+function segmentof(comp, name)
+	local state = comp.container.__state
+	local port = state.__factory[name]
+	if oo.classof(port) == DynamicPort then
+		name = port
+	end
+	return state[port]
 end
 
 --------------------------------------------------------------------------------
