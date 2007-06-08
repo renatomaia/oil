@@ -183,20 +183,20 @@ end
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0")       .
 -- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
 
-function newobject(object, interface, key)
+function newobject(object, type, key)
 	if Config then init(Config) end
 	if not object then assert.illegal(object, "object implementation") end
-	if not interface then assert.illegal(interface, "interface definition") end
+	if not type then assert.illegal(type, "interface definition") end
 	if key then assert.type(key, "string", "object key") end
-	return assert.results(Components.ServerBroker.broker:object(object, key, interface))
+	return assert.results(Components.ServerBroker.broker:object(object, key, type))
 end
 
-function deactivate(object, interface)
+function deactivate(object, type)
 	if not object then
 		assert.illegal(object,
 			"object reference (servant, implementation or object key expected)")
 	end
-	return assert.results(Components.ServerBroker.broker:remove(object, interface))
+	return assert.results(Components.ServerBroker.broker:remove(object, type))
 end
 
 function tostring(object)
@@ -226,10 +226,10 @@ end
 -- @usage oil.newproxy("IOR:00000002B494...", "IDL:HelloWorld/Hello:1.0")      .
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 
-function newproxy(object, interface)
+function newproxy(object, type)
 	if Config then init(Config) end
 	assert.type(object, "string", "object reference")
-	return assert.results(Components.ClientBroker.broker:fromstring(object, interface))
+	return assert.results(Components.ClientBroker.broker:fromstring(object, type))
 end
 
 --------------------------------------------------------------------------------
@@ -261,10 +261,10 @@ end
 
 -- @see newproxy
 
-function narrow(object, interface)
+function narrow(object, type)
 	assert.type(object, "table", "object proxy")
-	if interface then assert.type(interface, "string", "interface definition") end
-	return object and object:_narrow(interface)
+	if type then assert.type(type, "string", "interface definition") end
+	return object and object:_narrow(type)
 end
 
 --------------------------------------------------------------------------------
