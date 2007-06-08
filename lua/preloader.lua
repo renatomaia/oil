@@ -36,7 +36,31 @@ end
 
 function processargs(arg)
 	local i = 1
-	if not arg then
+	while arg and arg[i] do
+		local opt = string.match(arg[i], "^%-(.+)$")
+		if not opt then break end
+		
+		opt = Alias[opt] or opt
+		local opkind = type(Options[opt])
+		if opkind == "boolean" then
+			Options[opt] = true
+		elseif opkind == "number" then
+			i = i + 1
+			Options[opt] = tonumber(arg[i])
+		elseif opkind == "string" then
+			i = i + 1
+			Options[opt] = arg[i]
+		elseif opkind == "table" then
+			i = i + 1
+			table.insert(Options[opt], arg[i])
+		else
+			io.stderr:write("unknown option ", opt)
+		end
+		i = i + 1
+	end
+	
+	local argcount = table.getn(arg)
+	if not arg or i > argcount then
 		io.stderr:write([[
 Script for generation of code that pre-loads pre-compiled Lua packages.
 By Renato Maia <maia@tecgraf.puc-rio.br>
@@ -62,30 +86,8 @@ usage: lua preloader.lua [options] <headers>
 ]])
 		os.exit(1)
 	end
-	while arg[i] do
-		local opt = string.match(arg[i], "^%-(.+)$")
-		if not opt then break end
-		
-		opt = Alias[opt] or opt
-		local opkind = type(Options[opt])
-		if opkind == "boolean" then
-			Options[opt] = true
-		elseif opkind == "number" then
-			i = i + 1
-			Options[opt] = tonumber(arg[i])
-		elseif opkind == "string" then
-			i = i + 1
-			Options[opt] = arg[i]
-		elseif opkind == "table" then
-			i = i + 1
-			table.insert(Options[opt], arg[i])
-		else
-			io.stderr:write("unknown option ", opt)
-		end
-		
-		i = i + 1
-	end
-	return i, table.getn(arg)
+	
+	return i, argcount
 end
 
 function openfile(name)
@@ -145,8 +147,8 @@ outc:write([[
 #include "]],Options.filename,[[.h"
 
 ]],Options.prefix,[[ int luapreload_]],Options.filename,[[(lua_State *L) {
-  luaL_findtable(L, LUA_GLOBALSINDEX, "package.preload", ]], finish, [[);
-
+	luaL_findtable(L, LUA_GLOBALSINDEX, "package.preload", ]], finish, [[);
+	
 ]])
 
 for i = start, finish do local file = arg[i]
@@ -163,7 +165,7 @@ for i = start, finish do local file = arg[i]
 end
 
 outc:write([[
-
+	
 	lua_pop(L, 1);
 	return 0;
 }

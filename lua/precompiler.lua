@@ -35,7 +35,31 @@ end
 
 function processargs(arg)
 	local i = 1
-	if not arg then
+	while arg and arg[i] do
+		local opt = string.match(arg[i], "^%-(.+)$")
+		if not opt then break end
+		
+		opt = Alias[opt] or opt
+		local opkind = type(Options[opt])
+		if opkind == "boolean" then
+			Options[opt] = true
+		elseif opkind == "number" then
+			i = i + 1
+			Options[opt] = tonumber(arg[i])
+		elseif opkind == "string" then
+			i = i + 1
+			Options[opt] = arg[i]
+		elseif opkind == "table" then
+			i = i + 1
+			table.insert(Options[opt], arg[i])
+		else
+			io.stderr:write("unknown option ", opt)
+		end
+		i = i + 1
+	end
+	
+	local argcount = table.getn(arg)
+	if not arg or i > argcount then
 		io.stderr:write([[
 Script for pre-compilation of Lua script files
 By Renato Maia <maia@tecgraf.puc-rio.br>
@@ -63,30 +87,8 @@ usage: lua precompiler.lua [options] <scripts>
 ]])
 		os.exit(1)
 	end
-	while arg[i] do
-		local opt = string.match(arg[i], "^%-(.+)$")
-		if not opt then break end
-		
-		opt = Alias[opt] or opt
-		local opkind = type(Options[opt])
-		if opkind == "boolean" then
-			Options[opt] = true
-		elseif opkind == "number" then
-			i = i + 1
-			Options[opt] = tonumber(arg[i])
-		elseif opkind == "string" then
-			i = i + 1
-			Options[opt] = arg[i]
-		elseif opkind == "table" then
-			i = i + 1
-			table.insert(Options[opt], arg[i])
-		else
-			io.stderr:write("unknown option ", opt)
-		end
-		i = i + 1
-	end
 	
-	return i, table.getn(arg)
+	return i, argcount
 end
 
 function getname(file)
