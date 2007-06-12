@@ -39,6 +39,7 @@ local next     = next
 local newproxy = newproxy
 local pairs    = pairs
 local rawset   = rawset
+local type     = type
 local unpack   = unpack
 
 local ObjectCache = require "loop.collection.ObjectCache"
