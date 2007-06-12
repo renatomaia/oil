@@ -829,7 +829,7 @@ function Encoder:sequence(value, idltype)                                       
 	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function Encoder:array(value, idltype)                                          --[[VERBOSE]] verbose:marshalOf(true, self, idltype, value)
+function Encoder:array(value, idltype)                                          --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	local elementtype = idltype.elementtype
 	local length = #value
 	if length ~= idltype.length then
