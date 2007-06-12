@@ -159,7 +159,7 @@ function newrequest(self, channel, reference, operation, ...)
 	request.opidl      = operation
 	local success, except = self.context.messenger:sendmsg(channel,
 	                                                       RequestID, request,
-	                                                       request.inputs, ...)
+	                                                       operation.inputs, ...)
 	if not success then
 		request = nil
 	end	                                                                          --[[VERBOSE]] verbose:invoke(false)
