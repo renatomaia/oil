@@ -398,9 +398,14 @@ end
 function Decoder:any()                                                          --[[VERBOSE]] verbose:unmarshal(true, self, idl.any) verbose:unmarshal "[type of any]"
 	local idltype = self:TypeCode()                                               --[[VERBOSE]] verbose:unmarshal "[value of any]"
 	local value = self:get(idltype)                                               --[[VERBOSE]] verbose:unmarshal(false)
-	if type(value) == "table"
-		then value._anyval = value
-		else value = setmetatable({_anyval = value}, idltype)
+	if type(value) == "table" then
+		value._anyval = value
+		value._anytype = idltype
+	else
+		value = setmetatable({
+			_anyval = value,
+			_anytype = idltype,
+		}, idltype)
 	end
 	return value
 end
@@ -951,7 +956,7 @@ end
 --[[VERBOSE]] 	G = idl.ulonglong,
 --[[VERBOSE]] 	f = idl.float,
 --[[VERBOSE]] 	d = idl.double,
---[[VERBOSE]] 	D = idl.double,
+--[[VERBOSE]] 	D = idl.longdouble,
 --[[VERBOSE]] }
 --[[VERBOSE]] local codecop = {
 --[[VERBOSE]] 	[Encoder] = "marshal",
