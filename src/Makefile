@@ -66,6 +66,7 @@ OIL_PCK= oil/assert.lua                        \
          oil/builder/ludo.lua                  \
          oil/builder/typed.lua                 \
          oil/corba/giop/Codec.lua              \
+         oil/corba/giop/Exception.lua          \
          oil/corba/giop/Indexer.lua            \
          oil/corba/giop/init.lua               \
          oil/corba/giop/Listener.lua           \
