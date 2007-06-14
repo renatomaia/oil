@@ -33,8 +33,8 @@ local string = require "string"
 local socket = require "socket"
 
 local oo        = require "oil.oo"
-local Exception = require "oil.Exception"
-local idl       = require "oil.corba.idl"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
+local idl       = require "oil.corba.idl"
+local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.corba.iiop.Profiler", oo.class)
 

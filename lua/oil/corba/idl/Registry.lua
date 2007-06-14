@@ -36,10 +36,10 @@ local ObjectCache = require "loop.collection.ObjectCache"
 local OrderedSet  = require "loop.collection.OrderedSet"
 
 local oo        = require "oil.oo"
-local Exception = require "oil.Exception"
 local assert    = require "oil.assert"
 local idl       = require "oil.corba.idl"
-local iridl     = require "oil.corba.idl.ir"                                    --[[VERBOSE]] local verbose = require "oil.verbose"
+local iridl     = require "oil.corba.idl.ir"
+local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.corba.idl.Registry"
 

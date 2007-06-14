@@ -41,7 +41,7 @@ local OrderedSet        = require "loop.collection.OrderedSet"
 local Wrapper           = require "loop.object.Wrapper"
 
 local oo        = require "oil.oo"
-local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
+local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.corba.iiop.Acceptor", oo.class)
 

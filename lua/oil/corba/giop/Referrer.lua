@@ -40,8 +40,8 @@ local string = require "string"
 
 local oo        = require "oil.oo"
 local assert    = require "oil.assert"
-local Exception = require "oil.Exception"
-local giop      = require "oil.corba.giop"                                      --[[VERBOSE]] local verbose = require "oil.verbose"
+local giop      = require "oil.corba.giop"
+local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.corba.giop.Referrer", oo.class)
 

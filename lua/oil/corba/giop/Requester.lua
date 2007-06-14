@@ -41,11 +41,10 @@ local pairs    = pairs
 local type     = type
 local unpack   = unpack
 
-
 local oo        = require "oil.oo"
 local bit       = require "oil.bit"
-local Exception = require "oil.Exception"
 local giop      = require "oil.corba.giop"
+local Exception = require "oil.corba.giop.Exception"
 local Messenger = require "oil.corba.giop.Messenger"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module"oil.corba.giop.Requester"
