@@ -19,7 +19,7 @@ end
 local NamePat    = "[^;]+"
 local FactoryFrm = "oil.builder.%s"
 local ArchFrm    = "oil.arch.%s"
-function build(customization) -- corba.cooperative
+function build(customization)
 	local built
 	for name in customization:gmatch(NamePat) do                                  --[[VERBOSE]] verbose:built(true, "creating ",name," components")
 		built = require(FactoryFrm:format(name)).create(built)                      --[[VERBOSE]] verbose:built(false)

@@ -26,12 +26,6 @@
 -- 	lockreceive(channel:object, request:object)
 -- 	notifyreceived(channel:object, request:object)
 -- 	freereceive(channel:object)
--- 
--- tasks:Receptacle
--- 	current:thread
--- 	suspend()
--- 	resume(thread:thread)
--- 	register(thread:thread)
 --------------------------------------------------------------------------------
 
 local ipairs   = ipairs

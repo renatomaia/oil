@@ -17,6 +17,7 @@ OperatingSystem = component.Template{
 ClientBroker = component.Template{
 	broker = port.Facet--[[
 		proxy:object fromstring(reference:string, [interface:string])
+		proxy:object proxyto(reference:table, [interface:string])
 	]],
 	proxies = port.Receptacle--[[
 		proxy:object proxyto(reference:table, [interface:table])
