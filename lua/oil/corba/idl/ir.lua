@@ -550,13 +550,15 @@ ContextIdentifier = typedef{ Identifier }
 ContextIdSeq = typedef{ sequence{ContextIdentifier} }
 ExceptionDefSeq = typedef{ sequence{ExceptionDef} }
 
-OperationDef = interface { Contained,
-	result     = attribute{ TypeCode, readonly = true },
-	result_def = attribute{ IDLType },
-	params     = attribute{ ParDescriptionSeq },
-	mode       = attribute{ OperationMode },
-	contexts   = attribute{ ContextIdSeq },
-	exceptions = attribute{ ExceptionDefSeq },
+OperationDef = interface{ Contained,
+	definitions = {
+		result     = attribute{ TypeCode, readonly = true },
+		result_def = attribute{ IDLType },
+		params     = attribute{ ParDescriptionSeq },
+		mode       = attribute{ OperationMode },
+		contexts   = attribute{ ContextIdSeq },
+		exceptions = attribute{ ExceptionDefSeq },
+	},
 }
 
 OperationDescription = struct{
