@@ -11,8 +11,6 @@ TaskManager = component.Template({
 	]],
 	tasks = port.Facet--[[
 	]],
-	sockets = port.Facet--[[
-	]],
 }, arch.OperatingSystem)
 
 OperationInvoker = component.Template({
