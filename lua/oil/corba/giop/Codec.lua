@@ -699,8 +699,8 @@ function Encoder:any(value)                                                     
 		if luatype == "table" then
 			if not idltype and idl.istype(value._anytype) then
 				idltype = value._anytype
-				value = value._anyval
-			elseif value._anyval ~= nil then
+			end
+			if value._anyval ~= nil then
 				value = value._anyval
 			end
 		end
@@ -816,9 +816,9 @@ end
 
 function Encoder:sequence(value, idltype)                                       --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	local elementtype = idltype.elementtype
-	local length = #value
-	self:ulong(length)
 	if type(value) == "string" then
+		local length = #value
+		self:ulong(length)
 		while elementtype._type == "typedef" do elementtype = elementtype.type end
 		if elementtype == idl.octet or elementtype == idl.char then                 --[[VERBOSE]] verbose:marshal("got ", verbose.viewer:tostring(value))
 			self:rawput('"', value, length)
@@ -828,6 +828,8 @@ function Encoder:sequence(value, idltype)                                       
 		end
 	else
 		assert.type(value, "table", "sequence value", "MARSHAL")
+		local length = #value
+		self:ulong(length)
 		for i = 1, length do                                                        --[[VERBOSE]] verbose:marshal("[element ",i,"]")
 			self:put(value[i], elementtype) 
 		end
@@ -836,13 +838,13 @@ end
 
 function Encoder:array(value, idltype)                                          --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	local elementtype = idltype.elementtype
-	local length = #value
-	if length ~= idltype.length then
-		assert.illegal(value, "array value (wrong length)", "MARSHAL")
-	end
 	if type(value) == "string" then
 		while elementtype._type == "typedef" do elementtype = elementtype.type end
 		if elementtype == idl.octet or elementtype == idl.char then                 --[[VERBOSE]] verbose:marshal("got ", verbose.viewer:tostring(value))
+			local length = #value
+			if length ~= idltype.length then
+				assert.illegal(value, "array value (wrong length)", "MARSHAL")
+			end
 			self:rawput('"', value, length)
 		else
 			assert.illegal(value, "array value (table expected, got string)",
@@ -850,6 +852,10 @@ function Encoder:array(value, idltype)                                          
 		end
 	else
 		assert.type(value, "table", "array value", "MARSHAL")
+		local length = #value
+		if length ~= idltype.length then
+			assert.illegal(value, "array value (wrong length)", "MARSHAL")
+		end
 		for i = 1, length do                                                        --[[VERBOSE]] verbose:marshal("[element ",i,"]")
 			self:put(value[i], elementtype)
 		end
@@ -911,6 +917,7 @@ local function puttype(encoder, value, kind, tcinfo)
 end
 
 function Encoder:TypeCode(value)                                                --[[VERBOSE]] verbose:marshal(true, self, idl.TypeCode, value)
+	assert.type(value, "idl type", "TypeCode value", "MARSHAL")
 	local kind   = TypeCodes[value._type]
 	local tcinfo = TypeCodeInfo[kind]
 
