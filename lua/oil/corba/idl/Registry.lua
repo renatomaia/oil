@@ -684,6 +684,7 @@ OperationDef.inputs = Empty
 OperationDef.outputs = Empty
 OperationDef.exceptions = Empty
 OperationDef.result = idl.void
+OperationDef.result_def = idl.void
 OperationDef.definition_fields = {
 	defined_in = { type = InterfaceDef },
 	oneway     = { type = "boolean"   , optional = true },
@@ -736,29 +737,21 @@ function OperationDef:_set_result_def(type_def)
 end
 
 function OperationDef:_get_params() return self.parameters end
-function OperationDef:_set_params(params)
-	local parameters = {}
+function OperationDef:_set_params(parameters)
 	local inputs = {}
 	local outputs = {}
 	if self.result ~= idl.void then
 		outputs[#outputs+1] = self.result
 	end
-	for index, param in ipairs(params) do
-		local type = param.type
-		local mode = param.mode or "PARAM_IN"
-		parameters[index] = {
-			name = param.name,
-			typedef = param.typedef,
-			type = type,
-			mode = mode,
-		}
-		if mode == "PARAM_IN" then
-			inputs[#inputs+1] = type
-		elseif mode == "PARAM_OUT" then
-			outputs[#outputs+1] = type
-		elseif mode == "PARAM_INOUT" then
-			inputs[#inputs+1] = type
-			outputs[#outputs+1] = type
+	for index, param in ipairs(parameters) do
+		param.mode = param.mode or "PARAM_IN"
+		if param.mode == "PARAM_IN" then
+			inputs[#inputs+1] = param.type
+		elseif param.mode == "PARAM_OUT" then
+			outputs[#outputs+1] = param.type
+		elseif param.mode == "PARAM_INOUT" then
+			inputs[#inputs+1] = param.type
+			outputs[#outputs+1] = param.type
 		else
 			assert.illegal(mode, "operation parameter mode")
 		end
@@ -768,10 +761,8 @@ function OperationDef:_set_params(params)
 	self.outputs = outputs
 end
 
-function OperationDef:_set_exceptions(excepts)
-	local exceptions = {}
-	for index, except in ipairs(excepts) do
-		exceptions[index] = except
+function OperationDef:_set_exceptions(exceptions)
+	for _, except in ipairs(exceptions) do
 		exceptions[except.repID] = except:get_description().type
 	end
 	self.exceptions = exceptions
@@ -829,15 +820,7 @@ StructDef._set_type_def = AttributeDef._set_type_def
 
 function StructDef:_get_members() return self.fields end
 function StructDef:_set_members(members)
-	local fields = {}
-	for index, member in ipairs(members) do
-		fields[index] = {
-			name = member.name,
-			type = member.type,
-			type_def = member.type_def,
-		}
-	end
-	self.fields = fields
+	self.fields = members
 end
 
 --------------------------------------------------------------------------------
