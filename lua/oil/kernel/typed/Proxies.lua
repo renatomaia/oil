@@ -48,35 +48,33 @@ function CachedIndex:__index(field)
 		local context = self.__context
 		local operation, value, cached = context.indexer:valueof(self.__type,
 		                                                         deferred or field)
-		if operation then
-			if cached then
-				if value == nil then
-					if deferred then
-						value = function(self, ...)                                         --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
-							local reply = CachedIndex.checkcall(self, operation,
-								self.__context.invoker:invoke(self, operation, ...))
-							reply.proxy = self
-							reply.operation = operation
-							reply.results = CachedIndex.deferredresults
-							return reply
-						end
-					else
-						value = function(self, ...)                                         --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-							return CachedIndex.checkresults(self, operation, 
-							       	CachedIndex.checkcall(self, operation,
-							       		self.__context.invoker:invoke(self, operation, ...)
-							       	):results()
-							       )
-						end
+		if cached then
+			if operation and value == nil then
+				if deferred then
+					value = function(self, ...)                                           --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
+						local reply = CachedIndex.checkcall(self, operation,
+							self.__context.invoker:invoke(self, operation, ...))
+						reply.proxy = self
+						reply.operation = operation
+						reply.results = CachedIndex.deferredresults
+						return reply
+					end
+				else
+					value = function(self, ...)                                           --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+						return CachedIndex.checkresults(self, operation, 
+						       	CachedIndex.checkcall(self, operation,
+						       		self.__context.invoker:invoke(self, operation, ...)
+						       	):results()
+						       )
 					end
 				end
-				self[field] = value
-			else
-				if value == nil then
-					local proxies = context.proxies
-					CachedIndex:currentop(operation)
-					value = deferred and CachedIndex.defer or CachedIndex.invoke
-				end
+			end
+			self[field] = value
+		else
+			if operation and value == nil then
+				local proxies = context.proxies
+				CachedIndex:currentop(operation)
+				value = deferred and CachedIndex.defer or CachedIndex.invoke
 			end
 		end
 		return value
