@@ -37,11 +37,11 @@ context = false
 --------------------------------------------------------------------------------
 -- Dispatcher facet
 
-function dispatch(self, key, operation, ...)
+function dispatch(self, key, operation, default, ...)
 	local indexer = self.context.indexer
 	local member, implement = indexer:valueof(indexer:typeof(key), operation)
 	if member then
-		return Dispatcher.dispatch(self, key, implement or operation, ...)
+		return Dispatcher.dispatch(self, key, operation, default or implement, ...)
 	else
 		return false, Exception{
 			reason = "badoperation",

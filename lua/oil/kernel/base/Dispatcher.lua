@@ -109,12 +109,11 @@ end
 --------------------------------------------------------------------------------
 -- Dispatcher facet
 
-function dispatch(self, key, operation, ...)
+function dispatch(self, key, operation, default, ...)
 	local object = self.map[key]
 	if object then
 		object = object.__newindex
-		local method = object[operation] or
-		               type(operation) == "function" and operation
+		local method = object[operation] or default
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",key,":",operation, ...)
 			return self.pcall(method, object, ...)
 		else

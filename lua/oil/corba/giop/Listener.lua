@@ -195,13 +195,14 @@ function getrequest(self, channel, probe)                                       
 			local indexer = context.indexer
 			local iface = indexer:typeof(header.object_key)
 			if iface then
-				local member = indexer:valueof(iface, header.operation)
+				local member, opimpl = indexer:valueof(iface, header.operation)
 				if member then                                                          --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
 					for index, input in ipairs(member.inputs) do
 						header[index] = decoder:get(input)
 					end
 					header = Request(header)
 					header.member = member
+					header.opimpl = opimpl
 					if header.response_expected then
 						channel[requestid] = header                                         --[[VERBOSE]] else verbose:listen "no response expected"
 					end

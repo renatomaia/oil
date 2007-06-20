@@ -64,6 +64,7 @@ function acceptone(self, channelinfo)                                           
 			result, except = listener:sendreply(channel, result,
 				dispatcher:dispatch(result.object_key,
 				                    result.operation,
+				                    result.opimpl,
 				                    result:params())
 			)                                                                         --[[VERBOSE]] verbose:acceptor(false)
 		end
@@ -90,6 +91,7 @@ function acceptall(self, channelinfo)                                           
 				result, except = listener:sendreply(channel, result,
 					dispatcher:dispatch(result.object_key,
 					                    result.operation,
+					                    result.opimpl,
 					                    result:params())
 				)
 			end

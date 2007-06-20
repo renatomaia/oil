@@ -81,6 +81,7 @@ function dispatchrequest(self, channel, request)
 	return self:sendreply(channel, request, context.dispatcher:dispatch(
 		request.object_key,
 		request.operation,
+		request.opimpl,
 		request:params()
 	))
 end
