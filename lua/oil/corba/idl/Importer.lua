@@ -31,6 +31,7 @@
 
 local error  = error
 local ipairs = ipairs
+local pairs  = pairs
 
 local oo       = require "oil.oo"
 local idl      = require "oil.corba.idl"
@@ -43,7 +44,12 @@ resolve = Registry.resolve
 
 function context(self, context)
 	self.context = context
-	context.types:register(iridl.InterfaceDef)
+	local types = context.types
+	types:register(iridl.InterfaceDef)
+	self.DefaultDefs = oo.class()
+	for id, def in pairs(types.definition_map) do
+		self.DefaultDefs[id] = def
+	end
 end
 
 function lookup(self, search_name)
@@ -76,79 +82,115 @@ end
 
 local IDLTypes = {
 	dk_Primitive = true,
+	dk_String    = true,
 	dk_Array     = true,
 	dk_Sequence  = true,
-	dk_String    = true,
-	dk_Typedef   = true,
-	dk_Struct    = true,
-	dk_Union     = true,
-	dk_Enum      = true,
-	dk_Alias     = true,
-	dk_Exception = true,
+}
+
+local Contained = {
+	dk_Typedef   = { const = idl.typedef,   iface = "IDL:omg.org/CORBA/TypedefDef:1.0"   },
+	dk_Alias     = { const = idl.typedef,   iface = "IDL:omg.org/CORBA/AliasDef:1.0"     },
+	dk_Enum      = { const = idl.enum,      iface = "IDL:omg.org/CORBA/EnumDef:1.0"      },
+	dk_Struct    = { const = idl.struct,    iface = "IDL:omg.org/CORBA/StructDef:1.0"    },
+	dk_Union     = { const = idl.union,     iface = "IDL:omg.org/CORBA/UnionDef:1.0"     },
+	dk_Exception = { const = idl.except,    iface = "IDL:omg.org/CORBA/ExceptionDef:1.0" },
+	dk_Module    = { const = idl.module,    iface = "IDL:omg.org/CORBA/ModuleDef:1.0"    },
+	dk_Interface = { const = idl.interface, iface = "IDL:omg.org/CORBA/InterfaceDef:1.0" },
+	dk_Attribute = { const = idl.attribute, iface = "IDL:omg.org/CORBA/AttributeDef:1.0" },
+	dk_Operation = { const = idl.operation, iface = "IDL:omg.org/CORBA/OperationDef:1.0" },
 }
 
 function register(self, object, history)
 	local result
 	local types = self.context.types
-	if object._get_def_kind then
-		history = history or {}
+	if object._get_def_kind then -- is a remote definition
 		local kind = object:_get_def_kind()
-		if IDLTypes[kind] then
-			object = object:_narrow("IDL:omg.org/CORBA/IDLType:1.0")
-			result = types:register(object:_get_type())
-		elseif kind == "dk_Repository" then
+		if kind == "dk_Repository" then
 			result = types
-		elseif object:_is_a("IDL:omg.org/CORBA/Contained:1.0") then
-			object = object:_narrow("IDL:omg.org/CORBA/Contained:1.0")
+		elseif IDLTypes[kind] then
+			local desc
+			-- import definition specific information
+			if kind == "dk_Array" then
+				object = object:_narrow("IDL:omg.org/CORBA/ArrayDef:1.0")
+				desc = object:_get_type()
+				desc.elementtype = self:register(object:_get_element_type_def(), history)
+			elseif kind == "dk_Sequence" then
+				object = object:_narrow("IDL:omg.org/CORBA/SequenceDef:1.0")
+				desc = object:_get_type()
+				desc.elementtype = self:register(object:_get_element_type_def(), history)
+			else
+				object = object:_narrow("IDL:omg.org/CORBA/IDLType:1.0")
+				desc = object:_get_type()
+			end
+			result = types:register(desc)
+		elseif Contained[kind] then
+			object = object:_narrow(Contained[kind].iface)
 			local desc = object:describe().value
+			history = history or self.DefaultDefs()
 			result = history[desc.id] 
-			if not result then
+			if not result then                                                        --[[VERBOSE]] verbose:repository(true, "importing definition ",desc.id)
 				desc.repID = desc.id
-				desc.defined_in = nil
-				if kind == "dk_Interface" then
-					desc.base_interfaces = nil
-					desc = types:register(idl.interface(desc))
-					history[desc.repID] = desc
-					object = object:_narrow("IDL:omg.org/CORBA/InterfaceDef:1.0")
-					desc:move(
-						self:register(object:_get_defined_in(), history),
-						desc.name,
-						desc.version
-					)
-					desc:_set_base_interfaces(object:_get_base_interfaces())
-					local info = object:describe_interface()
-					for _, attribute in ipairs(info.attributes) do
-						attribute.repID = attribute.id
-						attribute.defined_in = desc
-						types:register(idl.attribute(attribute))
+				desc.defined_in = nil -- will be resolved later
+				
+				-- import definition specific information
+				if kind == "dk_Typedef" then
+					desc = object:_get_type()
+				elseif kind == "dk_Alias" then
+					desc.type = self:register(object:_get_original_type_def(), history)
+				elseif kind == "dk_Enum" then
+					desc.enumvalues = object:_get_members()
+				elseif kind == "dk_Union" then
+					desc.switch = self:register(object:_get_discriminator_type_def(), history)
+				elseif kind == "dk_Interface" then
+					for index, base in ipairs(object:_get_base_interfaces()) do
+						desc.base_interfaces[index] = self:register(base, history)
 					end
-					for _, operation in ipairs(info.operations) do
-						operation.repID = operation.id
-						operation.defined_in = desc
-						for index, except in ipairs(operation.exceptions) do
-							operation.exceptions[index] = except.type
-						end
-						types:register(idl.operation(operation))
+				elseif kind == "dk_Attribute" then
+					desc.type = self:register(object:_get_type_def(), history)
+				elseif kind == "dk_Operation" then
+					desc.result = self:register(object:_get_result_def(), history)
+					for _, param in ipairs(desc.parameters) do
+						param.type = self:register(param.type_def, history)
 					end
-				elseif kind == "dk_Module" then
-					desc = types:register(idl.module(desc))
-					history[desc.repID] = desc
-					object = object:_narrow("IDL:omg.org/CORBA/ModuleDef:1.0")
+					for index, except in ipairs(object:_get_exceptions()) do
+						desc.exceptions[index] = self:register(except, history)
+					end
+				end
+				
+				-- registration of the imported definition
+				result = types:register(Contained[kind].const(desc))
+				history[result.repID] = result
+				
+				-- following references may be recursive
+				if kind == "dk_Struct" or kind == "dk_Union" or kind == "dk_Except" then
+					local members = object:_get_members()
+					for _, member in ipairs(members) do
+						member.type = self:register(member.type_def, history)
+						member.type_def = member.type
+					end
+					if result._set_members
+						then result:_set_members(members)
+						else result.members = members
+					end
+				end
+				
+				-- resolve contaiment
+				result:move(
+					self:register(object:_get_defined_in(), history),
+					result.name,
+					result.version
+				)
+				if object.contents then
 					for _, contained in ipairs(object:contents("dk_all", true)) do
 						self:register(contained, history)
 					end
-				elseif kind == "dk_Attribute" or kind == "dk_Operation" then
-					desc = self:register(object:_get_defined_in(), history).definitions[desc.name]
-					history[desc.repID] = desc
-				else
-					error("unable to import "..kind:match("^dk_(.+)$"))
-				end
-				result = desc
+				end                                                                     --[[VERBOSE]] verbose:repository(false)
+				
 			end
 		else
 			error("unable to import definition of type "..object:_interface():_get_id())
 		end
-	else
+	else -- a local IDL description
 		result = types:register(object)
 	end
 	return result
