@@ -57,8 +57,6 @@ OIL_PCK= oil/Exception.lua \
          oil/verbose.lua
 SCHEDULER_PCK= scheduler/init.lua
 
-
-
 OILBIT_INC=	oilbit.h
 OILBIT_OBJ=	oilbit.obj $(COMPAT_51)
 OILBIT_LIB=	oilbit.lib
@@ -84,11 +82,7 @@ ALL_PRE=	$(PRECMP_INC) $(PRECMP_SRC) $(PRECMP_LIB) $(PRELDR_INC) $(PRELDR_SRC) $
 ALL_OBJ=	$(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ) $(OILBIN_OBJ)
 ALL_TRG=	$(OILBIT_LIB)
 ALL_LIB=	$(OILBIT_LIB)
-!if "$(LBT)" == ""
-LBT= lib
-!else
 ALL_EXT=	$(OILBIT_EXT) $(PRECMP_EXT) $(PRELDR_EXT)
-!endif
 
 all:	$(ALL_TRG)
 
@@ -142,6 +136,16 @@ echo:
 	@echo MYCFLAGS = $(MYCFLAGS)
 	@echo MYLDFLAGS = $(MYLDFLAGS)
 	@echo MYLIBS = $(MYLIBS)
+
+# convenience targets for usual platforms
+
+none:
+	@echo "Please choose a platform: $(PLATS)"
+
+lib: all
+
+dll:
+	$(MAKE) all LBT=dll LIBS="$(MYLIBS)" MYCFLAGS="/DOIL_API=__declspec(dllexport)"
 
 # DO NOT DELETE
 

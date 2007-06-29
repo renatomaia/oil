@@ -1,6 +1,6 @@
 # makefile for building OiL
 # see INSTALL for installation instructions
-# see ../Makefile and luaconf.h for further customization
+# see config and ../Makefile for further customization
 
 include ../config
 
@@ -85,6 +85,8 @@ ALL_TRG=	$(OILBIT_LIB) $(OILBIT_SOL)
 ALL_LIB=	$(OILBIT_LIB)
 ALL_SOL=	$(OILBIT_SOL)
 
+madefault: $(PLAT)
+
 all:	$(ALL_TRG)
 
 o:	$(ALL_OBJ)
@@ -112,16 +114,16 @@ $(OILBIT_LIB): $(OILBIT_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
 
 $(OILBIT_SOL): $(OILBIT_OBJ)
-	$(LD) -shared -o $@ $(LDFLAGS) $?
+	$(LD) $(LDFLAGS) -o $@ $?
 
 $(PRELDR_LIB): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
 
 $(PRELDR_SOL): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ)
-	$(LD) -shared -o $@ $(LDFLAGS) $?
+	$(LD) $(LDFLAGS) -o $@ $?
 
 $(OILBIN_TRG): $(COMPAT_51) $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ) $(OILBIN_OBJ)
-	$(CC) -o $@ -Wl,-E $(LDFLAGS) $? $(LIBS)
+	$(CC) $(LDFLAGS) -o $@ $? $(LIBS)
 
 bundlelibs: $(OILBIT_OBJ) $(PRECMP_OBJ)
 	$(AR) libloop.a loop.o            ; $(RANLIB) libloop.a
@@ -152,6 +154,19 @@ echo:
 	@echo "MYCFLAGS = $(MYCFLAGS)"
 	@echo "MYLDFLAGS = $(MYLDFLAGS)"
 	@echo "MYLIBS = $(MYLIBS)"
+
+# convenience targets for usual platforms
+
+none:
+	@echo "Please choose a platform: $(PLATS)"
+
+linux:
+	$(MAKE) all MYCFLAGS="-fpic" MYLDFLAGS="-Wl,-E -O -shared"
+
+macosx:
+	$(MAKE) all MYCFLAGS="-fno-common" \
+	            MYLDFLAGS="-bundle -undefined dynamic_lookup" \
+	            LD='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc'
 
 # DO NOT DELETE
 

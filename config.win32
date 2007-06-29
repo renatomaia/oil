@@ -22,10 +22,8 @@ INSTALL_CMOD= $(INSTALL_TOP)\bin
 INSTALL_EXEC= copy
 INSTALL_DATA= copy
 
-# To compile as DLL in Windows systems
+# Libraries required for DLL compilation
 #
-LBT= dll
-MYCFLAGS= /DOIL_API=__declspec(dllexport)
 MYLIBS= lua.lib
 
 # If you are using Lua-5.0.2 then uncomment the following line to include the
@@ -38,14 +36,22 @@ MYLIBS= lua.lib
 MYLDFLAGS=
 
 # == END OF USER SETTINGS. NO NEED TO CHANGE ANYTHING BELOW THIS LINE =========
-V= 0.3
 
+# Your platform. See PLATS for possible values.
+PLAT= none
+
+# Convenience platforms targets.
+PLATS= lib dll
+
+MAKE= $(MAKE) /nologo /f Makefile.win32
 CC= cl.exe
 LINK= link.exe
 CFLAGS= /nologo /W3 /I$(LUA_INC) $(MYCFLAGS)
 LDFLAGS= /nologo /LIBPATH:$(LUA_LIB) $(MYLDFLAGS)
 RM= -del
-LIBS= $(MYLIBS)
+LBT= lib
+
+V= 0.3
 
 LUAINT= $(LUA_BIN)\lua
 

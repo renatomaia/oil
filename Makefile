@@ -1,6 +1,6 @@
 # makefile for installing OiL
 # see INSTALL for installation instructions
-# see src/Makefile and src/oilconf.h for further customization
+# see config and src/Makefile for further customization
 
 include config
 
@@ -23,7 +23,9 @@ PLD_SOL=	liboilall
 INSTALL_DIR= $(INSTALL_INC) $(INSTALL_LIB) \
              $(INSTALL_LMOD) $(INSTALL_CMOD)/oil
 
-all clean a so bundles preload console:
+all: $(PLAT)
+
+$(PLATS) a so clean:
 	cd src; $(MAKE) $@
 
 test:	all
@@ -39,7 +41,7 @@ install: all $(INSTALL_DIR) $(INSTALL_CMOD)/oil
 
 installb: bundles $(INSTALL_DIR)
 	cd src; $(INSTALL_DATA) $(BND_INC) $(INSTALL_INC)
-#	cd src; $(INSTALL_DATA) $(BND_LIB) $(INSTALL_LIB)
+	cd src; $(INSTALL_DATA) $(BND_LIB) $(INSTALL_LIB)
 	cd src; for n in $(BND_SOL); do $(INSTALL_EXEC) lib$$n.$V.so $(INSTALL_LIB); done
 	cd $(INSTALL_LIB); for n in $(BND_SOL); do ln -fs lib$$n.$V.so lib$$n.so; done
 	cd $(INSTALL_CMOD); for n in $(BND_SOL); do ln -fs $(INSTALL_LIB)/lib$$n.$V.so $$n.so; done
@@ -56,8 +58,15 @@ installc: console $(INSTALL_BIN)
 local:
 	$(MAKE) install INSTALL_TOP=.. INSTALL_EXEC="cp -p" INSTALL_DATA="cp -p"
 
+none:
+	@echo "Please do"
+	@echo "   make PLATFORM"
+	@echo "where PLATFORM is one of these:"
+	@echo "   $(PLATS)"
+	@echo "See INSTALL for complete instructions."
+
 # create installation dirs
-$(INSTALL_DIR) $(INSTALL_CMOD)/oil:
+$(INSTALL_DIR):
 	mkdir -p $@
 
 env:

@@ -5,77 +5,58 @@
 !include config.win32
 
 TO_INC= oilbit.h
-TO_LIB= oilbit.lib
-!if "$(LBT)" == "dll"
+TO_LIB= oilbit.lib oilbit.exp
 TO_DLL=	oilbit.dll
-TO_LIB=	$(TO_LIB)	oilbit.exp
-!endif
 
 TO_LDR=	loop luaidl oil scheduler
 
 BND_INC=	loop.h luaidl.h oil.h scheduler.h
-BND_LIB=	loop.lib luaidl.lib oil.lib scheduler.lib
-!if "$(LBT)" == "dll"
+BND_LIB=	loop.lib luaidl.lib oil.lib scheduler.lib \
+        	loop.exp luaidl.exp oil.exp scheduler.exp
 BND_DLL=	loop.dll luaidl.dll oil.dll scheduler.dll
-BND_LIB=	$(BND_LIB) loop.exp luaidl.exp oil.exp scheduler.exp
-!endif
 
 PLD_INC=	oilall.h
-PLD_LIB=	oilall.lib
-!if "$(LBT)" == "dll"
+PLD_LIB=	oilall.lib oilall.exp
 PLD_DLL=	oilall.dll
-PLD_LIB=	$(PLD_LIB) oilall.exp
-!endif
 
 # Installation directories
-INSTALL_DIR=	$(INSTALL_INC) $(INSTALL_LIB) $(INSTALL_LMOD)
-!if "$(LBT)" == "dll"
-INSTALL_DIR=	$(INSTALL_DIR) $(INSTALL_CMOD)
-!endif
+INSTALL_DIR=	$(INSTALL_INC) $(INSTALL_LIB) $(INSTALL_LMOD) \
+            	$(INSTALL_DIR) $(INSTALL_CMOD)
 
-default: all
+all: $(PLAT)
 
-all clean lib bundles preload console:
+$(PLATS) clean lib bundles preload console:
 	cd src
-	$(MAKE) /nologo /f Makefile.win32 $@
+	$(MAKE) $@
 	cd ..
 
 install: all $(INSTALL_DIR) $(INSTALL_CMOD)\oil
 	cd src
-!if "$(LBT)" == "dll"
-	@for %f in ($(TO_DLL)) do @$(INSTALL_EXEC) %f $(INSTALL_CMOD)
-	@$(INSTALL_EXEC) oilbit.dll $(INSTALL_CMOD)\oil\bit.dll
-!endif
-	@for %f in ($(TO_INC)) do @$(INSTALL_DATA) %f $(INSTALL_INC)
-	@for %f in ($(TO_LIB)) do @$(INSTALL_DATA) %f $(INSTALL_LIB)
+	@for %f in ($(TO_DLL)) do @if exist %f $(INSTALL_EXEC) %f $(INSTALL_CMOD)
+	@if exist oilbit.dll $(INSTALL_EXEC) oilbit.dll $(INSTALL_CMOD)\oil\bit.dll
+	@for %f in ($(TO_INC)) do @if exist %f $(INSTALL_DATA) %f $(INSTALL_INC)
+	@for %f in ($(TO_LIB)) do @if exist %f $(INSTALL_DATA) %f $(INSTALL_LIB)
 	cd ..\lua
-#	@for %f in ($(TO_LUA)) do @$(INSTALL_DATA) %f $(INSTALL_LMOD)
-	@for %f in ($(TO_LDR)) do @xcopy %f $(INSTALL_LMOD)\%f /S /Y /I
+	@for %f in ($(TO_LDR)) do xcopy %f $(INSTALL_LMOD)\%f /S /Y /I
 	cd ..
 
 installb: bundles $(INSTALL_DIR)
 	cd src
-!if "$(LBT)" == "dll"
-	for %f in ($(BND_DLL)) do @$(INSTALL_EXEC) %f $(INSTALL_CMOD)
-!endif
-	for %f in ($(BND_INC)) do @$(INSTALL_DATA) %f $(INSTALL_INC)
-	for %f in ($(BND_LIB)) do @$(INSTALL_DATA) %f $(INSTALL_LIB)
+	@for %f in ($(BND_DLL)) do @if exist %f $(INSTALL_EXEC) %f $(INSTALL_CMOD)
+	@for %f in ($(BND_INC)) do @if exist %f $(INSTALL_DATA) %f $(INSTALL_INC)
+	@for %f in ($(BND_LIB)) do @if exist %f $(INSTALL_DATA) %f $(INSTALL_LIB)
 	cd ..
 
 installp: preload $(INSTALL_DIR)
 	cd src
-!if "$(LBT)" == "dll"
-	@for %f in ($(PLD_DLL)) do @$(INSTALL_EXEC) %f $(INSTALL_CMOD)
-!endif
-	@for %f in ($(PLD_INC)) do @$(INSTALL_DATA) %f $(INSTALL_INC)
-	@for %f in ($(PLD_LIB)) do @$(INSTALL_DATA) %f $(INSTALL_LIB)
+	@for %f in ($(PLD_DLL)) do @if exist %f $(INSTALL_EXEC) %f $(INSTALL_CMOD)
+	@for %f in ($(PLD_INC)) do @if exist %f $(INSTALL_DATA) %f $(INSTALL_INC)
+	@for %f in ($(PLD_LIB)) do @if exist %f $(INSTALL_DATA) %f $(INSTALL_LIB)
 	cd ..
 
 installc: console $(INSTALL_BIN)
-!if "$(LBT)" == "dll"
-	@$(INSTALL_EXEC) src\oilall.dll $(INSTALL_CMOD)
-!endif
-	@$(INSTALL_EXEC) src\console.exe $(INSTALL_BIN)\oil.exe
+	@if exist src\oilall.dll $(INSTALL_EXEC) src\oilall.dll $(INSTALL_CMOD)
+	$(INSTALL_EXEC) src\console.exe $(INSTALL_BIN)\oil.exe
 
 local:
 	$(MAKE) install INSTALL_TOP=.. INSTALL_EXEC="cp -p" INSTALL_DATA="cp -p"
@@ -98,7 +79,7 @@ echo:
 	@echo These are the parameters currently set in src\Makefile to build LuaSocket $(SV):
 	@echo.
 	@cd src
-	@$(MAKE) /nologo /f Makefile.win32 echo
+	@$(MAKE) echo
 	@cd ..
 	@echo.
 	@echo These are the parameters currently set in Makefile to install LuaSocket $(SV):

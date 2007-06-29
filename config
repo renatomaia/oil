@@ -36,7 +36,12 @@ INSTALL_DATA= cp -r
 MYLDFLAGS=
 
 # == END OF USER SETTINGS. NO NEED TO CHANGE ANYTHING BELOW THIS LINE =========
-V= 0.3
+
+# Your platform. See PLATS for possible values.
+PLAT= none
+
+# Convenience platforms targets.
+PLATS= linux macosx
 
 CC= gcc
 CFLAGS= -O2 -Wall -I$(LUA_INC) $(MYCFLAGS)
@@ -45,6 +50,8 @@ AR= ar rcu
 RANLIB= ranlib
 RM= rm -f
 LIBS= -lm -ldl -llua $(MYLIBS)
+
+V= 0.3
 
 LUAINT= $(LUA_BIN)/lua
 
