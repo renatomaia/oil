@@ -308,17 +308,17 @@ function union(self)
 		end
 	end
 
-	function self:__index(field)
-		if rawget(self, "_switch") == self.selector[field] then
-			return rawget(self, "_value")
+	function self.__index(union, field)
+		if rawget(union, "_switch") == self.selector[field] then
+			return rawget(union, "_value")
 		end
 	end
-	function self:__newindex(field, value)
+	function self.__newindex(field, value)
 		local label = self.selector[field]
 		if label then
-			rawset(self, "_switch", label)
-			rawset(self, "_value", value)
-			rawset(self, "_field", field)
+			rawset(union, "_switch", label)
+			rawset(union, "_value", value)
+			rawset(union, "_field", field)
 		end
 	end
 
