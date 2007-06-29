@@ -25,6 +25,7 @@
 local error   = error 
 local require = require
 local ipairs  = ipairs
+local pairs   = pairs
 
 local table   = require "table"
 
@@ -55,13 +56,22 @@ callbacks.ANY      = idl.any
 callbacks.TYPECODE = idl.TypeCode
 callbacks.STRING   = idl.string
 callbacks.OBJECT   = idl.object
-callbacks.interface = function (def)
+callbacks.interface = function(def)
   if def.definitions then -- not forward declarations
 	  def = idl.interface(def)
 	  table.insert(tab_interfaces,def)
 	end
 end
-callbacks.operation = idl.operation
+callbacks.operation = function(def)
+	if def.exceptions then
+		local exceptions = {}
+		for repid, except in pairs(def.exceptions) do
+			exceptions[#exceptions+1] = except
+		end
+		def.exceptions = exceptions
+	end
+	idl.operation(def)
+end
 callbacks.attribute = idl.attribute
 callbacks.module    = idl.module
 callbacks.except    = idl.except
