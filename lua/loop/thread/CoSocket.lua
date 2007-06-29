@@ -201,7 +201,7 @@ local function wrappedsend(self, data, i, j)                                    
 	assert(writelocks[socket] == nil, "attempt to write a socket in use")
 
 	-- fill buffer space already avaliable
-	local sent, errmsg, partial = socket:send(data, i, j)
+	local sent, errmsg, lastbyte = socket:send(data, i, j)
 
 	-- check if job has completed
 	if not sent and errmsg == "timeout" and timeout ~= 0 then                     --[[VERBOSE]] verbose:cosocket(true, "waiting to send remaining data")
@@ -220,31 +220,22 @@ local function wrappedsend(self, data, i, j)                                    
 		-- block current thread on the socket
 		writing:add(socket, current)                                                --[[VERBOSE]] verbose:threads(current," subscribed for write signal")
 	
-		if not i then i = 1 end
-	
 		repeat
 			-- stop current thread
 			running:remove(current, self.currentkey)                                  --[[VERBOSE]] verbose:threads(current," suspended")
-			coroutine.yield()                                                         --[[VERBOSE]] verbose:cosocket(false, "wrapped send resumed")
+			coroutine.yield()                                                         --[[VERBOSE]] verbose:cosocket "wrapped send resumed"
 		
 			-- check if the socket is ready
 			if writing[socket] == current then
 				writing:remove(socket)                                                  --[[VERBOSE]] verbose:threads(current," unsubscribed for write signal")
-				errmsg = "timeout"                                                      --[[VERBOSE]] verbose:cosocket(false, "wrapped send timed out")
-			else                                                                      --[[VERBOSE]] verbose.cosocket "writing remaining data into socket"
-				local moresent
-				sent, errmsg, moresent = socket:send(data, i + partial, j)
-				if sent then                                                            --[[VERBOSE]] verbose.cosocket "sent all supplied data"
-					sent, errmsg, partial = partial + sent, nil, nil                      --[[VERBOSE]] verbose:cosocket(false, "send completed after waiting")
-				else                                                                    --[[VERBOSE]] verbose.cosocket "sent only partial data"
-					partial = partial + moresent
-					if errmsg == "timeout" then
-						-- block current thread on the socket to write data
-						writing:add(socket, current)                                        --[[VERBOSE]] verbose:threads(current," subscribed for another write signal")
-						
-						-- cancel error message
-						errmsg = nil                                                        --[[VERBOSE]] else verbose:cosocket(false, "returning error ",errmsg," after waiting")
-					end
+				errmsg = "timeout"                                                      --[[VERBOSE]] verbose:cosocket "wrapped send timed out"
+			else                                                                      --[[VERBOSE]] verbose:cosocket "writing remaining data into socket"
+				sent, errmsg, lastbyte = socket:send(data, lastbyte+1, j)
+				if not sent and errmsg == "timeout" then
+					-- block current thread on the socket to write data
+					writing:add(socket, current)                                          --[[VERBOSE]] verbose:threads(current," subscribed for another write signal")
+					-- cancel error message
+					errmsg = nil                                                          --[[VERBOSE]] elseif sent then verbose:cosocket "sent all supplied data" else verbose:cosocket("returning error ",errmsg," after waiting")
 				end
 			end
 		until sent or errmsg
@@ -255,10 +246,10 @@ local function wrappedsend(self, data, i, j)                                    
 		end
 	
 		-- unlock socket to allow use by other coroutines
-		writelocks[socket] = nil                                                    --[[VERBOSE]] else verbose:cosocket(false, "send done without waiting")
+		writelocks[socket] = nil                                                    --[[VERBOSE]] verbose:cosocket "send done after waiting" else verbose:cosocket(false, "send done without waiting")
 	end
 	
-	return sent, errmsg, partial
+	return sent, errmsg, lastbyte
 end
 
 --------------------------------------------------------------------------------
