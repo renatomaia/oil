@@ -354,7 +354,7 @@ function Container:lookup(search_name)
 		scope = self
 		search_name = "::"..search_name
 	end
-	for nextscope in string.gmatch(search_name, "::([%w][_%w]*)") do
+	for nextscope in string.gmatch(search_name, "::([^:]+)") do
 		if not scope or not scope.definitions then return nil end
 		scope = scope.definitions[nextscope]
 	end
