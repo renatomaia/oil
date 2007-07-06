@@ -56,8 +56,8 @@ module "oil"
 
 function assemble(flavor)
 	assert.type(flavor, "string", "OiL flavor name")
-	Components = builder.build(flavor)
-	scheduler = Components.TaskManager
+	builder.build(flavor, _M)
+	scheduler = TaskManager
 	pcall = scheduler and scheduler.pcall or luapcall
 end
 
@@ -108,7 +108,7 @@ Config = {}
 
 function loadidl(idlspec)
 	assert.type(idlspec, "string", "IDL specification")
-	return assert.results(Components.TypeRepository.compiler:load(idlspec))
+	return assert.results(TypeRepository.compiler:load(idlspec))
 end
 
 --------------------------------------------------------------------------------
@@ -128,7 +128,7 @@ end
 
 function loadidlfile(filepath)
 	assert.type(filepath, "string", "IDL file path")
-	return assert.results(Components.TypeRepository.compiler:loadfile(filepath))
+	return assert.results(TypeRepository.compiler:loadfile(filepath))
 end
 
 --------------------------------------------------------------------------------
@@ -137,7 +137,7 @@ end
 -- @return 1 proxy CORBA object that exports the local Interface Repository.
 
 function getLIR()
-	return Components.TypeRepository.types
+	return TypeRepository.types
 end
 
 --------------------------------------------------------------------------------
@@ -158,7 +158,7 @@ end
 --                               "IDL:omg.org/CORBA/Repository:1.0"))          .
 
 function setIR(ir)
-	Components.TypeRepository.remote = ir
+	TypeRepository.remote = ir
 end
 
 --------------------------------------------------------------------------------
@@ -188,7 +188,7 @@ function newobject(object, type, key)
 	if not object then assert.illegal(object, "object implementation") end
 	if not type then assert.illegal(type, "interface definition") end
 	if key then assert.type(key, "string", "object key") end
-	return assert.results(Components.ServerBroker.broker:object(object, key, type))
+	return assert.results(ServerBroker.broker:object(object, key, type))
 end
 
 function deactivate(object, type)
@@ -196,12 +196,12 @@ function deactivate(object, type)
 		assert.illegal(object,
 			"object reference (servant, implementation or object key expected)")
 	end
-	return assert.results(Components.ServerBroker.broker:remove(object, type))
+	return assert.results(ServerBroker.broker:remove(object, type))
 end
 
 function tostring(object)
 	assert.type(object, "table", "servant object")
-	return assert.results(Components.ServerBroker.broker:tostring(object))
+	return assert.results(ServerBroker.broker:tostring(object))
 end
 
 --------------------------------------------------------------------------------
@@ -229,7 +229,7 @@ end
 function newproxy(object, type)
 	if Config then init(Config) end
 	assert.type(object, "string", "object reference")
-	return assert.results(Components.ClientBroker.broker:fromstring(object, type))
+	return assert.results(ClientBroker.broker:fromstring(object, type))
 end
 
 --------------------------------------------------------------------------------
@@ -290,7 +290,7 @@ end
 function init(config)
 	config, Config = config or Config, nil
 	assert.type(config, "table", "ORB configuration")
-	return assert.results(Components.ServerBroker.broker:initialize(config))
+	return assert.results(ServerBroker.broker:initialize(config))
 end
 
 --------------------------------------------------------------------------------
@@ -299,7 +299,7 @@ end
 -- Returns true if there is some ORB request pending or false otherwise.
 
 function pending()
-	return assert.results(Components.ServerBroker.broker:pending())
+	return assert.results(ServerBroker.broker:pending())
 end
 
 --------------------------------------------------------------------------------
@@ -309,7 +309,7 @@ end
 -- and an exception.
 
 function step()
-	return assert.results(Components.ServerBroker.broker:step())
+	return assert.results(ServerBroker.broker:step())
 end
 
 --------------------------------------------------------------------------------
@@ -320,15 +320,15 @@ end
 
 function run()
 	if Config then init(Config) end
-	return assert.results(Components.ServerBroker.broker:run())
+	return assert.results(ServerBroker.broker:run())
 end
 
 function main(main)
 	assert.type(main, "function", "main function")
-	if Components.TaskManager then
-		local tasks = Components.TaskManager.tasks
+	if TaskManager then
+		local tasks = TaskManager.tasks
 		assert.results(tasks:register(tasks:new(main)))
-		return Components.TaskManager.control:run()
+		return TaskManager.control:run()
 	else
 		return main()
 	end
@@ -336,12 +336,12 @@ end
 
 function newthread(body, ...)
 	assert.type(body, "function", "thread body")
-	return Components.TaskManager.tasks:start(body, ...)
+	return TaskManager.tasks:start(body, ...)
 end
 
 function sleep(time)
 	assert.type(time, "number", "time")
-	return Components.OperatingSystem.sockets:sleep(time)
+	return OperatingSystem.sockets:sleep(time)
 end
 
 --------------------------------------------------------------------------------
@@ -350,7 +350,7 @@ end
 -- Stops the ORB main loop if it is executing and closes all connections.
 
 function shutdown()
-	return assert.results(Components.ServerBroker.broker:shutdown())
+	return assert.results(ServerBroker.broker:shutdown())
 end
 
 --------------------------------------------------------------------------------
@@ -405,12 +405,12 @@ end
 --------------------------------------------------------------------------------
 
 function newencoder()
-	return assert.results(Components.ValueEncoder.codec:encoder(true))
+	return assert.results(ValueEncoder.codec:encoder(true))
 end
 
 function newdecoder(stream)
 	assert.type(stream, "string", "byte stream")
-	return assert.results(Components.ValueEncoder.codec:decoder(stream, true))
+	return assert.results(ValueEncoder.codec:decoder(stream, true))
 end
 
 --------------------------------------------------------------------------------
@@ -422,7 +422,7 @@ function newexcept(body)
 end
 
 function setexcepthandler(handler, type)
-	assert.results(Components.ObjectProxies.proxies:excepthandler(handler, type))
+	assert.results(ObjectProxies.proxies:excepthandler(handler, type))
 end
 
 --------------------------------------------------------------------------------
@@ -437,8 +437,8 @@ function setclientinterceptor(iceptor)
 	if iceptor then
 		iceptor = ClientSide{ interceptor = iceptor }
 	end
-	port.intercept(Components.OperationRequester, "requests", "method", iceptor)
-	port.intercept(Components.OperationRequester, "messenger", "method", iceptor)
+	port.intercept(OperationRequester, "requests", "method", iceptor)
+	port.intercept(OperationRequester, "messenger", "method", iceptor)
 end
 
 function setserverinterceptor(iceptor)
@@ -446,6 +446,6 @@ function setserverinterceptor(iceptor)
 	if iceptor then
 		iceptor = ServerSide{ interceptor = iceptor }
 	end
-	port.intercept(Components.RequestListener, "messenger", "method", iceptor)
-	port.intercept(Components.RequestDispatcher, "dispatcher", "method", iceptor)
+	port.intercept(RequestListener, "messenger", "method", iceptor)
+	port.intercept(RequestDispatcher, "dispatcher", "method", iceptor)
 end
