@@ -50,10 +50,10 @@ module "oil.cos.naming"
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
 
-local oo              = require "oil.oo"
-local assert          = require "oil.assert"
-local MapWithKeyArray = require "loop.collection.MapWithKeyArray"
-local UnorderedArray  = require "loop.collection.UnorderedArray"
+local oo                = require "oil.oo"
+local assert            = require "oil.assert"
+local MapWithArrayOfKey = require "loop.collection.MapWithArrayOfKey"
+local UnorderedArray    = require "loop.collection.UnorderedArray"
 
 --------------------------------------------------------------------------------
 -- Means to deal w/ orphaned contexts, iterators and bindings ------------------
@@ -189,7 +189,7 @@ end
 NamingContext = oo.class()
 
 function NamingContext:__init()
-	return oo.rawnew(self, {bindings = MapWithKeyArray()})
+	return oo.rawnew(self, {bindings = MapWithArrayOfKey()})
 end
 
 function NamingContext:bind(n, obj)
