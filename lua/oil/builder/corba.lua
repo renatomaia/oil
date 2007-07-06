@@ -1,5 +1,6 @@
 local require = require
 local builder = require "oil.builder"
+local base    = require "oil.arch.base"
 local arch    = require "oil.arch.corba"
 
 module "oil.builder.corba"
@@ -20,6 +21,10 @@ TypeRepository = arch.TypeRepository{
 	compiler = require "oil.corba.idl.Compiler",
 	importer = require "oil.corba.idl.Importer",
 }
+
+-- Avoid using a typed request dispatcher because the GIOP protocol already
+-- does type checks prior to decode marshaled values in invocation requests.
+RequestDispatcher = base.RequestDispatcher{require "oil.kernel.base.Dispatcher"}
 
 function create(comps)
 	comps = comps or {}
