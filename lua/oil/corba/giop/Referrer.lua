@@ -39,7 +39,6 @@ local tonumber  = tonumber
 local string = require "string"
 
 local oo        = require "oil.oo"
-local assert    = require "oil.assert"
 local giop      = require "oil.corba.giop"
 local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
@@ -88,7 +87,11 @@ function corbaloc(self, encoded)
 			}
 		end
 	end
-	assert.illegal(encoded, "corbaloc, no supported protocol found", "INV_OBJREF")
+	return nil, Exception{ "INV_OBJREF",
+		reason = "corbaloc",
+		message = "corbaloc, no supported protocol found",
+		reference = encoded,
+	}
 end
 
 --------------------------------------------------------------------------------
@@ -126,11 +129,15 @@ function encode(self, ior)
 end
 
 function decode(self, encoded)
-	assert.type(encoded, "string", "encoded IOR", "INV_OBJREF")
-	local token, stream = string.match(encoded, "^(%w+):(.+)$")
+	local token, stream = encoded:match("^(%w+):(.+)$")
 	local decoder = self[token]
 	if not decoder then
-		assert.illegal(token, "IOR format, currently not supported", "INV_OBJREF")
+		return nil, Exception{ "INV_OBJREF",
+			reason = "reference",
+			message = "illegal reference format, currently not supported",
+			format = token,
+			reference = enconded,
+		}
 	end
 	return decoder(self, stream)
 end
