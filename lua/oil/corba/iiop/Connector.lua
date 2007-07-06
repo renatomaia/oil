@@ -70,7 +70,6 @@ local function reset_plain_socket(self)                                         
 	return result, errmsg
 end
 
-local empty = {}
 local function probe_wrapped_socket(self)
 	local list = { self }
 	return self.factory.context.sockets:select(list, nil, 0)[1] == list[1]
