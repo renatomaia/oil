@@ -50,8 +50,6 @@ context = false
 --------------------------------------------------------------------------------
 -- connection management
 
-local function dummy() end
-
 local function release_wrapped_socket(self)
 	UnorderedArraySet.add(self.port, self)
 end
@@ -69,11 +67,6 @@ local list = {}
 local function probe_plain_socket(self)
 	list[1] = self.__object
 	return self.context.sockets:select(list, nil, 0)[1] == list[1]
-end
-
-local function release_socket(self)
-	self.__object:close()
-	self.release  = dummy
 end
 
 --------------------------------------------------------------------------------
@@ -96,8 +89,7 @@ function Port:__init(object)
 			socket.release = release_wrapped_socket
 		end
 		socket.context = self.context
-		socket.port   = self
-		socket.close  = release_socket
+		socket.port    = self
 		return socket
 	end
 	
