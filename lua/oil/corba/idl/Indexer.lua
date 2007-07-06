@@ -24,7 +24,6 @@
 local ipairs = ipairs
 
 local oo     = require "oil.oo"
-local assert = require "oil.assert"
 local idl    = require "oil.corba.idl"                                          --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.corba.idl.Indexer", oo.class)
@@ -49,7 +48,7 @@ end
 patterns = { "^_([gs]et)_(.+)$" }
 
 builders = {}
-function builders:get(interface, attribute, opname, attribop)
+function builders:get(attribute, opname, attribop)
 	if attribute._type == "attribute" then
 		return idl.operation{ attribute = attribute, attribop = attribop,
 			name = opname,
@@ -57,7 +56,7 @@ function builders:get(interface, attribute, opname, attribop)
 		}
 	end
 end
-function builders:set(interface, attribute, opname, attribop)
+function builders:set(attribute, opname, attribop)
 	if attribute._type == "attribute" then
 		return idl.operation{ attribute = attribute, attribop = attribop,
 			name = opname,
@@ -70,7 +69,7 @@ end
 -- Interface Operations --------------------------------------------------------
 
 function typeof(self, name)
-	return assert.results(self.context.types:resolve(name))
+	return self.context.types:resolve(name)
 end
 
 function valueof(self, interface, name)
@@ -82,7 +81,7 @@ function valueof(self, interface, name)
 			if action then
 				member, interface = self:findmember(interface, member)
 				if member then
-					member = self.builders[action](self, interface, member, name, action)
+					member = self.builders[action](self, member, name, action)
 				end
 			end
 		end
