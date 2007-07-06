@@ -23,13 +23,10 @@
 
 local luapcall     = pcall
 local setmetatable = setmetatable
-local type         = type
+local type         = type                                                       --[[VERBOSE]] local select = select
 
 local oo        = require "oil.oo"
-local assert    = require "oil.assert"
 local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
-
---[[VERBOSE]] local select = select
 
 module("oil.kernel.base.Dispatcher", oo.class)
 

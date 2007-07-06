@@ -2,10 +2,13 @@ local luaerror = error
 local pairs    = pairs
 local tostring = tostring
 local luatype  = type
-
-local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
+local require  = require                                                        --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.assert"
+
+--------------------------------------------------------------------------------
+
+Exception = require "oil.Exception"
 
 --------------------------------------------------------------------------------
 

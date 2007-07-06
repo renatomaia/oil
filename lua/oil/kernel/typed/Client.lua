@@ -28,8 +28,7 @@
 
 local type = type
 
-local oo     = require "oil.oo"
-local assert = require "oil.assert"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.kernel.typed.Client", oo.class)
 

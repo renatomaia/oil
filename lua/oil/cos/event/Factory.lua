@@ -33,7 +33,6 @@ module("oil.cos.event.Factory", oo.class)                                       
 
 local os              = require "os"
 local oo              = require "loop.base"
-local assert          = require "oil.assert"
 local Properties      = require "oil.properties"
 
 --------------------------------------------------------------------------------

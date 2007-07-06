@@ -39,8 +39,7 @@ local select = select
 local ObjectCache = require "loop.collection.ObjectCache"
 local OrderedSet  = require "loop.collection.OrderedSet"
 
-local oo     = require "oil.oo"
-local assert = require "oil.assert"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.kernel.cooperative.Mutex", oo.class)
 

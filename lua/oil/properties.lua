@@ -26,7 +26,6 @@ local require    = require
 local rawget     = rawget
 local rawset     = rawset
 local oo         = require "loop.base"
-local assert     = require "oil.assert"
 
 module("oil.properties", oo.class)                                              --[[VERBOSE]] local verbose = require "oil.verbose"
 

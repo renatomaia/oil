@@ -33,7 +33,6 @@
 
 
 local oo        = require "oil.oo"
-local assert    = require "oil.assert"
 local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.kernel.base.Receiver", oo.class)

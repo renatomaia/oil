@@ -39,9 +39,7 @@ local unpack   = unpack
 local ObjectCache = require "loop.collection.ObjectCache"
 local OrderedSet  = require "loop.collection.OrderedSet"
 
-local oo     = require "oil.oo"
-local assert = require "oil.assert"
-
+local oo      = require "oil.oo"
 local Invoker = require "oil.kernel.base.Invoker"                               --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.kernel.cooperative.Invoker"

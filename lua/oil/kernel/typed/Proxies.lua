@@ -29,7 +29,6 @@ local table = require "loop.table"
 local ObjectCache = require "loop.collection.ObjectCache"
 
 local oo        = require "oil.oo"
-local assert    = require "oil.assert"
 local Exception = require "oil.Exception"
 local Proxies   = require "oil.kernel.base.Proxies"                             --[[VERBOSE]] local verbose = require "oil.verbose"
 

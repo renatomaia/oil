@@ -35,7 +35,6 @@ module("oil.cos.event.Dispatcher", oo.class)                                    
 
 local os              = require "os"
 local oo              = require "loop.base"
-local assert          = require "oil.assert"
 local Properties      = require "oil.properties"
 local EventQueue      = require "oil.cos.event.Queue"
 local OrderedSet      = require "loop.collection.OrderedSet"
