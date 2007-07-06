@@ -1281,7 +1281,14 @@ local specification, definition_l, definition_l_r, definition, type_dcl, type_de
 
 function specification()
 --  import_l()
+	if tab_callbacks.start then
+	  tab_callbacks.start()
+	end --if
   definition_l()
+  isForward()
+	if tab_callbacks.finish then
+	  tab_callbacks.finish()
+	end --if
 end	
 
 function definition_l()
@@ -3469,6 +3476,5 @@ function parse( stridlparam, ptab_callbacks )
   lex.init()
   token = get_token()
   specification()
-  isForward()
   return tab_output
 end
