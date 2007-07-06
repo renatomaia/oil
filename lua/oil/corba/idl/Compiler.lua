@@ -73,17 +73,25 @@ function Options.callbacks.interface(def)
 	end
 	return def
 end
+
 local Modules
 function Options.callbacks.module(def)
 	Modules[def] = true
 	return def
 end
 
+function Options.callbacks.start()
+	Modules = {}
+end
+
+function Options.callbacks.finish()
+	for module in pairs(Modules) do idl.module(module) end
+end
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 function doresults(self, ...)
-	for module in pairs(Modules) do idl.module(module) end
 	if ... then
 		return self.context.types:register(...)
 	end
@@ -91,11 +99,9 @@ function doresults(self, ...)
 end
 
 function loadfile(self, filepath)
-	Modules = {}
 	return self:doresults(luaidl.parsefile(filepath, self.Options))
 end
 
 function load(self, idlspec)
-	Modules = {}
 	return self:doresults(luaidl.parse(idlspec, self.Options))
 end
