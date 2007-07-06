@@ -596,8 +596,8 @@ function Encoder:jump(shift)
 end
 
 function Encoder:rawput(format, data, size)
-	table.insert(self.format, format)
-	table.insert(self, data)
+	self.format[#self.format+1] = format
+	self[#self+1] = data
 	self.cursor = self.cursor + size
 end
 
@@ -801,7 +801,7 @@ function Encoder:union(value, idltype)                                          
 end
 
 function Encoder:enum(value, idltype)                                           --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
-	value = tonumber(value) or idltype.labelvalue[value]
+	value = idltype.labelvalue[value] or tonumber(value)
 	if not value then assert.illegal(value, "enum value", "MARSHAL") end
 	self:ulong(value)                                                             --[[VERBOSE]] verbose:marshal(false)
 end

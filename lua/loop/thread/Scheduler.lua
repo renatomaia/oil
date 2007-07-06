@@ -265,7 +265,7 @@ end
 --[[VERBOSE]] 		local id = self.current
 --[[VERBOSE]] 		local label = {}
 --[[VERBOSE]] 		repeat
---[[VERBOSE]] 			table.insert(label, LabelStart + (id % 26))
+--[[VERBOSE]] 			label[#label+1] = LabelStart + (id % 26)
 --[[VERBOSE]] 			id = math.floor(id / 26)
 --[[VERBOSE]] 		until id <= 0
 --[[VERBOSE]] 		self.current = self.current + 1

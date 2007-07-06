@@ -40,7 +40,7 @@ function source(self, includes)
 		if cond then
 			assert(type(strip[1]) == "string",
 				"code string is not a string")
-			table.insert(func, strip[1])
+			func[#func+1] = strip[1]
 		end
 	end
 	return table.concat(func, "\n")
