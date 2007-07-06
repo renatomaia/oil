@@ -53,18 +53,21 @@ _M.getupvalue = debug and debug.getupvalue
 _M.setupvalue = debug and debug.setupvalue
 _M.package = package and package.loaded
 ------------------------------------------------------------------------------
-local Environment = oo.class{ __index = _G }
+Environment = oo.class{ __index = _G }
 
 function __init(self, object)
 	self = oo.rawnew(self, object)
 	self.environment = self.environment or Environment()
 	self.environment[self.namespace] = self
+	if self.globals then
+		self[self.globals] = self.namespace..".globals"
+	end
 	if self.package then
 		for name, pack in pairs(self.package) do
-			if pack == self.globals then
-				self[pack] = self.namespace..".globals"
-			elseif type(pack) == "table" then
+			if not self[pack] then
 				self[pack] = "require('"..name.."')"
+			end
+			if type(pack) == "table" then
 				for field, member in pairs(pack) do
 					local kind = type(member)
 					if
