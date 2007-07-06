@@ -196,7 +196,7 @@ end
 
 --------------------------------------------------------------------------------
 
-local ContainerKey = newproxy()
+ContainerKey = newproxy()
 
 Contents = oo.class()
 
@@ -230,8 +230,7 @@ Contents._removebyname = Contents._removeat
 
 function Container(self)
 	if not oo.instanceof(self.definitions, Contents) then
-		local contents = Contents()
-		contents[ContainerKey] = self
+		local contents = Contents{ [ContainerKey] = self }
 		if self.definitions then
 			for _, value in ipairs(self.definitions) do
 				assert.type(value.name, "string", "IDL definition name")
@@ -245,8 +244,6 @@ function Container(self)
 		end
 		self.definitions = contents
 	end
-
-
 	return self
 end
 
@@ -408,7 +405,7 @@ function operation(self)
 	self.inputs = {}
 	self.outputs = {}
 	if self.result and self.result ~= void then
-		table.insert(self.outputs, self.result)
+		self.outputs[#self.outputs+1] = self.result
 	end
 	if self.parameters then
 		for _, param in ipairs(self.parameters) do
@@ -416,17 +413,17 @@ function operation(self)
 			if param.mode then
 				assert.type(param.mode, "string", "operation parameter mode")
 				if param.mode == "PARAM_IN" then
-					table.insert(self.inputs, param.type)
+					self.inputs[#self.inputs+1] = param.type
 				elseif param.mode == "PARAM_OUT" then
-					table.insert(self.outputs, param.type)
+					self.outputs[#self.outputs+1] = param.type
 				elseif param.mode == "PARAM_INOUT" then
-					table.insert(self.inputs, param.type)
-					table.insert(self.outputs, param.type)
+					self.inputs[#self.inputs+1] = param.type
+					self.outputs[#self.outputs+1] = param.type
 				else
 					assert.illegal(param.mode, "operation parameter mode")
 				end
 			else
-				table.insert(self.inputs, param.type)
+				self.inputs[#self.inputs+1] = param.type
 			end
 		end
 	end
