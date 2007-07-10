@@ -1,3 +1,11 @@
+--------------------------------------------------------------------------------
+-- Project: Library Generation Utilities                                      --
+-- Release: 1.0 alpha                                                         --
+-- Title  : Pre-Compiler of Lua Script Files                                  --
+-- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
+-- Date   : 13/12/2004 13:51                                                  --
+--------------------------------------------------------------------------------
+
 local FILE_SEP = "/"
 local FUNC_SEP = "_"
 local PACK_SEP = "."
@@ -27,10 +35,7 @@ end
 
 function processargs(arg)
 	local i = 1
-	if not arg then
-		io.stderr:write("usage: lua precompiler.lua [options] <scripts>")
-	end
-	while arg[i] do
+	while arg and arg[i] do
 		local opt = string.match(arg[i], "^%-(.+)$")
 		if not opt then break end
 		
@@ -53,7 +58,37 @@ function processargs(arg)
 		i = i + 1
 	end
 	
-	return i, table.getn(arg)
+	local argcount = table.getn(arg)
+	if not arg or i > argcount then
+		io.stderr:write([[
+Script for pre-compilation of Lua script files
+By Renato Maia <maia@tecgraf.puc-rio.br>
+
+usage: lua precompiler.lua [options] <scripts>
+  
+  options:
+  
+  -d, -directory  Directory where the output files should be generated. Its
+                  default is the current directory.
+  
+  -f, -filename   Name used to form the name of the files generated. Two files
+                  are generates: a source code file with the sufix '.c' with
+                  the pre-compiled scripts and a header file with the sufix
+                  '.h' with function signatures. Its default is 'precompiled'.
+  
+  -l, -luapath    Root directory of the script files to be compiled.
+                  The script files must follow the same hierarchy of the
+                  packages they implement, similarly to the hierarchy imposed
+                  by the value of the 'package.path' defined in the standard
+                  Lua distribution. Its default is the current directory.
+  
+  -p, -prefix     Prefix added to the signature of the functions generated.
+                  Its default is LUAOPEN_API.
+]])
+		os.exit(1)
+	end
+	
+	return i, argcount
 end
 
 function getname(file)
