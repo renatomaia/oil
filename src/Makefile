@@ -161,11 +161,12 @@ none:
 	@echo "Please choose a platform: $(PLATS)"
 
 linux:
-	$(MAKE) all MYCFLAGS="-fpic" MYLDFLAGS="-Wl,-E -O -shared"
+	$(MAKE) all MYCFLAGS="-fpic $(MYCFLAGS)" \
+	            MYLDFLAGS="-Wl,-E -O -shared $(MYCFLAGS) "
 
 macosx:
-	$(MAKE) all MYCFLAGS="-fno-common" \
-	            MYLDFLAGS="-bundle -undefined dynamic_lookup" \
+	$(MAKE) all MYCFLAGS="-fno-common $(MYCFLAGS)" \
+	            MYLDFLAGS="-bundle -undefined dynamic_lookup $(MYLDFLAGS)" \
 	            LD='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc'
 
 # DO NOT DELETE

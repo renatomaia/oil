@@ -30,6 +30,7 @@ INSTALL_DATA= cp -r
 #COMPAT_51= compat-5.1.o
 #INSTALL_LMOD= $(INSTALL_TOP)/share/lua/5.0
 #INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/5.0
+#LUAINTFLAGS= -lcompat-5.1.lua
 #MYCFLAGS= -DCOMPAT_51
 #MYLIBS= -llualib
 
@@ -53,7 +54,7 @@ LIBS= -lm -ldl -llua $(MYLIBS)
 
 V= 0.3
 
-LUAINT= $(LUA_BIN)/lua
+LUAINT= $(LUA_BIN)/lua $(LUAINTFLAGS)
 
 # Flags for pre-compilation of Lua scripts
 PC_FLAGS= -p OIL_API
