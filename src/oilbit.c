@@ -11,10 +11,6 @@
 #include <string.h>
 #include <lauxlib.h>
 
-#ifdef COMPAT_51
-#include "compat-5.1.h"
-#endif
-
 static const char svn_id[] = "$Id$";
 
 /******************************************************************************/

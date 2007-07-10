@@ -1,6 +1,6 @@
 # == CHANGE THE SETTINGS BELOW TO SUIT YOUR ENVIRONMENT =======================
 
-LUA_HOME= /home/a/rcosme/lua
+LUA_HOME= /usr/local
 LUA_INC= $(LUA_HOME)/include
 LUA_LIB= $(LUA_HOME)/lib
 LUA_BIN= $(LUA_HOME)/bin
@@ -35,22 +35,13 @@ MYLDFLAGS=
 #
 #MYCFLAGS+= -DLARGE_NUMBERS
 
-# If you are using Lua-5.0.2 then uncomment the following line to include the
-# compatibility module.
-#
-#COMPAT_51= compat-5.1.o
-#INSTALL_LMOD= $(INSTALL_TOP)/share/lua/5.0
-#INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/5.0
-#MYCFLAGS+= -DCOMPAT_51
-#MYLIBS+= -llualib
-
 # == END OF USER SETTINGS. NO NEED TO CHANGE ANYTHING BELOW THIS LINE =========
 
 # Your platform. See PLATS for possible values.
 PLAT= none
 
 # Convenience platforms targets.
-PLATS= linux macosx
+PLATS= linux macos
 
 CC= gcc
 CFLAGS= -O2 -Wall -I$(LUA_INC) $(MYCFLAGS)
@@ -60,9 +51,9 @@ RANLIB= ranlib
 RM= rm -f
 LIBS= -lm -ldl -llua $(MYLIBS)
 
-V= 0.3
+V= 0.4
 
-LUAINT= $(LUA_BIN)/lua
+LUA= $(LUA_BIN)/lua -epackage.path=[[../lua/?.lua]]
 
 # Flags for pre-compilation of Lua scripts
 PC_FLAGS= -p OIL_API

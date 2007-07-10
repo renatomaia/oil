@@ -113,7 +113,7 @@ OIL_PCK= oil/assert.lua                        \
          oil/ludo/Requester.lua
 
 OILBIT_INC=	oilbit.h
-OILBIT_OBJ=	oilbit.o $(COMPAT_51)
+OILBIT_OBJ=	oilbit.o
 OILBIT_LIB=	liboilbit.a
 OILBIT_SOL=	liboilbit.$V.so
 
@@ -151,16 +151,16 @@ a:	$(ALL_LIB)
 so:	$(ALL_SOL)
 
 loop.c loop.h: $(PRECMP_LUA)
-	$(LUAINT) $(PRECMP_LUA) $(PC_FLAGS) -l ../lua -f loop $(LOOP_PCK)
+	$(LUA) $(PRECMP_LUA) $(PC_FLAGS) -l ../lua -f loop $(LOOP_PCK)
 
 luaidl.c luaidl.h: $(PRECMP_LUA)
-	$(LUAINT) $(PRECMP_LUA) $(PC_FLAGS) -l ../lua -f luaidl $(LUAIDL_PCK)
+	$(LUA) $(PRECMP_LUA) $(PC_FLAGS) -l ../lua -f luaidl $(LUAIDL_PCK)
 
 oil.c oil.h: $(PRECMP_LUA)
-	$(LUAINT) $(PRECMP_LUA) $(PC_FLAGS) -l ../lua -f oil $(OIL_PCK)
+	$(LUA) $(PRECMP_LUA) $(PC_FLAGS) -l ../lua -f oil $(OIL_PCK)
 
 oilall.c oilall.h: $(PRELDR_LUA) $(PRECMP_INC) $(OILBIT_INC)
-	$(LUAINT) $(PRELDR_LUA) $(PLD_FLAGS) -f oilall $(PRECMP_INC) $(OILBIT_INC)
+	$(LUA) $(PRELDR_LUA) $(PLD_FLAGS) -f oilall $(PRECMP_INC) $(OILBIT_INC)
 
 # OIL BIT LIBRARY
 
@@ -196,7 +196,7 @@ preload: $(PRELDR_LIB) $(PRELDR_SOL)
 
 # STAND-ALONE CONSOLE
 
-$(OILBIN_TRG): $(COMPAT_51) $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ) $(OILBIN_OBJ)
+$(OILBIN_TRG): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ) $(OILBIN_OBJ)
 	$(CC) $(LDFLAGS) -o $@ $? $(LIBS)
 
 clean:
@@ -224,7 +224,7 @@ linux:
 	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
 	            MYLDFLAGS="-Wl,-E -O -shared $(MYLDFLAGS)"
 
-macosx:
+macos:
 	$(MAKE) all MYCFLAGS="-fno-common $(MYCFLAGS)" \
 	            MYLDFLAGS="-bundle -undefined dynamic_lookup $(MYLDFLAGS)" \
 	            LD='export MACOSX_DEPLOYMENT_TARGET="10.3"; gcc'

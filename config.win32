@@ -25,14 +25,6 @@ INSTALL_DATA= copy
 # Libraries required for DLL compilation
 #
 MYLIBS= lua.lib
-
-# If you are using Lua-5.0.2 then uncomment the following line to include the
-# compatibility module.
-#
-#COMPAT_51= compat-5.1.obj
-#MYCFLAGS= $(MYCFLAGS) /DCOMPAT_51
-#MYLIBS= $(MYLIBS) lualib.lib
-
 MYLDFLAGS=
 
 # == END OF USER SETTINGS. NO NEED TO CHANGE ANYTHING BELOW THIS LINE =========
@@ -51,9 +43,9 @@ LDFLAGS= /nologo /LIBPATH:$(LUA_LIB) $(MYLDFLAGS)
 RM= -del
 LBT= lib
 
-V= 0.3
+V= 0.4
 
-LUAINT= $(LUA_BIN)\lua
+LUA= $(LUA_BIN)\lua -epackage.path=[[../lua/?.lua]]
 
 # Flags for pre-compilation of Lua scripts
 PC_FLAGS= -p OIL_API

@@ -113,7 +113,7 @@ OIL_PCK= oil/assert.lua                        \
          oil/ludo/Requester.lua
 
 OILBIT_INC=	oilbit.h
-OILBIT_OBJ=	oilbit.obj $(COMPAT_51)
+OILBIT_OBJ=	oilbit.obj
 OILBIT_LIB=	oilbit.lib
 OILBIT_EXT=	oilbit.dll oilbit.exp
 
@@ -146,16 +146,16 @@ obj:	$(ALL_OBJ)
 lib:	$(ALL_LIB)
 
 loop.c loop.h: $(PRECMP_LUA)
-	$(LUAINT) $(PRECMP_LUA) $(PC_FLAGS) -l ..\lua -f loop $(LOOP_PCK)
+	$(LUA) $(PRECMP_LUA) $(PC_FLAGS) -l ..\lua -f loop $(LOOP_PCK)
 
 luaidl.c luaidl.h: $(PRECMP_LUA)
-	$(LUAINT) $(PRECMP_LUA) $(PC_FLAGS) -l ..\lua -f luaidl $(LUAIDL_PCK)
+	$(LUA) $(PRECMP_LUA) $(PC_FLAGS) -l ..\lua -f luaidl $(LUAIDL_PCK)
 
 oil.c oil.h: $(PRECMP_LUA)
-	$(LUAINT) $(PRECMP_LUA) $(PC_FLAGS) -l ..\lua -f oil $(OIL_PCK)
+	$(LUA) $(PRECMP_LUA) $(PC_FLAGS) -l ..\lua -f oil $(OIL_PCK)
 
 oilall.c oilall.h: $(PRELDR_LUA) $(PRECMP_INC) $(OILBIT_INC)
-	$(LUAINT) $(PRELDR_LUA) $(PLD_FLAGS) -f oilall $(PRECMP_INC) $(OILBIT_INC)
+	$(LUA) $(PRELDR_LUA) $(PLD_FLAGS) -f oilall $(PRECMP_INC) $(OILBIT_INC)
 
 $(OILBIT_LIB): $(OILBIT_OBJ)
 	$(LINK) /$(LBT) $(LDFLAGS) /out:oilbit.$(LBT) $(OILBIT_OBJ) $(LIBS)
@@ -163,8 +163,8 @@ $(OILBIT_LIB): $(OILBIT_OBJ)
 $(PRELDR_LIB): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ)
 	$(LINK) /$(LBT) $(LDFLAGS) /out:oilall.$(LBT) $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ) $(LIBS)
 
-$(OILBIN_TRG): $(COMPAT_51) $(OILBIN_OBJ) $(PRELDR_LIB)
-	$(LINK) $(LDFLAGS) /out:$@ $(COMPAT_51) $(OILBIN_OBJ) $(PRELDR_LIB) $(LIBS)
+$(OILBIN_TRG): $(OILBIN_OBJ) $(PRELDR_LIB)
+	$(LINK) $(LDFLAGS) /out:$@ $(OILBIN_OBJ) $(PRELDR_LIB) $(LIBS)
 
 bundles: $(OILBIT_OBJ) $(PRECMP_OBJ)
 	$(LINK) /$(LBT) $(LDFLAGS) /out:loop.$(LBT)             loop.obj $(LIBS)
