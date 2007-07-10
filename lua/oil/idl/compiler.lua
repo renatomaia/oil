@@ -66,7 +66,7 @@ callbacks.operation = function(def)
 	if def.exceptions then
 		local exceptions = {}
 		for repid, except in pairs(def.exceptions) do
-			exceptions[#exceptions+1] = except
+			table.insert(exceptions, except)
 		end
 		def.exceptions = exceptions
 	end
