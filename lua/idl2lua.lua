@@ -1,68 +1,59 @@
-local Options = {
-	output = "compiled.lua",
-	assembly = "require('oil')"
-}
-
-local Alias = {
-	o = "output",
-	a = "assembly",
-}
-
-function processargs(...)
-	local i = 1
-	local count = select("#", ...)
-	while i <= count do
-		local arg = select(i, ...)
-		local opt = arg:match("^%-(.+)$")
-		if not opt then
-			return select(i, ...)
-		end
-		
-		opt = Alias[opt] or opt
-		local opkind = type(Options[opt])
-		if opkind == "boolean" then
-			Options[opt] = true
-		elseif opkind == "number" then
-			i = i + 1
-			Options[opt] = tonumber(select(i, ...))
-		elseif opkind == "string" then
-			i = i + 1
-			Options[opt] = select(i, ...)
-		elseif opkind == "table" then
-			i = i + 1
-			table.insert(Options[opt], select(i, ...))
-		else
-			io.stderr:write("unknown option ", opt)
-		end
-		i = i + 1
-	end
-	
-	io.stderr:write([[
-Script for pre-compilation of IDL files
-By Renato Maia <maia@tecgraf.puc-rio.br>
-
-usage: lua idlprecomp.lua [options] <idl>
- 
- options:
- 
- -o, -output     Output file that should be generated. Its default is
-                 'compiled.lua'.
- 
- -a, -assembly   ORB assembly the IDL must be loaded to. Its default
-                 is 'require("oil")' that denotes the assembly returned
-                 by the 'oil' package.
-]])
-	os.exit(1)
-end
-
 --------------------------------------------------------------------------------
+-- Project: Library Generation Utilities                                      --
+-- Release: 1.0 alpha                                                         --
+-- Title  : Serializer of IDL Descriptions into Lua Scripts                   --
+-- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
+-- Date   : 2007-07-10                                                        --
+--------------------------------------------------------------------------------
+
+local assert  = assert
+local pairs   = pairs
+local select  = select
+
+local io     = require "io"
+local os     = require "os"
+local string = require "string"
 
 local luaidl       = require "luaidl"
 local idl          = require "oil.corba.idl"
 local Compiler     = require "oil.corba.idl.Compiler"
 local StringStream = require "loop.serial.StringStream"
 
-local file = processargs(...)
+module("idl2lua", require "loop.compiler.Arguments")
+
+output   = "idl.lua"
+instance = "require('oil')"
+
+local help = [[
+Script for serialization of IDL files into Lua scripts.
+Copyright (C) 2007 Renato Maia <maia@inf.puc-rio.br>
+
+Usage: lua ]].._NAME..[[.lua [options] <idlfile>
+ 
+ Options:
+ 
+ -o, -output     Output file that should be generated. Its default is
+                 ']],output,[['.
+ 
+ -i, -instance   ORB instance the IDL must be loaded to. Its default
+                 is ']],instance,[[' that denotes the instance returned
+                 by the 'oil' package.
+]]
+
+_alias = {}
+for name in pairs(_M) do
+	_alias[name:sub(1, 1)] = name
+end
+
+local start, errmsg = _M(...)
+local finish = select("#", ...)
+if not start or start ~= finish then
+	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
+	io.stderr:write(help)
+	os.exit(1)
+end
+local idlfile = select(start, ...)
+--------------------------------------------------------------------------------
 
 local stream = StringStream()
 stream[idl]              = "idl"
@@ -86,19 +77,20 @@ stream[idl.object]       = "idl.object"
 stream[idl.basesof]      = "idl.basesof"
 stream[idl.Contents]     = "idl.Contents"
 stream[idl.ContainerKey] = "idl.ContainerKey"
-stream:put(luaidl.parsefile(file, Compiler.Options))
+stream:put(luaidl.parsefile(idlfile, Compiler.Options))
 
-local CompiledFile = [=[
-local StringStream = require "loop.serial.StringStream"
-local stream = StringStream{
-	environment = { idl = require "oil.corba.idl" },
-	data = [[%s]]
-}
-
-local orb = %s
-orb.TypeRepository.types:register(stream:get())
-]=]
-
-local file = assert(io.open(Options.output, "w"))
-file:write(CompiledFile:format(stream:__tostring(), Options.assembly))
+local file = assert(io.open(output, "w"))
+file:write(
+instance,[[.TypeRepository.types:register(
+	setfenv(
+		function()
+			return ]],stream:__tostring(),[[ 
+		end,
+		{
+			idl = require "oil.corba.idl",
+			]],stream.namespace,[[ = require("loop.serial.Serializer")(),
+		}
+	)()
+)
+]])
 file:close()
