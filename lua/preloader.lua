@@ -147,7 +147,7 @@ outc:write([[
 #include "]],Options.filename,[[.h"
 
 ]],Options.prefix,[[ int luapreload_]],Options.filename,[[(lua_State *L) {
-	luaL_findtable(L, LUA_GLOBALSINDEX, "package.preload", ]], finish, [[);
+	luaL_findtable(L, LUA_GLOBALSINDEX, "package.preload", ]], finish-start+1, [[);
 	
 ]])
 
