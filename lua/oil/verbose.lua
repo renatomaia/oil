@@ -43,6 +43,10 @@ function viewer.labels:retrieve(value)
   return string.format("%s:%s", type, string.char(unpack(label)))
 end
 
+function output(self, output)
+	self.viewer.output = output
+end
+
 groups.broker = { "acceptor", "dispatcher", "proxies" }
 groups.communication = { "mutex", "invoke", "listen", "message", "channels" }
 groups.transport = { "marshal", "unmarshal" }
