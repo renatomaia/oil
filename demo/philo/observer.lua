@@ -43,6 +43,6 @@ end
 require "oil"
 oil.main(function()
 	oil.loadidlfile("philo.idl")
-	oil.writeto("observer.ior", oil.tostring(oil.newobject(ObserverHome, "ObserverHome")))
+	oil.writeto("observer.ior", oil.tostring(oil.newsevant(ObserverHome, "ObserverHome")))
 	oil.run()
 end)

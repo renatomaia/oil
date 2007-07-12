@@ -10,7 +10,7 @@ using namespace Hello;
 
 std::string HelloWorld::say_hello_to(std::string name)
 {
-	std::string message("Hello " + name + "!");
+	std::string message("C++: Hello " + name + "!");
 	count++;
 	if (!quiet) std::cout << message << std::endl;
 	return message;

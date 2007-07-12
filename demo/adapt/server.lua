@@ -23,8 +23,8 @@ oil.main(function()
 		oil.loadidl(definition)
 	end
 	------------------------------------------------------------------------------
-	local server = oil.newobject(server_impl, "IDL:Adaptation/Server:1.0")
-	local adaptor = oil.newobject(adaptor_impl, "IDL:Adaptation/Adaptor:1.0")
+	local server = oil.newsevant(server_impl, "IDL:Adaptation/Server:1.0")
+	local adaptor = oil.newsevant(adaptor_impl, "IDL:Adaptation/Adaptor:1.0")
 	------------------------------------------------------------------------------
 	oil.writeto("server.ior", oil.tostring(server))
 	oil.writeto("serveradaptor.ior", oil.tostring(adaptor))

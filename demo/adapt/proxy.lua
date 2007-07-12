@@ -27,8 +27,8 @@ oil.main(function()
 		oil.loadidl(definition)
 	end
 	------------------------------------------------------------------------------
-	local proxy = oil.newobject(proxy_impl, "IDL:Adaptation/Proxy:1.0")
-	local adaptor = oil.newobject(adaptor_impl, "IDL:Adaptation/Adaptor:1.0")
+	local proxy = oil.newsevant(proxy_impl, "IDL:Adaptation/Proxy:1.0")
+	local adaptor = oil.newsevant(adaptor_impl, "IDL:Adaptation/Adaptor:1.0")
 	------------------------------------------------------------------------------
 	oil.writeto("proxy.ior", oil.tostring(proxy))
 	oil.writeto("proxyadaptor.ior", oil.tostring(adaptor))

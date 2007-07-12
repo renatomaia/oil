@@ -11,7 +11,7 @@ oil.main(function()
 	end
 
 	oil.init{ port = 2809 }
-	hello = oil.newobject(hello, "Hello", "MyHello")
+	hello = oil.newsevant(hello, "Hello", "MyHello")
 
 	oil.run()
 end)

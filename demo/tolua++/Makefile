@@ -29,4 +29,3 @@ bind.cpp: hello.pkg
 	$(LUA5_BIN)/tolua++ -H bind.hpp -o $@ $<
 clean:
 	rm -f $T $(OBJS) bind.hpp bind.cpp
-

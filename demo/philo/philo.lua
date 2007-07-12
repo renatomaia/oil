@@ -126,6 +126,6 @@ end
 require "oil"
 oil.main(function()
 	oil.loadidlfile("philo.idl")
-	oil.writeto("philo.ior", oil.tostring(oil.newobject(PhilosopherHome, "PhilosopherHome")))
+	oil.writeto("philo.ior", oil.tostring(oil.newsevant(PhilosopherHome, "PhilosopherHome")))
 	oil.run()
 end)

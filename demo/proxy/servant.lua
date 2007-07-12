@@ -14,7 +14,7 @@ function hello:say_hello_to(name)
 	return msg
 end
 
-hello = oil.newobject(hello, "Hello")           -- Create CORBA object
+hello = oil.newsevant(hello, "Hello")           -- Create CORBA object
 
 local file = io.open("server.ior", "w")
 if file then

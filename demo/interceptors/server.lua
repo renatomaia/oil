@@ -79,7 +79,7 @@ oil.main(function()
 		return true
 	end
 	
-	local server = oil.newobject(server_impl, "Concurrency::Server")
+	local server = oil.newsevant(server_impl, "Concurrency::Server")
 	
 	assert(oil.writeto("server.ior", oil.tostring(server)))
 	
