@@ -13,21 +13,47 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- Interface:                                                                 --
---   loadidl(code)                                                            --
---   loadidlfile(path, pre)                                                   --
+--   assemble(flavor)                                                         --
 --                                                                            --
+--   types                                                                    --
+--   loadidl(code)                                                            --
+--   loadidlfile(path)                                                        --
 --   getLIR()                                                                 --
 --   getIR()                                                                  --
 --   setIR(ir)                                                                --
 --                                                                            --
---   newobject(obj, iface, key)                                               --
---   newproxy(obj, iface)                                                     --
---   narrow(proxy, iface)                                                     --
+--   newproxy(objref, [iface])                                                --
+--   narrow(proxy, [iface])                                                   --
 --                                                                            --
+--   newsevant(impl, [iface], [key])                                          --
+--   deactivate(object, [type])                                               --
+--   tostring(object)                                                         --
+--                                                                            --
+--   Config                                                                   --
 --   init()                                                                   --
 --   pending()                                                                --
 --   step()                                                                   --
 --   run()                                                                    --
+--   shutdown()                                                               --
+--                                                                            --
+--   main(function)                                                           --
+--   newthread(function, ...)                                                 --
+--   pcall(function, ...)                                                     --
+--   sleep(time)                                                              --
+--   time()                                                                   --
+--   tasks                                                                    --
+--                                                                            --
+--   newencoder()                                                             --
+--   newdecoder(stream)                                                       --
+--                                                                            --
+--   newexcept(body)                                                          --
+--   setexcatch(callback, [type])                                             --
+--                                                                            --
+--   setclientinterceptor([iceptor])                                          --
+--   setserverinterceptor([iceptor])                                          --
+--                                                                            --
+--   writeto(filepath, text)                                                  --
+--   readfrom(filepath)                                                       --
 --------------------------------------------------------------------------------
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
@@ -36,7 +62,8 @@ local module   = module
 local luapcall = pcall
 local require  = require
 
-local io = require "io"
+local io        = require "io"
+local coroutine = require "coroutine"
 
 local builder   = require "oil.builder"
 local assert    = require "oil.assert"
@@ -49,55 +76,70 @@ local OIL_FLAVOR = OIL_FLAVOR
 
 -- This API provides access to the basic functionalities of the OiL ORB.
 -- More advanced features may be accessed through more speciatialized interfaces
--- that currently are only supported as part of the internal implementation and
--- therefore may change in the future.
+-- provided by internal components. OiL internal component organization is ment
+-- to be customized for the application.
 
 module "oil"
 
-function assemble(flavor)
+--------------------------------------------------------------------------------
+-- Creates and assembles OiL components to compose an ORB instance.
+--
+-- The 'flavor' parameter defines a list of archtectural levels.
+-- Each level defines a set of components and connections that extends the
+-- following level.
+--
+-- Components are created by builder modules registered under namespace
+-- 'oil.builder.*' that must provide a 'create(components)' function.
+-- The parameter 'components' is a table with all components created by the
+-- previous levels builders and that must be used to store the components
+-- created by the builder.
+--
+-- Components created by a previous builder should not be replaced by components
+-- created by following builders.
+-- After all level components are they are assembled by assembler modules
+-- registered under namespace 'oil.arch.*' that must provide a
+-- 'assemble(components)' function.
+-- The parameter 'components' is a table with all components created by the
+-- levels builders.
+--
+-- NOTE: A default assembly is created when the 'oil' package is first required
+-- with levels "corba;typed;cooperative;base" or the one defined by global
+-- variable 'OIL_FLAVOR'.
+--
+-- @param flavor string Semi-colom separated list of component archtectures.
+-- @param [comps] table Table where assembled components must be stored.
+-- @return table Table with assembled components.
+--
+-- @usage comps = assemble("corba;typed;cooperative;base")                     .
+-- @usage comps = assemble("corba;typed;base")                                 .
+-- @usage comps = assemble("ludo;cooperative;base")                            .
+--
+function assemble(flavor, comps)
 	assert.type(flavor, "string", "OiL flavor name")
-	builder.build(flavor, _M)
-	scheduler = TaskManager
-	pcall = scheduler and scheduler.pcall or luapcall
+	return builder.build(flavor, comps)
 end
 
-assemble(OIL_FLAVOR or "corba;typed;cooperative;base")
+assemble(OIL_FLAVOR or "corba;typed;cooperative;base", _M)
 
 --------------------------------------------------------------------------------
--- Default configuration for creation of the default ORB instance.
-
--- The configuration values may differ accordingly to the IOP protocol.
--- For Internet IOP (IIOP) protocol the current options are the host name or IP
--- address and port that ORB must bind to, as well as the host name or IP
--- address and port that must be used in creation of object references.
-
--- @field protocoltag number Tag of the protocol the ORB shall use. Default is
--- tag 0, that indicates IIOP. (must be set before registration of any servant).
--- @field host string Host name or IP address (must be set before registration
--- of any servant).
--- @field host string Host name or IP address (must be set before registration
--- of any servant).
--- @field port number Port the ORB must listen (must be set before registration
--- of any servant).
--- @field iorhost string Host name or IP address informed in object references
--- (must be set before registration of any servant).
--- @field iorport number Port informed in object references (must be set before
--- registration of any servant).
-
--- @usage oil.Config.host = "middleware.inf.puc-rio.br"                        .
--- @usage oil.Config.host = "10.223.10.56"                                     .
--- @usage oil.Config.port = 8080                                               .
--- @usage oil.Config = {host = "10.223.10.56", port = 8080 }                   .
-
--- @see init
-
-Config = {}
+-- Internal interface repository used by the ORB.
+--
+-- This is a alias for a facet of the Type Respository component of the internal
+-- architecture.
+-- If the current assembly does not provide this component, this field is 'nil'.
+--
+-- @usage oil.types:register(oil.corba.idl.sequence{oil.corba.idl.string})     .
+-- @usage oil.types:lookup("CORBA::StructDescription")                         .
+-- @usage oil.types:lookup_id("IDL:omg.org/CORBA/InterfaceDef:1.0")            .
+--
+types = TypeRepository and TypeRepository.types
 
 --------------------------------------------------------------------------------
--- Loads an IDL code strip into the local Interface Repository.
-
+-- Loads an IDL code strip into the internal interface repository.
+--
 -- @param idlspec string The IDL code strip to be loaded into the local IR.
-
+-- @return ... object IDL descriptors that represents the loaded definitions.
+--
 -- @usage oil.loadidl [[
 --          interface Hello {
 --            attribute boolean quiet;
@@ -105,127 +147,87 @@ Config = {}
 --            string say_hello_to(in string msg);
 --          };
 --        ]]                                                                   .
-
+--
 function loadidl(idlspec)
 	assert.type(idlspec, "string", "IDL specification")
 	return assert.results(TypeRepository.compiler:load(idlspec))
 end
 
 --------------------------------------------------------------------------------
--- Loads an IDL file into the local Interface Repository.
-
--- The file specified will be optionally preprocessed by a command-line C++ pre-
--- processor prior to process directives like #include, #define, #ifdef and the
--- like.
--- The pre-processing is activated by parameter preprocess. 
--- In this case a new file is created in the path defined by the preprocess
--- parameter.
-
+-- Loads an IDL file into the internal interface repository.
+--
+-- The file specified will be parsed by the LuaIDL compiler and the resulting
+-- definitions are updated in the internal interface repository.
+-- If any errors occours during the parse no definitions are loaded into the IR.
+--
 -- @param filename string The path to the IDL file that must be loaded.
-
+-- @return ... object IDL descriptors that represents the loaded definitions.
+--
 -- @usage oil.loadidlfile "/usr/local/corba/idl/CosNaming.idl"                 .
 -- @usage oil.loadidlfile("HelloWorld.idl", "/tmp/preprocessed.idl")           .
-
+--
 function loadidlfile(filepath)
 	assert.type(filepath, "string", "IDL file path")
 	return assert.results(TypeRepository.compiler:loadfile(filepath))
 end
 
 --------------------------------------------------------------------------------
--- Get the local Interface Repository that exports local cached definitions.
-
--- @return 1 proxy CORBA object that exports the local Interface Repository.
-
+-- Get the servant of the internal interface repository.
+--
+-- @return proxy CORBA object that exports the local interface repository.
+--
+-- @usage oil.writeto("ir.ior", oil.tostring(oil.getLIR()))                    .
+--
 function getLIR()
-	return TypeRepository.types
+	return newsevant(TypeRepository.types,
+	                 "IDL:omg.org/CORBA/Repository:1.0",
+	                 "InterfaceRepository")
 end
 
 --------------------------------------------------------------------------------
--- Get the remote Interface Repository used to retrieve interface definitions.
-
--- @return 1 proxy Proxy for the remote IR currently used.
-
+-- Get the remote interface repository used to retrieve interface definitions.
+--
+-- @return proxy Proxy for the remote IR currently used.
+--
 function getIR()
-	return newobject(getLIR(), "IDL:omg.org/CORBA/Repository:1.0")
+	return TypeRepository.delegated
 end
 
 --------------------------------------------------------------------------------
--- Defines a remote Interface Repository used to retrieve interface definitions.
-
+-- Defines a remote interface repository used to retrieve interface definitions.
+--
 -- @param ir proxy Proxy for the remote IR to be used.
-
+--
 -- @usage oil.setIR(oil.newproxy("corbaloc::cos_host/InterfaceRepository",
 --                               "IDL:omg.org/CORBA/Repository:1.0"))          .
-
+--
 function setIR(ir)
-	TypeRepository.remote = ir
+	TypeRepository.delegated = ir
 end
 
 --------------------------------------------------------------------------------
--- Creates a new CORBA object implemented in Lua that supports some interface.
-
--- The value of object is used as the servant of a CORBA object that supports
--- the interface with repID (Interface Repository ID) defined in 'interface'.
--- Optionally, an object key value may be specified to create persistent
--- references.
--- The CORBA object returned by this function offers all servant attributes and
--- methods, as well as CORBA::Object basic operations like _ior().
-
--- @param object table Value used as the object servant (may be an indexable
--- value, e.g. userdata with a metatable that defined the __index field).
--- @param interface string Interface Repository ID or absolute name of the
--- interface the object supports.
--- @param key string [optional] User-defined object key used in creation of the
--- object reference.
-
--- @return table CORBA object created.
-
--- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0")       .
--- @usage oil.newobject({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
-
-function newobject(object, type, key)
-	if Config then init(Config) end
-	if not object then assert.illegal(object, "object implementation") end
-	if not type then assert.illegal(type, "interface definition") end
-	if key then assert.type(key, "string", "object key") end
-	return assert.results(ServerBroker.broker:object(object, key, type))
-end
-
-function deactivate(object, type)
-	if not object then
-		assert.illegal(object,
-			"object reference (servant, implementation or object key expected)")
-	end
-	return assert.results(ServerBroker.broker:remove(object, type))
-end
-
-function tostring(object)
-	assert.type(object, "table", "servant object")
-	return assert.results(ServerBroker.broker:tostring(object))
-end
-
---------------------------------------------------------------------------------
--- Creates a proxy for a CORBA object defined by an IOR (Inter-operable Object
--- Reference).
-
--- The value of object must be a string containing the IOR of the object the new
--- new proxy will represent.
--- Optionally, an interface supported by the CORBA object may be defined, in
+-- Creates a proxy for a remote object defined by a textual reference.
+--
+-- The value of reference must be a string containing reference information of
+-- the object the new new proxy will represent like a stringfied IOR
+-- (Inter-operable Object Reference) or corbaloc.
+-- Optionally, an interface supported by the remote object may be defined, in
 -- this case no attempt is made to determine the actual object interface, i.e.
 -- no network communication is made to check the object's interface.
-
--- @param object string Representation of Inter-operable Object Reference of the
--- object the new proxy will represent.
--- @param interface string [optional] Repository Interface ID or absolute name
--- of a interface the CORBA object supports (no interface or type check done).
-
--- @return table Proxy to the CORBA object.
-
+--
+-- @param object string Textual representation of object's reference the new
+-- proxy will represent.
+-- @param interface string [optional] Interface identification in the interface
+-- repository, like a repID or absolute name of a interface the remote object
+-- supports (no interface or type check is done).
+--
+-- @return table Proxy to the remote object.
+--
 -- @usage oil.newproxy("IOR:00000002B494...")                                  .
 -- @usage oil.newproxy("IOR:00000002B494...", "HelloWorld::Hello")             .
 -- @usage oil.newproxy("IOR:00000002B494...", "IDL:HelloWorld/Hello:1.0")      .
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
-
+--
 function newproxy(object, type)
 	if Config then init(Config) end
 	assert.type(object, "string", "object reference")
@@ -234,33 +236,34 @@ end
 
 --------------------------------------------------------------------------------
 -- Narrow an object reference into some more specific interface supported by the
--- CORBA object.
-
--- The object reference is defined as a proxy object.
--- If you wish to create a proxy to an object specified by an IOR that must be
--- created already narrowed into some interface, use newproxy function.
+-- remote object.
+--
+-- The object's reference is defined as a proxy object.
+-- If you wish to create a proxy to an object specified by a textual reference
+-- like an IOR (Inter-operable Object Reference) that is already narrowed into
+-- function.
 -- The interface the object reference must be narrowed into is defined by the
--- Interface Repository ID stored in parameter 'interface'.
+-- parameter 'interface' (e.g. an interface repository ID).
 -- If no interface is defined, then the object reference is narrowed to the most
--- specific interface supported by the COBRA object.
+-- specific interface supported by the remote object.
 -- Note that in the former case, no attempt is made to determine the actual
 -- object interface, i.e. no network communication is made to check the object's
 -- interface.
-
--- @param proxy table Proxy that represents the CORBA object which reference
+--
+-- @param proxy table Proxy that represents the remote object which reference
 -- must be narrowed.
--- @param interface string [optional] Repository Interface ID of the interface
--- the object reference must be narrowed into (no interface or type check is
+-- @param interface string [optional] Identification of the interface the
+-- object reference must be narrowed into (no interface or type check is
 -- made).
-
--- @return table New proxy to the CORBA object narrowed into some interface
--- supported by the CORBA object.
-
+--
+-- @return table New proxy to the remote object narrowed into some interface
+-- supported by the object.
+--
 -- @usage oil.narrow(ns:resolve_str("HelloWorld"))                             .
 -- @usage oil.narrow(ns:resolve_str("HelloWorld"), "IDL:HelloWorld/Hello:1.0") .
-
+--
 -- @see newproxy
-
+--
 function narrow(object, type)
 	assert.type(object, "table", "object proxy")
 	if type then assert.type(type, "string", "interface definition") end
@@ -268,25 +271,126 @@ function narrow(object, type)
 end
 
 --------------------------------------------------------------------------------
--- Initialize the OiL main ORB.
+-- Creates a new servant implemented in Lua that supports some interface.
+--
+-- The value of object is used as the implemenation of a servant that supports
+-- the interface defined in 'interface' (e.g. interface repository ID).
+-- Optionally, an object key value may be specified to create persistent
+-- references.
+-- After this call any requests which object key matches the key of the servant
+-- are dispathed to its implementation.
+--
+-- @param object table Value used as the servant implementation (may be any
+-- indexable value, e.g. userdata with a metatable that defined the __index
+-- field).
+-- @param interface string Interface identification line an absolute name of the
+-- interface in the internal interface repository.
+-- @param key string [optional] User-defined object key used in creation of the
+-- object reference.
+--
+-- @return table servant created.
+--
+-- @usage oil.newsevant({say_hello_to=print},"IDL:HelloWorld/Hello:1.0")       .
+-- @usage oil.newsevant({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
+--
+function newsevant(impl, type, key)
+	if Config then init(Config) end
+	if not impl then assert.illegal(impl, "servant's implementation") end
+	if not type then assert.illegal(type, "interface definition") end
+	if key then assert.type(key, "string", "servant's key") end
+	return assert.results(ServerBroker.broker:object(impl, key, type))
+end
 
--- Initialize the default ORB instance with the provided configurations. The
--- configuration values may differ accordingly to the IOP protocol.
+--------------------------------------------------------------------------------
+-- Deactivates a servant by removing its implementation from the object map.
+--
+-- If 'object' is a servant (i.e. the object returned by 'newservant') then it
+-- is deactivated.
+-- Alternatively, the 'object' parameter may be the servant's object key.
+-- Only in the case that the servant was created with an implicitly created key
+-- by the ORB then the 'object' can be the servant's implementation.
+-- Since a single implementation object can be used to create many servants with
+-- differentes interface, in this case the 'type' parameter must be provided
+-- with the exact servant's interface.
+--
+-- @param string|object object Servant's object key, servant's implementation or
+-- servant itself.
+-- @param string|object type Identification of the servant's interface.
+--
+-- @usage oil.deactivate(oil.newservant(impl, "::MyInterface", "objkey"))
+-- @usage oil.deactivate("objkey")
+-- @usage oil.deactivate(impl, "MyInterface")
+--
+function deactivate(object, type)
+	if not object then
+		assert.illegal(object,
+			"object reference (servant, implementation or object key expected)")
+	end
+	return assert.results(ServerBroker.broker:remove(object, type))
+end
+
+--------------------------------------------------------------------------------
+-- Returns textual information that identifies the servant.
+--
+-- This function is used to get textual information that references a servant
+-- or proxy like an IOR (Inter-operable Object Reference).
+--
+-- @param object servant Servant which textual referecence must be taken.
+--
+-- @usage oil.writeto("ref.ior", oil.tostring(oil.newservant(impl, "::Hello")))
+--
+function tostring(object)
+	assert.type(object, "table", "servant object")
+	return assert.results(ServerBroker.broker:tostring(object))
+end
+
+--------------------------------------------------------------------------------
+-- Default configuration for creation of the default ORB instance.
+--
+-- The configuration values may differ accordingly to the underlying protocol.
 -- For Internet IOP (IIOP) protocol the current options are the host name or IP
 -- address and port that ORB must bind to, as well as the host name or IP
 -- address and port that must be used in creation of object references.
+--
+-- @field protocoltag number Tag of the protocol the ORB shall use. Default is
+-- tag 0, that indicates IIOP. (must be set before registration of any servant).
+-- @field host string Host name or IP address (must be set before registration
+-- of any servant).
+-- @field host string Host name or IP address (must be set before registration
+-- of any servant).
+-- @field port number Port the ORB must listen (must be set before registration
+-- of any servant).
+-- @field refhost string Host name or IP address informed in object references
+-- (must be set before registration of any servant).
+-- @field refport number Port informed in object references (must be set before
+-- registration of any servant).
+--
+-- @usage oil.Config.host = "middleware.inf.puc-rio.br"                        .
+-- @usage oil.Config.host = "10.223.10.56"                                     .
+-- @usage oil.Config.port = 8080                                               .
+-- @usage oil.Config = {host = "10.223.10.56", port = 8080 }                   .
+--
+-- @see init
+--
+Config = {}
+
+--------------------------------------------------------------------------------
+-- Initialize the OiL main ORB.
+--
+-- Initialize the default ORB instance with the provided configurations like
+-- described in 'Config'.
 -- If the default ORB already is created then this instance is returned.
--- This default ORB is used by all objects and proxies created by newobject and
+-- This default ORB is used by all objects and proxies created by newsevant and
 -- newproxy functions.
-
+--
 -- @param config table Configurations used to create the default ORB instance.
-
+--
 -- @usage oil.init()                                                           .
 -- @usage oil.init{ host = "middleware.inf.puc-rio.br" }                       .
 -- @usage oil.init{ host = "10.223.10.56", port = 8080 }                       .
-
+--
 -- @see Config
-
+--
 function init(config)
 	config, Config = config or Config, nil
 	assert.type(config, "table", "ORB configuration")
@@ -295,87 +399,335 @@ end
 
 --------------------------------------------------------------------------------
 -- Checks whether there is some request pending
-
+--
 -- Returns true if there is some ORB request pending or false otherwise.
-
+--
+-- @return boolean True if there is some ORB request pending or false otherwise.
+--
+-- @usage while oil.pending() do oil.stop() end                                .
+--
 function pending()
 	return assert.results(ServerBroker.broker:pending())
 end
 
 --------------------------------------------------------------------------------
 -- Waits for an ORB request and process it.
-
+--
 -- Process one single ORB request at each call. Returns true if success or nil
 -- and an exception.
-
+--
+-- @usage while oil.pending() do oil.stop() end                                .
+--
 function step()
 	return assert.results(ServerBroker.broker:step())
 end
 
 --------------------------------------------------------------------------------
 -- Runs the ORB main loop.
-
--- Requests the ORB to process remote CORBA requisitions repeatedly until some
+--
+-- Requests the ORB to process any remote requisitions repeatedly until some
 -- error occours.
-
+-- This function implicitly initiates the ORB if it was not initialized yet.
+--
+-- @see init
+--
 function run()
 	if Config then init(Config) end
 	return assert.results(ServerBroker.broker:run())
 end
 
+--------------------------------------------------------------------------------
+-- Shuts down the ORB.
+--
+-- Stops the ORB main loop if it is executing, handles all pending requests and
+-- closes all connections.
+--
+function shutdown()
+	return assert.results(ServerBroker.broker:shutdown())
+end
+
+--------------------------------------------------------------------------------
+-- Internal coroutine scheduler used by OiL.
+--
+-- This is a alias for a facet of the Task Manager component of the internal
+-- architecture.
+-- If the current assembly does not provide this component, this field is 'nil'.
+-- It provides the same API of the 'loop.thread.Scheduler' class.
+--
+tasks = TaskManager and TaskManager.tasks
+
+--------------------------------------------------------------------------------
+-- Function that must be used to perform protected calls in applications.
+--
+-- It is a 'coroutine-safe' version of the 'pcall' function of the Lua standard
+-- library.
+--
+pcall = tasks and tasks.pcall or luapcall
+
+--------------------------------------------------------------------------------
+-- Function executes the main function of the application.
+--
+-- The application's main function is executed in a new thread if the current
+-- assembly provides thread support.
+-- This may only return when the application terminates.
+--
+-- @param main function Appplication's main function.
+--
+-- @usage oil.main(oil.run)
+-- @usage oil.main(function() print(oil.tostring(oil.getLIR())) oil.run() end)
+--
 function main(main)
 	assert.type(main, "function", "main function")
 	if TaskManager then
 		local tasks = TaskManager.tasks
-		assert.results(tasks:register(tasks:new(main)))
+		assert.results(tasks:register(coroutine.create(main)))
 		return TaskManager.control:run()
 	else
 		return main()
 	end
 end
 
-function newthread(body, ...)
-	assert.type(body, "function", "thread body")
-	return TaskManager.tasks:start(body, ...)
+--------------------------------------------------------------------------------
+-- Creates and starts the execution of a new the thread.
+--
+-- Creates a new thread to execute the function 'func' with the extra parameters
+-- provided.
+-- This function imediately starts the execution of the new thread and the
+-- original thread is only resumed again acordingly to the the scheduler's
+-- internal policy.
+-- This function can only be invocated from others threads, including the one
+-- executing the application's main function (see 'main').
+--
+-- @param func function Function that the new thread will execute.
+-- @param ... any Additional parameters passed to the 'func' function.
+--
+-- @usage oil.main(function() oil.newthread(oil.run) oil.newproxy(oil.readfrom("ior")):register(localobj) end)
+--
+-- @see main
+--
+function newthread(func, ...)
+	assert.type(func, "function", "thread body")
+	return TaskManager.tasks:start(func, ...)
 end
 
+--------------------------------------------------------------------------------
+-- Suspends the execution of the current thread for some time.
+--
+-- @param time number Delay in seconds that the execution must be resumed.
+--
+-- @usage oil.sleep(5.5)
+--
 function sleep(time)
 	assert.type(time, "number", "time")
 	return OperatingSystem.sockets:sleep(time)
 end
 
 --------------------------------------------------------------------------------
--- Shuts down the ORB.
-
--- Stops the ORB main loop if it is executing and closes all connections.
-
-function shutdown()
-	return assert.results(ServerBroker.broker:shutdown())
+-- Creates a new value encoder that marshal values into strings.
+--
+-- @return object Value encoder that provides operation 'put(value, [type])' to
+-- marhsal values and operation 'getdata()' to get the marshaled stream.
+--
+-- @usage encoder = oil.newencoder(); encoder:put({1,2,3}, oil.corba.idl.sequence{oil.corba.idl.long})
+-- @usage encoder = oil.newencoder(); encoder:put({1,2,3}, oil.types:lookup("MyLongSeq"))
+--
+function newencoder()
+	return assert.results(ValueEncoder.codec:encoder(true))
 end
 
 --------------------------------------------------------------------------------
--- Alias of 'newobject' function.
+-- Creates a new value decoder that marshal values into strings.
+--
+-- @param stream string String containing a stream with marshaled values.
+--
+-- @return object Value decoder that provides operation 'get([type])' to
+-- unmarhsal values from a marshaled stream.
+--
+-- @usage decoder = oil.newdecoder(stream); val = decoder:get(oil.corba.idl.sequence{oil.corba.idl.long})
+-- @usage decoder = oil.newdecoder(stream); val = decoder:get(oil.types:lookup("MyLongSeq"))
+--
+function newdecoder(stream)
+	assert.type(stream, "string", "byte stream")
+	return assert.results(ValueEncoder.codec:decoder(stream, true))
+end
 
+--------------------------------------------------------------------------------
+-- Creates a new exception object with the given body.
+--
+-- The 'body' must contain the values of the exceptions fields and must also
+-- contain the exception identification in index 1 (in CORBA this
+-- identification is a repID).
+--
+-- @param body table Exception body with all its field values and exception ID.
+--
+-- @return object Exception that provides meta-method '__tostring' that provides
+-- a pretty-printing.
+--
+-- @usage error(oil.newexcept{ "IDL:omg.org.CORBA/INTERNAL:1.0", minor_code_value = 2 })
+--
+function newexcept(body)
+	assert.type(body, "table", "exception body")
+	return Exception(body)
+end
+
+--------------------------------------------------------------------------------
+-- Defines a exception handling function for proxies.
+--
+-- The handling function receives the following parameters:
+--   proxy    : object proxy that perfomed the operation.
+--   exception: exception/error raised.
+--   operation: descriptor of the operation that raised the exception.
+-- If the parameter 'type' is provided, then the exception handling function
+-- will be applied only to proxies of that type (i.e. interface).
+-- Exception handling functions are nor cumulative.
+-- For example, is the is an exception handling function defined for all proxies
+-- and other only for proxies of a given type, then the later will be used for
+-- proxies of that given type.
+-- Additionally, exceptions handlers are not inherited through interface
+-- hierarchies.
+--
+-- @param handler function Exception handling function.
+-- @param type string Interface ID of a group of proxies (e.g. repID).
+--
+-- @usage oil.setexcatch(function(_, except) error(tostring(except)) end)
+--
+function setexcatch(handler, type)
+	assert.results(ObjectProxies.proxies:excepthandler(handler, type))
+end
+
+--------------------------------------------------------------------------------
+-- This feature is disabled by default.
+-- To enable this feature use the following command before requiring the 'oil'
+-- package for the first time.
+--
+--   package.loaded["oil.component"] = require "loop.component.wrapped"
+--   package.loaded["oil.port"] = require "loop.component.intercepted"
+--
+local port       = require "oil.port"
+local ClientSide = require "oil.corba.interceptors.ClientSide"
+local ServerSide = require "oil.corba.interceptors.ServerSide"
+
+--------------------------------------------------------------------------------
+-- Sets a CORBA-specific interceptor for operation invocations in the client-size.
+--
+-- The interceptor must provide the following operations
+--
+--  send_request(request): 'request' structure is described below.
+--    request_id: [number] (read-only)
+--    response_expected: [boolean] (read-only)
+--    object_key: [string] (read-only)
+--    operation: [string] (read-only) Operation name.
+--    service_context: [table] Set this value to define a service context
+--      values. See 'ServiceContextList' in CORBA specs.
+--    success: [boolean] set this value to cancel invocation:
+--      true ==> invocation successfull
+--      false ==> invocation raised an exception
+--    The integer indexes store the operation's parameter values and should also
+--    be used to store the results values if the request is canceled.
+--
+--  receive_reply(reply): 'reply' structure is described below.
+--    service_context: [table] (read-only) See 'ServiceContextList' in CORBA
+--      specs.
+--    reply_status: [string] (read-only)
+--    success: [boolean] Identifies the kind of result:
+--      true ==> invocation successfull
+--      false ==> invocation raised an exception
+--    The integer indexes store the results that will be sent as request result.
+--    For successful invocations these values must be the operation's results
+--    (return, out and inout parameters) in the same order they appear in the
+--    IDL description. For failed invocations, index 1 must be the exception
+--    that identifies the failure.
+--
+-- The 'request' and 'reply' are the same table in a single invocation.
+-- Therefore, the fields of 'request' are also available in 'reply' except for
+-- those defined in the description of 'reply'.
+--
+function setclientinterceptor(iceptor)
+	assert.results(port.intercept, "interceptors not supported")
+	if iceptor then
+		iceptor = ClientSide{ interceptor = iceptor }
+	end
+	port.intercept(OperationRequester, "requests", "method", iceptor)
+	port.intercept(OperationRequester, "messenger", "method", iceptor)
+end
+
+--------------------------------------------------------------------------------
+-- Sets a CORBA-specific interceptor for operation invocations in the client-size.
+--
+-- The interceptor must provide the following operations
+--
+--  receive_request(request): 'request' structure is described below.
+--    service_context: [table] (read-only) See 'ServiceContextList' in CORBA
+--      specs.
+--    request_id: [number] (read-only)
+--    response_expected: [boolean] (read-only)
+--    object_key: [string] (read-only)
+--    operation: [string] (read-only) Operation name.
+--    servant: [object] Local object the invocation will be dispatched to.
+--    method: [function] Function that will be invoked on object 'servant'.
+--    success: [boolean] Set this value to cancel invocation:
+--      true ==> invocation successfull
+--      false ==> invocation raised an exception
+--    The integer indexes store the operation's parameter values and should also
+--    be used to store the results values if the request is canceled.
+--
+--  send_reply(reply): 'reply' structure is described below.
+--    service_context: [table] Set this value to define a service context
+--      values. See 'ServiceContextList' in CORBA specs.
+--    success: [boolean] identifies the kind of result:
+--      true ==> invocation successfull
+--      false ==> invocation raised an exception
+--    The integer indexes store the results that will be sent as request result.
+--    For successful invocations these values must be the operation's results
+--    (return, out and inout parameters) in the same order they appear in the
+--    IDL description. For failed invocations, index 1 must be the exception
+--    that identifies the failure.
+--
+-- The 'request' and 'reply' are the same table in a single invocation.
+-- Therefore, the fields of 'request' are also available in 'reply' except for
+-- those defined in the description of 'reply'.
+--
+function setserverinterceptor(iceptor)
+	assert.results(port.intercept, "interceptors not supported")
+	if iceptor then
+		iceptor = ServerSide{ interceptor = iceptor }
+	end
+	port.intercept(RequestListener, "messenger", "method", iceptor)
+	port.intercept(RequestDispatcher, "dispatcher", "method", iceptor)
+end
+
+--------------------------------------------------------------------------------
+-- Alias of 'newsevant' function.
+--
+-- For compatibility with old OiL applications.
+--
+-- @see newsevant
+--
+newobject = newsevant
+
+--------------------------------------------------------------------------------
+-- Alias of 'newsevant' function.
+--
 -- For compatibility with LuaOrb applications.
-
--- @see newobject
-
-createservant = newobject
+--
+-- @see newsevant
+--
+createservant = newsevant
 
 --------------------------------------------------------------------------------
 -- Alias of 'newproxy' function.
-
+--
 -- For compatibility with LuaOrb applications.
-
+--
 -- @see newproxy
-
+--
 createproxy = newproxy
 
 --------------------------------------------------------------------------------
--- Creates a file with the IOR of an object.
-
+-- Writes a text into file.
+--
 -- Utility function for writing stringfied IORs into a file.
-
+--
 function writeto(filepath, text)
 	local result, errmsg = io.open(filepath, "w")
 	if result then
@@ -388,9 +740,9 @@ end
 
 --------------------------------------------------------------------------------
 -- Read the contents of a file.
-
+--
 -- Utility function for reading stringfied IORs from a file.
-
+--
 function readfrom(filepath)
 	local result, errmsg = io.open(filepath)
 	if result then
@@ -399,53 +751,4 @@ function readfrom(filepath)
 		file:close()
 	end
 	return result, errmsg
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function newencoder()
-	return assert.results(ValueEncoder.codec:encoder(true))
-end
-
-function newdecoder(stream)
-	assert.type(stream, "string", "byte stream")
-	return assert.results(ValueEncoder.codec:decoder(stream, true))
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function newexcept(body)
-	assert.type(body, "table", "exception body")
-	return Exception(body)
-end
-
-function setexcepthandler(handler, type)
-	assert.results(ObjectProxies.proxies:excepthandler(handler, type))
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-local port       = require "oil.port"
-local ClientSide = require "oil.corba.interceptors.ClientSide"
-local ServerSide = require "oil.corba.interceptors.ServerSide"
-
-function setclientinterceptor(iceptor)
-	assert.results(port.intercept, "interceptors not supported")
-	if iceptor then
-		iceptor = ClientSide{ interceptor = iceptor }
-	end
-	port.intercept(OperationRequester, "requests", "method", iceptor)
-	port.intercept(OperationRequester, "messenger", "method", iceptor)
-end
-
-function setserverinterceptor(iceptor)
-	assert.results(port.intercept, "interceptors not supported")
-	if iceptor then
-		iceptor = ServerSide{ interceptor = iceptor }
-	end
-	port.intercept(RequestListener, "messenger", "method", iceptor)
-	port.intercept(RequestDispatcher, "dispatcher", "method", iceptor)
 end
