@@ -24,7 +24,7 @@
 -- 	[type:table] lookup(name:string)
 -- 	[type:table] lookup_id(repid:string)
 -- 
--- remote:Recetacle
+-- delegated:Recetacle
 -- 	[type:table] lookup(name:string)
 -- 	[type:table] lookup_id(repid:string)
 ------------------------------------------------------------------------------ --
@@ -56,8 +56,8 @@ function lookup(self, search_name)
 	local context = self.context
 	local definition = context.types:lookup(search_name)
 	if not definition then
-		if context.remote then
-			definition = context.remote:lookup(search_name)
+		if context.delegated then
+			definition = context.delegated:lookup(search_name)
 			if definition then
 				definition = self:register(definition)
 			end
@@ -70,8 +70,8 @@ function lookup_id(self, search_id)
 	local context = self.context
 	local definition = context.types:lookup_id(search_id)
 	if not definition then
-		if context.remoteir then
-			definition = context.remoteir:lookup_id(search_id)
+		if context.delegated then
+			definition = context.delegated:lookup_id(search_id)
 			if definition then
 				definition = self:register(definition)
 			end
