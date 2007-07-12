@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -23,24 +18,20 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local require   = require
-local oo        = require "loop.base"
+local oo         = require "oil.oo"
+local Properties = require "oil.properties"                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.cos.event.Factory", oo.class)                                       --[[VERBOSE]] local verbose = require "oil.verbose"
+module("oil.corba.services.event.Factory", oo.class)
 
 --------------------------------------------------------------------------------
 -- Dependencies ----------------------------------------------------------------
 
-local os              = require "os"
-local oo              = require "loop.base"
-local Properties      = require "oil.properties"
 
 --------------------------------------------------------------------------------
 -- Key constants ---------------------------------------------------------------
 
 local PROPS   = "PROPS"
 local DATA    = "DATA"
-local CREATED = "CREATED"
 
 --------------------------------------------------------------------------------
 -- Configuration properties ----------------------------------------------------
@@ -50,7 +41,7 @@ local CREATED = "CREATED"
 
 -- @param props table [optional] Configuration properties.
 
-function __init(self, props)                                                    --[[VERBOSE]] verbose.server({"EventFactory:__init ", "entering"})
+function __init(self, props)                                                    --[[VERBOSE]] verbose:cos_event"EventFactory:__init entering"
     return oo.rawnew(self, {
                             [PROPS] = props,
                            })
@@ -58,10 +49,8 @@ end
 
 -- @param data table CORBA Any that contains generic event data.
 
-function create(self, data)                                                     --[[VERBOSE]] verbose.server({"EventFactory:create ", "entering"})
+function create(self, data)                                                     --[[VERBOSE]] verbose:cos_event "EventFactory:create entering"
     return {
-            [CREATED] = os.time(),
             [DATA] = data,
            }
 end
-

@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -13,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.3 alpha                                                         --
+-- Release: 0.4 alpha                                                         --
 -- Title  : Interoperable Naming Service                                      --
 -- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>                       --
 --------------------------------------------------------------------------------
@@ -40,20 +35,15 @@
 --   component of a name is not a context.                                    --
 --------------------------------------------------------------------------------
 
-local require = require
-
-local table  = require "table"
 local string = require "string"
-
-module "oil.cos.naming"
-
---------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
+local table  = require "table"
 
 local oo                = require "oil.oo"
 local assert            = require "oil.assert"
-local MapWithArrayOfKey = require "loop.collection.MapWithArrayOfKey"
+local MapWithArrayOfKey = require "loop.collection.MapWithArrayOfKeys"
 local UnorderedArray    = require "loop.collection.UnorderedArray"
+
+module "oil.corba.services.naming"
 
 --------------------------------------------------------------------------------
 -- Means to deal w/ orphaned contexts, iterators and bindings ------------------
@@ -449,5 +439,5 @@ end
 function new()
 	return NamingContextExt(),
 	       "IDL:omg.org/CosNaming/NamingContextExt:1.0",
-	       "NameService"
+	       "NamingService"
 end

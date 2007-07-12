@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -13,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.3 alpha                                                         --
+-- Release: 0.4 alpha                                                         --
 -- Title  : No priority queue for the Event Service                           --
 -- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>                       --
 --------------------------------------------------------------------------------
@@ -26,17 +21,11 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local require    = require
-local oo         = require "loop.base"
-
-module("oil.cos.event.Queue", oo.class)                                         --[[VERBOSE]] local verbose = require "oil.verbose"
-
---------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
-
-local os         = require "os"
+local oo         = require "oil.oo"
 local assert     = require "oil.assert"
-local Properties = require "oil.properties"
+local Properties = require "oil.properties"                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+
+module("oil.corba.services.event.Queue", oo.class)
 
 --------------------------------------------------------------------------------
 -- Key constants ---------------------------------------------------------------
@@ -74,33 +63,31 @@ local EventQueueIterator = oo.class()
 
 -- @param queue table EventQueue that instantiated this object.
 
-function EventQueueIterator:__init(queue)                                       --[[VERBOSE]] verbose.server({"EventQueueIterator:__init ", "entering"})
+function EventQueueIterator:__init(queue)                                       --[[VERBOSE]] verbose:cos_event "EventQueueIterator:__init"
     return oo.rawnew(self, {
                             queue = queue,
                             last = queue.last,
-                            idle_since = os.time(),
                            })
 end
 
 -- @return 1 table Current event to be sent or nil if no events in queue.
 
-function EventQueueIterator:current()                                           --[[VERBOSE]] verbose.server({"EventQueueIterator:current ", "entering"})
+function EventQueueIterator:current()                                           --[[VERBOSE]] verbose:cos_event "EventQueueIterator:current"
     return self.last[NEXT]
 end
 
 -- flags the current event as sent.
 -- @return 1 table Next event to be sent or nil if no events in queue.
 
-function EventQueueIterator:advance()                                           --[[VERBOSE]] verbose.server({"EventQueueIterator:advance ", "entering"})
+function EventQueueIterator:advance()                                           --[[VERBOSE]] verbose:cos_event "EventQueueIterator:advance"
     local next = self.last[NEXT]
     self.queue:flag_as_sent(next)
     self.last = next
-    self.idle_since = os.time()
     return next[NEXT]
 end
 
 -- flags all pending events as sent and unregisters this proxy from the queue.
-function EventQueueIterator:destroy()                                           --[[VERBOSE]] verbose.server({"EventQueueIterator:destroy ", "entering"})
+function EventQueueIterator:destroy()                                           --[[VERBOSE]] verbose:cos_event "EventQueueIterator:destroy"
     local queue = self.queue
     local next = self.last[NEXT]
     while next do
@@ -108,7 +95,6 @@ function EventQueueIterator:destroy()                                           
         next = next[NEXT]
     end
     queue.qiters = queue.qiters - 1
-    self.idle_since = nil
     self.queue = nil
     self.last = nil
 end
@@ -134,7 +120,7 @@ local dummyevent = {
 
 -- @param props table [optional] Configuration properties.
 
-function __init(self, props)                                                    --[[VERBOSE]] verbose.server({"EventQueue:__init ", "entering"})
+function __init(self, props)                                                    --[[VERBOSE]] verbose:cos_event "EventQueue:__init"
     local props = Properties(props, {
                                      [PROP_MAX_QUEUE_LENGTH] = 0,
                                      [PROP_MAX_EVENTS_PER_CONSUMER] = 0,
@@ -155,12 +141,12 @@ end
 
 -- @param event table Event to be queued.
 
-function enqueue(self, event)                                                   --[[VERBOSE]] verbose.server({"EventQueue:enqueue ", "entering"})
+function enqueue(self, event)                                                   --[[VERBOSE]] verbose:cos_event "EventQueue:enqueue"
     if self.qiters > 0 then
         local max_queue_length = self.props[PROP_MAX_QUEUE_LENGTH]
         if max_queue_length and self.length >= max_queue_length and
            max_queue_length > 0
-             then return--assert.raise{"IDL:omg.org/CORBA/IMPL_LIMIT:1.0"}
+             then return--assert.exception{"IDL:omg.org/CORBA/IMPL_LIMIT:1.0"}
         end
         event[QITERS] = self.qiters
         self.last[NEXT] = event
@@ -171,7 +157,7 @@ end
 
 -- @return 1 table EventQueueIterator for this EventQueue.
 
-function iterator(self)                                                         --[[VERBOSE]] verbose.server({"EventQueue:iterator ", "entering"})
+function iterator(self)                                                         --[[VERBOSE]] verbose:cos_event "EventQueue:iterator"
     self.qiters = self.qiters + 1
     return EventQueueIterator(self)
 end
@@ -181,7 +167,7 @@ end
 function flag_as_sent(self, event)
     event[QITERS] = event[QITERS] - 1
     if event[QITERS] == 0 then
-        self.length = self.length - 1                                           --[[VERBOSE]] verbose.server({"EventQueue:flag_as_sent ", "length ", self.length})
+        self.length = self.length - 1                                           --[[VERBOSE]] verbose:cos_event("EventQueue:flag_as_sent [length=",self.length,"]")
         self.first = event
     end
 end

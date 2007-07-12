@@ -1,8 +1,3 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -13,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.3 alpha                                                         --
+-- Release: 0.4 alpha                                                         --
 -- Title  : Event dispatcher for the Event Service                            --
 -- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>                       --
 --------------------------------------------------------------------------------
@@ -24,20 +19,13 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local scheduler = scheduler
-local require   = require
-local oo        = require "loop.base"
+local oil        = require "oil"
+local oo         = require "oil.oo"
+local Properties = require "oil.properties"
+local EventQueue = require "oil.corba.services.event.Queue"                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local OrderedSet = require "loop.collection.OrderedSet"
 
-module("oil.cos.event.Dispatcher", oo.class)                                    --[[VERBOSE]] local verbose = require "oil.verbose"
-
---------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
-
-local os              = require "os"
-local oo              = require "loop.base"
-local Properties      = require "oil.properties"
-local EventQueue      = require "oil.cos.event.Queue"
-local OrderedSet      = require "loop.collection.OrderedSet"
+module("oil.corba.services.event.Dispatcher", oo.class)
 
 --------------------------------------------------------------------------------
 -- Key constants ---------------------------------------------------------------
@@ -71,7 +59,7 @@ local EventDispatcherThread = oo.class()
 
 -- @param props table [optional] Properties instance.
 
-function EventDispatcherThread:__init(dispatcher)                               --[[VERBOSE]] verbose.server({"EventDispatcherThread:__init ", "entering."})
+function EventDispatcherThread:__init(dispatcher)                               --[[VERBOSE]] verbose:cos_event "EventDispatcherThread:__init entering"
     return oo.rawnew(self, {
                             dispatcher = dispatcher,
                             max_retries = dispatcher.props[PROP_MAX_RETRIES],
@@ -81,25 +69,25 @@ function EventDispatcherThread:__init(dispatcher)                               
                            })
 end
 
-function EventDispatcherThread:wait()                                           --[[VERBOSE]] verbose.server({"EventDispatcherThread:wait ", "entering."})
+function EventDispatcherThread:wait()                                           --[[VERBOSE]] verbose:cos_event "EventDispatcherThread:wait entering"
     self.dispatcher:waiting(self)
-    scheduler.sleep()
+    oil.sleep()
 end
 
 -- @param proxy table ProxyPushSupplier instance.
 
-function EventDispatcherThread:setProxy(proxy)                                  --[[VERBOSE]] verbose.server({"EventDispatcherThread:setProxy ", "entering."})
+function EventDispatcherThread:setProxy(proxy)                                  --[[VERBOSE]] verbose:cos_event "EventDispatcherThread:setProxy entering"
     self.proxy = proxy
     self.qiter = proxy[QITER]
     self.consumer = proxy.push_consumer
 end
 
-function EventDispatcherThread:pending()                                        --[[VERBOSE]] verbose.server({"EventDispatcherThread:pending ", "entering. ", scheduler:current()})
+function EventDispatcherThread:pending()                                        --[[VERBOSE]] verbose:cos_event("EventDispatcherThread:pending ", "entering", oil.tasks:current())
     self.current = self.qiter:current()
     return self.current
 end
 
-function EventDispatcherThread:step()                                           --[[VERBOSE]] verbose.server({"EventDispatcherThread:step ", "entering. ", scheduler:current()})
+function EventDispatcherThread:step()                                           --[[VERBOSE]] verbose:cos_event("EventDispatcherThread:step ", "entering. ", oil.tasks:current())
     local consumer = self.consumer
     local max_retry_timeout = self.max_retry_timeout
     local max_retries = self.max_retries
@@ -108,27 +96,27 @@ function EventDispatcherThread:step()                                           
     local retries = 0
     local success, except
     repeat
-        success, except = scheduler.pcall(consumer.push,
-                                          consumer,
-                                          self.current[DATA])
+        success, except = oil.pcall(consumer.push,
+                                    consumer,
+                                    self.current[DATA])
         if not success then
-            retries = retries + 1                                               --[[VERBOSE]] verbose.server({"EventDispatcherThread:step ", "push failed. ", retries, " times ", scheduler:current()})
-            if max_retries > 0 and retries > max_retries then                   --[[VERBOSE]] verbose.server({"EventDispatcherThread:step ", "giving up. ", scheduler:current()})
+            retries = retries + 1                                               --[[VERBOSE]] verbose:cos_event("EventDispatcherThread:step ", "push failed. ", retries, " times ", oil.tasks    :current())
+            if max_retries > 0 and retries > max_retries then                   --[[VERBOSE]] verbose:cos_event("EventDispatcherThread:step ", "giving up. ", oil.tasks:current())
                 return false
-            else                                                                --[[VERBOSE]] verbose.server({"EventDispatcherThread:step ", "sleeping for ", retry_timeout, " secs before retry. ", scheduler:current()})
-                scheduler.sleep(retry_timeout)
+            else                                                                --[[VERBOSE]] verbose:cos_event("EventDispatcherThread:step ", "sleeping for ", retry_timeout, " secs before retry. ", oil.tasks:current())
+                oil.sleep(retry_timeout)
                 if retry_timeout > max_retry_timeout
                     then retry_timeout = max_retry_timeout
                     else retry_timeout = retry_timeout * retry_multiplier
                 end
             end
         end
-    until success                                                               --[[VERBOSE]] verbose.server({"EventDispatcherThread:step ", "push successful. ", retries, " retries ", scheduler:current()})
+    until success                                                               --[[VERBOSE]] verbose:cos_event("EventDispatcherThread:step ", "push successful. ", retries, " retries ", oil.tasks:current())
     return true
 end
 
-function EventDispatcherThread:run()                                            --[[VERBOSE]] verbose.server({"EventDispatcherThread:run ", "entering. ", scheduler:current()})
-    self.thread = scheduler:current()
+function EventDispatcherThread:run()                                            --[[VERBOSE]] verbose:cos_event("EventDispatcherThread:run ", "entering. ", oil.tasks:current())
+    self.thread = oil.tasks:current()
     while self.thread do
         self:wait()
         while self.thread and self:pending() do
@@ -139,11 +127,11 @@ function EventDispatcherThread:run()                                            
                 break
             end
         end
-    end                                                                         --[[VERBOSE]] verbose.server({"EventDispatcherThread:run ", "leaving. ", scheduler:current()})
+    end                                                                         --[[VERBOSE]] verbose:cos_event("EventDispatcherThread:run ", "leaving. ", oil.tasks:current())
 end
 
-function EventDispatcherThread:destroy()                                        --[[VERBOSE]] verbose.server({"EventDispatcherThread:destroy ", "entering. ", self.thread})
-    scheduler.wake(self.thread)
+function EventDispatcherThread:destroy()                                        --[[VERBOSE]] verbose:cos_event("EventDispatcherThread:destroy ", "entering. ", self.thread)
+    oil.tasks:register(self.thread)
     self.thread = nil
 end
 
@@ -152,7 +140,7 @@ end
 
 -- @param props table [optional] Properties instance.
 
-function __init(self, props)                                                    --[[VERBOSE]] verbose.server({"EventDispatcher:__init ", "entering."})
+function __init(self, props)                                                    --[[VERBOSE]] verbose:cos_event "EventDispatcher:__init entering"
     local props = Properties(props, {
                                      [PROP_RETRY_TIMEOUT]           = 1,
                                      [PROP_RETRY_MULTIPLIER]        = 2.0,
@@ -167,48 +155,48 @@ function __init(self, props)                                                    
                            })
 end
 
-function notify(self, thread)                                                   --[[VERBOSE]] verbose.server({"EventDispatcher:notify ", "entering."})
+function notify(self, thread)                                                   --[[VERBOSE]] verbose:cos_event "EventDispatcher:notify entering"
     waiting_pool:remove(thread)
     running_pool:add(thread)
-    scheduler.wake(thread.thread)
+    oil.tasks:resume(thread.thread)
 end
 
-function notifyAll(self)                                                        --[[VERBOSE]] verbose.server({"EventDispatcher:notifyAll ", "entering."})
+function notifyAll(self)                                                        --[[VERBOSE]] verbose:cos_event "EventDispatcher:notifyAll entering"
     local waiting_pool = self.waiting_pool
     local running_pool = self.running_pool
     local thread = waiting_pool:pop()
     while thread do
         running_pool:add(thread)
-        scheduler.wake(thread.thread)
+        oil.tasks:register(thread.thread)
         thread = waiting_pool:pop()
     end
 end
 
-function waiting(self, thread)                                                  --[[VERBOSE]] verbose.server({"EventDispatcher:waiting ", "entering."})
+function waiting(self, thread)                                                  --[[VERBOSE]] verbose:cos_event "EventDispatcher:waiting entering"
     self.running_pool:remove(thread)
     self.waiting_pool:add(thread)
 end
 
-function addEvent(self, event)                                                  --[[VERBOSE]] verbose.server({"EventDispatcher:addEvent ", "entering."})
+function addEvent(self, event)                                                  --[[VERBOSE]] verbose:cos_event "EventDispatcher:addEvent entering"
     self.queue:enqueue(event)
     self:notifyAll()
 end
 
-function addThread(self)                                                        --[[VERBOSE]] verbose.server({"EventDispatcher:addThread ", "entering."})
+function addThread(self)                                                        --[[VERBOSE]] verbose:cos_event "EventDispatcher:addThread entering"
     local thread = EventDispatcherThread(self)
     self.running_pool:add(thread)
-    scheduler.new(thread.run, thread)
+    oil.newthread(thread.run, thread)
     return thread
 end
 
-function addConsumerProxy(self, proxy)                                          --[[VERBOSE]] verbose.server({"EventDispatcher:addConsumerProxy ", "entering."})
+function addConsumerProxy(self, proxy)                                          --[[VERBOSE]] verbose:cos_event "EventDispatcher:addConsumerProxy entering"
     local thread = self:addThread()
     proxy[QITER] = self.queue:iterator()
     proxy[THREAD] = thread
     thread:setProxy(proxy)
 end
 
-function remConsumerProxy(self, proxy)                                          --[[VERBOSE]] verbose.server({"EventDispatcher:remConsumerProxy ", "entering."})
+function remConsumerProxy(self, proxy)                                          --[[VERBOSE]] verbose:cos_event "EventDispatcher:remConsumerProxy entering"
     self.waiting_pool:remove(proxy[THREAD])
     self.running_pool:remove(proxy[THREAD])
     proxy[THREAD]:destroy()
