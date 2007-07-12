@@ -4,7 +4,7 @@ local arch    = require "oil.arch.cooperative"
 
 module "oil.builder.cooperative"
 
-TaskManager = arch.TaskManager{ require "oil.kernel.cooperative.Tasker" }
+TaskManager = arch.TaskManager{ require "loop.thread.SocketScheduler" }
 OperationInvoker = arch.OperationInvoker{
 	invoker = require "oil.kernel.cooperative.Invoker",
 	mutex   = require "oil.kernel.cooperative.Mutex",
