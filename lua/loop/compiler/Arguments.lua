@@ -22,9 +22,10 @@ local oo = require "loop.base"
 
 module("loop.compiler.Arguments", oo.class)
 
-_badnumber = "invalid value for option '-%s', number excepted but got '%s'"
-_unknown = "unknown option '-%s'"
-_norepeat = "option '-%s' was already defined"
+_badnumber = "invalid value for option '%s', number excepted but got '%s'"
+_missing = "no value defined for option '%s'"
+_unknown = "unknown option '%s'"
+_norepeat = "option '%s' was already defined"
 _optpat = "^%-(%w+)(=?)(.-)$"
 _boolean = {
 	["true"] = true,
@@ -68,10 +69,15 @@ function __call(self, ...)
 				if temp ~= nil then val = temp end
 			end
 			self[opt] = val
-		else
+		elseif kind ~= "nil" or not self._unknown then
 			if set == "" then -- option value was not set yet, get following argument
 				pos = pos + 1
-				val = select(pos, ...)
+				if pos <= count then
+					val = select(pos, ...)
+				else
+					pos, errmsg = nil, self._missing:format(opt)
+					break
+				end
 			end
 			
 			if kind == "number" then
@@ -90,12 +96,12 @@ function __call(self, ...)
 			elseif kind == "table" then
 				local list = self[opt]
 				list[#list+1] = val
-			elseif kind == "string" or not self._unknown then
-				self[opt] = val
 			else
-				pos, errmsg = nil, self._unknown:format(opt)
-				break
+				self[opt] = val
 			end
+		else
+			pos, errmsg = nil, self._unknown:format(opt)
+			break
 		end
 		pos = pos + 1
 	end
