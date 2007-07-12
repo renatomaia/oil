@@ -29,6 +29,7 @@
 local luaerror      = error
 local assert        = assert
 local getmetatable  = getmetatable
+local luapcall      = pcall
 local rawget        = rawget
 local coroutine     = require "coroutine"
 local os            = require "os"
@@ -90,17 +91,21 @@ local function resumepcall(pcall, success, ...)
 end
 
 function pcall(func, ...)
-	local pcall = coroutine.create(func)
-	local running = coroutine.running()
-	local current = PCallMap[running]                                             --[[VERBOSE]] verbose:copcall(true, "new protected call in ",current or running)
-	if current then
-		PCallMap[running] = PCallMap[current]
-		PCallMap[current] = running
-		PCallMap[pcall] = current
+	local luafunc, pcall = luapcall(coroutine.create, func)
+	if luafunc then
+		local running = coroutine.running()
+		local current = PCallMap[running]                                           --[[VERBOSE]] verbose:copcall(true, "new protected call in ",current or running)
+		if current then
+			PCallMap[running] = PCallMap[current]
+			PCallMap[current] = running
+			PCallMap[pcall] = current
+		else
+			PCallMap[pcall] = running
+		end
+		return resumepcall(pcall, coroutine.resume(pcall, ...))
 	else
-		PCallMap[pcall] = running
+		return luapcall(func, ...)
 	end
-	return resumepcall(pcall, coroutine.resume(pcall, ...))
 end
 
 function getpcall()
