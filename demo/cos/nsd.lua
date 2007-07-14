@@ -44,7 +44,7 @@ oil.main(function()
 		then oil.setIR(oil.narrow(oil.newproxy(ir)))
 		else oil.loadidlfile("CosNaming.idl")
 	end
-	ns = oil.newsevant(naming.new())
+	ns = oil.newservant(naming.new())
 	if ior ~= "" then oil.writeto(ior, oil.tostring(ns)) end
 	oil.run()
 end)

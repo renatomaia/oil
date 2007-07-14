@@ -53,10 +53,10 @@ oil.main(function()
 		};
 	]]
 	
-	local c1      = oil.newsevant(Collector(), "Collector")
-	local c2      = oil.newsevant(Collector(), "Collector")
-	local c3      = oil.newsevant(Collector(), "Collector")
-	local adaptor = oil.newsevant(Adaptor("Collector"), "ComponentAdaptor")
+	local c1      = oil.newservant(Collector(), "Collector")
+	local c2      = oil.newservant(Collector(), "Collector")
+	local c3      = oil.newservant(Collector(), "Collector")
+	local adaptor = oil.newservant(Adaptor("Collector"), "ComponentAdaptor")
 	
 	oil.writeto("c1.ior"     , oil.tostring(c1))
 	oil.writeto("c2.ior"     , oil.tostring(c2))

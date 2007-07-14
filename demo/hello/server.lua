@@ -17,7 +17,7 @@ oil.main(function()
 		return msg
 	end
 
-	hello = oil.newsevant(hello, "Hello")          -- Create CORBA object
+	hello = oil.newservant(hello, "Hello")          -- Create CORBA object
 
 	local ref = oil.tostring(hello)                -- Get object's reference
 	if not oil.writeto("hello.ref", ref) then

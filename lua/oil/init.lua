@@ -25,7 +25,7 @@
 --   newproxy(objref, [iface])                                                --
 --   narrow(proxy, [iface])                                                   --
 --                                                                            --
---   newsevant(impl, [iface], [key])                                          --
+--   newservant(impl, [iface], [key])                                          --
 --   deactivate(object, [type])                                               --
 --   tostring(object)                                                         --
 --                                                                            --
@@ -75,8 +75,8 @@ local OIL_FLAVOR = OIL_FLAVOR
 -- OiL main programming interface (API).
 
 -- This API provides access to the basic functionalities of the OiL ORB.
--- More advanced features may be accessed through more speciatialized interfaces
--- provided by internal components. OiL internal component organization is ment
+-- More advanced features may be accessed through more specialized interfaces
+-- provided by internal components. OiL internal component organization is meant
 -- to be customized for the application.
 
 module "oil"
@@ -137,6 +137,10 @@ types = TypeRepository and TypeRepository.types
 --------------------------------------------------------------------------------
 -- Loads an IDL code strip into the internal interface repository.
 --
+-- The IDL specified will be parsed by the LuaIDL compiler and the resulting
+-- definitions are updated in the internal interface repository.
+-- If any errors occurs during the parse no definitions are loaded into the IR.
+--
 -- @param idlspec string The IDL code strip to be loaded into the local IR.
 -- @return ... object IDL descriptors that represents the loaded definitions.
 --
@@ -158,7 +162,7 @@ end
 --
 -- The file specified will be parsed by the LuaIDL compiler and the resulting
 -- definitions are updated in the internal interface repository.
--- If any errors occours during the parse no definitions are loaded into the IR.
+-- If any errors occurs during the parse no definitions are loaded into the IR.
 --
 -- @param filename string The path to the IDL file that must be loaded.
 -- @return ... object IDL descriptors that represents the loaded definitions.
@@ -174,18 +178,26 @@ end
 --------------------------------------------------------------------------------
 -- Get the servant of the internal interface repository.
 --
+-- Function used to retrieve a reference to the integrated Interface Repository.
+-- It returns a reference to the object that implements the internal Interface
+-- Repository and exports local cached interface definitions.
+--
 -- @return proxy CORBA object that exports the local interface repository.
 --
 -- @usage oil.writeto("ir.ior", oil.tostring(oil.getLIR()))                    .
 --
 function getLIR()
-	return newsevant(TypeRepository.types,
+	return newservant(TypeRepository.types,
 	                 "IDL:omg.org/CORBA/Repository:1.0",
 	                 "InterfaceRepository")
 end
 
 --------------------------------------------------------------------------------
 -- Get the remote interface repository used to retrieve interface definitions.
+--
+-- Function used to set the remote Interface Repository that must be used to
+-- retrieve interface definitions not stored in the internal IR.
+-- Once these definitions are acquired, they are stored in the internal IR.
 --
 -- @return proxy Proxy for the remote IR currently used.
 --
@@ -195,6 +207,9 @@ end
 
 --------------------------------------------------------------------------------
 -- Defines a remote interface repository used to retrieve interface definitions.
+--
+-- Function used to get a reference to the Interface Repository used to retrieve
+-- interface definitions not stored in the internal IR.
 --
 -- @param ir proxy Proxy for the remote IR to be used.
 --
@@ -273,10 +288,16 @@ end
 --------------------------------------------------------------------------------
 -- Creates a new servant implemented in Lua that supports some interface.
 --
--- The value of object is used as the implemenation of a servant that supports
--- the interface defined in 'interface' (e.g. interface repository ID).
+-- Function used to create a new servant from a table containing attribute
+-- values and operation implementations.
+-- The value of impl is used as the implementation of the a servant with
+-- interface defined by parameter interface (e.g. repository ID or absolute
+-- name of a given IDL interface stored in the IR).
 -- Optionally, an object key value may be specified to create persistent
 -- references.
+-- The servant returned by this function offers all servant attributes and
+-- methods, as well as implicit basic operations like CORBA's _interface or
+-- _is_a.
 -- After this call any requests which object key matches the key of the servant
 -- are dispathed to its implementation.
 --
@@ -290,10 +311,11 @@ end
 --
 -- @return table servant created.
 --
--- @usage oil.newsevant({say_hello_to=print},"IDL:HelloWorld/Hello:1.0")       .
--- @usage oil.newsevant({say_hello_to=print},"IDL:HelloWorld/Hello:1.0", "Key").
+-- @usage oil.newservant({say_hello_to=print},"IDL:HelloWorld/Hello:1.0")      .
+-- @usage oil.newservant({say_hello_to=print},"::HelloWorld::Hello")           .
+-- @usage oil.newservant({say_hello_to=print},"::HelloWorld::Hello", "Key")    .
 --
-function newsevant(impl, type, key)
+function newservant(impl, type, key)
 	if Config then init(Config) end
 	if not impl then assert.illegal(impl, "servant's implementation") end
 	if not type then assert.illegal(type, "interface definition") end
@@ -310,16 +332,17 @@ end
 -- Only in the case that the servant was created with an implicitly created key
 -- by the ORB then the 'object' can be the servant's implementation.
 -- Since a single implementation object can be used to create many servants with
--- differentes interface, in this case the 'type' parameter must be provided
--- with the exact servant's interface.
+-- different interface, in this case the 'type' parameter must be provided with
+-- the exact servant's interface.
 --
 -- @param string|object object Servant's object key, servant's implementation or
 -- servant itself.
--- @param string|object type Identification of the servant's interface.
+-- @param string type Identification of the servant's interface (e.g. repository
+-- ID or absolute name).
 --
--- @usage oil.deactivate(oil.newservant(impl, "::MyInterface", "objkey"))
--- @usage oil.deactivate("objkey")
--- @usage oil.deactivate(impl, "MyInterface")
+-- @usage oil.deactivate(oil.newservant(impl, "::MyInterface", "objkey"))      .
+-- @usage oil.deactivate("objkey")                                             .
+-- @usage oil.deactivate(impl, "MyInterface")                                  .
 --
 function deactivate(object, type)
 	if not object then
@@ -335,9 +358,11 @@ end
 -- This function is used to get textual information that references a servant
 -- or proxy like an IOR (Inter-operable Object Reference).
 --
--- @param object servant Servant which textual referecence must be taken.
+-- @param servant object Servant which textual referecence must be taken.
 --
--- @usage oil.writeto("ref.ior", oil.tostring(oil.newservant(impl, "::Hello")))
+-- @return string Textual referecence to the servant.
+--
+-- @usage oil.writeto("ref.ior", oil.tostring(oil.newservant(impl, "::Hello"))).
 --
 function tostring(object)
 	assert.type(object, "table", "servant object")
@@ -352,18 +377,14 @@ end
 -- address and port that ORB must bind to, as well as the host name or IP
 -- address and port that must be used in creation of object references.
 --
--- @field protocoltag number Tag of the protocol the ORB shall use. Default is
--- tag 0, that indicates IIOP. (must be set before registration of any servant).
--- @field host string Host name or IP address (must be set before registration
--- of any servant).
--- @field host string Host name or IP address (must be set before registration
--- of any servant).
--- @field port number Port the ORB must listen (must be set before registration
--- of any servant).
--- @field refhost string Host name or IP address informed in object references
--- (must be set before registration of any servant).
--- @field refport number Port informed in object references (must be set before
--- registration of any servant).
+-- @field tag number Tag of the IOP protocol the ORB shall use. The default is
+-- 0, that indicates the Internet IOP (IIOP).
+-- @field host string Host name or IP address. If none is provided the ORB binds
+-- to all current net interfaces.
+-- @field port number Port the ORB must listen. If none is provided, the ORB
+-- tries to bind to a port in the range [2809; 9999].
+-- @field refhost string Host name or IP address informed in object references.
+-- @field refport number Port informed in object references.
 --
 -- @usage oil.Config.host = "middleware.inf.puc-rio.br"                        .
 -- @usage oil.Config.host = "10.223.10.56"                                     .
@@ -383,7 +404,8 @@ Config = {}
 -- This default ORB is used by all objects and proxies created by newsevant and
 -- newproxy functions.
 --
--- @param config table Configurations used to create the default ORB instance.
+-- @param config table Configuration used to create the default ORB instance.
+-- @return table Configuration values actually used by the ORB instance.
 --
 -- @usage oil.init()                                                           .
 -- @usage oil.init{ host = "middleware.inf.puc-rio.br" }                       .
@@ -400,11 +422,14 @@ end
 --------------------------------------------------------------------------------
 -- Checks whether there is some request pending
 --
--- Returns true if there is some ORB request pending or false otherwise.
+-- Function used to checks whether there is some unprocessed ORB request
+-- pending.
+-- It returns true if there is some request pending that must be processed by
+-- the main ORB or false otherwise.
 --
 -- @return boolean True if there is some ORB request pending or false otherwise.
 --
--- @usage while oil.pending() do oil.stop() end                                .
+-- @usage while oil.pending() do oil.step() end                                .
 --
 function pending()
 	return assert.results(ServerBroker.broker:pending())
@@ -413,10 +438,11 @@ end
 --------------------------------------------------------------------------------
 -- Waits for an ORB request and process it.
 --
--- Process one single ORB request at each call. Returns true if success or nil
--- and an exception.
+-- Function used to wait for an ORB request and process it.
+-- Only one single ORB request is processed at each call.
+-- It returns true if no exception is raised during request processing, or nil and the raised exception otherwise.
 --
--- @usage while oil.pending() do oil.stop() end                                .
+-- @usage while oil.pending() do oil.step() end                                .
 --
 function step()
 	return assert.results(ServerBroker.broker:step())
@@ -425,8 +451,10 @@ end
 --------------------------------------------------------------------------------
 -- Runs the ORB main loop.
 --
--- Requests the ORB to process any remote requisitions repeatedly until some
--- error occours.
+-- Function used to process all remote requisitions continuously until some
+-- exception is raised.
+-- If an exception is raised during the processing of requests this function
+-- returns nil and the raised exception.
 -- This function implicitly initiates the ORB if it was not initialized yet.
 --
 -- @see init
@@ -442,6 +470,8 @@ end
 -- Stops the ORB main loop if it is executing, handles all pending requests and
 -- closes all connections.
 --
+-- @usage oil.shutdown()
+--
 function shutdown()
 	return assert.results(ServerBroker.broker:shutdown())
 end
@@ -453,6 +483,10 @@ end
 -- architecture.
 -- If the current assembly does not provide this component, this field is 'nil'.
 -- It provides the same API of the 'loop.thread.Scheduler' class.
+--
+-- @usage thread = oil.tasks:current()
+-- @usage oil.tasks:suspend()
+-- @usage oil.tasks:resume(thread)
 --
 tasks = TaskManager and TaskManager.tasks
 
@@ -520,6 +554,17 @@ end
 function sleep(time)
 	assert.type(time, "number", "time")
 	return OperatingSystem.sockets:sleep(time)
+end
+
+--------------------------------------------------------------------------------
+-- Get the current system time.
+--
+-- @return number Number of seconds since a fixed point in the past.
+--
+-- @usage local start = oil.time(); oil.sleep(3); print("I slept for", oil.time() - start)
+--
+function time()
+	return OperatingSystem.sockets:gettime()
 end
 
 --------------------------------------------------------------------------------
@@ -652,7 +697,7 @@ function setclientinterceptor(iceptor)
 end
 
 --------------------------------------------------------------------------------
--- Sets a CORBA-specific interceptor for operation invocations in the client-size.
+-- Sets a CORBA-specific interceptor for operation invocations in the server-size.
 --
 -- The interceptor must provide the following operations
 --

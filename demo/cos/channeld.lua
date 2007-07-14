@@ -53,7 +53,7 @@ oil.main(function()
 		else oil.loadidlfile("CosEvent.idl")
 	end
 	
-	local channel = oil.newsevant(event.new(_M))
+	local channel = oil.newservant(event.new(_M))
 	if ior ~= "" then oil.writeto(ior, oil.tostring(channel)) end
 	
 	if name ~= "" then

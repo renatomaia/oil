@@ -36,6 +36,6 @@ end
 require "oil"
 oil.main(function()
 	oil.loadidlfile("philo.idl")
-	oil.writeto("fork.ior", oil.tostring(oil.newsevant(ForkHome, "ForkHome")))
+	oil.writeto("fork.ior", oil.tostring(oil.newservant(ForkHome, "ForkHome")))
 	oil.run()
 end)

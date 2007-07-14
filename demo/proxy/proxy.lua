@@ -32,7 +32,7 @@ function hello_srv:say_hello_to(name)
 	return hello_prx:say_hello_to(name)
 end
 
-hello_obj = oil.newsevant(hello_srv, "Hello") -- Create object
+hello_obj = oil.newservant(hello_srv, "Hello") -- Create object
 
 local file = io.open("proxy.ior", "w")
 if file then

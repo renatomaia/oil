@@ -16,7 +16,7 @@ oil.main(function()
 		return server:do_something_for(seconds)
 	end
 	------------------------------------------------------------------------------
-	local proxy = oil.newsevant(proxy_impl, "Concurrency::Proxy")
+	local proxy = oil.newservant(proxy_impl, "Concurrency::Proxy")
 	------------------------------------------------------------------------------
 	assert(oil.writeto("proxy.ior", oil.tostring(proxy)))
 	------------------------------------------------------------------------------

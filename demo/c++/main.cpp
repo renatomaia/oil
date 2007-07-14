@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
 		"};");
 	callfield(L, "oil.loadidl", 1, 0);
 	
-	// oil.writeto('...ref', oil.tostring(oil.newsevant(<hello>, "::Hello")))
+	// oil.writeto('...ref', oil.tostring(oil.newservant(<hello>, "::Hello")))
 	lua_pushliteral(L, "../hello/hello.ref");
 	exportedHello->pushOnStack();
 	lua_pushliteral(L, "::Hello");
