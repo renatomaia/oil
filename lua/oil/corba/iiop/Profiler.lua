@@ -87,10 +87,13 @@ function encode(self, object_key, config, minor)
 		}
 	end
 	
+	local host = config.refhost or config.host
+	local port = config.refport or config.port
+	if host == "*" then host = socket.dns.gethostname() end
 	local profile = {
 		components = Empty,
-		host = config.host == "*" and socket.dns.gethostname() or config.host,
-		port = config.port,
+		host = host,
+		port = port,
 		object_key = object_key
 	}
 	local encoder = self.context.codec:encoder(true)
