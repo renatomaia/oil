@@ -33,7 +33,7 @@ MYLDFLAGS=
 PLAT= none
 
 # Convenience platforms targets.
-PLATS= lib dll
+PLATS= libs dlls
 
 MAKE= $(MAKE) /nologo /f Makefile.win32
 CC= cl.exe
@@ -45,7 +45,7 @@ LBT= lib
 
 V= 0.4
 
-LUA= $(LUA_BIN)\lua -epackage.path=[[../lua/?.lua]]
+LUA= $(LUA_BIN)\lua.exe -epackage.path=[[../lua/?.lua]]
 
 # Flags for pre-compilation of Lua scripts
 PC_FLAGS= -p OIL_API

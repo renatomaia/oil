@@ -192,9 +192,9 @@ echo:
 none:
 	@echo "Please choose a platform: $(PLATS)"
 
-lib: all
+libs: all
 
-dll:
+dlls:
 	$(MAKE) all LBT=dll LIBS="$(MYLIBS)" MYCFLAGS="/DOIL_API=__declspec(dllexport)"
 
 # DO NOT DELETE

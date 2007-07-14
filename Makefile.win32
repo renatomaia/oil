@@ -61,6 +61,11 @@ installc: console $(INSTALL_BIN)
 local:
 	$(MAKE) install INSTALL_TOP=.. INSTALL_EXEC="cp -p" INSTALL_DATA="cp -p"
 
+none:
+	@echo Please do: make PLATFORM
+	@echo where PLATFORM is one of these: $(PLATS)
+	@echo See INSTALL for complete instructions.
+
 # create installation dirs
 $(INSTALL_DIR) $(INSTALL_BIN) $(INSTALL_CMOD)\oil:
 	mkdir $@
