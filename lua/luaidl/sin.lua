@@ -1,8 +1,7 @@
 --
 -- Project:  LuaIDL
--- Version:  0.7.4b
+-- Version:  0.8.6b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 24/04/2007
 -- Filename: sin.lua
 -- 
 
@@ -686,8 +685,11 @@ tab_firsts.rule_370  = set_firsts { 'TK_RAISES' }
 
 tab_firsts.rule_377  = set_firsts { 'TK_CONTEXT' }
 
+tab_firsts.rule_400  = set_firsts { 'TK_ID' }
+tab_firsts.rule_401  = set_firsts { ':' }
+
 tab_follow.rule_32   = set_firsts { 'TK_ID' }
-tab_follow.rule_54   = set_firsts { 'TK_ID' }
+tab_follow.rule_54   = set_firsts { 'TK_ID', '>' }
 tab_follow.rule_61   = set_firsts { '>', ',' }
 tab_follow.rule_64   = set_firsts { ',', '>' }
 tab_follow.rule_69   = set_firsts { '>' }
@@ -832,8 +834,13 @@ local TAB_BASICTYPE = {
                [ 'LONG' ]      = { _type = TAB_TYPEID[ 'LONG' ] },
                [ 'FIXED' ]     = { _type = TAB_TYPEID[ 'FIXED' ] },
                [ 'VOID' ]      = { _type = TAB_TYPEID[ 'VOID' ] },
-               [ 'TYPECODE' ]  = { _type = TAB_TYPEID[ 'TYPECODE' ] },
+--               [ 'TYPECODE' ]  = { _type = TAB_TYPEID[ 'TYPECODE' ] },
 	        }
+
+local TAB_IMPLICITTYPE = {
+               [ 'TYPECODE' ]  = { _type = TAB_TYPEID[ 'TYPECODE' ],
+                                   repID = 'IDL:omg.org/CORBA/TypeCode:1.0' },
+}
 
 local ERRMSG_DECLARED       = "'%s' has already been declared"
 local ERRMSG_PARAMDECLARED  = "parameter '%s' has already been declared"
@@ -974,7 +981,6 @@ local tab_define_scope = {
   [ TAB_TYPEID.OPERATION ] = true,
   [ TAB_TYPEID.STRUCT ] = true,
   [ TAB_TYPEID.UNION ] = true,
-  [ TAB_TYPEID.ENUM ] = true,
   [ TAB_TYPEID.MODULE ] = true,
 }
 
@@ -994,6 +1000,7 @@ local tab_is_contained = {
     [ TAB_TYPEID.HOME ] = true, 
     [ TAB_TYPEID.VALUETYPE ] = true,
     [ TAB_TYPEID.EVENTTYPE ] = true,
+    [ TAB_TYPEID.TYPECODE ] = true,
 }
 
 local function define(name, type, value)
@@ -1060,11 +1067,11 @@ local function define(name, type, value)
   value.definitions = tab_definitions
 
 -- tab_curr_scope ~= tab_output ????
-  if ( tab_is_contained[type] and tab_curr_scope ~= tab_output ) then
-    table.insert(tab_curr_scope.definitions, value)
-  else
-    table.insert(tab_curr_scope, value)
-  end --if  
+    if ( tab_is_contained[type] and tab_curr_scope ~= tab_output ) then
+      table.insert(tab_curr_scope.definitions, value)
+    else
+      table.insert(tab_curr_scope, value)
+    end --if  
 
   if (tab_define_scope[type]) then
     tab_namespaces[absolutename] = { 
@@ -1078,7 +1085,7 @@ local function define(name, type, value)
     tab_namespaces[absolutename] = {tab_namespace = value}
   end --if
 
-  return true
+  return true, value
 end
 
 local function get_tab_legal_type( namespace )
@@ -1406,9 +1413,9 @@ function type_declarator()
   type_dcl_name_l(type)
 end
 
-function type_spec()
+function type_spec(numrule)
   if tab_firsts.rule_28[ token ] then
-    return simple_type_spec()
+    return simple_type_spec(numrule)
   elseif tab_firsts.rule_29[ token ] then
     return constr_type_spec()
   else
@@ -1422,7 +1429,8 @@ function simple_type_spec(numrule)
   elseif (tab_firsts.rule_31[token]) then
     return template_type_spec()
   elseif (tab_firsts.rule_32[token]) then 
-    return scoped_name( numrule or 32 )
+    tab = scoped_name( numrule or 32 )
+return tab
   else
     sin_error(tab_ERRORMSG[04])
   end --if
@@ -1449,9 +1457,9 @@ function base_type_spec()
   elseif (tab_firsts.rule_42[token]) then
     reconhecer(lex.tab_tokens.TK_VALUEBASE, "'ValueBase'")
     return TAB_BASICTYPE.VALUEBASE
-  elseif (token == lex.tab_tokens['TK_TYPECODE']) then
-    reconhecer( lex.tab_tokens.TK_TYPECODE, "'TypeCode'" )
-    return TAB_BASICTYPE.TYPECODE
+--  elseif (token == lex.tab_tokens['TK_TYPECODE']) then
+--    reconhecer( lex.tab_tokens.TK_TYPECODE, "'TypeCode'" )
+--    return TAB_BASICTYPE.TYPECODE
 --  else
 --    sin_error( tab_ERRORMSG[ 05 ] )
   end --if
@@ -1501,7 +1509,7 @@ end
 function unsigned_int_tail(numrule)
   if (tab_firsts.rule_51[token]) then
     reconhecer(lex.tab_tokens.TK_LONG, "'long'")
-    return long_e(numrule)
+    return ulong_e(numrule)
   elseif (tab_firsts.rule_52[token]) then
     reconhecer(lex.tab_tokens.TK_SHORT, "'short'")
     return TAB_BASICTYPE.USHORT
@@ -1516,6 +1524,18 @@ function long_e(numrule)
     return TAB_BASICTYPE.LLONG
   elseif (tab_follow['rule_'..numrule][token]) then
     return TAB_BASICTYPE.LONG
+    --empty
+  else
+    sin_error( tab_ERRORMSG[10] )
+  end --if
+end
+
+function ulong_e(numrule)
+  if (tab_firsts.rule_53[token]) then
+    reconhecer(lex.tab_tokens.TK_LONG, "'long'")
+    return TAB_BASICTYPE.ULLONG
+  elseif (tab_follow['rule_'..numrule][token]) then
+    return TAB_BASICTYPE.ULONG
     --empty
   else
     sin_error( tab_ERRORMSG[10] )
@@ -1672,7 +1692,6 @@ function unary_expr()
   end --if
 end
 
---ok2
 function unary_operator()
   if tab_firsts.rule_114[ token ] then
     reconhecer( "-", "'-'" )
@@ -1691,7 +1710,11 @@ end
 
 function primary_expr()
   if tab_firsts.rule_117[ token ] then
-    return case_label_tail()
+    local value = case_label_aux()
+    if type(value) == 'table' then
+        sin_error("The <scoped_name> in the <const_type> production must be a previously defined name of an <integer_type>, <char_type>, <wide_char_type>, <boolean_type>, <floating_pt_type>, <string_type>, <wide_string_type>, <octet_type>, or <enum_type> constant.")
+    end --if
+    return value
   elseif tab_firsts.rule_118[ token ] then
     local value = literal()
     if tab_curr_scope._type == TAB_TYPEID.UNION then
@@ -2019,10 +2042,31 @@ function case_l()
   end --if
 end
 
+function case_l_r()
+  if tab_firsts.rule_156[ token ] then
+    case()
+    case_l_r()
+  elseif tab_follow.rule_157[ token ] then
+    --empty
+  else
+    sin_error( tab_ERRORMSG[ 33 ] )
+  end --if
+end
+
 function case()
   if tab_firsts.rule_158[ token ] then
     local cases = case_label_l()
-    element_spec(cases)
+    local tab_type_spec, name = element_spec(cases)
+    for i, case in pairs(cases) do
+      if i == 1 then
+        dclName(name, tab_curr_scope, {type = tab_type_spec, label = case})
+      else
+        table.insert(tab_curr_scope, {name = name, type = tab_type_spec, label = case})
+      end --if
+      if case == 'none' then
+        tab_curr_scope.default = table.getn(tab_curr_scope)
+      end --if
+    end --for
     reconhecer( ";", "';'" )
   else
     sin_error( tab_ERRORMSG[ 31 ] )
@@ -2040,44 +2084,20 @@ function case_label_l()
   return cases
 end
 
-function tail(tab_scope, namespace)
-  if token == ':' then
-    reconhecer( ":", "':'" )
-    reconhecer(lex.tab_tokens.TK_ID, "identifier")
-    local namespace = lex.tokenvalue_previous
-    reconhecer( ":", "':'" )
-    full_namespace = tab_scope.absolute_name..'::'..namespace
-    tab_scope = get_tab_legal_type_spec(full_namespace)
-    tab_scope = tail(tab_scope, namespace)
-  elseif (not (tab_firsts.rule_164[token] or token == lex.tab_tokens.TK_CASE)) then
-    sin_error("':'")
+function case_label_l_r(cases)
+  if tab_firsts.rule_160[ token ] then
+    case_label(cases)
+    case_label_l_r(cases)
+  elseif tab_follow.rule_161[ token ] then
+    --empty
+  else 
+    sin_error( tab_ERRORMSG[ 32 ] )
   end --if
-  return tab_scope
-end
-
-function case_label_tail()
-  if token == ':' then
-    reconhecer( ":", "':'" )
-    reconhecer( ":", "':'" )
-    reconhecer(lex.tab_tokens.TK_ID, "identifier")
-    local namespace = lex.tokenvalue_previous
-    reconhecer( ":", "':'" )
-    tab_scope = get_tab_global_legal_type(namespace)
-    tab_scope = tail(tab_scope, namespace)
-  elseif token == lex.tab_tokens.TK_ID then
-    reconhecer(lex.tab_tokens.TK_ID, "identifier")
-    local namespace = lex.tokenvalue_previous
-    reconhecer( ":", "':'" )
-    tab_scope = get_tab_legal_type(namespace)
-    tab_scope = tail(tab_scope, namespace)
-  end --if
-  return tab_scope
 end
 
 function case_label(cases)
   if (tab_firsts.rule_162[token]) then
     reconhecer(lex.tab_tokens.TK_CASE, "'case'")
---    local value = case_label_tail()
     local value = positive_int_const(162)
     table.insert(cases, value)
   elseif (tab_firsts.rule_163[token]) then
@@ -2094,43 +2114,51 @@ function case_label(cases)
   end -- if
 end
 
-function case_label_l_r(cases)
-  if tab_firsts.rule_160[ token ] then
-    case_label(cases)
-    case_label_l_r(cases)
-  elseif tab_follow.rule_161[ token ] then
-    --empty
-  else 
-    sin_error( tab_ERRORMSG[ 32 ] )
+function case_label_aux()
+  if (token == lex.tab_tokens.TK_ID) then
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    tab_scope = get_tab_legal_type(lex.tokenvalue_previous)
+    reconhecer(":", "':'")
+    return case_label_tail(tab_scope)
+  elseif (token == ':') then
+    reconhecer(":", "':'")
+    reconhecer(":", "':'")
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    tab_scope = get_tab_legal_type(lex.tokenvalue_previous)
+    reconhecer(":", "':'")
+    return case_label_tail(tab_scope)
   end --if
 end
 
-function case_l_r()
-  if tab_firsts.rule_156[ token ] then
-    case()
-    case_l_r()
-  elseif tab_follow.rule_157[ token ] then
+function case_label_tail(tab_scope)
+  if (token == ':') then
+    reconhecer( ":", "':'" )
+    return case_label_tail_aux(tab_scope)
+  elseif (tab_firsts.rule_28[token] or tab_firsts.rule_29[token]) then
     --empty
-  else
-    sin_error( tab_ERRORMSG[ 33 ] )
+    return tab_scope
   end --if
+end
+
+function case_label_tail_aux(tab_scope)
+  if (token == ':') then
+    reconhecer( ":", "':'" )
+  elseif (token == lex.tab_tokens.TK_ID) then
+    reconhecer(lex.tab_tokens.TK_ID, "identifier")
+    local namespace = lex.tokenvalue_previous
+    full_namespace = tab_scope.absolute_name..'::'..namespace
+    tab_scope = get_tab_legal_type_spec(full_namespace)
+    tab_scope = case_label_tail_aux(tab_scope)
+  end --if
+  return tab_scope
 end
 
 function element_spec(cases)
   if (tab_firsts.rule_164[token]) then
-    local tab_type_spec = type_spec()
+    local tab_type_spec = type_spec(221)
     reconhecer( lex.tab_tokens.TK_ID, "identifier" )
     local name = lex.tokenvalue_previous
-    for i, case in pairs(cases) do
-      if i == 1 then
-        dclName(name, tab_curr_scope, {type = tab_type_spec, label = case})
-      else
-        table.insert(tab_curr_scope, {name = name, type = tab_type_spec, label = case})
-      end --if
-      if case == 'none' then
-        tab_curr_scope.default = table.getn(tab_curr_scope)
-      end --if
-    end --for
+    return tab_type_spec, name
   else
     sin_error( tab_ERRORMSG[ 03 ] )
   end --if
@@ -2139,32 +2167,27 @@ end
 function enum_type()
   reconhecer(lex.tab_tokens.TK_ENUM, "'enum'")
   reconhecer(lex.tab_tokens.TK_ID, "identifier")
-  local name = lex.tokenvalue_previous
-  define(name, TAB_TYPEID.ENUM)
---  tab_curr_scope.enumvalues = tab_curr_scope
+  local _, tab_enum = define(lex.tokenvalue_previous, TAB_TYPEID.ENUM)
   reconhecer("{", "'{'")
-  enumerator()
-  enumerator_l()
+  enumerator(tab_enum)
+  enumerator_l(tab_enum)
   reconhecer("}", "'}'")
-  local enum = tab_curr_scope
-  goto_father_scope()
   if tab_callbacks.enum then
-    tab_callbacks.enum(enum)
+    tab_callbacks.enum(tab_enum)
   end --if
-  return enum
+  return tab_enum
 end
 
-function enumerator()
+function enumerator(tab_enum)
   reconhecer(lex.tab_tokens.TK_ID, "identifier")
-  local name = lex.tokenvalue_previous
-  dclName(name, tab_curr_scope)
+  dclName(lex.tokenvalue_previous, tab_enum)
 end
 
-function enumerator_l()
+function enumerator_l(tab_enum)
   if (tab_firsts.rule_166[token]) then
     reconhecer(",", "','")
-    enumerator()
-    enumerator_l()
+    enumerator(tab_enum)
+    enumerator_l(tab_enum)
   elseif (tab_follow.rule_167[token]) then
     -- empty
   else
@@ -2177,6 +2200,9 @@ function module()
     reconhecer(lex.tab_tokens.TK_MODULE, "'module'")
     reconhecer(lex.tab_tokens.TK_ID, "identifier")
     local name = lex.tokenvalue_previous
+    if (name == 'CORBA') then
+      CORBAVisible = true
+    end --if
     local status, _module = define(name, TAB_TYPEID.MODULE)
     reconhecer("{", "'{'")
     definition_l_module()
@@ -3444,22 +3470,38 @@ end
 -- API
 --------------------------------------------------------------------------
 
-function parse( stridlparam, ptab_callbacks )
-  if not ptab_callbacks then
-    tab_callbacks = { }
-  else
-    tab_callbacks = ptab_callbacks
+function parse( stridlparam, options )
+  if not options then
+    options = {}
   end --if
-  for type, tab in pairs( TAB_BASICTYPE ) do
-    local callback = tab_callbacks[ type ]
-    if callback then
-      TAB_BASICTYPE[ type ] = callback
-    end --if
-  end --for
+
+  if options.callbacks then
+    tab_callbacks = options.callbacks
+    for type, tab in pairs( TAB_BASICTYPE ) do
+      local callback = tab_callbacks[ type ]
+      if callback then
+        if type == 'TYPECODE' then
+        else
+          TAB_BASICTYPE[ type ] = callback
+        end --if
+      end --if
+    end --for
+
+    for type, tab in pairs(TAB_IMPLICITTYPE) do
+      local callback = tab_callbacks[type]
+      if callback then
+        TAB_IMPLICITTYPE[type] = callback
+      end --if
+    end --for
+  end --if
+  if not tab_callbacks then
+    tab_callbacks = {}
+  end --if
+
   tab_output       = { absolute_name = '' }
   tab_curr_scope   = tab_output
   tab_global_scope = tab_output
-  tab_namespaces   = { 
+  tab_namespaces   = {
                        [''] =   {
                                   tab_namespace = tab_output,
                                   curr_root = '',
@@ -3473,8 +3515,25 @@ function parse( stridlparam, ptab_callbacks )
   tab_forward      = { }
   stridl = stridlparam
   oldPrefix = nil
+  CORBAVisible = nil
   lex.init()
   token = get_token()
+
+--Implicit definitions
+--  CORBA::TypeCode
+  if not options.notypecode then
+    define('CORBA', TAB_TYPEID.MODULE)
+    define('TypeCode', TAB_TYPEID.TYPECODE, TAB_IMPLICITTYPE.TYPECODE)
+    goto_father_scope()
+  end --if
+
   specification()
+  isForward()
+
+-- Removing CORBA::TypeCode implicit definition
+  if (not options.notypecode) and (not CORBAVisible) then
+    table.remove(tab_output, 1)
+  end --if
+
   return tab_output
 end

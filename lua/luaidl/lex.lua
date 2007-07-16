@@ -1,8 +1,7 @@
 --
 -- Project:  LuaIDL
--- Version:  0.7.4b
+-- Version:  0.8.6b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 03/04/2007
 -- Filename: lex.lua
 -- 
 
@@ -104,7 +103,7 @@ local tab_keywords = {
                 ['void']      = { token = tab_tokens.TK_VOID },
                 ['wchar']     = { token = tab_tokens.TK_WCHAR },
                 ['wstring']    = { token = tab_tokens.TK_WSTRING },
-                ['TypeCode']   = { token = tab_tokens.TK_TYPECODE },
+--                ['TypeCode']   = { token = tab_tokens.TK_TYPECODE },
               }
 
 local tab_symbols
