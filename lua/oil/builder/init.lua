@@ -21,15 +21,19 @@ local FactoryFrm = "oil.builder.%s"
 local ArchFrm    = "oil.arch.%s"
 function build(customization, built)
 	for name in customization:gmatch(NamePat) do                                  --[[VERBOSE]] verbose:built(true, "creating ",name," components")
-		local success, builder = pcall(require, FactoryFrm:format(name))
+		local success, module = pcall(require, FactoryFrm:format(name))
 		if success then
-			built = builder.create(built)                                             --[[VERBOSE]] else verbose:built("unable to load builder for architecture ",name)
+			built = module.create(built)
+		elseif not module:match("^module '.-' not found:") then                     --[[VERBOSE]] verbose:built(false)
+			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load builder for architecture ",name)
 		end                                                                         --[[VERBOSE]] verbose:built(false)
 	end
 	for name in customization:gmatch(NamePat) do                                  --[[VERBOSE]] verbose:built(true, "assembling ",name," components")
-		local success, arch = pcall(require, ArchFrm:format(name))
+		local success, module = pcall(require, ArchFrm:format(name))
 		if success then
-			arch.assemble(built)                                                      --[[VERBOSE]] else verbose:built("unable to load architecture definition for ",name)
+			module.assemble(built)
+		elseif not module:match("^module '.-' not found:") then                     --[[VERBOSE]] verbose:built(false)
+			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load architecture definition for ",name)
 		end                                                                         --[[VERBOSE]] verbose:built(false)
 	end
 	return built
