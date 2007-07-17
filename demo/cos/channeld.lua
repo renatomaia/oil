@@ -1,5 +1,10 @@
 #!/usr/local/bin/lua
-print("OiL Event Channel 1.0  Copyright (C) 2006-2007 Tecgraf, PUC-Rio")
+--------------------------------------------------------------------------------
+-- @script  OiL Event Channel Daemon
+-- @version 1.1
+-- @author  Renato Maia <maia@tecgraf.puc-rio.br>
+--
+print("OiL Event Channel 1.1  Copyright (C) 2006-2007 Tecgraf, PUC-Rio")
 
 local select = select
 local io     = require "io"

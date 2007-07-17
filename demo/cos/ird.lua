@@ -1,5 +1,10 @@
 #!/usr/local/bin/lua
-print("OiL Interface Repository 2.0  Copyright (C) 2005-2007 Tecgraf, PUC-Rio")
+--------------------------------------------------------------------------------
+-- @script  OiL Interface Repository Daemon
+-- @version 1.2
+-- @author  Renato Maia <maia@tecgraf.puc-rio.br>
+--
+print("OiL Interface Repository 1.2  Copyright (C) 2005-2007 Tecgraf, PUC-Rio")
 
 local ipairs = ipairs
 local select = select

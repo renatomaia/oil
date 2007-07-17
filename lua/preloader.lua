@@ -1,18 +1,18 @@
+#!/usr/local/bin/lua
 --------------------------------------------------------------------------------
--- Project: Library Generation Utilities                                      --
--- Release: 1.0 alpha                                                         --
--- Title  : Pre-Loader of Pre-Compiled Lua Script Files                       --
--- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 13/12/2004 13:51                                                  --
---------------------------------------------------------------------------------
+-- @script  Lua Module Pre-Loader
+-- @version 1.1
+-- @author  Renato Maia <maia@tecgraf.puc-rio.br>
+--
 
-local assert  = assert
-local ipairs  = ipairs
-local pairs   = pairs
-local select  = select
+local assert = assert
+local ipairs = ipairs
+local pairs  = pairs
+local select = select
+local io     = require "io"
+local os     = require "os"
 
-local io = require "io"
-local os = require "os"
+module("preloader", require "loop.compiler.Arguments")
 
 local FILE_SEP = "/"
 local FUNC_SEP = "_"
@@ -21,37 +21,10 @@ local INIT_PAT = "init$"
 local PATH_PAT = FILE_SEP.."$"
 local OPEN_PAT = "int%s+luaopen_([%w_]+)%s*%(%s*lua_State%s*%*[%w_]*%);"
 
-module("preloader", require "loop.compiler.Arguments")
-
 directory = "."
 filename  = "preload"
 prefix    = "LUAPRELOAD_API"
 include   = {}
-
-local help = [[
-Script for generation of code that pre-loads pre-compiled Lua packages.
-Copyright (C) 2005-2007 Renato Maia <maia@inf.puc-rio.br>
-
-usage: lua ]].._NAME..[[.lua [options] <headers>
-  
-  options:
-  
-  -d, -directory    Directory where the output files should be generated. Its
-                    default is the current directory.
-  
-  -f, -filename     Name used to form the name of the files generated. Two files
-                    are generated: a source code file with the sufix '.c' with
-                    the pre-loading code and a header file with the suffix '.h'
-                    with the function that pre-loads the scripts. Its default is
-                    ']]..filename..[['.
-  
-  -i, -I, -include  Adds a directory to the list of paths where the header files
-                    of pre-compiled libraries are searched.
-  
-  -p, -prefix       Prefix added to the signature of the functions generated.
-                    Its default is ']]..prefix..[['.
-
-]]
 
 _alias = { I = "include" }
 for name in pairs(_M) do
@@ -62,7 +35,27 @@ local start, errmsg = _M(...)
 local finish = select("#", ...)
 if not start or start > finish then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
-	io.stderr:write(help)
+	io.stderr:write([[
+Lua Module Pre-Loader 1.1  Copyright (C) 2006-2007 Tecgraf, PUC-Rio
+Usage: ]].._NAME..[[.lua [options] <headers>
+Options:
+	
+	-d, -directory    Directory where the output files should be generated. Its
+	                  default is the current directory.
+	
+	-f, -filename     Name used to form the name of the files generated. Two files
+	                  are generated: a source code file with the sufix '.c' with
+	                  the pre-loading code and a header file with the suffix '.h'
+	                  with the function that pre-loads the scripts. Its default is
+	                  ']]..filename..[['.
+	
+	-i, -I, -include  Adds a directory to the list of paths where the header files
+	                  of pre-compiled libraries are searched.
+	
+	-p, -prefix       Prefix added to the signature of the functions generated.
+	                  Its default is ']]..prefix..[['.
+	
+]])
 	os.exit(1)
 end
 

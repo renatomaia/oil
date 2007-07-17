@@ -1,19 +1,19 @@
+#!/usr/local/bin/lua
 --------------------------------------------------------------------------------
--- Project: Library Generation Utilities                                      --
--- Release: 1.0 alpha                                                         --
--- Title  : Pre-Compiler of Lua Script Files                                  --
--- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 13/12/2004 13:51                                                  --
---------------------------------------------------------------------------------
+-- @script  Lua Script Pre-Compiler
+-- @version 1.1
+-- @author  Renato Maia <maia@tecgraf.puc-rio.br>
+--
 
 local assert   = assert
 local loadfile = loadfile
 local pairs    = pairs
 local select   = select
+local io       = require "io"
+local os       = require "os"
+local string   = require "string"
 
-local io     = require "io"
-local os     = require "os"
-local string = require "string"
+module("precompiler", require "loop.compiler.Arguments")
 
 local FILE_SEP = "/"
 local FUNC_SEP = "_"
@@ -21,39 +21,10 @@ local PACK_SEP = "."
 local INIT_PAT = "init$"
 local PATH_PAT = FILE_SEP.."$"
 
-module("precompiler", require "loop.compiler.Arguments")
-
 luapath   = "."
 directory = "."
 filename  = "precompiled"
 prefix    = "LUAOPEN_API"
-
-local help = [[
-Script for pre-compilation of Lua script files
-Copyright (C) 2005-2007 Renato Maia <maia@inf.puc-rio.br>
-
-Usage: lua ]].._NAME..[[.lua [options] <scripts>
-
-Options:
-
--d, -directory  Directory where the output files should be generated. Its
-                default is the current directory.
-
--f, -filename   Name used to form the name of the files generated. Two files
-                are generates: a source code file with the sufix '.c' with
-                the pre-compiled scripts and a header file with the sufix
-                '.h' with function signatures. Its default is ']]..filename..[['.
-
--l, -luapath    Root directory of the script files to be compiled.
-                The script files must follow the same hierarchy of the
-                packages they implement, similarly to the hierarchy imposed
-                by the value of the 'package.path' defined in the standard
-                Lua distribution. Its default is the current directory.
-
--p, -prefix     Prefix added to the signature of the functions generated.
-                Its default is ']]..prefix..[['.
-
-]]
 
 _alias = {}
 for name in pairs(_M) do
@@ -64,7 +35,29 @@ local start, errmsg = _M(...)
 local finish = select("#", ...)
 if not start or start > finish then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
-	io.stderr:write(help)
+	io.stderr:write([[
+Lua Script Pre-Compiler 1.1  Copyright (C) 2006-2007 Tecgraf, PUC-Rio
+Usage: ]].._NAME..[[.lua [options] <scripts>
+Options:
+	
+	-d, -directory  Directory where the output files should be generated. Its
+	                default is the current directory.
+	
+	-f, -filename   Name used to form the name of the files generated. Two files
+	                are generates: a source code file with the sufix '.c' with
+	                the pre-compiled scripts and a header file with the sufix
+	                '.h' with function signatures. Its default is ']]..filename..[['.
+	
+	-l, -luapath    Root directory of the script files to be compiled.
+	                The script files must follow the same hierarchy of the
+	                packages they implement, similarly to the hierarchy imposed
+	                by the value of the 'package.path' defined in the standard
+	                Lua distribution. Its default is the current directory.
+	
+	-p, -prefix     Prefix added to the signature of the functions generated.
+	                Its default is ']]..prefix..[['.
+	
+]])
 	os.exit(1)
 end
 
