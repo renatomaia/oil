@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
 	lua_pushliteral(L, "../hello/hello.ref");
 	tolua_pushusertype(L, (void*)hello, "Hello::HelloWorld");
 	lua_pushliteral(L, "::Hello");
-	callfield(L, "oil.newsevant", 2, 1);
+	callfield(L, "oil.newservant", 2, 1);
 	callfield(L, "oil.tostring", 1, 1);
 	callfield(L, "oil.writeto", 2, 0);
 	

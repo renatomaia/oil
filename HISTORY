@@ -81,7 +81,7 @@ OiL 0.4 work3 [Wed, 25 Apr 2007]
     itself. If the object was created implicitly or with an automatic object key
     then the object implementation is returned otherwise the CORBA object table
     is returned (i.e. not a proxy but the object originally returned by
-    'oil.newsevant');
+    'oil.newservant');
 (l) The function used to handle exceptions can be defined for all proxies of a
     given interface by function 'oil.setexcepthandler(handler [, interface])'.
     If no interface is provided then the handler is set for all proxies.

@@ -13,6 +13,8 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- Interface:                                                                 --
+--   VERSION                                                                  --
+--                                                                            --
 --   assemble(flavor)                                                         --
 --                                                                            --
 --   types                                                                    --
@@ -80,6 +82,8 @@ local OIL_FLAVOR = OIL_FLAVOR
 -- to be customized for the application.
 
 module "oil"
+
+VERSION = "OiL 0.4 alpha"
 
 --------------------------------------------------------------------------------
 -- Creates and assembles OiL components to compose an ORB instance.
@@ -401,7 +405,7 @@ Config = {}
 -- Initialize the default ORB instance with the provided configurations like
 -- described in 'Config'.
 -- If the default ORB already is created then this instance is returned.
--- This default ORB is used by all objects and proxies created by newsevant and
+-- This default ORB is used by all objects and proxies created by newservant and
 -- newproxy functions.
 --
 -- @param config table Configuration used to create the default ORB instance.
@@ -742,22 +746,22 @@ function setserverinterceptor(iceptor)
 end
 
 --------------------------------------------------------------------------------
--- Alias of 'newsevant' function.
+-- Alias of 'newservant' function.
 --
 -- For compatibility with old OiL applications.
 --
--- @see newsevant
+-- @see newservant
 --
-newobject = newsevant
+newobject = newservant
 
 --------------------------------------------------------------------------------
--- Alias of 'newsevant' function.
+-- Alias of 'newservant' function.
 --
 -- For compatibility with LuaOrb applications.
 --
--- @see newsevant
+-- @see newservant
 --
-createservant = newsevant
+createservant = newservant
 
 --------------------------------------------------------------------------------
 -- Alias of 'newproxy' function.
