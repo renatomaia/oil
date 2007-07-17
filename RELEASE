@@ -12,6 +12,7 @@ OiL 0.4 alpha
 [Improved Features]
 
 Application façade:
+	oil.VERSION
 	oil.types                    -- improved alternative to oil.getLIR()
 	oil.tasks                    -- instead of scheduler
 	oil.tostring(object)         -- instead of obj:_ior()
