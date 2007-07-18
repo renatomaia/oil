@@ -29,12 +29,11 @@ local luaidl = require "luaidl"
 
 local oo  = require "oil.oo"
 local idl = require "oil.corba.idl"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
-local print=print
+
 module("oil.corba.idl.Compiler", oo.class)
 
 context = false
 
---------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 Options = {
 	callbacks = {
@@ -87,7 +86,6 @@ function Options.callbacks.finish()
 	for module in pairs(Modules) do idl.module(module) end
 end
 
---------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 function doresults(self, ...)
