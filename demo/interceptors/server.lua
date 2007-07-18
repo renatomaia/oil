@@ -1,3 +1,6 @@
+package.loaded["oil.component"] = require "loop.component.wrapped"
+package.loaded["oil.port"]      = require "loop.component.intercepted"
+
 require "socket"
 require "oil"                                   -- Load OiL package
 

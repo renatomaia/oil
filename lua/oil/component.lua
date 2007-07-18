@@ -1,1 +1,1 @@
-package.loaded["oil.component"] = require "loop.component.wrapped"
+package.loaded["oil.component"] = require "loop.component.base"

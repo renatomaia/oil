@@ -1,1 +1,1 @@
-package.loaded["oil.port"] = require "loop.component.intercepted"
+package.loaded["oil.port"] = require "loop.component.base"
