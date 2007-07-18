@@ -106,7 +106,7 @@ OiL 0.4 work4 [Fri, 08 Jun 2007]
     invocation may be issued many times if no reply is sent (no at-most-once
     guarantees);
 
-OiL 0.4 work5 [Fri, 06 Jul 2007]
+OiL 0.4 work5 [Fri, 18 Jul 2007]
 
 (a) Bugfix in invocation error handling.
 (b) Bugfix in oneway invocations.
@@ -124,3 +124,10 @@ OiL 0.4 work5 [Fri, 06 Jul 2007]
 (m) Utility script to create Lua scripts that feed the internal IR from IDL files.
 (n) OiL internal components are available through the 'oil' module itself
     instead of field 'oil.Components'.
+(o) API operation 'oil.newobject' becomes 'oil.newservant'. However, the alias
+    'oil.newobject' is provided for compatibility.
+(p) OiL internal coroutine scheduler is accessible through field  'oil.tasks'
+    instead of 'oil.scheduler'.
+(q) OiL internal interface repository is accessible through field  'oil.types'.
+(r) CORBA interception is disabled by default. See demo 'interceptors' for
+    information about how to enable it.
