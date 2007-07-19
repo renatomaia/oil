@@ -55,29 +55,33 @@ _M.package = package and package.loaded
 ------------------------------------------------------------------------------
 Environment = oo.class{ __index = _G }
 
+function addmembers(self, pack)
+	if type(pack) == "table" then
+		for field, member in pairs(pack) do
+			local kind = type(member)
+			if
+				self[member] == nil and (kind == "function" or kind == "userdata") and
+				type(field) == "string" and field:match("^[%a_]+[%w_]*$")
+			then
+				self[member] = self[pack].."."..field
+			end
+		end
+	end
+end
+
 function __init(self, object)
 	self = oo.rawnew(self, object)
 	self.environment = self.environment or Environment()
 	self.environment[self.namespace] = self
 	if self.globals then
 		self[self.globals] = self.namespace..".globals"
+		self:addmembers(self.globals)
 	end
 	if self.package then
 		for name, pack in pairs(self.package) do
 			if not self[pack] then
-				self[pack] = "require('"..name.."')"
-			end
-			if type(pack) == "table" then
-				for field, member in pairs(pack) do
-					local kind = type(member)
-					if
-						self[member] == nil and
-						(kind == "function" or kind == "userdata") and
-						field:match("^[%a_]+[%w_]*$")
-					then
-						self[member] = self[pack].."."..field
-					end
-				end
+				self[pack] = 'require("'..name..'")'
+				self:addmembers(pack)
 			end
 		end
 	end
