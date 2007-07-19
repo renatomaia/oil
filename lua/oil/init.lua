@@ -500,7 +500,7 @@ tasks = TaskManager and TaskManager.tasks
 -- It is a 'coroutine-safe' version of the 'pcall' function of the Lua standard
 -- library.
 --
-pcall = tasks and tasks.pcall or luapcall
+pcall = TaskManager and TaskManager.pcall or luapcall
 
 --------------------------------------------------------------------------------
 -- Function executes the main function of the application.
