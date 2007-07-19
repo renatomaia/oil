@@ -598,7 +598,7 @@ end
 ArrayDef._type = "array"
 ArrayDef.def_kind = "dk_Array"
 ArrayDef.definition_fields = {
-	maxlength   = { type = "number" },
+	length      = { type = "number" },
 	elementtype = { type = IDLType  },
 }
 
