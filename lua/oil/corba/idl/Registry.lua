@@ -14,7 +14,7 @@
 --------------------------------------------------------------------------------
 -- interfaces:Facet
 -- 	interface:table register(definition:table)
--- 	interface:table remove(definition:table)
+-- 	interface:table resolve(id:string)
 -- 	[interface:table] lookup(name:string)
 -- 	[interface:table] lookup_id(repid:string)
 --------------------------------------------------------------------------------
