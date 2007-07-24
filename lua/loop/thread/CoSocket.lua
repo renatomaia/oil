@@ -266,14 +266,24 @@ function select(self, recvt, sendt, timeout)                                    
 		
 		-- assert that no thread is already blocked on these sockets
 		if recvt then
-			for _, socket in ipairs(recvt) do
+			local new = {}
+			for index, wrapper in ipairs(recvt) do
+				local socket = wrapper.__object
 				assert(readlocks[socket] == nil, "attempt to read a socket in use")
+				new[index] = socket
+				new[socket] = wrapper
 			end
+			recvt = new
 		end
 		if sendt then
-			for _, socket in ipairs(sendt) do
+			local new = {}
+			for index, wrapper in ipairs(sendt) do
+				local socket = wrapper.__object
 				assert(writelocks[socket] == nil, "attempt to write a socket in use")
+				new[index] = socket
+				new[socket] = wrapper
 			end
+			sendt = new
 		end
 		
 		local readok, writeok, errmsg = scheduler.select(recvt, sendt, 0)
@@ -327,8 +337,9 @@ function select(self, recvt, sendt, timeout)                                    
 					if reading[socket] == current then
 						reading:remove(socket)                                              --[[VERBOSE]] verbose:threads(current," unsubscribed for read signal")
 					else
-						readok[#readok+1] = socket
-						readok[socket] = true
+						local wrapper = recvt[socket]
+						readok[#readok+1] = wrapper
+						readok[wrapper] = true
 					end
 				end
 			end
@@ -338,8 +349,9 @@ function select(self, recvt, sendt, timeout)                                    
 					if writing[socket] == current then
 						writing:remove(socket)                                              --[[VERBOSE]] verbose:threads(current," unsubscribed for write signal")
 					else
-						writeok[#writeok+1] = socket
-						writeok[socket] = true
+						local wrapper = sendt[socket]
+						writeok[#writeok+1] = wrapper
+						writeok[wrapper] = true
 					end
 				end
 			end
