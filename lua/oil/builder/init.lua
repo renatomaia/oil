@@ -1,8 +1,8 @@
-local type = type
-
+local error   = error
 local pairs   = pairs
 local pcall   = pcall
-local require = require                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local require = require
+local type    = type                                                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.builder"
 
