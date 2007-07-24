@@ -42,3 +42,7 @@ end
 function proxy(self, reference)                                                 --[[VERBOSE]] verbose:client "creating proxy"
 	return self.context.proxies:proxyto(reference)
 end
+
+function excepthandler(self, handler)                                           --[[VERBOSE]] verbose:client "setting exception handler"
+	return self.context.proxies:excepthandler(handler)
+end

@@ -53,3 +53,15 @@ function proxy(self, reference, type)                                           
 	end
 	return result, except
 end
+
+function excepthandler(self, handler, type)                                     --[[VERBOSE]] verbose:client("setting exception handler for proxies of ",type)
+	local result, except = true
+	if type then
+		result, except = self.context.types:resolve(type)
+		if result then type = result end
+	end
+	if result then
+		result, except = self.context.proxies:excepthandler(handler, type)
+	end
+	return result, except
+end
