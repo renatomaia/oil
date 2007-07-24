@@ -162,7 +162,7 @@ function register(self, object, history)
 				history[result.repID] = result
 				
 				-- following references may be recursive
-				if kind == "dk_Struct" or kind == "dk_Union" or kind == "dk_Except" then
+				if kind == "dk_Struct" or kind == "dk_Union" or kind == "dk_Exception" then
 					local members = object:_get_members()
 					for _, member in ipairs(members) do
 						member.type = self:register(member.type_def, history)
