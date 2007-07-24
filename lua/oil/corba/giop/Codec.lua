@@ -820,7 +820,7 @@ function Encoder:sequence(value, idltype)                                       
 		local length = #value
 		self:ulong(length)
 		while elementtype._type == "typedef" do elementtype = elementtype.type end
-		if elementtype == idl.octet or elementtype == idl.char then                 --[[VERBOSE]] verbose:marshal("got ", verbose.viewer:tostring(value))
+		if elementtype == idl.octet or elementtype == idl.char then
 			self:rawput('"', value, length)
 		else
 			assert.illegal(value, "sequence value (table expected, got string)",
@@ -840,7 +840,7 @@ function Encoder:array(value, idltype)                                          
 	local elementtype = idltype.elementtype
 	if type(value) == "string" then
 		while elementtype._type == "typedef" do elementtype = elementtype.type end
-		if elementtype == idl.octet or elementtype == idl.char then                 --[[VERBOSE]] verbose:marshal("got ", verbose.viewer:tostring(value))
+		if elementtype == idl.octet or elementtype == idl.char then
 			local length = #value
 			if length ~= idltype.length then
 				assert.illegal(value, "array value (wrong length)", "MARSHAL")
@@ -868,7 +868,7 @@ end
 
 function Encoder:except(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	assert.type(value, "table", "except value", "MARSHAL")
-	for _, member in ipairs(idltype.members) do                                    --[[VERBOSE]] verbose:marshal{"[member ", member.name, "]"}
+	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose:marshal("[member ", member.name, "]")
 		local val = value[member.name]
 		if
 			val == nil and
