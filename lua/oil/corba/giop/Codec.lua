@@ -297,12 +297,6 @@ local Decoder = oo.class{
 	unpack = bit.unpack, -- use current platform native endianess
 }
 
-function Decoder:__init(object)
-	self = oo.rawnew(self, object)
-	self.history = self
-	return self
-end
-
 function Decoder:order(value)
 	if value ~= NativeEndianess then
 		self.unpack = bit.invunpack
@@ -334,22 +328,23 @@ end
 
 function Decoder:pointto(buffer)
 	self.start = (buffer.start - 1) + (buffer.cursor - #self.data)
-	self.history = buffer.history
+	self.history = buffer.history or buffer
 end
 
 function Decoder:indirection(unmarshall, ...)
 	local pos = (self.start - 1) + self.cursor
 	local tag = self:ulong()
+	local history = self.history or self
 	local value
 	if tag == 4294967295 then -- indirection marker (0xffffffff)
 		pos = (self.start - 1) + self.cursor
-		value = self.history[pos + self:long()]
+		value = history[pos + self:long()]                                          --[[VERBOSE]] verbose:unmarshal("got indirection to previously unmarshaled value.")
 		if value == nil then
 			assert.illegal(nil, "indirection offset", "MARSHALL")
 		end
 	else
 		value = unmarshall(self, tag, ...)
-		self.history[pos] = value
+		history[pos] = value
 	end
 	return value
 end
@@ -583,7 +578,6 @@ local Encoder = oo.class {
 function Encoder:__init(object)
 	self = oo.rawnew(self, object)
 	self.format = {}
-	self.history = self
 	return self
 end
 
@@ -619,18 +613,19 @@ end
 
 function Encoder:pointto(encoder)
 	self.start = (encoder.start - 1) + encoder.cursor
-	self.history = encoder.history
+	self.history = encoder.history or encoder
 end
 
 function Encoder:indirection(marshall, value, ...)
 	local pos = (self.start - 1) + self.cursor
-	local previous = self.history[value]
+	local history = self.history or self
+	local previous = history[value]
 	if previous then
 		self:ulong(4294967295) -- indirection marker (0xffffffff)
-		pos = (self.start - 1) + self.cursor
+		pos = (self.start - 1) + self.cursor                                        --[[VERBOSE]] verbose:marshal("indirection to "..(pos-previous).." bytes away.")
 		self:long(previous - pos) -- offset
 	else
-		self.history[value] = pos
+		history[value] = pos
 		marshall(self, value, ...)
 	end
 end
@@ -926,7 +921,13 @@ function Encoder:TypeCode(value)                                                
 	if tcinfo.type == "empty" then
 		self:ulong(kind)
 	else
+		-- top-most TypeCode encoder does not inherits history
+		local topmost = not self.history
+		-- create history to register nested encoded TypeCodes
+		if topmost then self.history = {} end
 		self:indirection(puttype, value, kind, tcinfo)
+		-- indirection cannot cross top-most TypeCode boundries
+		if topmost then self.history = nil end
 	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
@@ -969,6 +970,7 @@ end
 --[[VERBOSE]] 	[Encoder] = "marshal",
 --[[VERBOSE]] 	[Decoder] = "unmarshal",
 --[[VERBOSE]] }
+--[[VERBOSE]] local luatype = type
 --[[VERBOSE]] function verbose.custom:marshal(codec, type, value)
 --[[VERBOSE]] 	local viewer = self.viewer
 --[[VERBOSE]] 	local output = viewer.output
@@ -981,6 +983,9 @@ end
 --[[VERBOSE]] 			output:write(" ",type)
 --[[VERBOSE]] 		end
 --[[VERBOSE]] 		if value ~= nil then
+--[[VERBOSE]] 			if luatype(value) == "string" then
+--[[VERBOSE]] 				value = value:gsub("[^%w%p%s]", "?")
+--[[VERBOSE]] 			end
 --[[VERBOSE]] 			output:write(" (got ")
 --[[VERBOSE]] 			viewer:write(value)
 --[[VERBOSE]] 			output:write(")")
