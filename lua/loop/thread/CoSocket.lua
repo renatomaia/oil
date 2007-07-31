@@ -355,6 +355,19 @@ function select(self, recvt, sendt, timeout)                                    
 					end
 				end
 			end
+		else
+			for index, socket in ipairs(readok) do
+				local wrapper = recvt[socket]
+				readok[index] = wrapper
+				readok[socket] = nil
+				readok[wrapper] = true
+			end
+			for index, socket in ipairs(writeok) do
+				local wrapper = sendt[socket]
+				writeok[index] = wrapper
+				writeok[socket] = nil
+				writeok[wrapper] = true
+			end
 		end                                                                         --[[VERBOSE]] verbose:cosocket(false, "returning selected sockets after waiting")
 		
 		return readok, writeok, errmsg
