@@ -64,8 +64,7 @@ function __call(self, ...)
 			if set == "" then -- option value was not set yet, get following argument
 				val = true
 			else
-				temp = self._boolean
-				temp = temp and temp[val]
+				temp = self._boolean[val]
 				if temp ~= nil then val = temp end
 			end
 			self[opt] = val
