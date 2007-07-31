@@ -64,7 +64,7 @@ end
 
 function clear(tab)
 	local elem = next(tab)
-	while elem do
+	while elem ~= nil do
 		tab[elem] = nil
 		elem = next(tab)
 	end
