@@ -90,6 +90,7 @@ function Port:__init(object)
 		end
 		socket.context = self.context
 		socket.port    = self
+		socket:setoption("tcp-nodelay", true)
 		return socket
 	end
 	
@@ -139,6 +140,7 @@ function __init(self, object)
 					if _ then
 						_, errmsg = socket:listen()
 						if _ then                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
+							socket:setoption("tcp-nodelay", true)
 							return Port{
 								context = self.context,
 								__object = socket,

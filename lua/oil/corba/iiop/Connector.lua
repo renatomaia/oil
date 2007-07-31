@@ -124,6 +124,7 @@ function __init(self, object)
 					socket.host    = host
 					socket.port    = port
 					socket.close   = release_socket
+					socket:setoption("tcp-nodelay", true)
 					return socket
 				else
 					self.except = "connection refused"
