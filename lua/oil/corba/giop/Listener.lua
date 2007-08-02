@@ -156,7 +156,7 @@ local SysExReply = {
 
 local SysExType = { giop.SystemExceptionIDL }
 
-function sysexreply(self, requestid, body)                                      --[[VERBOSE]] verbose:listen("new system exception ",body[1]," for request ",requestid)
+function sysexreply(self, requestid, body)                                      --[[VERBOSE]] verbose:listen("new system exception ",body.exception_id," for request ",requestid)
 	SysExReply.request_id = requestid
 	return ReplyID, SysExReply, SysExType, body
 end
