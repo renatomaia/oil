@@ -9,7 +9,7 @@ __concat   = Exception.__concat
 __tostring = Exception.__tostring
 
 minor_code_value = 0
-completion_status = COMPLETED_MAYBE
+completion_status = 2
 
 function __init(_, except, ...)
 	local name = except[1]

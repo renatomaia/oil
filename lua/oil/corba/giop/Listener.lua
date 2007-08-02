@@ -289,7 +289,7 @@ function sendreply(self, channel, request, success, ...)                        
 					                                    ExceptionReplyTypes,
 					                                    except[1], except)
 				else
-					if SystemExceptionIDs[ except[1] ] then                                 --[[VERBOSE]] verbose:listen("got system exception ",except)
+					if SystemExceptions[ except[1] ] then                                 --[[VERBOSE]] verbose:listen("got system exception ",except)
 						except.exception_id = except[1]
 					elseif except.reason == "badkey" then
 						except.exception_id = "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
