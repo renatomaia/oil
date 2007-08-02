@@ -131,3 +131,29 @@ OiL 0.4 work5 [Fri, 18 Jul 2007]
 (q) OiL internal interface repository is accessible through field  'oil.types'.
 (r) CORBA interception is disabled by default. See demo 'interceptors' for
     information about how to enable it.
+(s) Rules to strip and reinsert verbose support from OiL's code.
+
+OiL 0.4 work6 [Wed, 1 Aug 2007]
+
+(a) Bugfix in array description registration in the internal Interface
+    Repository.
+(b) Bugfix in 'oil.pcall' in CORBA interception mode.
+(c) Bugfix in script 'idl2lua.lua' by an improvement to avoid that global
+    functions be serialized as module members.
+(d) Bugfix in select function wrapper. The error was not detected before due to
+    strange behavior of LuaSocket that returned ordinary tables inserted in
+    function arguments just like ready sockets.
+(e) Bugfix in importation of remote exception's members.
+(f) Bugfix in builder error handling.
+(g) Bugfix in verbose message generation and removal of redundant verbose
+    messages.
+(h) Bugfix: select calls that executed without yielding returned socket objects
+    instead of socket wrappers that implement scheduler integration.
+(i) Bugfix in TypeCode marshaling with indirections. Indirections cannot span
+    across the top-most TypeCode boundaries. Improvement in verbose messages to
+    avoid printing non-printable characters.
+(j) Exceptions created with oil.newexcept now can contain exceptions's abosule
+    name instead of repID.
+(k) oil.setexcatch(func, iface) receives any interface identification (repID,
+    absolute name, remote IR object, etc.)
+(l) Performance improvement by use of 'tcp-nodelay' option.
