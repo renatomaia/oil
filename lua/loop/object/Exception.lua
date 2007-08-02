@@ -35,21 +35,17 @@ function __init(class, object)
 end
 
 function __concat(op1, op2)
-	if oo.instanceof(op1, _M) then
+	if type(op1) == "table" and type(op1.__tostring) == "function" then
 		op1 = op1:__tostring()
-	elseif type(op1) ~= "string" then
-		error("attempt to concatenate a "..type(op1).." value")
 	end
-	if oo.instanceof(op2, _M) then
+	if type(op2) == "table" and type(op2.__tostring) == "function" then
 		op2 = op2:__tostring()
-	elseif type(op2) ~= "string" then
-		error("attempt to concatenate a "..type(op2).." value")
 	end
-	return op1 .. op2
+	return op1..op2
 end
 
 function __tostring(self)
-	local message = { self[1] or _NAME," raised" }
+	local message = { self[1] or self._NAME or "Exception"," raised" }
 	if self.message then
 		message[#message + 1] = ": "
 		message[#message + 1] = self.message
