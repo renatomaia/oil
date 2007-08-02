@@ -41,6 +41,7 @@
 --------------------------------------------------------------------------------
 
 local ipairs = ipairs
+local pairs  = pairs
 local select = select
 local type   = type
 local unpack = unpack
@@ -79,6 +80,12 @@ local COMPLETED_NO    = 1
 local COMPLETED_MAYBE = 2
 
 local Empty = {}
+
+local SystemExceptions = {}
+
+for _, repID in pairs(SystemExceptionIDs) do
+	SystemExceptions[repID] = true
+end
 
 --------------------------------------------------------------------------------
 
@@ -151,7 +158,6 @@ local SysExType = { giop.SystemExceptionIDL }
 
 function sysexreply(self, requestid, body)                                      --[[VERBOSE]] verbose:listen("new system exception ",body[1]," for request ",requestid)
 	SysExReply.request_id = requestid
-	body.exception_id = SystemExceptionIDs[ body[1] ]
 	return ReplyID, SysExReply, SysExType, body
 end
 
@@ -209,21 +215,24 @@ function getrequest(self, channel, probe)                                       
 					result = header
 				else                                                                    --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
 					result, except = self:bypass(channel, header,
-						self:sysexreply(requestid, { "BAD_OPERATION",
+						self:sysexreply(requestid, {
+							exception_id = "IDL:omg.org/CORBA/BAD_OPERATION:1.0",
 							minor_code_value  = 1, -- TODO:[maia] Which value?
 							completion_status = COMPLETED_NO,
 						}))
 				end
 			else                                                                      --[[VERBOSE]] verbose:listen("got illegal object ",header.object_key)
 				result, except = self:bypass(channel, header,
-					self:sysexreply(requestid, { "OBJECT_NOT_EXIST",
+					self:sysexreply(requestid, {
+						exception_id = "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0",
 						minor_code_value  = 1, -- TODO:[maia] Which value?
 						completion_status = COMPLETED_NO,
 					}))
 			end
 		else                                                                        --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
 			result, except = self:bypass(channel, header,
-				self:sysexreply(requestid, { "INTERNAL",
+				self:sysexreply(requestid, {
+					exception_id = "IDL:omg.org/CORBA/INTERNAL:1.0",
 					minor_code_value = 0, -- TODO:[maia] Which value?
 					completion_status = COMPLETED_NO,
 				}))
@@ -280,22 +289,22 @@ function sendreply(self, channel, request, success, ...)                        
 					                                    ExceptionReplyTypes,
 					                                    except[1], except)
 				else
-					if SystemExceptionIDs[ except[1] ] then                               --[[VERBOSE]] verbose:listen("got system exception ",except)
-						except.completion_status = COMPLETED_MAYBE
+					if SystemExceptionIDs[ except[1] ] then                                 --[[VERBOSE]] verbose:listen("got system exception ",except)
+						except.exception_id = except[1]
 					elseif except.reason == "badkey" then
-						except[1] = "OBJECT_NOT_EXIST"
+						except.exception_id = "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
 						except.minor_code_value  = 1
 						except.completion_status = COMPLETED_NO
 					elseif except.reason == "noimplement" then
-						except[1] = "NO_IMPLEMENT"
+						except.exception_id = "IDL:omg.org/CORBA/NO_IMPLEMENT:1.0"
 						except.minor_code_value  = 1
 						except.completion_status = COMPLETED_NO
 					elseif except.reason == "badoperation" then
-						except[1] = "BAD_OPERATION"
+						except.exception_id = "IDL:omg.org/CORBA/BAD_OPERATION:1.0"
 						except.minor_code_value  = 1
 						except.completion_status = COMPLETED_NO
 					else                                                                  --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
-						except[1] = "UNKNOWN"
+						except.exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0"
 						except.minor_code_value  = 0
 						except.completion_status = COMPLETED_MAYBE
 					end
@@ -305,7 +314,8 @@ function sendreply(self, channel, request, success, ...)                        
 			elseif type(except) == "string" then                                      --[[VERBOSE]] verbose:listen("got unexpected error ", except)
 				success, except = messenger:sendmsg(channel,
 					listener:sysexreply(requestid, {
-						"UNKNOWN", minor_code_value = 0,
+						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
+						minor_code_value = 0,
 						completion_status = COMPLETED_MAYBE,
 						message = "servant error: "..except,
 						reason = "servant",
@@ -316,7 +326,8 @@ function sendreply(self, channel, request, success, ...)                        
 			else                                                                      --[[VERBOSE]] verbose:listen("got illegal exception ", except)
 				success, except = messenger:sendmsg(channel,
 					listener:sysexreply(requestid, {
-						"UNKNOWN", minor_code_value = 0,
+						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
+						minor_code_value = 0,
 						completion_status = COMPLETED_MAYBE,
 						message = "invalid exception, got "..type(except),
 						reason = "exception",

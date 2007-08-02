@@ -643,7 +643,7 @@ end
 -- @usage oil.setexcatch(function(_, except) error(tostring(except)) end)
 --
 function setexcatch(handler, type)
-	assert.results(ObjectProxies.proxies:excepthandler(handler, type))
+	assert.results(ClientBroker.broker:excepthandler(handler, type))
 end
 
 --------------------------------------------------------------------------------
