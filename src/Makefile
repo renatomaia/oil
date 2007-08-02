@@ -26,7 +26,6 @@ LOOP_PCK= loop/base.lua \
           loop/component/contained.lua \
           loop/component/dynamic.lua \
           loop/component/intercepted.lua \
-          loop/component/introspection.lua \
           loop/component/wrapped.lua \
           loop/debug/Inspector.lua \
           loop/debug/Matcher.lua \
@@ -82,6 +81,7 @@ OIL_PCK= oil/assert.lua \
          oil/corba/idl/init.lua \
          oil/corba/idl/ir.lua \
          oil/corba/idl/Registry.lua \
+         oil/corba/idl/sysex.lua \
          oil/corba/iiop/Acceptor.lua \
          oil/corba/iiop/Connector.lua \
          oil/corba/iiop/Profiler.lua \
