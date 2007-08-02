@@ -32,7 +32,7 @@ if not start or start ~= finish then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
 	io.stderr:write([[
 IDL Descriptor Pre-Loader 1.0  Copyright (C) 2006-2007 Tecgraf, PUC-Rio
-Usage: lua ]].._NAME..[[.lua [options] <idlfile>
+Usage: ]].._NAME..[[.lua [options] <idlfile>
 Options:
 	
 	-o, -output     Output file that should be generated. Its default is
