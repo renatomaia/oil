@@ -1,3 +1,5 @@
+local setfenv = setfenv
+
 local idl = require "oil.corba.idl"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.corba.idl.ir"
@@ -21,6 +23,15 @@ local module    = idl.module
 local interface = idl.interface
 local attribute = idl.attribute
 local operation = idl.operation
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+name = "CORBA"
+repID = "IDL:omg.org/CORBA:1.0"
+module(_M)
+
+setfenv(1, definitions)
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -834,17 +845,3 @@ AbstractInterfaceDef.base_interfaces    = { InterfaceDef }
 ExtAbstractInterfaceDef.base_interfaces = { AbstractInterfaceDef, InterfaceAttrExtension }
 LocalInterfaceDef.base_interfaces       = { InterfaceDef }
 ExtLocalInterfaceDef.base_interfaces    = { LocalInterfaceDef, InterfaceAttrExtension }
-
---------------------------------------------------------------------------------
-
-local definitions = _M
-
-_M = nil
-_NAME = nil
-_PACKAGE = nil
-
-module{
-	name = "CORBA",
-	repID = "IDL:omg.org/CORBA:1.0",
-	definitions = definitions,
-}

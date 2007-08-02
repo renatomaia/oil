@@ -2,6 +2,7 @@ local require = require
 local builder = require "oil.builder"
 local base    = require "oil.arch.base"
 local arch    = require "oil.arch.corba"
+local sysex   = require "oil.corba.idl.sysex"
 
 module "oil.builder.corba"
 
@@ -36,5 +37,6 @@ function create(comps)
 		[""] = comps.IIOPProfiler,
 		iiop = comps.IIOPProfiler,
 	}
+	comps.TypeRepository.types:register(sysex)
 	return comps
 end

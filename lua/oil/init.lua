@@ -69,7 +69,6 @@ local coroutine = require "coroutine"
 
 local builder   = require "oil.builder"
 local assert    = require "oil.assert"
-local Exception = require "oil.Exception"
 
 local OIL_FLAVOR = OIL_FLAVOR
 
@@ -616,10 +615,10 @@ end
 --
 function newexcept(body)
 	assert.type(body, "table", "exception body")
-	local except = TypeRepository.importer:resolve(body[1])
+	local except = assert.results(TypeRepository.importer:resolve(body[1]))
 	assert.type(except, "idl except", "referenced exception type")
 	body[1] = except.repID
-	return Exception(body)
+	return assert.Exception(body)
 end
 
 --------------------------------------------------------------------------------

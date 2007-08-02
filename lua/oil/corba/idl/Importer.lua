@@ -45,7 +45,7 @@ resolve = Registry.resolve
 function context(self, context)
 	self.context = context
 	local types = context.types
-	types:register(iridl.InterfaceDef)
+	types:register(iridl)
 	self.DefaultDefs = oo.class()
 	for id, def in pairs(types.definition_map) do
 		self.DefaultDefs[id] = def

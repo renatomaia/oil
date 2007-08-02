@@ -38,7 +38,7 @@ local OrderedSet  = require "loop.collection.OrderedSet"
 local oo        = require "oil.oo"
 local assert    = require "oil.assert"
 local idl       = require "oil.corba.idl"
-local iridl     = require "oil.corba.idl.ir"
+local iridl     = require("oil.corba.idl.ir").definitions
 local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.corba.idl.Registry"
