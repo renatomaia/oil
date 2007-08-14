@@ -33,7 +33,7 @@ local oo     = require "loop.base"
 
 module("loop.debug.Viewer", oo.class)
 
-maxdepth = 2
+maxdepth = -1
 indentation = "  "
 linebreak = "\n"
 prefix = ""
