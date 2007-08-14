@@ -12,8 +12,10 @@ minor_code_value = 0
 completion_status = 2
 
 function __init(_, except, ...)
-	local name = except[1]
-	except[1] = giop.SystemExceptionIDs[name] or name
+	if except then
+		local name = except[1]
+		except[1] = giop.SystemExceptionIDs[name] or name
+	end
 	return Exception.__init(_, except, ...)
 end
 
