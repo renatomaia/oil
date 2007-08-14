@@ -59,12 +59,12 @@ local:
 	$(MAKE) install INSTALL_TOP=.. INSTALL_EXEC="cp -p" INSTALL_DATA="cp -p"
 
 no-verbose:
-	for f in `find lua/ -iname "*.lua"`; do sed -i -e "s/\-\-\[\[VERBOSE\]\]/-- [[VERBOSE]]/g" $$f; done
-	for f in `find lua/ -iname "*.lua"`; do sed -i -e "s/\-\-\[\[DEBUG\]\]/-- [[DEBUG]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\-\[\[VERBOSE\]\]/-- [[VERBOSE]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\-\[\[DEBUG\]\]/-- [[DEBUG]]/g" $$f; done
 
 verbose:
-	for f in `find lua/ -iname "*.lua"`; do sed -i -e "s/\-\-\ [\[VERBOSE\]\]/--[[VERBOSE]]/g" $$f; done
-	for f in `find lua/ -iname "*.lua"`; do sed -i -e "s/\-\-\ [\[DEBUG\]\]/--[[DEBUG]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\- \[\[VERBOSE\]\]/--[[VERBOSE]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\- \[\[DEBUG\]\]/--[[DEBUG]]/g" $$f; done
 
 none:
 	@echo "Please do"
