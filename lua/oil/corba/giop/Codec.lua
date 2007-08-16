@@ -823,7 +823,7 @@ function Encoder:sequence(value, idltype)                                       
 		end
 	else
 		assert.type(value, "table", "sequence value", "MARSHAL")
-		local length = #value
+		local length = value.n or #value
 		self:ulong(length)
 		for i = 1, length do                                                        --[[VERBOSE]] verbose:marshal("[element ",i,"]")
 			self:put(value[i], elementtype) 
@@ -847,11 +847,7 @@ function Encoder:array(value, idltype)                                          
 		end
 	else
 		assert.type(value, "table", "array value", "MARSHAL")
-		local length = #value
-		if length ~= idltype.length then
-			assert.illegal(value, "array value (wrong length)", "MARSHAL")
-		end
-		for i = 1, length do                                                        --[[VERBOSE]] verbose:marshal("[element ",i,"]")
+		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose:marshal("[element ",i,"]")
 			self:put(value[i], elementtype)
 		end
 	end                                                                           --[[VERBOSE]] verbose:marshal(false)
