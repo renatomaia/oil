@@ -99,7 +99,9 @@ function getchannel(self, reference)                                            
 				if profiler then
 					reference._object = except
 					channel, except = channels:retrieve(profiler)
-					if except == "connection refused" then
+					if channel then
+						reference[ChannelKey] = channel
+					elseif except == "connection refused" then
 						except = Exception{ "COMM_FAILURE", minor_code_value = 1,
 							reason = "connect",
 							message = "connection to profile refused",
