@@ -277,7 +277,6 @@ function sendreply(self, channel, request, success, ...)                        
 			success, except = messenger:sendmsg(channel, ReplyID, request,
 			                                    member.outputs, ...)
 		else
-			local listener = self.context.listener
 			except = ...
 			if type(except) == "table" then                                           --[[VERBOSE]] verbose:listen("got exception ",except)
 				local excepttype = member.exceptions[ except[1] ]
@@ -309,11 +308,11 @@ function sendreply(self, channel, request, success, ...)                        
 						except.completion_status = COMPLETED_MAYBE
 					end
 					success, except = messenger:sendmsg(channel,
-						listener:sysexreply(requestid, except))
+						self:sysexreply(requestid, except))
 				end
 			elseif type(except) == "string" then                                      --[[VERBOSE]] verbose:listen("got unexpected error ", except)
 				success, except = messenger:sendmsg(channel,
-					listener:sysexreply(requestid, {
+					self:sysexreply(requestid, {
 						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
 						minor_code_value = 0,
 						completion_status = COMPLETED_MAYBE,
@@ -325,7 +324,7 @@ function sendreply(self, channel, request, success, ...)                        
 					}))
 			else                                                                      --[[VERBOSE]] verbose:listen("got illegal exception ", except)
 				success, except = messenger:sendmsg(channel,
-					listener:sysexreply(requestid, {
+					self:sysexreply(requestid, {
 						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
 						minor_code_value = 0,
 						completion_status = COMPLETED_MAYBE,
@@ -340,6 +339,11 @@ function sendreply(self, channel, request, success, ...)                        
 			if channel.invalid and table.maxn(channel) == 0 then                      --[[VERBOSE]] verbose:listen "all pending requests replyied, connection being closed"
 				success, except = messenger:sendmsg(channel, CloseConnectionID)
 			end
+		elseif SystemExceptions[ except[1] ] then                                   --[[VERBOSE]] verbose:listen("got system exception ",except," at reply send")
+			except.exception_id = except[1]
+			except.completion_status = COMPLETED_YES
+			success, except = messenger:sendmsg(channel,
+				self:sysexreply(requestid, except))
 		end
 	else
 		success = true
