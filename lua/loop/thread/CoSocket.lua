@@ -16,6 +16,7 @@
 
 --[[VERBOSE]] local verbose = require("loop.thread.Scheduler").verbose
 --[[VERBOSE]] verbose.groups.concurrency[#verbose.groups.concurrency+1] = "cosocket"
+--[[VERBOSE]] verbose:newlevel{"cosocket"}
 
 local ipairs       = ipairs
 local assert       = assert
