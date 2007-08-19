@@ -82,7 +82,7 @@ function corbaloc(self, encoded)
 		local profiler = self.context.profiler[token]
 		if profiler then
 			return {
-				_type_id = "IDL:omg.org/CORBA/Object:1.0",
+				_type_id = "",
 				_profiles = { profiler:decodeurl(data) },
 			}
 		end

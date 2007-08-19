@@ -417,7 +417,7 @@ function Decoder:Object(idltype)                                                
 			for _, profile in ipairs(ior._profiles) do
 				local profiler = profilers[profile.tag]
 				if profiler then
-					local object = profiler:match(profile.profile_data, objects.config)
+					local object = profiler:belongsto(profile.profile_data, objects.config)
 					if object then
 						object = objects:retrieve(object)
 						if object then                                                      --[[VERBOSE]] verbose:unmarshal "local object implementation restored"

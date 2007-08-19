@@ -26,9 +26,13 @@
 -- 	[type:table] register(definition:object)
 -- 	[type:table] resolve(type:string)
 -- 	[type:table] lookup_id(repid:string)
+-- 
+-- profiler:HashReceptacle
+-- 	result:boolean equivalent(profile1:string, profile2:string)
 --------------------------------------------------------------------------------
 
-local type = type
+local ipairs = ipairs
+local type   = type
 
 local oo        = require "oil.oo"
 local assert    = require "oil.assert"
@@ -82,6 +86,27 @@ function context(self, context)
 		return self.__context.proxies:proxyto(self, iface)
 	end
 	
+	function self.localops:_is_equivalent(reference)
+		local tags = {}
+		for _, profile in ipairs(reference._profiles) do
+			tags[profile.tag] = profile
+		end
+		for _, profile in ipairs(self._profiles) do
+			local tag = profile.tag
+			local other = tags[tag]
+			if other then
+				local profiler = context.profiler[tag]
+				if
+					profiler and
+					profiler:equivalent(profile.profile_data, other.profile_data)
+				then
+					return true
+				end
+			end
+		end
+		return false
+	end
+	
 	self.context = context
 end
 
@@ -105,13 +130,14 @@ end
 function typeof(self, reference)
 	local type = reference._type_id
 	local types = self.context.types
-	return type == idl.object.repID and types:resolve(idl.object) or
-	       self.context.types:lookup_id(type) or
+	return self.context.types:lookup_id(type) or
 	       self:importinterfaceof(reference)
 end
 
 function valueof(self, interface, name)
-	return Indexer.valueof(self, interface, name),
-	       self.localops[name],
-	       true
+	local member = Indexer.valueof(self, interface, name)
+	if member and member._type ~= "operation" then
+		member = nil
+	end
+	return member, self.localops[name], true
 end

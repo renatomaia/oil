@@ -18,7 +18,8 @@
 -- profiler:Facet
 -- 	stream:string encode(profile:table, [version:number])
 -- 	profile:table decode(stream:string)
--- 	objkey:string match(profile:string, orbcfg:table)
+-- 	objkey:string belongsto(profile:string, orbcfg:table)
+-- 	result:boolean equivalent(profile1:string, profile2:string)
 -- 	profile:table decodeurl(url:string)
 -- 
 -- codec:Receptacle
@@ -125,7 +126,7 @@ end
 --------------------------------------------------------------------------------
 -- IIOP profile and local ORB config match
 
-function match(self, profile, config)
+function belongsto(self, profile, config)
 	local objectkey
 	profile, objectkey = self:decode(profile)
 	local host = config.host
@@ -133,6 +134,18 @@ function match(self, profile, config)
 	if profile.host == host and profile.port == config.port then
 		return objectkey
 	end
+end
+
+--------------------------------------------------------------------------------
+-- IIOP profile are equivalent
+
+function equivalent(self, profile1, profile2)
+	local objectkey1, objectkey2
+	profile1, objectkey1 = self:decode(profile1)
+	profile2, objectkey2 = self:decode(profile2)
+	return objectkey1 == objectkey2 and
+	       profile1.host == profile2.host and
+	       profile1.port == profile2.port
 end
 
 --------------------------------------------------------------------------------

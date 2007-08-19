@@ -36,7 +36,7 @@ ValueEncoder = component.Template{
 		impl:object retrieve(key:string)
 	]],
 	profiler = port.HashReceptacle--[[
-		objkey:string match(profile:string, orbcfg:table)
+		objkey:string belongsto(profile:string, orbcfg:table)
 	]],
 }
 
@@ -47,7 +47,8 @@ ReferenceProfiler = component.Template{
 	profiler = port.Facet--[[
 		stream:string encode(profile:table, [version:number])
 		profile:table decode(stream:string)
-		objkey:string match(profile:string, orbcfg:table)
+		objkey:string belongsto(profile:string, orbcfg:table)
+		result:boolean equivalent(profile1:string, profile2:string)
 		profile:table decodeurl(url:string)
 	]],
 	codec = port.Receptacle--[[
@@ -126,6 +127,9 @@ ProxyIndexer = component.Template{
 	]],
 	invoker = port.Receptacle--[[
 		[results:object], [except:table] invoke(reference:table, operation:table, args...)
+	]],
+	profiler = port.HashReceptacle--[[
+		result:boolean equivalent(profile1:string, profile2:string)
 	]],
 	types = port.Receptacle--[[
 		[type:table] register(definition:object)
@@ -271,6 +275,13 @@ function assemble(components)
 		ProxyIndexer.invoker = OperationInvoker.invoker
 		ProxyIndexer.types = TypeRepository.importer or
 		                     TypeRepository.types
+		if ReferenceProfilers then
+			for tag, profiler in pairs(ReferenceProfilers) do
+				if type(tag) == "number" then
+					ProxyIndexer.profiler[tag] = profiler.profiler
+				end
+			end
+		end
 	end
 	-- LISTENER
 	if RequestListener then
