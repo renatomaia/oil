@@ -82,7 +82,7 @@ module("loop.debug.Verbose", oo.class)
 
 local firstcol = 8
 
-viewer = Viewer
+viewer = Viewer()
 tabcount = { default = 0 }
 
 function __init(class, verbose)
