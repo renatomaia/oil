@@ -7,6 +7,7 @@ local Viewer = require "loop.debug.Viewer"
 
 --------------------------------------------------------------------------------
 
+local viewer = Viewer{ maxdepth = 2 }
 local interceptor = {}
 
 --------------------------------------------------------------------------------
@@ -18,7 +19,7 @@ local send_context_idl = oil.loadidl [[
 	};
 ]]
 function interceptor:sendrequest(request)
-	print("intercepting request to "..request.operation.."("..Viewer:tostring(unpack(request, 1, request.count))..")")
+	print("intercepting request to "..request.operation.."("..viewer:tostring(unpack(request, 1, request.count))..")")
 	local encoder = oil.newencoder()
 	encoder:put({
 		memory = gcinfo(),
@@ -43,7 +44,7 @@ local receive_context_idl = oil.loadidl [[
 function interceptor:receivereply(reply)
 	print("intercepting reply of opreation "..reply.operation)
 	print("\tsuccess:", reply.success)
-	print("\tresults:", Viewer:tostring(unpack(reply, 1, reply.count)))
+	print("\tresults:", viewer:tostring(unpack(reply, 1, reply.count)))
 	for _, context in ipairs(reply.service_context) do
 		if context.context_id == 4321 then
 			local decoder = oil.newdecoder(context.context_data)
