@@ -157,3 +157,24 @@ OiL 0.4 work6 [Wed, 1 Aug 2007]
 (k) oil.setexcatch(func, iface) receives any interface identification (repID,
     absolute name, remote IR object, etc.)
 (l) Performance improvement by use of 'tcp-nodelay' option.
+
+OiL 0.4 work7 [Tue, 21 Aug 2007 - r66613]
+
+(a) Bugfix in handling of system exceptions raised by servants.
+(b) Bugfix in verbose message generation
+(c) Bugfix in serialization of long long type descriptor in 'idl2lua' script.
+(d) Bugfix to avoid that attributes be indexed through proxies.
+(e) Bugfix: channel is stored in the reference object to avoid retrieve the
+    channel at each new invocation.
+(f) Bugfix: Verbose class use a specific Viewer instance to avoid changing the
+    Viewer class' behavior.
+(g) Standard system exceptions are loaded into the internal IR.
+(h) Improvement to allow creation of GIOP Exceptions without body.
+(i) Sequences containing 'nil' can have the 'n' field to indicate the number of
+    elements.
+(j) Implementation of _is_equivalent operation of CORBA references.
+(k) Object references with unknown types are created with field 'type_id' set to
+    ''.
+(l) Improvement by addition of 'cosocket' verbose tag as a new level of verbose
+    in Scheduler verbose.
+(m) New demo about exception handling.

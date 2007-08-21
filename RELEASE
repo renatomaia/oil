@@ -5,6 +5,7 @@ OiL 0.4 alpha
 - Deferred calls (aka "futures") [demo deferred];
 - ORB shutdown operation [demo selfcall];
 - CORBA request interception [demo interceptors];
+- CORBA's _is_equivalent operation;
 - Customizable component-based architecture [see 'oil.assemble' function];
 - IDL large numbers: long long, unsigned long long, long double [see config];
 	NOTE: Lua must be changed so lua_Number is 'long double'.
@@ -35,12 +36,14 @@ Integrated CORBA IR:
 	- Ability to change IR definitions;
 	- Ability to load module parts using different 'oil.loadidl*' calls;
 	- Consistent storage of all IDL definitions, not only interfaces;
+	- Standard CORBA exceptions are loaded by default;
 	- Ability to import any definition from the remote delegated IR (oil.setIR);
 GIOP implementation:
 	- Support for marshaling of typecode 'null' and anys containing values of type
 	  'null';
 	- 'nil' values used as 'any' are automatically coded as 'null';
 	- Any's now provide the field _anytype to identify the IDL type of the value;
+	- Sequences with 'nil' values can have field 'n' to define its size;
 	- Automatic reconnections when connection is closed. WARNING: Operation
 	  invocation may be issued many times if no reply is sent (no at-most-once
 	  guarantees);
@@ -87,5 +90,6 @@ Verbose support:
 		8: Creation of IDL descriptors and internal IR operation;
 Development support
 	- Utility script to create Lua scripts that feed the internal IR with
-	  descriptions described in IDL files.
-	- Unix shell scripts for execution of demos.
+	  descriptions described in IDL files;
+	- New demo about exception handling;
+	- Unix shell scripts for execution of demos;
