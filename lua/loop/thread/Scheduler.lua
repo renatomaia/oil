@@ -239,7 +239,7 @@ function step(self)                                                             
 end
 
 function run(self, timeout)                                                     --[[VERBOSE]] verbose:scheduler(true, "running scheduler until ",timeout)
-	if self:step() then
+	if self:step() and not self.halted then
 		local now = self:time()
 		if not timeout or timeout > now then
 			local running = self.running
@@ -253,8 +253,14 @@ function run(self, timeout)                                                     
 				self:idle(nextwake)                                                     --[[VERBOSE]] verbose:scheduler(false, "resuming scheduling")
 			end                                                                       --[[VERBOSE]] verbose:scheduler(false, "reissue scheduling")
 			return self:run(timeout)                                                  --[[VERBOSE]] else verbose:scheduler(false, "scheduling timed out")
-		end                                                                         --[[VERBOSE]] else verbose:scheduler(false, "no thread pending scheduling")
+		end
+	else                                                                          --[[VERBOSE]] verbose:scheduler(false, "no thread pending scheduling or scheduler halted")
+		self.halted = nil
 	end
+end
+
+function halt(self)
+  self.halted = true
 end
 
 --------------------------------------------------------------------------------
