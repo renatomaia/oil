@@ -14,23 +14,28 @@
 -- Date   : 27/02/2006 08:51                                                  --
 --------------------------------------------------------------------------------
 
-local type         = type
-local error        = error
-local xpcall       = xpcall
-local rawset       = rawset
-local rawget       = rawget
-local select       = select
-local setfenv      = setfenv
-local getfenv      = getfenv
-local tostring     = tostring
-local loadstring   = loadstring
-local _G           = _G
+local _G         = _G
+local assert     = assert
+local error      = error
+local getfenv    = getfenv
+local load       = load
+local loadstring = loadstring
+local next       = next
+local pairs      = pairs
+local rawget     = rawget
+local rawset     = rawset
+local select     = select
+local setfenv    = setfenv
+local type       = type
+local xpcall     = xpcall
 
 local coroutine = require "coroutine"
-local io        = require "io"
 local debug     = require "debug"
-local oo        = require "loop.base"
-local Viewer    = require "loop.debug.Viewer"
+local io        = require "io"
+
+local oo          = require "loop.base"
+local ObjectCache = require "loop.collection.ObjectCache"
+local Viewer      = require "loop.debug.Viewer"
 
 module("loop.debug.Inspector", oo.class)
 
@@ -210,11 +215,6 @@ function Command.curr()
 	end
 end
 
-function Command.step()
-	rawset(self, ".hook", true)
-	Command.done()
-end
-
 function Command.done()
 	while #self > 0 do
 		self[#self] = nil
@@ -224,7 +224,84 @@ function Command.done()
 	self[".current"] = false
 end
 
+function Command.step(level)
+	if level == "in"  then level = -1
+	elseif level == "out" then level = 1
+	else level = 0 end
+	rawset(self, ".hook", level)
+	Command.done()
+end
+
+function Command.lsbp()
+	local breaks = {}
+	for line, files in pairs(self.breaks) do
+		for file in pairs(files) do
+			breaks[#breaks+1] = file..":"..line
+		end
+	end
+	table.sort(breaks)
+	for _, bp in ipairs(breaks) do
+		print(bp)
+	end
+end
+
+function Command.mkbp(file, line)
+	assert(type(file) == "string", "usage: mkbp(<file>, <line>)")
+	assert(type(line) == "number", "usage: mkbp(<file>, <line>)")
+	self.breaks[line][file] = true
+end
+
+function Command.rmbp(file, line)
+	assert(type(file) == "string", "usage: rmbp(<file>, <line>)")
+	assert(type(line) == "number", "usage: rmbp(<file>, <line>)")
+	local files = rawget(self.breaks, line)
+	if files then
+		files[file] = nil
+		if next(files) == nil then
+			self.breaks[line] = nil
+		end
+	end
+end
+
 --------------------------------------------------------------------------------
+
+local function newtable() return {} end
+function __init(self, object)
+	self = oo.rawnew(self, object)
+	
+	self.breaks = ObjectCache(self.breaks)
+	self.breaks.retrieve = newtable
+	
+	function self.breakhook(event, line)
+		local level = rawget(self, "break.level")
+		if event == "line" then
+			-- check for break points
+			local files = self.breaks[line]
+			if files then
+				local source = debug.getinfo(2, "S").source
+				for file in pairs(files) do
+					if source:find(file, #source - #file + 1, true) then
+						level = 0
+					end
+				end
+			end
+			if level == nil or level > 0 then return end
+			self:console(2)
+			level = rawget(self, ".hook")
+			rawset(self, ".hook", nil)
+			if level == nil then self:restorehook() end
+		elseif level ~= nil then
+			if event == "call" then
+				level = level + 1
+			else
+				level = level - 1
+			end
+		end
+		rawset(self, "break.level", level)
+	end
+	
+	return self
+end
 
 function __index(inspector, field)
 	if rawget(_M, field) ~= nil then
@@ -264,41 +341,44 @@ function __index(inspector, field)
 		
 		value = getfenv(func)[field]
 		if value ~= nil then return value end
+		
+		return _G[field]
 	end
-	
-	return _G[field]
 end
 
 function __newindex(inspector, field, value)
-	if rawget(_M, field) ~= nil then
-		rawset(inspector, field, value)
-	end
-	
-	local name
-	local index
-	local func = inspector[".level"]
-	if func then
-		index = 1
-		repeat
-			name = call(inspector, debug.getlocal, func, index)
-			if name == field
-				then return call(inspector, debug.setlocal, func, index, value)
-				else index = index + 1
-			end
-		until not name
-	end
-	
-	func = inspector[".current"].func
-	index = 1
-	repeat
-		name = debug.getupvalue(func, index)
-		if name == field
-			then return debug.setupvalue(func, index, value)
-			else index = index + 1
+	if rawget(_M, field) == nil then
+		local name
+		local index
+		local func = inspector[".level"]
+		if func then
+			index = 1
+			repeat
+				name = call(inspector, debug.getlocal, func, index)
+				if name == field
+					then return call(inspector, debug.setlocal, func, index, value)
+					else index = index + 1
+				end
+			until not name
 		end
-	until not name
-
-	getfenv(func)[field] = value
+	
+		func = inspector[".current"]
+		if func then
+			func = func.func
+			index = 1
+			repeat
+				name = debug.getupvalue(func, index)
+				if name == field
+					then return debug.setupvalue(func, index, value)
+					else index = index + 1
+				end
+			until not name
+			
+			getfenv(func)[field] = value
+			return
+		end
+	end
+	rawset(inspector, field, value)
 end
 
 local function results(self, success, ...)
@@ -309,8 +389,10 @@ local function results(self, success, ...)
 		self.viewer.output:write("\n")
 	end
 end
-function stop(self, level, steplevel)
+function console(self, level)
 	if self.active then
+		assert(not rawget(self, ".current"),
+			"cannot invoke inspector operation from the console")
 		level = level or 1
 		rawset(self, ".thread", coroutine.running() or false)
 		rawset(self, ".current", call(self, debug.getinfo, level + 2, infoflags)) -- call, stop
@@ -345,19 +427,53 @@ function stop(self, level, steplevel)
 				io.stderr:write(errmsg, "\n")
 			end
 		until not rawget(self, ".current")
-		
-		if rawget(self, ".hook") then
-			rawset(self, ".hook", nil)
-			local ignore = 1
-			local hook, mask, count = debug.gethook()
-			return debug.sethook(function()
-				if ignore > 0 then
-					ignore = ignore - 1
-				else
-					debug.sethook(hook, mask, count)
-					self:stop(2) -- for the hook function
-				end
-			end, "l")
+	end
+end
+
+--------------------------------------------------------------------------------
+
+function restorehook(self)
+	if next(self.breaks) == nil then
+		debug.sethook(
+			rawget(self, "hook.bak"),
+			rawget(self, "mask.bak"),
+			rawget(self, "count.bak")
+		)
+		rawset(self, "hook.bak", nil)
+		rawset(self, "mask.bak", nil)
+		rawset(self, "count.bak", nil)
+		rawset(self, "break.level", nil)
+	end
+end
+
+function setuphook(self)
+	local hook, mask, count = debug.gethook()
+	if hook ~= self.breakhook then
+		rawset(self, "hook.bak", hook)
+		rawset(self, "mask.bak", mask)
+		rawset(self, "count.bak", count)
+		debug.sethook(self.breakhook, "crl")
+	end
+end
+
+function stop(self, level)
+	rawset(self, "break.level", level + 2)
+	self:setuphook()
+end
+
+function setbreak(self, file, line)
+	self.breaks[line][file] = true
+	rawset(self, "break.level", nil)
+	self:setuphook()
+end
+
+function removebreak(self, file, line)
+	local files = rawget(self.breaks, line)
+	if files then
+		files[file] = nil
+		if next(files) == nil then
+			self.breaks[line] = nil
+			self:restorehook()
 		end
 	end
 end
