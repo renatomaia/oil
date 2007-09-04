@@ -321,7 +321,7 @@ end
 function newservant(impl, type, key)
 	if Config then init(Config) end
 	if not impl then assert.illegal(impl, "servant's implementation") end
-	if not type then assert.illegal(type, "interface definition") end
+	if type then assert.type(type, "string", "interface definition") end
 	if key then assert.type(key, "string", "servant's key") end
 	return assert.results(ServerBroker.broker:object(impl, key, type))
 end

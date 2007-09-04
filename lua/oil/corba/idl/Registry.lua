@@ -1284,8 +1284,8 @@ function register(self, ...)
 end
 
 function resolve(self, typeref)
-	local result, errmsg
-	if type(typeref) == "string" then
+	local result, errmsg = type(typeref)
+	if result == "string" then
 		result = self:lookup(typeref) or self:lookup_id(typeref)
 		if not result then
 			errmsg = Exception{ "INTERNAL", minor_code_value = 0,
@@ -1294,10 +1294,10 @@ function resolve(self, typeref)
 				interface = typeref,
 			}
 		end
-	elseif typeref._type == "interface" then
+	elseif result == "table" and typeref._type == "interface" then
 		return self:register(typeref)
 	else
-		errmsg = Exception{ "INTERNAL", minor_code_value = 0,
+		result, errmsg = nil, Exception{ "INTERNAL", minor_code_value = 0,
 			reason = "interface",
 			message = "illegal IDL type",
 			type = typeref,
