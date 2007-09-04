@@ -23,6 +23,7 @@ local package = package
 local assert = assert
 local select = select
 local pairs = pairs
+local pcall = pcall
 local ipairs = ipairs
 local loadstring = loadstring
 local rawget = rawget
@@ -60,7 +61,8 @@ function addmembers(self, pack)
 		for field, member in pairs(pack) do
 			local kind = type(member)
 			if
-				self[member] == nil and (kind == "function" or kind == "userdata") and
+				self[member] == nil and
+				kind ~= "boolean" and kind ~= "number" and kind ~= "string" and
 				type(field) == "string" and field:match("^[%a_]+[%w_]*$")
 			then
 				self[member] = self[pack].."."..field
@@ -75,11 +77,19 @@ function __init(self, object)
 	self.environment[self.namespace] = self
 	if self.globals then
 		self[self.globals] = self.namespace..".globals"
-		self:addmembers(self.globals)
+		for field, member in pairs(self.globals) do
+			if
+				self[member] == nil and
+				type(field) == "string" and field:match("^[%a_]+[%w_]*$") and
+				type(member) == "function" and not pcall(string.dump, member)
+			then
+				self[member] = self.namespace..".globals."..field
+			end
+		end
 	end
 	if self.package then
 		for name, pack in pairs(self.package) do
-			if not self[pack] then
+			if self[pack] == nil then
 				self[pack] = 'require("'..name..'")'
 				self:addmembers(pack)
 			end
@@ -103,11 +113,14 @@ function value(self, id, type, ...)
 			value = assert(loadstring((...)))
 		elseif type == "userdata" then
 			value = assert(self[...], "unknown userdata")()
-		elseif type ~= "table" then
+		elseif type == "table" then
+			local meta
+			value, meta = ...
+			if meta and self.setmetatable then
+				self.setmetatable(value, meta)
+			end
+		else
 			value = Incomplete()
-		elseif self.setmetatable then
-			local table, meta = ...
-			value = self.setmetatable(table, meta)
 		end
 		self[id] = value
 	elseif type == "table" and oo.classof(value) == Incomplete then
@@ -146,9 +159,11 @@ function serialstring(self, string)
 	self:write(string.format("%q", string))
 end
 
-function serialtable(self, table)
+function serialtable(self, table, id)
+	self[value] = self.namespace..":value("..id..")"
+	
 	-- serialize contents
-	self:write(",{")
+	self:write(self.namespace,":value(",id,",'table',{")
 	for key, val in pairs(table) do
 		self:write("[")
 		self:serialize(key)
@@ -166,16 +181,21 @@ function serialtable(self, table)
 			self:serialize(meta)
 		end
 	end
+	
+	self:write(")")
 end
 
-function serialfunction(self, func)
+function serialfunction(self, func, id)
+	self[value] = self.namespace..":value("..id..")"
+	self:write(self.namespace,":setup(")
+	
 	-- serialize bytecodes
-	self:write(',"')
+	self:write(self.namespace,":value(",id,",'function','")
 	local bytecodes = string.dump(func)
 	for i = 1, #bytecodes do
 		self:write("\\",string.byte(bytecodes, i))
 	end
-	self:write('")')
+	self:write("')")
 
 	-- serialize environment
 	local env
@@ -199,22 +219,30 @@ function serialfunction(self, func)
 			up = up + 1
 		until not name
 	end
+	
+	self:write(")")
 end
 
-function serialcustom(self, name, ...)
-	self:write(',"',name,'")')
-	if select("#", ...) > 0 then
+function serialcustom(self, id, name, ...)
+	self[value] = self.namespace..":value("..id..")"
+	local state = select("#", ...) > 0
+	if state then
+		self:write(self.namespace,":setup(")
+	end
+	self:write(self.namespace,":value(",id,",'userdata','",name,"')")
+	if state then
 		self:write(",")
 		self:serialize(...)
+		self:write(")")
 	end
 end
 
-function serialuserdata(self, userdata)
+function serialuserdata(self, userdata, id)
 	local serializer = getmetatable(userdata)
 	if serializer then
 		serializer = serializer.__serialize
 		if serializer then
-			return self:serialcustom(serializer(userdata))
+			return self:serialcustom(id, serializer(userdata))
 		end
 	end
 	error("unable to serialize a userdata without custom serialization")
@@ -248,14 +276,7 @@ function serialize(self, ...)
 			if id then
 				self:write(id)
 			elseif self[type] then
-				id = getidfor(value)
-				self[value] = self.namespace..":value("..id..")"
-				if type ~= "table" then
-					self:write(self.namespace,":setup(")
-				end
-				self:write(self.namespace,":value(",id,",'",type,"'")
-				self[type](self, value)
-				self:write(")")
+				self[type](self, value, getidfor(value))
 			else
 				error("unable to serialize a "..type)
 			end
