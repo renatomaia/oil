@@ -115,6 +115,17 @@ function Command.env(which, ...)
 	end
 end
 
+function Command.lua(which, ...)
+	if which then
+		if select("#", ...) == 0
+			then return _G[which]
+			else _G[which] = (...)
+		end
+	else
+		viewer:print(_G)
+	end
+end
+
 function Command.goto(where)
 	local kind = type(where)
 	if kind == "thread" then
