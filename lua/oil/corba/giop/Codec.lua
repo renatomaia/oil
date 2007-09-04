@@ -480,7 +480,7 @@ function Decoder:sequence(idltype)                                              
 		value = self.data:sub(self.cursor, self.cursor + length - 1)                --[[VERBOSE]] verbose:unmarshal("got ", verbose.viewer:tostring(value))
 		self:jump(length)
 	else
-		value = setmetatable({}, idltype)
+		value = setmetatable({ n = length }, idltype)
 		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshal("[element ",i,"]")
 			value[i] = self:get(elementtype)
 		end
