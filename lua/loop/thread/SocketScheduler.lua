@@ -15,7 +15,7 @@
 --------------------------------------------------------------------------------
 
 local getmetatable = getmetatable
-local luasocket    = require "socket"
+local luasocket    = require "socket.core"
 local oo           = require "loop.simple"
 local IOScheduler  = require "loop.thread.IOScheduler"
 local CoSocket     = require "loop.thread.CoSocket"

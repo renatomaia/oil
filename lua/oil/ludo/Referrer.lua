@@ -18,7 +18,7 @@
 -- 	reference:table decode(reference:string)
 --------------------------------------------------------------------------------
 
-local socket = require "socket"
+local socket = require "socket.core"
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 

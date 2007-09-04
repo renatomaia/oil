@@ -13,7 +13,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 
-local socket = require "socket"
+local socket = require "socket.core"
 
 local oo = require "oil.oo"
 
@@ -33,12 +33,4 @@ end
 
 function udp(self)
 	return socket.udp()
-end
-
-function connect(self, address, port)
-	return socket.connect(address, port)
-end
-
-function bind(self, address, port)
-	return socket.bind(address, port)
 end

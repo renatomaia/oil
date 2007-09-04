@@ -31,7 +31,7 @@ local tonumber = tonumber
 
 local string = require "string"
 
-local socket = require "socket"
+local socket = require "socket.core"
 
 local oo        = require "oil.oo"
 local idl       = require "oil.corba.idl"
