@@ -352,7 +352,7 @@ function deactivate(object, type)
 		assert.illegal(object,
 			"object reference (servant, implementation or object key expected)")
 	end
-	return assert.results(ServerBroker.broker:remove(object, type))
+	return ServerBroker.broker:remove(object, type)
 end
 
 --------------------------------------------------------------------------------
