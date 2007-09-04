@@ -37,9 +37,9 @@ function referenceto(self, objectkey, accessinfo)
 	}
 end
 
-local ReferenceFrm = "%s@%s:%d"
+local ReferenceFrm = "@%s:%d"
 function encode(self, reference)
-	return ReferenceFrm:format(reference.object, reference.host, reference.port)
+	return reference.object..ReferenceFrm:format(reference.host, reference.port)
 end
 
 local ReferencePat = "^([^@]*)@([^:]*):(%d*)$"
