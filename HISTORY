@@ -178,3 +178,20 @@ OiL 0.4 work7 [Tue, 21 Aug 2007 - r66613]
 (l) Improvement by addition of 'cosocket' verbose tag as a new level of verbose
     in Scheduler verbose.
 (m) New demo about exception handling.
+
+OiL 0.4 work8 [Tue, 4 Sep 2007 - r67052]
+
+(a) Bugfix in Ludo protocol to work with object keys that contains null
+    characters.
+(b) Bugfix to allow use with typeless protocols like Ludo.
+(c) New operation 'oil.tasks:halt()' to stop the coroutine scheduling.
+(d) Operation 'oil.deactivate' fails quietly allowing the application to
+    deactivate an servant many times without getting an error.
+(e) Sequences returned by OiL now have the 'n' field set properly to handle
+    sequences with nil values like sequence of objects or anys.
+(f) Support for commands 'step', 'step"in"', 'step"out"' and break points
+    ('mkbp(<file>,<line>)', 'rmbp(<file>,<line>)', 'lsbp') in debug console of
+    'oil.verbose:debug()'.
+(g) Use of package 'socket.core' instead of 'socket' package due to unused
+    functions provided by the former package.
+(h) Update of the demo 'hello_simple' to use the Ludo protocol.
