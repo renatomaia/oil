@@ -42,7 +42,7 @@ function sequence(self)
 end
 
 function contains(self, element)
-	return (self[element] ~= nil) or (element == self[LAST])
+	return element ~= nil and (self[element] ~= nil or element == self[LAST])
 end
 
 function first(self)
@@ -58,9 +58,12 @@ function empty(self)
 end
 
 function insert(self, element, previous)
-	if not contains(self, element) then
+	if element ~= nil and not contains(self, element) then
 		if previous == nil then
-			previous = self[LAST] or FIRST
+			previous = self[LAST]
+			if previous == nil then
+				previous = FIRST
+			end
 		elseif not contains(self, previous) then
 			return
 		end
@@ -75,7 +78,7 @@ end
 
 function previous(self, element, start)
 	if contains(self, element) then
-		local previous = start or FIRST
+		local previous = (start == nil and FIRST or start)
 		repeat
 			if self[previous] == element then
 				return previous
@@ -87,7 +90,7 @@ end
 
 function remove(self, element, start)
 	local prev = previous(self, element, start)
-	if prev then
+	if prev ~= nil then
 		self[prev] = self[element]
 		if self[LAST] == element
 			then self[LAST] = prev
@@ -99,7 +102,7 @@ end
 
 function replace(self, old, new, start)
 	local prev = previous(self, old, start)
-	if prev and not contains(self, new) then
+	if prev ~= nil and new ~= nil and not contains(self, new) then
 		self[prev] = new
 		self[new] = self[old]
 		if old == self[LAST]
@@ -111,7 +114,7 @@ function replace(self, old, new, start)
 end
 
 function pushfront(self, element)
-	if not contains(self, element) then
+	if element ~= nil and not contains(self, element) then
 		if self[FIRST] ~= nil
 			then self[element] = self[FIRST]
 			else self[LAST] = element
@@ -132,7 +135,7 @@ function popfront(self)
 end
 
 function pushback(self, element)
-	if not contains(self, element) then
+	if element ~= nil and not contains(self, element) then
 		if self[LAST] ~= nil
 			then self[ self[LAST] ] = element
 			else self[FIRST] = element
