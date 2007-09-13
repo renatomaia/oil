@@ -160,7 +160,7 @@ function serialstring(self, string)
 end
 
 function serialtable(self, table, id)
-	self[value] = self.namespace..":value("..id..")"
+	self[table] = self.namespace..":value("..id..")"
 	
 	-- serialize contents
 	self:write(self.namespace,":value(",id,",'table',{")
@@ -186,7 +186,7 @@ function serialtable(self, table, id)
 end
 
 function serialfunction(self, func, id)
-	self[value] = self.namespace..":value("..id..")"
+	self[func] = self.namespace..":value("..id..")"
 	self:write(self.namespace,":setup(")
 	
 	-- serialize bytecodes
@@ -224,7 +224,6 @@ function serialfunction(self, func, id)
 end
 
 function serialcustom(self, id, name, ...)
-	self[value] = self.namespace..":value("..id..")"
 	local state = select("#", ...) > 0
 	if state then
 		self:write(self.namespace,":setup(")
@@ -242,6 +241,7 @@ function serialuserdata(self, userdata, id)
 	if serializer then
 		serializer = serializer.__serialize
 		if serializer then
+			self[userdata] = self.namespace..":value("..id..")"
 			return self:serialcustom(id, serializer(userdata))
 		end
 	end
