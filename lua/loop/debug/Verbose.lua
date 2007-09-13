@@ -73,6 +73,7 @@ local string    = require "string"
 local coroutine = require "coroutine"
 
 local oo          = require "loop.base"
+local ObjectCache = require "loop.collection.ObjectCache"
 local Viewer      = require "loop.debug.Viewer"
 
 module("loop.debug.Verbose", oo.class)
@@ -81,9 +82,8 @@ module("loop.debug.Verbose", oo.class)
 --------------------------------------------------------------------------------
 
 local firstcol = 8
-
-viewer = Viewer()
-tabcount = { default = 0 }
+tabcount = ObjectCache{ default = 0 }
+viewer = Viewer{ maxdepth = 2 }
 
 function __init(class, verbose)
 	verbose = oo.rawnew(class, verbose)
