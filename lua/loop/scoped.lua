@@ -19,10 +19,12 @@
 --   classof(object)                                                          --
 --   isclass(class)                                                           --
 --   instanceof(object, class)                                                --
+--   memberof(class, name)                                                    --
 --   members(class)                                                           --
 --   superclass(class)                                                        --
 --   subclassof(class, super)                                                 --
 --   supers(class)                                                            --
+--   allmembers(class)                                                        --
 --                                                                            --
 --   methodfunction(method)                                                   --
 --   methodclass(method)                                                      --
