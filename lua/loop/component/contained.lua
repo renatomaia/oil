@@ -27,12 +27,14 @@ module("loop.component.contained", package.seeall)
 BaseTemplate = oo.class({}, base.BaseTemplate)
 
 function BaseTemplate:__new(...)
+	local state = { __factory = self }
 	local comp = self.__component or self[1]
-	if comp then comp = comp(...) end
-	local state = {
-		__component = comp,
-		__factory = self,
-	}
+	if comp then
+		comp = comp(...)
+		state.__component = comp
+	else
+		comp = ... or {}
+	end
 	for port, class in pairs(self) do
 		if type(port) == "string" and port:match("^%a[%w_]*$") then
 			state[port] = class(comp and comp[port], comp)

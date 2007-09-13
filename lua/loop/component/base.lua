@@ -38,11 +38,11 @@ function BaseTemplate:__new(...)
 	local comp = self.__component or self[1]
 	if comp then
 		comp = comp(...)
-		comp.__factory = self
 		comp.__component = comp
 	else
-		comp = { __factory = self }
+		comp = ... or {}
 	end
+	comp.__factory = self
 	for port, class in pairs(self) do
 		if type(port) == "string" and port:match("^%a[%w_]*$") then
 			comp[port] = class(comp[port], comp)
