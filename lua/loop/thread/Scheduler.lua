@@ -298,8 +298,7 @@ end
 --[[VERBOSE]] 		if type(value) == "string" then
 --[[VERBOSE]] 			output:write(value)
 --[[VERBOSE]] 		elseif type(value) == "thread" then
---[[VERBOSE]] 			output:write("thread ")
---[[VERBOSE]] 			output:write(self.labels[value])
+--[[VERBOSE]] 			output:write("thread ", self.labels[value], "[", tostring(value):match("%l+: (.+)"), "]")
 --[[VERBOSE]] 		else
 --[[VERBOSE]] 			viewer:write(value)
 --[[VERBOSE]] 		end
@@ -328,7 +327,8 @@ end
 --[[VERBOSE]] 		end
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end
+--[[VERBOSE]] verbose.custom.copcall = verbose.custom.threads
 --[[VERBOSE]] 
---[[DEBUG]] verbose.I = Inspector()
+--[[DEBUG]] verbose.I = Inspector{ viewer = viewer }
 --[[DEBUG]] function verbose.inspect:debug() self.I:stop(4) end
 --[[DEBUG]] verbose:flag("debug", true)
