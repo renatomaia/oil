@@ -14,27 +14,29 @@
 -- Date   : 27/02/2006 08:51                                                  --
 --------------------------------------------------------------------------------
 
-local _G         = _G
-local assert     = assert
-local error      = error
-local getfenv    = getfenv
-local load       = load
-local loadstring = loadstring
-local next       = next
-local pairs      = pairs
-local rawget     = rawget
-local rawset     = rawset
-local select     = select
-local setfenv    = setfenv
-local type       = type
-local xpcall     = xpcall
+local _G           = _G
+local assert       = assert
+local error        = error
+local getfenv      = getfenv
+local ipairs       = ipairs
+local load         = load
+local loadstring   = loadstring
+local next         = next
+local pairs        = pairs
+local rawget       = rawget
+local rawset       = rawset
+local select       = select
+local setfenv      = setfenv
+local setmetatable = setmetatable
+local type         = type
+local xpcall       = xpcall
 
 local coroutine = require "coroutine"
 local debug     = require "debug"
 local io        = require "io"
+local table     = require "table"
 
 local oo          = require "loop.base"
-local ObjectCache = require "loop.collection.ObjectCache"
 local Viewer      = require "loop.debug.Viewer"
 
 module("loop.debug.Inspector", oo.class)
@@ -252,7 +254,7 @@ function Command.lsbp()
 	end
 	table.sort(breaks)
 	for _, bp in ipairs(breaks) do
-		print(bp)
+		viewer:print(bp)
 	end
 end
 
@@ -276,18 +278,23 @@ end
 
 --------------------------------------------------------------------------------
 
-local function newtable() return {} end
+local BreaksListMeta = {
+	__index = function(self, line)
+		local files = {}
+		rawset(self, line, files)
+		return files
+	end,
+}
 function __init(self, object)
 	self = oo.rawnew(self, object)
 	
-	self.breaks = ObjectCache(self.breaks)
-	self.breaks.retrieve = newtable
+	self.breaks = setmetatable(self.breaks or {}, BreaksListMeta)
 	
 	function self.breakhook(event, line)
 		local level = rawget(self, "break.level")
 		if event == "line" then
 			-- check for break points
-			local files = self.breaks[line]
+			local files = rawget(self.breaks, line)
 			if files then
 				local source = debug.getinfo(2, "S").source
 				for file in pairs(files) do
@@ -304,11 +311,16 @@ function __init(self, object)
 		elseif level ~= nil then
 			if event == "call" then
 				level = level + 1
-			else
+			elseif event == "return" then
 				level = level - 1
 			end
 		end
 		rawset(self, "break.level", level)
+		
+		local hookbak = rawget(self, "hook.bak")
+		if hookbak then
+			return hookbak(event, line)
+		end
 	end
 	
 	return self
@@ -446,7 +458,7 @@ end
 function restorehook(self)
 	if next(self.breaks) == nil then
 		debug.sethook(
-			rawget(self, "hook.bak"),
+			rawget(self, "hook.bak") or nil,
 			rawget(self, "mask.bak"),
 			rawget(self, "count.bak")
 		)
@@ -458,17 +470,17 @@ function restorehook(self)
 end
 
 function setuphook(self)
-	local hook, mask, count = debug.gethook()
-	if hook ~= self.breakhook then
-		rawset(self, "hook.bak", hook)
+	if rawget(self, "hook.bak") ~= self.breakhook then
+		local hook, mask, count = debug.gethook()
+		rawset(self, "hook.bak", hook or false)
 		rawset(self, "mask.bak", mask)
 		rawset(self, "count.bak", count)
-		debug.sethook(self.breakhook, "crl")
+		debug.sethook(self.breakhook, "crl", count)
 	end
 end
 
 function stop(self, level)
-	rawset(self, "break.level", level + 2)
+	rawset(self, "break.level", level and level+2 or 3)
 	self:setuphook()
 end
 
@@ -487,4 +499,18 @@ function removebreak(self, file, line)
 			self:restorehook()
 		end
 	end
+end
+
+local function ibreaks(self, file, line)
+	local files = rawget(self.breaks, line)
+	while files do
+		file = next(files, file)
+		if file then
+			return file, line
+		end
+		line, files = next(self.breaks, line)
+	end
+end
+function allbreaks(self)
+	return ibreaks, self, nil, next(self.breaks)
 end
