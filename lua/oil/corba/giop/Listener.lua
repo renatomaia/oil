@@ -336,7 +336,7 @@ function sendreply(self, channel, request, success, ...)                        
 		end
 		if success then
 			channel[requestid] = nil
-			if channel.invalid and table.maxn(channel) == 0 then                      --[[VERBOSE]] verbose:listen "all pending requests replyied, connection being closed"
+			if channel.invalid and table.maxn(channel) == 0 then                      --[[VERBOSE]] verbose:listen "all pending requests replied, connection being closed"
 				success, except = messenger:sendmsg(channel, CloseConnectionID)
 			end
 		elseif SystemExceptions[ except[1] ] then                                   --[[VERBOSE]] verbose:listen("got system exception ",except," at reply send")
