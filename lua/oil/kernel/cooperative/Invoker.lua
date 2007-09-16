@@ -36,9 +36,6 @@ local rawset   = rawset
 local type     = type
 local unpack   = unpack
 
-local ObjectCache = require "loop.collection.ObjectCache"
-local OrderedSet  = require "loop.collection.OrderedSet"
-
 local oo      = require "oil.oo"
 local Invoker = require "oil.kernel.base.Invoker"                               --[[VERBOSE]] local verbose = require "oil.verbose"
 

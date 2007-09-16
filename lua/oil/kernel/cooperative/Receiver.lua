@@ -39,9 +39,6 @@
 local next  = next
 local pairs = pairs
 
-local ObjectCache = require "loop.collection.ObjectCache"
-local OrderedSet  = require "loop.collection.OrderedSet"
-
 local oo        = require "oil.oo"
 local Exception = require "oil.Exception"
 local Receiver  = require "oil.kernel.base.Receiver"                            --[[VERBOSE]] local verbose = require "oil.verbose"

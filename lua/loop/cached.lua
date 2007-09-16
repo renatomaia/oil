@@ -41,7 +41,6 @@ local table = require "loop.table"
 
 module "loop.cached"
 --------------------------------------------------------------------------------
-local ObjectCache = require "loop.collection.ObjectCache"
 local OrderedSet  = require "loop.collection.OrderedSet"
 local base        = require "loop.multiple"
 --------------------------------------------------------------------------------

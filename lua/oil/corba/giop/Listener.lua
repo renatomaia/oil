@@ -48,8 +48,6 @@ local unpack = unpack
 
 local table = require "table"
 
-local OrderedSet = require "loop.collection.OrderedSet"
-
 local oo        = require "oil.oo"
 local bit       = require "oil.bit"
 local idl       = require "oil.corba.idl"

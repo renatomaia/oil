@@ -17,8 +17,7 @@
 --   Storage of strings equal to the name of one method prevents its usage.   --
 --------------------------------------------------------------------------------
 
-local oo     = require "loop.base"
-local rawnew = oo.rawnew
+local oo = require "loop.base"
 
 --------------------------------------------------------------------------------
 -- key constants ---------------------------------------------------------------

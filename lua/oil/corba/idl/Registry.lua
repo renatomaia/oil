@@ -32,8 +32,7 @@ local unpack       = unpack
 local string = require "string"
 local table  = require "table"
 
-local ObjectCache = require "loop.collection.ObjectCache"
-local OrderedSet  = require "loop.collection.OrderedSet"
+local OrderedSet = require "loop.collection.OrderedSet"
 
 local oo        = require "oil.oo"
 local assert    = require "oil.assert"
