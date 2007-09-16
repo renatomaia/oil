@@ -62,23 +62,22 @@ end
 --------------------------------------------------------------------------------
 
 function locksend(self, channel)
-	local tasks = self.context.tasks
 	local lock = self.locks[channel]
 	if lock.sending then                                                          --[[VERBOSE]] verbose:mutex(true, "channel being used, waiting notification")
+		local tasks = self.context.tasks
 		lock.senders:enqueue(tasks.current)
-		tasks:suspend()                                                             --[[VERBOSE]] verbose:mutex(false, "notification received")
+		repeat until tasks:suspend() == channel                                     --[[VERBOSE]] verbose:mutex(false, "notification received")
 	else                                                                          --[[VERBOSE]] verbose:mutex "channel free for sending"
 		lock.sending = true
 	end
 end
 
 function freesend(self, channel)
-	local tasks = self.context.tasks
 	local lock = self.locks[channel]
 	if lock.senders:empty() then
 		lock.sending = false                                                        --[[VERBOSE]] verbose:mutex "releasing send lock"
 	else                                                                          --[[VERBOSE]] verbose:mutex "resuming sending thread"
-		tasks:resume(lock.senders:dequeue())
+		self.context.tasks:resume(lock.senders:dequeue(), channel)
 	end
 end
 
@@ -90,7 +89,7 @@ function lockreceive(self, channel, key)
 	elseif lock.receiving ~= tasks.current then                                   --[[VERBOSE]] verbose:mutex(true, "channel being used, waiting notification")
 		key = key or #lock.receivers+1
 		lock.receivers[key] = tasks.current
-		tasks:suspend()                                                             --[[VERBOSE]] verbose:mutex(false, "notification received")
+		repeat until tasks:suspend() == channel                                     --[[VERBOSE]] verbose:mutex(false, "notification received")
 		lock.receivers[key] = nil
 	end
 	return lock.receiving == tasks.current
@@ -99,7 +98,7 @@ end
 function notifyreceived(self, channel, key)
 	local thread = self.locks[channel].receivers[key]
 	if thread then
-		return self.context.tasks:resume(thread)
+		return self.context.tasks:resume(thread, channel)
 	end
 end
 
@@ -107,9 +106,9 @@ function freereceive(self, channel)
 	local tasks = self.context.tasks
 	local lock = self.locks[channel]
 	local thread = select(2, next(lock.receivers))
-	if thread then                                                                --[[VERBOSE]] verbose:mutex "resuming sending thread"
+	if thread then                                                                --[[VERBOSE]] verbose:mutex "resuming receiving thread"
 		lock.receiving = thread
-		tasks:register(thread)
+		tasks:resume(thread, channel)
 	else                                                                          --[[VERBOSE]] verbose:mutex "releasing receive lock"
 		lock.receiving = false
 	end
