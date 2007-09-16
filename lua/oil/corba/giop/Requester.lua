@@ -195,6 +195,7 @@ function getreply(self, channel, request, probe)                                
 		if result then
 			local status = header.reply_status
 			if status == "LOCATION_FORWARD" then                                      --[[VERBOSE]] verbose:invoke("forwarding request ",header.request_id," through other channel")
+				result.success = "forward"
 				result[1] = decoder:struct(IOR)
 			else
 				local operation = result.opidl
@@ -248,6 +249,7 @@ function getreply(self, channel, request, probe)                                
 		result = unregister(channel, header.request_id)
 		result.locate_status = header.locate_status
 		if result.locate_status == "OBJECT_FORWARD" then
+			result.success = "forward"
 			result[1] = decoder:struct(IOR)
 		end
 	elseif (msgid == CloseConnectionID) or
