@@ -199,7 +199,7 @@ function getreply(self, channel, request, probe)                                
 				result[1] = decoder:struct(IOR)
 			else
 				local operation = result.opidl
-				if status == "NO_EXCEPTION" then                                        --[[VERBOSE]] verbose:invoke(true, "got successfull reply for request ",header.request_id)
+				if status == "NO_EXCEPTION" then                                        --[[VERBOSE]] verbose:invoke(true, "got successful reply for request ",header.request_id)
 					result.success = true
 					result.resultcount = #operation.outputs
 					for index, output in ipairs(operation.outputs) do
