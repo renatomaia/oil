@@ -300,6 +300,7 @@ function __init(self, object)
 				for file in pairs(files) do
 					if source:find(file, #source - #file + 1, true) then
 						level = 0
+						break
 					end
 				end
 			end
@@ -311,7 +312,7 @@ function __init(self, object)
 		elseif level ~= nil then
 			if event == "call" then
 				level = level + 1
-			elseif event == "return" then
+			else
 				level = level - 1
 			end
 		end
@@ -486,7 +487,6 @@ end
 
 function setbreak(self, file, line)
 	self.breaks[line][file] = true
-	rawset(self, "break.level", nil)
 	self:setuphook()
 end
 
@@ -496,7 +496,9 @@ function removebreak(self, file, line)
 		files[file] = nil
 		if next(files) == nil then
 			self.breaks[line] = nil
-			self:restorehook()
+			if rawget(self, "break.level") == nil then
+				self:restorehook()
+			end
 		end
 	end
 end
