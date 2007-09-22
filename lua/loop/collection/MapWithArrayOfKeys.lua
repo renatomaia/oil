@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Map of Objects that Keeps an Array of Key Values                  --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 13/12/2004 13:51                                                  --
 --------------------------------------------------------------------------------
 -- Notes:                                                                     --
 --   Can only store non-numeric values.                                       --

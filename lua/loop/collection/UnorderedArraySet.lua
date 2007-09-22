@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Unordered Array Optimized for Containment Check                   --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 29/10/2005 18:48                                                  --
 --------------------------------------------------------------------------------
 -- Notes:                                                                     --
 --   Can only store non-numeric values.                                       --

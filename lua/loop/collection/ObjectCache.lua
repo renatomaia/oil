@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Cache of Objects Created on Demand                                --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 13/12/2004 13:51                                                  --
 --------------------------------------------------------------------------------
 -- Notes:                                                                     --
 --   Storage of keys 'retrieve' and 'default' are not allowed.                --

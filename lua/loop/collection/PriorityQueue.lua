@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Priority Queue Optimized for Insertions and Removals              --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 13/12/2004 13:51                                                  --
 --------------------------------------------------------------------------------
 -- Notes:                                                                     --
 --   Storage of strings equal to the name of one method prevents its usage.   --
