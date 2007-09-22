@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Interactive Inspector of Application State                        --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 27/02/2006 08:51                                                  --
 --------------------------------------------------------------------------------
 
 local _G           = _G
@@ -437,7 +436,7 @@ function console(self, level)
 				info.name or viewer:tostring(info.func),
 				"> "
 			)
-			cmd = input:read()
+			cmd = assert(input:read())
 			local short = cmd:match("^%s*([%a_][%w_]*)%s*$")
 			if short and Command[short]
 				then cmd = short.."()"

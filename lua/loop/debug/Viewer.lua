@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Visualization of Lua Values                                       --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 24/02/2006 19:42                                                  --
 --------------------------------------------------------------------------------
 
 local _G           = _G

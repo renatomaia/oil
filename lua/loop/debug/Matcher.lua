@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Matcher of Lua Values                                             --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 28/08/2006 20:48                                                  --
 --------------------------------------------------------------------------------
 
 local pairs = pairs

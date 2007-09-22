@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Verbose/Log Mechanism for Layered Applications                    --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 30/01/2007 20:05                                                  --
 --[[----------------------------------------------------------------------------
 
 -------------------------------------
