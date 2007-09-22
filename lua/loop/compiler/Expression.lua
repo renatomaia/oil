@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Simple Expression Parser                                          --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 25/08/2006 09:09                                                  --
 --------------------------------------------------------------------------------
 
 local luaerror = error
