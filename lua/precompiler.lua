@@ -17,8 +17,7 @@ module("precompiler", require "loop.compiler.Arguments")
 
 local FILE_SEP = "/"
 local FUNC_SEP = "_"
-local PACK_SEP = "."
-local INIT_PAT = "init$"
+local INIT_PAT = FILE_SEP.."init$"
 local PATH_PAT = FILE_SEP.."$"
 
 luapath   = "."
@@ -37,26 +36,26 @@ if not start or start > finish then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
 	io.stderr:write([[
 Lua Script Pre-Compiler 1.1  Copyright (C) 2006-2007 Tecgraf, PUC-Rio
-Usage: ]].._NAME..[[.lua [options] <scripts>
+Usage: ]],_NAME,[[.lua [options] <scripts>
 Options:
-	
-	-d, -directory  Directory where the output files should be generated. Its
-	                default is the current directory.
-	
-	-f, -filename   Name used to form the name of the files generated. Two files
-	                are generates: a source code file with the sufix '.c' with
-	                the pre-compiled scripts and a header file with the sufix
-	                '.h' with function signatures. Its default is ']]..filename..[['.
-	
-	-l, -luapath    Root directory of the script files to be compiled.
-	                The script files must follow the same hierarchy of the
-	                packages they implement, similarly to the hierarchy imposed
-	                by the value of the 'package.path' defined in the standard
-	                Lua distribution. Its default is the current directory.
-	
-	-p, -prefix     Prefix added to the signature of the functions generated.
-	                Its default is ']]..prefix..[['.
-	
+  
+  -d, -directory  Directory where the output files should be generated. Its
+                  default is the current directory.
+  
+  -f, -filename   Name used to form the name of the files generated. Two files
+                  are generates: a source code file with the sufix '.c' with
+                  the pre-compiled scripts and a header file with the sufix
+                  '.h' with function signatures. Its default is ']],filename,[['.
+  
+  -l, -luapath    Root directory of the script files to be compiled.
+                  The script files must follow the same hierarchy of the
+                  packages they implement, similarly to the hierarchy imposed
+                  by the value of the 'package.path' defined in the standard
+                  Lua distribution. Its default is the current directory.
+  
+  -p, -prefix     Prefix added to the signature of the functions generated.
+                  Its default is ']],prefix,[['.
+  
 ]])
 	os.exit(1)
 end
@@ -71,11 +70,9 @@ local function adjustpath(path)
 end
 
 local function getname(file)
-	local name = file:match("(.+)%..+")
-	if name:find(INIT_PAT) then
-		name = name:sub(1, -6)
-	end
-	return name:gsub(FILE_SEP, FUNC_SEP)
+	return file:match("(.+)%..+")
+	           :gsub(INIT_PAT, "")
+	           :gsub(FILE_SEP, FUNC_SEP)
 end
 
 --------------------------------------------------------------------------------

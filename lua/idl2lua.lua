@@ -5,16 +5,16 @@
 -- @author  Renato Maia <maia@tecgraf.puc-rio.br>
 --
 
-local assert       = assert
-local pairs        = pairs
-local select       = select
-local io           = require "io"
-local os           = require "os"
-local string       = require "string"
-local luaidl       = require "luaidl"
-local idl          = require "oil.corba.idl"
-local Compiler     = require "oil.corba.idl.Compiler"
-local StringStream = require "loop.serial.StringStream"
+local assert     = assert
+local pairs      = pairs
+local select     = select
+local io         = require "io"
+local os         = require "os"
+local string     = require "string"
+local luaidl     = require "luaidl"
+local idl        = require "oil.corba.idl"
+local Compiler   = require "oil.corba.idl.Compiler"
+local FileStream = require "loop.serial.FileStream"
 
 module("idl2lua", require "loop.compiler.Arguments")
 
@@ -48,7 +48,8 @@ end
 
 --------------------------------------------------------------------------------
 
-local stream = StringStream()
+local stream = FileStream{ file = assert(io.open(output, "w")) }
+
 stream[idl]              = "idl"
 stream[idl.void]         = "idl.void"
 stream[idl.short]        = "idl.short"
@@ -70,14 +71,15 @@ stream[idl.object]       = "idl.object"
 stream[idl.basesof]      = "idl.basesof"
 stream[idl.Contents]     = "idl.Contents"
 stream[idl.ContainerKey] = "idl.ContainerKey"
-stream:put(luaidl.parsefile(select(start, ...), Compiler.Options))
 
-local file = assert(io.open(output, "w"))
-file:write(
-instance,[[.TypeRepository.types:register(
+stream.file:write(instance,[[.TypeRepository.types:register(
 	setfenv(
 		function()
-			return ]],stream:__tostring(),[[ 
+			return ]])
+
+stream:put(luaidl.parsefile(select(start, ...), Compiler.Options))
+
+stream.file:write([[ 
 		end,
 		{
 			idl = require "oil.corba.idl",
@@ -86,4 +88,5 @@ instance,[[.TypeRepository.types:register(
 	)()
 )
 ]])
-file:close()
+
+stream.file:close()

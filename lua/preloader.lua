@@ -17,7 +17,6 @@ module("preloader", require "loop.compiler.Arguments")
 local FILE_SEP = "/"
 local FUNC_SEP = "_"
 local PACK_SEP = "."
-local INIT_PAT = "init$"
 local PATH_PAT = FILE_SEP.."$"
 local OPEN_PAT = "int%s+luaopen_([%w_]+)%s*%(%s*lua_State%s*%*[%w_]*%);"
 
@@ -37,24 +36,24 @@ if not start or start > finish then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
 	io.stderr:write([[
 Lua Module Pre-Loader 1.1  Copyright (C) 2006-2007 Tecgraf, PUC-Rio
-Usage: ]].._NAME..[[.lua [options] <headers>
+Usage: ]],_NAME,[[.lua [options] <headers>
 Options:
-	
-	-d, -directory    Directory where the output files should be generated. Its
-	                  default is the current directory.
-	
-	-f, -filename     Name used to form the name of the files generated. Two files
-	                  are generated: a source code file with the sufix '.c' with
-	                  the pre-loading code and a header file with the suffix '.h'
-	                  with the function that pre-loads the scripts. Its default is
-	                  ']]..filename..[['.
-	
-	-i, -I, -include  Adds a directory to the list of paths where the header files
-	                  of pre-compiled libraries are searched.
-	
-	-p, -prefix       Prefix added to the signature of the functions generated.
-	                  Its default is ']]..prefix..[['.
-	
+  
+  -d, -directory    Directory where the output files should be generated. Its
+                    default is the current directory.
+  
+  -f, -filename     Name used to form the name of the files generated. Two files
+                    are generated: a source code file with the sufix '.c' with
+                    the pre-loading code and a header file with the suffix '.h'
+                    with the function that pre-loads the scripts. Its default is
+                    ']],filename,[['.
+  
+  -i, -I, -include  Adds a directory to the list of paths where the header files
+                    of pre-compiled libraries are searched.
+  
+  -p, -prefix       Prefix added to the signature of the functions generated.
+                    Its default is ']],prefix,[['.
+  
 ]])
 	os.exit(1)
 end
@@ -69,15 +68,15 @@ function adjustpath(path)
 end
 
 function openfile(name)
-	local file = io.open(name)
+	local file, errmsg = io.open(name)
 	if not file then
 		for _, path in ipairs(include) do
 			path = adjustpath(path)
-			file = io.open(path..name)
+			file, errmsg = io.open(path..name)
 			if file then break end
 		end
 	end
-	return file
+	return file, errmsg
 end
 
 --------------------------------------------------------------------------------
@@ -124,7 +123,7 @@ outc:write([[
 ]])
 
 for i = start, finish do local file = select(i, ...)
-	local input = assert(openfile(file), "unable to open input file "..file)
+	local input = assert(openfile(file))
 	local header = input:read("*a")
 	input:close()
 	for func in header:gmatch(OPEN_PAT) do
