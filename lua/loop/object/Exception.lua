@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Data structure to hold information about exceptions in Lua        --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 03/08/2005 16:35                                                  --
 --------------------------------------------------------------------------------
 
 local error     = error
