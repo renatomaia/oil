@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Serializer that Serialize Values to Lua Code                      --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 12/09/2006 00:59                                                  --
 --------------------------------------------------------------------------------
 
 local _G = _G
