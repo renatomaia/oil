@@ -224,6 +224,10 @@ linux:
 	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
 	            MYLDFLAGS="-Wl,-E -O -shared $(MYLDFLAGS)"
 
+solaris:
+	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
+	            MYLDFLAGS="-O -shared $(MYLDFLAGS)"
+
 macos:
 	$(MAKE) all MYCFLAGS="-fno-common $(MYCFLAGS)" \
 	            MYLDFLAGS="-bundle -undefined dynamic_lookup $(MYLDFLAGS)" \
