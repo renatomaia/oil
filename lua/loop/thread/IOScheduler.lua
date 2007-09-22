@@ -8,10 +8,9 @@
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
 -- Project: LOOP Class Library                                                --
--- Release: 2.2 alpha                                                         --
+-- Release: 2.3 beta                                                          --
 -- Title  : Cooperative Threads Scheduler with Integrated I/O                 --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 05/03/2006 20:41                                                  --
 --------------------------------------------------------------------------------
 
 --[[VERBOSE]] local rawget   = rawget
