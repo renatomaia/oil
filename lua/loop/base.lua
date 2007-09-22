@@ -7,11 +7,10 @@
 ----------------------                                   -----------------------
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
--- Title  : LOOP - Lua Object-Oriented Programming                            --
--- Name   : Base Class Model                                                  --
+-- Project: LOOP - Lua Object-Oriented Programming                            --
+-- Release: 2.3 beta                                                          --
+-- Title  : Base Class Model                                                  --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Version: 2.2 alpha                                                         --
--- Date   : 13/04/2006 17:24                                                  --
 --------------------------------------------------------------------------------
 -- Exported API:                                                              --
 --   class(class)                                                             --

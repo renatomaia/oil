@@ -7,11 +7,10 @@
 ----------------------                                   -----------------------
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
--- Title  : LOOP - Lua Object-Oriented Programming                            --
--- Name   : General utilities functions for table manipulation                --
+-- Project: LOOP - Lua Object-Oriented Programming                            --
+-- Release: 2.3 beta                                                          --
+-- Title  : General utilities functions for table manipulation                --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Version: 2.2 alpha                                                         --
--- Date   : 13/04/2006 17:24                                                  --
 --------------------------------------------------------------------------------
 -- These functions are used in many package implementations and may also be   --
 -- usefull in applications.                                                   --

@@ -7,11 +7,10 @@
 ----------------------                                   -----------------------
 ----------------------- Lua Object-Oriented Programming ------------------------
 --------------------------------------------------------------------------------
--- Title  : LOOP - Lua Object-Oriented Programming                            --
--- Name   : Scoped Class Model                                                --
+-- Project: LOOP - Lua Object-Oriented Programming                            --
+-- Release: 2.3 beta                                                          --
+-- Title  : Scoped Class Model                                                --
 -- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Version: 2.2 alpha                                                         --
--- Date   : 13/04/2006 23:10                                                  --
 --------------------------------------------------------------------------------
 -- Exported API:                                                              --
 --   class(class, ...)                                                        --
@@ -37,7 +36,7 @@
 --	 Test replacement of all members of a scope by ClassProxy[scope] = { ... }
 --	 Test static method call.
 --	 Define a default __eq metamethod that compares the object references.
---	 The best way to relink member with numeric, string and booelan values.
+--	 The best way to relink member with numeric, string and boolean values.
 --	 Replace conditional compiler by static function constructors.
 
 --------------------------------------------------------------------------------
