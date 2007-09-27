@@ -46,13 +46,6 @@ local UnorderedArray    = require "loop.collection.UnorderedArray"
 module "oil.corba.services.naming"
 
 --------------------------------------------------------------------------------
--- Means to deal w/ orphaned contexts, iterators and bindings ------------------
-
-local contexts  = UnorderedArray()
-local bindings  = UnorderedArray()
-local iterators = UnorderedArray()
-
---------------------------------------------------------------------------------
 -- Converting between CosNames, Stringified Names and URLs ---------------------
 
 local function to_url_escape(s)
