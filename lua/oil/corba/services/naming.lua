@@ -60,7 +60,7 @@ end
 
 local function to_string(n)
 	assert.type(n, "table", "name")
-	for i = 1, table.getn(n) do
+	for i = 1,#n do
 		local id = n[i].id
 		local kind = n[i].kind
 		if kind == "" then
@@ -152,11 +152,11 @@ function BindingIterator:next_n(how_many)
 	if how_many == 0 then
 		assert.exception{"IDL:omg.org/CORBA/BAD_PARAM:1.0"}
 	end
-	for i=1,table.getn(self.bindings) do
+	for i=1,#self.bindings do
 		if i > how_many then break end
 		table.insert(bl, table.remove(self.bindings,1))
 	end
-	return (table.getn(bl) > 0), bl
+	return (#bl > 0), bl
 end
 
 function BindingIterator:destroy()
@@ -178,7 +178,7 @@ end
 function NamingContext:bind(n, obj)
 	local sn, except = to_string({n[1]})
 	local r = self.bindings:value(sn)
-	if table.getn(n) > 1 then
+	if #n > 1 then
 		if not r then
 			assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 				why = "missing_node",
@@ -207,7 +207,7 @@ end
 function NamingContext:rebind(n, obj)
 	local sn, except = to_string({n[1]})
 	local r = self.bindings:value(sn)
-	if table.getn(n) > 1 then
+	if #n > 1 then
 		if not r then
 			assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 				why = "missing_node",
@@ -244,7 +244,7 @@ function NamingContext:bind_context(n, nc)
 	if not nc then assert.exception{"IDL:omg.org/CORBA/BAD_PARAM:1.0"} end
 	local sn, except = to_string({n[1]})
 	local r = self.bindings:value(sn)
-	if table.getn(n) > 1 then
+	if #n > 1 then
 		if not r then
 			assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 				why = "missing_node",
@@ -274,7 +274,7 @@ function NamingContext:rebind_context(n, nc)
 	if not nc then assert.exception{"IDL:omg.org/CORBA/BAD_PARAM:1.0"} end
 	local sn, except = to_string({n[1]})
 	local r = self.bindings:value(sn)
-	if table.getn(n) > 1 then
+	if #n > 1 then
 		if not r then
 			assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
 				why = "missing_node",
@@ -315,7 +315,7 @@ function NamingContext:resolve(n)
 			why = "missing_node",
 			rest_of_name = n
 		}
-	elseif table.getn(n) > 1 then
+	elseif #n > 1 then
 		if r.binding_type ~= "ncontext" then
 			assert.exception{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
 				cxt = self,
@@ -338,7 +338,7 @@ function NamingContext:unbind(n)
 			why = "missing_node",
 			rest_of_name = n
 		}
-	elseif table.getn(n) > 1 then
+	elseif #n > 1 then
 		if r.binding_type ~= "ncontext" then
 			assert.exception{"IDL:omg.org/CosNaming/NamingContext/CannotProceed:1.0",
 				cxt = self,
