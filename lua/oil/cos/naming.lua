@@ -56,13 +56,6 @@ local MapWithKeyArray = require "loop.collection.MapWithKeyArray"
 local UnorderedArray  = require "loop.collection.UnorderedArray"
 
 --------------------------------------------------------------------------------
--- Means to deal w/ orphaned contexts, iterators and bindings ------------------
-
-local contexts  = UnorderedArray()
-local bindings  = UnorderedArray()
-local iterators = UnorderedArray()
-
---------------------------------------------------------------------------------
 -- Converting between CosNames, Stringified Names and URLs ---------------------
 
 local function to_url_escape(s)
