@@ -240,6 +240,6 @@ luaidl.o: luaidl.c luaidl.h
 oilbit.o: oilbit.c oilbit.h
 oil.o: oil.c oil.h
 oilall.o: $(PRECMP_INC) $(PRELDR_INC)
-console.o: $(PRELDR_INC) console-5.1.c console-5.0.2.c
+console.o: $(PRELDR_INC) console.c
 
 # (end of Makefile)
