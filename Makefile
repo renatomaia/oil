@@ -25,7 +25,7 @@ INSTALL_DIR= $(INSTALL_INC) $(INSTALL_LIB) \
 
 all: $(PLAT)
 
-$(PLATS) bundles preload a so clean:
+$(PLATS) bundles preload console a so clean:
 	cd src; $(MAKE) $@
 
 test:	all
