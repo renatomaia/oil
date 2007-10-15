@@ -81,17 +81,23 @@ function object(self, object, key, type)
 end
 
 function remove(self, key, objtype)
+	local context = self.context
 	local temp = type(key)
 	if temp == "table" then
 		key = rawget(key, "_key") or key
 	end
 	if temp ~= "string" then
-		objtype, temp = self.context.types:resolve(objtype)
-		if objtype then
-			key = KeyFmt:format(self:hashof(key), self:hashof(objtype))
-		else
-			return objtype, temp
+		objtype, temp = context.types:resolve(objtype)
+		if objtype
+			then key = KeyFmt:format(self:hashof(key), self:hashof(objtype))
+			else key = nil
 		end
 	end
-	return self.context.objects:unregister(key)
+	if key then
+		objtype, temp = context.mapper:unregister(key)
+		if objtype then
+			objtype, temp = context.objects:unregister(key)
+		end
+	end
+	return objtype, temp
 end

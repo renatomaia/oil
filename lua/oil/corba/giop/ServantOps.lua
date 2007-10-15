@@ -12,6 +12,12 @@
 -- Title  : Server-Side Interface Indexer                                     --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
+-- indexer:Facet
+-- 	interface:table typeof(reference:table)
+-- 	member:table, [islocal:function], [cached:boolean] valueof(interface:table, name:string)
+--
+--
+--------------------------------------------------------------------------------
 
 local rawget = rawget
 local rawset = rawset
@@ -33,6 +39,12 @@ end
 
 function register(self, type, key)
 	self.interfaces[key] = type
+	return type
+end
+
+function unregister(self, key)
+	local type = self.interfaces[key]
+	self.interfaces[key] = nil
 	return type
 end
 
