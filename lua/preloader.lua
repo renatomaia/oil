@@ -16,40 +16,56 @@ module("preloader", require "loop.compiler.Arguments")
 
 local FILE_SEP = "/"
 local FUNC_SEP = "_"
-local PACK_SEP = "."
-local PATH_PAT = FILE_SEP.."$"
 local OPEN_PAT = "int%s+luaopen_([%w_]+)%s*%(%s*lua_State%s*%*[%w_]*%);"
 
-directory = "."
-filename  = "preload"
-prefix    = "LUAPRELOAD_API"
+help      = false
+names     = false
 include   = {}
+funcname  = ""
+output    = "preload"
+prefix    = "LUAPRELOAD_API"
+directory = ""
 
-_alias = { I = "include" }
+_optpat = "^%-(%-?%w+)(=?)(.-)$"
+_alias = {
+	I = "include",
+	["-help"] = "help",
+}
 for name in pairs(_M) do
 	_alias[name:sub(1, 1)] = name
 end
 
 local start, errmsg = _M(...)
-local finish = select("#", ...)
-if not start or start > finish then
+if not start or help then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
 	io.stderr:write([[
 Lua Module Pre-Loader 1.1  Copyright (C) 2006-2007 Tecgraf, PUC-Rio
-Usage: ]],_NAME,[[.lua [options] <headers>
+Usage: ]],_NAME,[[.lua [options] [inputs]
+  
+  [inputs] is a sequence of names that may be header file paths or package
+  names, use the options described below to indicate how they should be
+  interpreted. If no [inputs] is provided then such names are read from the
+  standard input.
+  
 Options:
   
   -d, -directory    Directory where the output files should be generated. Its
                     default is the current directory.
   
-  -f, -filename     Name used to form the name of the files generated. Two files
-                    are generated: a source code file with the sufix '.c' with
-                    the pre-loading code and a header file with the suffix '.h'
-                    with the function that pre-loads the scripts. Its default is
-                    ']],filename,[['.
+  -I, -i, -include  Adds a directory to the list of paths where the header files
+                    are searched.
   
-  -i, -I, -include  Adds a directory to the list of paths where the header files
-                    of pre-compiled libraries are searched.
+  -f, -funcname     Name of the generated function that pre-loads all library
+                    modules. Its default is 'luapreload_' plus the name defined
+                    by option '-output'.
+  
+  -n, -names        Flag that indicates provided input names are actually
+                    package names and not header files.
+  
+  -o, -output       Name used to form the name of the files generated. Two files
+                    are generated: a source code file with the sufix '.c' with
+                    the pre-loading code and a header file with the sufix '.h'
+                    with function signatures. Its default is ']],output,[['.
   
   -p, -prefix       Prefix added to the signature of the functions generated.
                     Its default is ']],prefix,[['.
@@ -60,19 +76,31 @@ end
 
 --------------------------------------------------------------------------------
 
-function adjustpath(path)
-	if path:find(PATH_PAT)
-		then return path
-		else return path..FILE_SEP
-	end
+local function escapepattern(pattern)
+	return pattern:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
 end
 
-function openfile(name)
+local function adjustpath(path)
+	if path ~= "" and not path:find(filesep.."$") then
+		return path..FILE_SEP
+	end
+	return path
+end
+
+local filesep  = escapepattern(FILE_SEP)
+local funcsep  = escapepattern(FUNC_SEP)
+local filepath = adjustpath(directory)..output
+
+if funcname == "" then funcname = "luapreload_"..output end
+
+--------------------------------------------------------------------------------
+
+local function openheader(name)
 	local file, errmsg = io.open(name)
 	if not file then
 		for _, path in ipairs(include) do
-			path = adjustpath(path)
-			file, errmsg = io.open(path..name)
+			path = adjustpath(path)..name
+			file, errmsg = io.open(path)
 			if file then break end
 		end
 	end
@@ -81,27 +109,32 @@ end
 
 --------------------------------------------------------------------------------
 
-directory = adjustpath(directory)
-local filepath = directory..filename
-
---------------------------------------------------------------------------------
-
 local outh = assert(io.open(filepath..".h", "w"))
+
+local guard = output:upper():gsub("[^%w]", "_")
+
 outh:write([[
-#ifndef __]],filename:upper(),[[__
-#define __]],filename:upper(),[[__
+#ifndef __]],guard,[[__
+#define __]],guard,[[__
 
 #ifndef ]],prefix,[[ 
 #define ]],prefix,[[ 
 #endif
 
-]],prefix,[[ int luapreload_]],filename,[[(lua_State *L);
+]],prefix,[[ int ]],funcname,[[(lua_State *L);
 
-#endif /* __]],filename:upper(),[[__ */
+#endif /* __]],guard,[[__ */
 ]])
 outh:close()
 
 --------------------------------------------------------------------------------
+
+local inputs = { select(start, ...) }
+if #inputs == 0 then
+	for name in io.stdin:lines() do
+		inputs[#inputs+1] = name
+	end
+end
 
 local outc = assert(io.open(filepath..".c", "w"))
 outc:write([[
@@ -110,31 +143,37 @@ outc:write([[
 
 ]])
 
-for i = start, finish do local file = select(i, ...)
-	outc:write('#include "',file,'"\n')
-end
-
-outc:write([[
-#include "]],filename,[[.h"
-
-]],prefix,[[ int luapreload_]],filename,[[(lua_State *L) {
-	luaL_findtable(L, LUA_GLOBALSINDEX, "package.preload", ]], finish-start+1, [[);
-	
-]])
-
-for i = start, finish do local file = select(i, ...)
-	local input = assert(openfile(file))
-	local header = input:read("*a")
-	input:close()
-	for func in header:gmatch(OPEN_PAT) do
-		local pack = func:gsub(FUNC_SEP, PACK_SEP)
-		outc:write([[
-	lua_pushcfunction(L, luaopen_]],func,[[);
-	lua_setfield(L, -2, "]],pack,[[");
-]])
+for i, input in ipairs(inputs) do
+	if names then
+		outc:write('int luaopen_',input:gsub("%.", FUNC_SEP),'(lua_State*);\n')
+	else
+		outc:write('#include "',input,'"\n')
 	end
 end
 
+outc:write([[
+#include "]],output,[[.h"
+
+]],prefix,[[ int ]],funcname,[[(lua_State *L) {
+	luaL_findtable(L, LUA_GLOBALSINDEX, "package.preload", ]], #inputs, [[);
+	
+]])
+local code = [[
+	lua_pushcfunction(L, luaopen_%s);
+	lua_setfield(L, -2, "%s");
+]]
+for i, input in ipairs(inputs) do
+	if names then
+		outc:write(code:format(input:gsub("%.", FUNC_SEP), input))
+	else
+		local input = assert(openheader(input))
+		local header = input:read("*a")
+		input:close()
+		for func in header:gmatch(OPEN_PAT) do
+			outc:write(code:format(func, func:gsub(funcsep, ".")))
+		end
+	end
+end
 outc:write([[
 	
 	lua_pop(L, 1);

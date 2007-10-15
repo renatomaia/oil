@@ -48,6 +48,6 @@ V= 0.4
 LUA= $(LUA_BIN)\lua.exe -epackage.path=[[../lua/?.lua]]
 
 # Flags for pre-compilation of Lua scripts
-PC_FLAGS= -p OIL_API
+PC_FLAGS= -p OIL_API -l "..\lua\?.lua;..\lua\?\init.lua"
 # Flags for generation of pre-loader of Lua scripts
 PLD_FLAGS= -p OIL_API
