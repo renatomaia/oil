@@ -25,9 +25,17 @@
 --   segmentof(portname, component)                                           --
 --------------------------------------------------------------------------------
 
+local next   = next
+local pairs  = pairs
+local pcall  = pcall
+local rawget = rawget
+local rawset = rawset
+local select = select
+local type   = type
+
 local oo = require "loop.cached"
 
-module("loop.component.base", package.seeall)
+module "loop.component.base"
 
 --------------------------------------------------------------------------------
 
@@ -73,7 +81,7 @@ function BaseTemplate:__build(segments)
 		end
 	end
 	for port, class in oo.allmembers(oo.classof(self)) do
-		if port:match("^%a") then
+		if port:match("^%a[%w_]*$") then
 			class(segments, port, segments)
 		end
 	end
@@ -117,6 +125,20 @@ end
 
 function segmentof(comp, port)
 	return comp[port]
+end
+
+--------------------------------------------------------------------------------
+
+function addport(comp, name, port, class)
+	if class then
+		comp[port] = class(comp[port], comp)
+	end
+	port(comp, name, comp)
+	comp.__factory:__setcontext(comp[name], context)
+end
+
+function removeport(comp, name)
+	comp[name] = nil
 end
 
 --------------------------------------------------------------------------------

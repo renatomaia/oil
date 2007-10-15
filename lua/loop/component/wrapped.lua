@@ -20,10 +20,16 @@
 --   segmentof(portname, component)                                           --
 --------------------------------------------------------------------------------
 
+local error  = error
+local pairs  = pairs
+local rawget = rawget
+local select = select
+local type   = type
+
 local oo   = require "loop.cached"
 local base = require "loop.component.base"
 
-module("loop.component.wrapped", package.seeall)
+module "loop.component.wrapped"
 
 --------------------------------------------------------------------------------
 
@@ -76,8 +82,8 @@ function BaseTemplate:__build(segments)
 		end
 	end
 	for port, class in oo.allmembers(oo.classof(self)) do
-		if port:find("^%a") then
-			container[port] = class(state, port, context, self)
+		if port:find("^%a[%w_]*$") then
+			container[port] = class(state, port, context)
 		end
 	end
 	return container.__external
@@ -114,6 +120,36 @@ function segmentof(comp, port)
 	return comp.__container.__state[port]
 end
 
+--------------------------------------------------------------------------------
+
+function addport(comp, name, port, class)
+	local container = comp.__container
+	if container then
+		local context = container.__internal
+		local state = container.__state
+		local factory = state.__factory
+		if class then
+			local comp = state.__component
+			state[name] = class(comp[name], comp)
+		end
+		container[name] = port(state, name, context, factory)
+		factory:__setcontext(state[name], context)
+	else
+		error("bad argument #1 to 'addport' (component expected, got "..type(comp)..")")
+	end
+end
+
+function removeport(comp, name)
+	local container = comp.__container
+	if container then
+		local state = container.__state
+		container[name] = nil
+		state[name] = nil
+	else
+		error("bad argument #1 to 'removeport' (component expected, got "..type(comp)..")")
+	end
+end
+
 --[[----------------------------------------------------------------------------
 MyCompTemplate = comp.Template{
 	[<portname>] = <PortClass>,
@@ -135,12 +171,12 @@ MyContainer = Container{
 }
 
 EMPTY       Internal Self      |   EMPTY       Internal Self   
-Facet       nil      wrapper   |   Facet       nil      nil
-Receptacle  nil      wrapper   |   Receptacle  nil      nil
-Multiple    multiple wrapper   |   Multiple    multiple nil
+Facet       nil      wrapper   |   Facet       nil      false
+Receptacle  nil      wrapper   |   Receptacle  nil      false
+Multiple    multiple wrapper   |   Multiple    multiple false
                                |                              
 FILLED      Internal Self      |   FILLED      Internal Self   
-Facet       port     wrapper   |   Facet       port     nil
-Receptacle  wrapper  wrapper   |   Receptacle  port     nil
-Multiple    multiple wrapper   |   Multiple    multiple nil
+Facet       port     wrapper   |   Facet       port     false
+Receptacle  wrapper  wrapper   |   Receptacle  port     false
+Multiple    multiple wrapper   |   Multiple    multiple false
 ----------------------------------------------------------------------------]]--

@@ -21,11 +21,17 @@
 --   intercept(template|factory|comp, portname, event, interceptor)           --
 --------------------------------------------------------------------------------
 
+local getmetatable = getmetatable
+local rawget       = rawget
+local rawset       = rawset
+local tostring     = tostring
+local type         = type
+
 local ObjectCache = require "loop.collection.ObjectCache"
 local oo          = require "loop.cached"
 local base        = require "loop.component.base"
 
-module("loop.component.intercepted", package.seeall)
+module "loop.component.intercepted"
 
 --------------------------------------------------------------------------------
 

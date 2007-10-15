@@ -22,10 +22,14 @@
 --   removeport(template|factory|component, portname)                         --
 --------------------------------------------------------------------------------
 
+local next   = next
+local rawget = rawget
+local select = select
+
 local oo   = require "loop.cached"
 local base = require "loop.component.contained"
 
-module("loop.component.dynamic", package.seeall)
+module "loop.component.dynamic"
 
 --------------------------------------------------------------------------------
 
@@ -139,7 +143,7 @@ local function portiterator(container, name)
 		elseif oo.classof(name) == DynamicPort then
 			return name.name, name.port
 		end
-	until name:find("^%a")
+	until name:find("^%a[%w_]*$")
 	return name, oo.classof(factory)[name]
 end
 
@@ -170,18 +174,7 @@ function addport(scope, name, port, class)
 			class = class,
 		}
 	else
-		local container = scope.__container
-		if container then
-			local context = container.__internal
-			local state = container.__state
-			local factory = state.__factory
-			if class then
-				local comp = state.__component
-				state[name] = class(comp[name], comp)
-			end
-			container[name] = port(state, name, context, factory)
-			factory:__setcontext(state[name], context)
-		end
+		base.addport(scope, name, port, class)
 	end
 end
 
@@ -189,12 +182,7 @@ function removeport(scope, name)
 	if oo.isclass(scope) or oo.instanceof(scope, BaseTemplate) then
 		scope[name] = nil
 	else
-		local container = scope.__container
-		if container then
-			local state = container.__state
-			container[name] = nil
-			state[name] = nil
-		end
+		base.removeport(scope, name)
 	end
 end
 

@@ -20,10 +20,14 @@
 --   segmentof(portname, component)                                           --
 --------------------------------------------------------------------------------
 
+local pairs  = pairs
+local select = select
+local type   = type
+
 local oo          = require "loop.cached"
 local base        = require "loop.component.wrapped"
 
-module("loop.component.contained", package.seeall)
+module "loop.component.contained"
 
 --------------------------------------------------------------------------------
 
@@ -59,3 +63,8 @@ factoryof  = base.factoryof
 templateof = base.templateof
 ports      = base.ports
 segmentof  = base.segmentof
+
+--------------------------------------------------------------------------------
+
+addport    = base.addport
+removeport = base.removeport
