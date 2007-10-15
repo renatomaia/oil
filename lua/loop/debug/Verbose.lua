@@ -80,13 +80,14 @@ module("loop.debug.Verbose", oo.class)
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local firstcol = 8
-tabcount = ObjectCache{ default = 0 }
+flaglength = 8
+timelength = 0
 viewer = Viewer{ maxdepth = 2 }
 
 function __init(class, verbose)
 	verbose = oo.rawnew(class, verbose)
 	verbose.flags    = {}
+	verbose.tabcount = ObjectCache{ default = 0 }
 	verbose.groups   = rawget(verbose, "groups")  or {}
 	verbose.custom   = rawget(verbose, "custom")  or {}
 	verbose.inspect  = rawget(verbose, "inspect") or {}
@@ -110,14 +111,21 @@ local function write(self, flag, ...)
 		local custom  = self.custom
 		local inspect = self.inspect
 		
+		local flaglength = self.flaglength
 		output:write("[", flag, "]")
-		output:write(viewer.prefix:sub(#flag + 3))
-	
+		output:write(viewer.prefix:sub(#flag + 3, flaglength))
+		
 		timed = (type(timed) == "table") and timed[flag] or timed
 		if timed == true then
-			output:write(os.date(), " - ")
+			timed = os.date()
+			output:write(timed, " - ")
+			output:write(viewer.prefix:sub(flaglength + #timed + 4))
 		elseif type(timed) == "string" then
-			output:write(os.date(timed), " ")
+			timed = os.date(timed)
+			output:write(timed, " ")
+			output:write(viewer.prefix:sub(flaglength + #timed + 2))
+		else
+			output:write(viewer.prefix:sub(flaglength + 1))
 		end
 		
 		custom = custom[flag]
@@ -177,7 +185,7 @@ function updatetabs(self, shift)
 			else tabcount.default = tabs
 		end
 	end
-	viewer.prefix = string.rep(" ", firstcol)..
+	viewer.prefix = string.rep(" ", self.flaglength + self.timelength)..
 	                viewer.indentation:rep(tabs)
 end
 
@@ -220,11 +228,23 @@ function flag(self, name, ...)
 		end
 	elseif select("#", ...) > 0 then
 		self.flags[name] = (...) and taggedprint(name) or nil
-		local largest = 5
+		local timed = self.timed
+		local timelen = 0
+		local taglen = 5
 		for name in pairs(self.flags) do
-			largest = math.max(largest, #name)
+			local length = (type(timed) == "table") and timed[flag] or timed
+			if length == true then
+				length = 19 -- length of 'DD/MM/YY HH:mm:ss -'
+			elseif type(length) == "string" then
+				length = #os.date(length)
+			else
+				length = 0
+			end
+			timelen = math.max(timelen, length)
+			taglen = math.max(taglen, #name)
 		end
-		firstcol = math.max(largest + 3, firstcol)
+		self.flaglength = math.max(taglen + 3, self.flaglength)
+		self.timelength = math.max(timelen + 1, self.timelength)
 		self:updatetabs()
 	else
 		return self.flags[name] ~= nil
