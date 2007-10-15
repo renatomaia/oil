@@ -14,7 +14,7 @@ local string     = require "string"
 local luaidl     = require "luaidl"
 local idl        = require "oil.corba.idl"
 local Compiler   = require "oil.corba.idl.Compiler"
-local FileStream = require "loop.serial.FileStream"
+local Serializer = require "loop.serial.Serializer"
 
 module("idl2lua", require "loop.compiler.Arguments")
 
@@ -48,7 +48,12 @@ end
 
 --------------------------------------------------------------------------------
 
-local stream = FileStream{ file = assert(io.open(output, "w")) }
+local file = assert(io.open(output, "w"))
+
+local stream = Serializer()
+function stream:write(...)
+	return file:write(...)
+end
 
 stream[idl]              = "idl"
 stream[idl.void]         = "idl.void"
@@ -72,14 +77,14 @@ stream[idl.basesof]      = "idl.basesof"
 stream[idl.Contents]     = "idl.Contents"
 stream[idl.ContainerKey] = "idl.ContainerKey"
 
-stream.file:write(instance,[[.TypeRepository.types:register(
+file:write(instance,[[.TypeRepository.types:register(
 	setfenv(
 		function()
 			return ]])
 
-stream:put(luaidl.parsefile(select(start, ...), Compiler.Options))
+stream:serialize(luaidl.parsefile(select(start, ...), Compiler.Options))
 
-stream.file:write([[ 
+file:write([[ 
 		end,
 		{
 			idl = require "oil.corba.idl",
@@ -88,5 +93,4 @@ stream.file:write([[
 	)()
 )
 ]])
-
-stream.file:close()
+file:close()
