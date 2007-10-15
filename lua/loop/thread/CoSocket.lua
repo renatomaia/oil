@@ -56,8 +56,8 @@ end
 
 --------------------------------------------------------------------------------
 
-local function wrappedconnect(self, host, port)                                 --[[VERBOSE]] verbose:cosocket(true, "performing blocking connect")
-	local socket = self.__object
+local function wrappedconnect(self, host, port)                                 --[[VERBOSE]] local verbose = self.cosocket.scheduler.verbose
+	local socket = self.__object                                                  --[[VERBOSE]] verbose:cosocket(true, "performing blocking connect")
 	socket:settimeout(-1)
 	local result, errmsg = socket:connect(host, port)
 	socket:settimeout(0)                                                          --[[VERBOSE]] verbose:cosocket(false, "blocking connect done")
@@ -66,13 +66,13 @@ end
 
 --------------------------------------------------------------------------------
 
-local function wrappedaccept(self)                                              --[[VERBOSE]] verbose:cosocket(true, "performing wrapped accept")
+local function wrappedaccept(self)
 	local socket    = self.__object
 	local timeout   = self.timeout
 	local cosocket  = self.cosocket
 	local readlocks = cosocket.readlocks
-	local scheduler = cosocket.scheduler
-	local current   = scheduler:checkcurrent()
+	local scheduler = cosocket.scheduler                                          --[[VERBOSE]] local verbose = scheduler.verbose
+	local current   = scheduler:checkcurrent()                                    --[[VERBOSE]] verbose:cosocket(true, "performing wrapped accept")
 
 	assert(socket, "bad argument #1 to `accept' (wrapped socket expected)")
 	assert(readlocks[socket] == nil, "attempt to read a socket in use")
@@ -108,12 +108,12 @@ end
 
 --------------------------------------------------------------------------------
 
-local function wrappedreceive(self, pattern)                                    --[[VERBOSE]] verbose:cosocket(true, "performing wrapped receive")
+local function wrappedreceive(self, pattern)
 	local socket    = self.__object
 	local timeout   = self.timeout
 	local readlocks = self.cosocket.readlocks
-	local scheduler = self.cosocket.scheduler
-	local current   = scheduler:checkcurrent()
+	local scheduler = self.cosocket.scheduler                                     --[[VERBOSE]] local verbose = scheduler.verbose
+	local current   = scheduler:checkcurrent()                                    --[[VERBOSE]] verbose:cosocket(true, "performing wrapped receive")
 
 	assert(socket, "bad argument #1 to `receive' (wrapped socket expected)")
 	assert(readlocks[socket] == nil, "attempt to read a socket in use")
@@ -190,8 +190,8 @@ end
 
 --------------------------------------------------------------------------------
 
-local function wrappedsend(self, data, i, j)                                    --[[VERBOSE]] verbose:cosocket(true, "performing wrapped send")
-	local socket     = self.__object
+local function wrappedsend(self, data, i, j)                                    --[[VERBOSE]] local verbose = self.cosocket.scheduler.verbose
+	local socket     = self.__object                                              --[[VERBOSE]] verbose:cosocket(true, "performing wrapped send")
 	local timeout    = self.timeout
 	local writelocks = self.cosocket.writelocks
 	local scheduler  = self.cosocket.scheduler
@@ -256,9 +256,9 @@ end
 -- Wrapped Socket API ----------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function select(self, recvt, sendt, timeout)                                    --[[VERBOSE]] verbose:cosocket(true, "performing wrapped select")
-	local scheduler = self.scheduler
-	local current = scheduler:checkcurrent()
+function select(self, recvt, sendt, timeout)
+	local scheduler = self.scheduler                                              --[[VERBOSE]] local verbose = scheduler.verbose
+	local current = scheduler:checkcurrent()                                      --[[VERBOSE]] verbose:cosocket(true, "performing wrapped select")
 		
 	if (recvt and #recvt > 0) or (sendt and #sendt > 0) then
 		local readlocks  = self.readlocks
@@ -397,7 +397,7 @@ function bind(self, address, port)
 	return self:wrap(self.socketapi.bind(address, port))
 end
 
-function wrap(self, socket, ...)                                                --[[VERBOSE]] verbose:cosocket "new wrapped socket"
+function wrap(self, socket, ...)                                                --[[VERBOSE]] self.scheduler.verbose:cosocket "new wrapped socket"
 	if socket then
 		socket:settimeout(0)
 		socket = Wrapper {

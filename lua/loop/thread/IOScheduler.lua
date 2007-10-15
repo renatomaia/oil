@@ -43,7 +43,7 @@ __init(getmetatable(_M), _M)
 -- Internal Functions ----------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function signalall(self, timeout)
+function signalall(self, timeout)                                               --[[VERBOSE]] local verbose = self.verbose
 	if timeout then timeout = math.max(timeout - self:time(), 0) end
 	local reading, writing = self.reading, self.writing
 	if #reading > 0 or #writing > 0 then                                          --[[VERBOSE]] verbose:scheduler(true, "signaling blocked threads for ",timeout," seconds")
@@ -129,7 +129,7 @@ end
 -- Control Functions -----------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function step(self)                                                             --[[VERBOSE]] verbose:scheduler(true, "performing scheduling step")
+function step(self)                                                             --[[VERBOSE]] local verbose = self.verbose; verbose:scheduler(true, "performing scheduling step")
 	local signaled = self:signalall(0)
 	local wokenup = self:wakeupall()
 	local resumed = self:resumeall()                                              --[[VERBOSE]] verbose:scheduler(false, "scheduling step performed")

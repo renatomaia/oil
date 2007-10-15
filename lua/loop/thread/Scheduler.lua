@@ -125,7 +125,7 @@ end
 -- Internal Functions ----------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function resumeall(self, success, ...)
+function resumeall(self, success, ...)                                          --[[VERBOSE]] local verbose = self.verbose
 	local routine = self.current
 	if routine then                                                               --[[VERBOSE]] verbose:threads(false, routine," yielded")
 		if coroutine.status(routine) == "dead" then                                 --[[VERBOSE]] verbose:threads(routine," has finished")
@@ -152,7 +152,7 @@ function resumeall(self, success, ...)
 	end
 end
 
-function wakeupall(self)
+function wakeupall(self)                                                        --[[VERBOSE]] local verbose = self.verbose
 	local sleeping = self.sleeping
 	if sleeping:head() then                                                       --[[VERBOSE]] verbose:scheduler(true, "waking sleeping threads up")
 		local running = self.running
@@ -177,8 +177,8 @@ function time(self)
 	return os.difftime(os.time(), StartTime)
 end
 
-function idle(self, timeout)                                                    --[[VERBOSE]] verbose:scheduler(true, "starting busy-waiting for ",timeout," seconds")
-	if timeout then repeat until self:time() > timeout end                        --[[VERBOSE]] verbose:scheduler(false, "busy-waiting ended")
+function idle(self, timeout)                                                    --[[VERBOSE]] self.verbose:scheduler(true, "starting busy-waiting for ",timeout," seconds")
+	if timeout then repeat until self:time() > timeout end                        --[[VERBOSE]] self.verbose:scheduler(false, "busy-waiting ended")
 end
 
 function error(self, routine, errmsg)
@@ -189,12 +189,12 @@ end
 -- Exported API ----------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function register(self, routine, previous)                                      --[[VERBOSE]] verbose:threads("registering ",routine)
+function register(self, routine, previous)                                      --[[VERBOSE]] self.verbose:threads("registering ",routine)
 	return not self.sleeping:contains(routine) and
 	       self.running:insert(routine, previous)
 end
 
-function remove(self, routine)                                                  --[[VERBOSE]] verbose:threads("removing ",routine)
+function remove(self, routine)                                                  --[[VERBOSE]] self.verbose:threads("removing ",routine)
 	if routine == self.current then
 		return self.running:remove(routine, self.currentkey)
 	elseif routine == self.currentkey then
@@ -210,11 +210,11 @@ end
 function suspend(self, time)
 	local routine = self:checkcurrent()
 	self.running:remove(routine, self.currentkey)
-	if time then self.sleeping:enqueue(routine, self:time() + time) end           --[[VERBOSE]] verbose:threads(routine," waiting for ",time," seconds")
+	if time then self.sleeping:enqueue(routine, self:time() + time) end           --[[VERBOSE]] self.verbose:threads(routine," waiting for ",time," seconds")
 	return coroutine.yield()
 end
 
-function resume(self, routine, ...)                                             --[[VERBOSE]] verbose:threads("resuming ",routine)
+function resume(self, routine, ...)                                             --[[VERBOSE]] self.verbose:threads("resuming ",routine)
 	local current = self:checkcurrent()
 	if not self:register(routine, current) then
 		self:register(self:remove(routine), current)
@@ -223,7 +223,7 @@ function resume(self, routine, ...)                                             
 end
 
 function start(self, func, ...)
-	self.running:insert(coroutine.create(func), self:checkcurrent())              --[[VERBOSE]] verbose:threads("starting ",self.running[self.current])
+	self.running:insert(coroutine.create(func), self:checkcurrent())              --[[VERBOSE]] self.verbose:threads("starting ",self.running[self.current])
 	return coroutine.yield(...)
 end
 
@@ -231,13 +231,13 @@ end
 -- Control Functions -----------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function step(self)                                                             --[[VERBOSE]] verbose:scheduler(true, "performing scheduling step")
+function step(self)                                                             --[[VERBOSE]] local verbose = self.verbose; verbose:scheduler(true, "performing scheduling step")
 	local woken = self:wakeupall()
 	local resumed = self:resumeall()                                              --[[VERBOSE]] verbose:scheduler(false, "scheduling step performed")
 	return woken or resumed
 end
 
-function run(self, timeout)                                                     --[[VERBOSE]] verbose:scheduler(true, "running scheduler until ",timeout)
+function run(self, timeout)                                                     --[[VERBOSE]] local verbose = self.verbose; verbose:scheduler(true, "running scheduler until ",timeout)
 	if self:step() and not self.halted then
 		local now = self:time()
 		if not timeout or timeout > now then
