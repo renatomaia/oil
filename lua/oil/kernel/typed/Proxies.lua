@@ -15,6 +15,10 @@
 -- proxies:Facet
 -- 	proxy:object proxyto(reference:table)
 --
+-- indexer:Facet
+-- 	interface:table typeof(reference:table)
+-- 	member:table, [islocal:function], [cached:boolean] valueof(interface:table, name:string)
+--
 -- invoker:Receptacle
 -- 	[results:object], [except:table] invoke(reference, operation, args...)
 --------------------------------------------------------------------------------

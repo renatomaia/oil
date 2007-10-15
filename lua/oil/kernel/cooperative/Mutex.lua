@@ -24,6 +24,7 @@
 -- 	locksend(channel:object)
 -- 	freesend(channel:object)
 -- 	lockreceive(channel:object, request:table, [probe:boolean])
+-- 	freereceive(channel:object)
 -- 
 -- tasks:Receptacle
 -- 	current:thread
