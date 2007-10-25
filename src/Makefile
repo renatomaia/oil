@@ -229,6 +229,8 @@ none:
 linux:
 	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
 	            MYLDFLAGS="-Wl,-E -O -shared $(MYLDFLAGS)"
+	$(MAKE) console LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
+	            MYLDFLAGS="-Wl,-E -O $(MYLDFLAGS)"
 
 solaris:
 	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
