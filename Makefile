@@ -25,7 +25,7 @@ INSTALL_DIR= $(INSTALL_INC) $(INSTALL_LIB) \
 
 all: $(PLAT)
 
-$(PLATS) bundles preload a so clean:
+$(PLATS) bundles preload console a so clean:
 	cd src; $(MAKE) $@
 
 test:	all
@@ -52,7 +52,7 @@ installp: preload $(INSTALL_DIR)
 	cd src; $(INSTALL_DATA) $(PLD_LIB) $(INSTALL_LIB)
 	cd $(INSTALL_LIB); ln -fs $(PLD_SOL).$V.so $(PLD_SOL).so;
 
-installc: all $(INSTALL_BIN)
+installc: console $(INSTALL_BIN)
 	$(INSTALL_EXEC) src/console $(INSTALL_BIN)/oil
 
 local:
