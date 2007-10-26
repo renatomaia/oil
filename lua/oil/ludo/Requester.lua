@@ -9,7 +9,7 @@
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua                                                  --
 -- Release: 0.4                                                               --
--- Title  : Client-side CORBA GIOP Protocol                                   --
+-- Title  : Client-side LuDO Protocol                                         --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- requests:Facet
