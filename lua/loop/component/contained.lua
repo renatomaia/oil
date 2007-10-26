@@ -59,6 +59,10 @@ end
 
 --------------------------------------------------------------------------------
 
+delegate = base.delegate -- used by 'dynamic' component model
+
+--------------------------------------------------------------------------------
+
 factoryof  = base.factoryof
 templateof = base.templateof
 ports      = base.ports

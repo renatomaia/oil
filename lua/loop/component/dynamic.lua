@@ -100,9 +100,11 @@ local ExternalState = oo.class({}, InternalState)
 
 function ExternalState:__index(name)
 	local port, manager = oo.superclass(ExternalState).__index(self, name)
-	if port and manager
-		then return rawget(manager, "__external") or manager
-		else return port or self.__container.__state.__component[name]
+	if port and manager then
+		return rawget(manager, "__external") or manager
+	else
+		local component = self.__container.__state.__component
+		return base.delegate(port or component[name], component)
 	end
 end
 

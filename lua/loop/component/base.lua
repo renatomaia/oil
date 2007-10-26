@@ -74,15 +74,16 @@ function BaseTemplate:__setcontext(segment, context)
 end
 
 function BaseTemplate:__build(segments)
+	for port, class in oo.allmembers(oo.classof(self)) do
+		if port:match("^%a[%w_]*$") then
+			class(segments, port, segments)
+		end
+	end
+	segments.__reference = segments
 	for port in pairs(self) do
 		if port == 1
 			then self:__setcontext(segments.__component, segments)
 			else self:__setcontext(segments[port], segments)
-		end
-	end
-	for port, class in oo.allmembers(oo.classof(self)) do
-		if port:match("^%a[%w_]*$") then
-			class(segments, port, segments)
 		end
 	end
 	return segments
@@ -131,7 +132,7 @@ end
 
 function addport(comp, name, port, class)
 	if class then
-		comp[port] = class(comp[port], comp)
+		comp[name] = class(comp[name], comp)
 	end
 	port(comp, name, comp)
 	comp.__factory:__setcontext(comp[name], context)

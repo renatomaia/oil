@@ -33,15 +33,29 @@ module "loop.component.wrapped"
 
 --------------------------------------------------------------------------------
 
+local impl, obj
+local function method(_, ...) return impl(obj, ...) end
+function delegate(value, delegatee)
+	if type(value) == "function" then
+		impl, obj = value, delegatee
+		return method
+	end
+	return value
+end
+
+--------------------------------------------------------------------------------
+
 local ExternalState = oo.class()
 
 function ExternalState:__index(name)
 	self = self.__container
 	local state = self.__state
 	local port, manager = state[name], self[name]
-	if port and manager
-		then return rawget(manager, "__external") or manager
-		else return port or state.__component[name]
+	if port and manager then
+		return rawget(manager, "__external") or manager
+	else
+		component = state.__component
+		return delegate(port or component[name], component)
 	end
 end
 
@@ -75,15 +89,16 @@ function BaseTemplate:__build(segments)
 	local container = self:__container(segments)
 	local state = container.__state
 	local context = container.__internal
+	for port, class in oo.allmembers(oo.classof(self)) do
+		if port:find("^%a[%w_]*$") then
+			container[port] = class(state, port, context)
+		end
+	end
+	state.__reference = container.__external
 	for port in pairs(self) do
 		if port == 1
 			then self:__setcontext(segments.__component, context)
 			else self:__setcontext(segments[port], context)
-		end
-	end
-	for port, class in oo.allmembers(oo.classof(self)) do
-		if port:find("^%a[%w_]*$") then
-			container[port] = class(state, port, context)
 		end
 	end
 	return container.__external
@@ -129,7 +144,7 @@ function addport(comp, name, port, class)
 		local state = container.__state
 		local factory = state.__factory
 		if class then
-			local comp = state.__component
+			local comp = state.__component or state
 			state[name] = class(comp[name], comp)
 		end
 		container[name] = port(state, name, context, factory)

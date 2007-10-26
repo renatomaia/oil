@@ -22,6 +22,7 @@
 --------------------------------------------------------------------------------
 
 local getmetatable = getmetatable
+local pairs        = pairs
 local rawget       = rawget
 local rawset       = rawset
 local tostring     = tostring
@@ -256,8 +257,18 @@ Receptacle.__hasany = Receptacle.__get
 local ReceptacleWrapper = oo.class()
 
 function ReceptacleWrapper:__init(state, key, context)
-	local wrapper = oo.rawnew(self, state[key])
-	rawset(wrapper, "__new", oo.class(Wrapper:__init{
+	self = oo.rawnew(self, state[key])
+	
+	local connections
+	for key, port in self.__receptacle:__all() do
+		connections = {}
+		for key, port in self.__receptacle:__all() do
+			connections[key] = port
+		end
+		break
+	end
+	
+	rawset(self, "__new", oo.class(Wrapper:__init{
 		__get = Receptacle.__get,
 		__state = state,
 		__context = context,
@@ -265,7 +276,15 @@ function ReceptacleWrapper:__init(state, key, context)
 		__name = tostring(key),
 		__factory = state.__factory,
 	}, Wrapper))
-	return wrapper
+	
+	if connections then
+		for key, port in pairs(connections) do
+			self.__receptacle:__unbind(key)
+			self:__bind(port, key)
+		end
+	end
+	
+	return self
 end
 
 function ReceptacleWrapper:__index(key)
