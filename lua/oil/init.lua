@@ -443,7 +443,8 @@ end
 --
 -- Function used to wait for an ORB request and process it.
 -- Only one single ORB request is processed at each call.
--- It returns true if no exception is raised during request processing, or nil and the raised exception otherwise.
+-- It returns true if no exception is raised during request processing, or 'nil'
+-- and the raised exception otherwise.
 --
 -- @usage while oil.pending() do oil.step() end                                .
 --
@@ -498,6 +499,14 @@ tasks = TaskManager and TaskManager.tasks
 --
 -- It is a 'coroutine-safe' version of the 'pcall' function of the Lua standard
 -- library.
+--
+-- @param func function Function to be executed in protected mode.
+-- @param ... any Additional parameters passed to protected function.
+--
+-- @param success boolean 'true' if function execution did not raised any errors
+-- or 'false' otherwise.
+-- @param ... any Values returned by the function or an the error raised by the
+-- function.
 --
 pcall = TaskManager and TaskManager.pcall or luapcall
 
@@ -573,8 +582,11 @@ end
 --------------------------------------------------------------------------------
 -- Creates a new value encoder that marshal values into strings.
 --
+-- The encoder marshals values in a CORBA's CDR encapsulated stream, i.e.
+-- includes an indication of the endianess used in value codification.
+--
 -- @return object Value encoder that provides operation 'put(value, [type])' to
--- marhsal values and operation 'getdata()' to get the marshaled stream.
+-- marshal values and operation 'getdata()' to get the marshaled stream.
 --
 -- @usage encoder = oil.newencoder(); encoder:put({1,2,3}, oil.corba.idl.sequence{oil.corba.idl.long})
 -- @usage encoder = oil.newencoder(); encoder:put({1,2,3}, oil.types:lookup("MyLongSeq"))
@@ -584,12 +596,15 @@ function newencoder()
 end
 
 --------------------------------------------------------------------------------
--- Creates a new value decoder that marshal values into strings.
+-- Creates a new value decoder that extracts marshaled values from strings.
+--
+-- The decoder reads CORBA's CDR encapsulated streams, i.e. includes an
+-- indication of the endianess used in value codification.
 --
 -- @param stream string String containing a stream with marshaled values.
 --
 -- @return object Value decoder that provides operation 'get([type])' to
--- unmarhsal values from a marshaled stream.
+-- unmarshal values from a marshaled stream.
 --
 -- @usage decoder = oil.newdecoder(stream); val = decoder:get(oil.corba.idl.sequence{oil.corba.idl.long})
 -- @usage decoder = oil.newdecoder(stream); val = decoder:get(oil.types:lookup("MyLongSeq"))
