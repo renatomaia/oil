@@ -54,6 +54,11 @@ function assemble(components)
 		RequestReceiver.tasks = TaskManager.tasks
 	end
 	if RequestDispatcher then
-		RequestDispatcher.pcall = TaskManager.pcall
+		-- define 'pcall' used in invocation dispatching.
+		-- operation is done over segments because contained components cannot
+		-- index functions that are not executed as methods.
+		local dispather = component.segmentof(RequestDispatcher, "dispatcher")
+		local tasks     = component.segmentof(TaskManager, "tasks")
+		dispather.pcall = tasks.pcall
 	end
 end
