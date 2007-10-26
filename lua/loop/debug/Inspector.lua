@@ -69,10 +69,12 @@ function Command.loc(which, ...)
 		repeat
 			name, value = call(self, debug.getlocal, level, index)
 			if not which and name then
-				viewer.output:write(name)
-				viewer.output:write(" = ")
+				local viewer = self.viewer
+				local output = viewer.output
+				output:write(name)
+				output:write(" = ")
 				viewer:write(value)
-				viewer.output:write("\n")
+				output:write("\n")
 			elseif name == which then
 			if select("#", ...) == 0
 				then return value
@@ -91,9 +93,11 @@ function Command.upv(which, ...)
 	repeat
 		name, value = debug.getupvalue(func, index)
 		if not which and name then
-			viewer.output:write(name," = ")
+			local viewer = self.viewer
+			local output = viewer.output
+			output:write(name," = ")
 			viewer:write(value)
-			viewer.output:write("\n")
+			output:write("\n")
 		elseif name == which then
 			if select("#", ...) == 0
 				then return value
@@ -112,7 +116,7 @@ function Command.env(which, ...)
 			else env[which] = (...)
 		end
 	else
-		viewer:print(env)
+		self.viewer:print(env)
 	end
 end
 
@@ -123,7 +127,7 @@ function Command.lua(which, ...)
 			else _G[which] = (...)
 		end
 	else
-		viewer:print(_G)
+		self.viewer:print(_G)
 	end
 end
 
@@ -253,7 +257,7 @@ function Command.lsbp()
 	end
 	table.sort(breaks)
 	for _, bp in ipairs(breaks) do
-		viewer:print(bp)
+		self.viewer:print(bp)
 	end
 end
 
@@ -447,7 +451,7 @@ function console(self, level)
 				setfenv(cmd, self)
 				results(self, xpcall(cmd, debug.traceback))
 			else
-				io.stderr:write(errmsg, "\n")
+				viewer.output:write(errmsg, "\n")
 			end
 		until not rawget(self, ".current")
 	end
