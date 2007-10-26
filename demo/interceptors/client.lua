@@ -15,7 +15,6 @@ local interceptor = {}
 local send_context_idl = oil.loadidl [[
 	struct ServerInfo {
 		long memory;
-		string stack;
 	};
 ]]
 function interceptor:sendrequest(request)
@@ -23,7 +22,6 @@ function interceptor:sendrequest(request)
 	local encoder = oil.newencoder()
 	encoder:put({
 		memory = gcinfo(),
-		stack = debug.traceback("client intercepted"),
 	}, send_context_idl)
 	request.service_context = {
 		{
@@ -44,7 +42,7 @@ local receive_context_idl = oil.loadidl [[
 function interceptor:receivereply(reply)
 	print("intercepting reply of opreation "..reply.operation)
 	print("\tsuccess:", reply.success)
-	print("\tresults:", viewer:tostring(unpack(reply, 1, reply.count)))
+	print("\tresults:", unpack(reply, 1, reply.count))
 	for _, context in ipairs(reply.service_context) do
 		if context.context_id == 4321 then
 			local decoder = oil.newdecoder(context.context_data)

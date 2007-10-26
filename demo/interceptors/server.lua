@@ -16,7 +16,6 @@ local interceptor = {}
 local receive_context_idl = oil.loadidl [[
 	struct ServerInfo {
 		long memory;
-		string stack;
 	};
 ]]
 function interceptor:receiverequest(request)
@@ -27,7 +26,6 @@ function interceptor:receiverequest(request)
 			local decoder = oil.newdecoder(context.context_data)
 			local result = decoder:get(receive_context_idl)
 			print("\tmemory:", result.memory)
-			print("\tstack:" , result.stack)
 			return
 		end
 	end
@@ -48,7 +46,7 @@ local send_context_idl = oil.loadidl [[
 function interceptor:sendreply(reply)
 	print("intercepting reply of opreation "..reply.operation)
 	print("\tsuccess:", reply.success)
-	print("\tresults:", viewer:tostring(unpack(reply, 1, reply.count)))
+	print("\tresults:", unpack(reply, 1, reply.count))
 	local encoder = oil.newencoder()
 	encoder:put({
 		start = reply.start_time,
