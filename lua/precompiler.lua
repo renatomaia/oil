@@ -1,123 +1,187 @@
+#!/usr/local/bin/lua
+
 --------------------------------------------------------------------------------
--- Project: Library Generation Utilities                                      --
--- Release: 1.0 alpha                                                         --
--- Title  : Pre-Compiler of Lua Script Files                                  --
--- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
--- Date   : 13/12/2004 13:51                                                  --
---------------------------------------------------------------------------------
+-- @script  Lua Script Pre-Compiler
+-- @version 1.1
+-- @author  Renato Maia <maia@tecgraf.puc-rio.br>
+--
+
+local assert   = assert
+local error    = error
+local ipairs   = ipairs
+local loadfile = loadfile
+local pairs    = pairs
+local select   = select
+local io       = require "io"
+local os       = require "os"
+local package  = require "package"
+local string   = require "string"
+local table    = require "table"
+
+module("precompiler", require "loop.compiler.Arguments")
 
 local FILE_SEP = "/"
 local FUNC_SEP = "_"
-local PACK_SEP = "."
-local INIT_PAT = "init$"
-local PATH_PAT = FILE_SEP.."$"
+local PATH_SEP = ";"
+local PATH_MARK = "?"
 
-local Options = {
-	luapath   = ".",
-	directory = ".",
-	filename  = "precompiled",
-	prefix    = "LUAOPEN_API",
-}
+help      = false
+bytecodes = false
+names     = false
+luapath   = package.path
+output    = "precompiled"
+prefix    = "LUAOPEN_API"
+directory = ""
 
-local Alias = {
-	l = "luapath",
-	d = "directory",
-	f = "filename",
-	p = "prefix",
-}
-
-function adjustpath(path)
-	if string.find(path, PATH_PAT)
-		then return path
-		else return path..FILE_SEP
-	end
+_optpat = "^%-(%-?%w+)(=?)(.-)$"
+_alias = { ["-help"] = "help" }
+for name in pairs(_M) do
+	_alias[name:sub(1, 1)] = name
 end
 
-function processargs(arg)
-	local i = 1
-	while arg and arg[i] do
-		local opt = string.match(arg[i], "^%-(.+)$")
-		if not opt then break end
-		
-		opt = Alias[opt] or opt
-		local opkind = type(Options[opt])
-		if opkind == "boolean" then
-			Options[opt] = true
-		elseif opkind == "number" then
-			i = i + 1
-			Options[opt] = tonumber(arg[i])
-		elseif opkind == "string" then
-			i = i + 1
-			Options[opt] = arg[i]
-		elseif opkind == "table" then
-			i = i + 1
-			table.insert(Options[opt], arg[i])
-		else
-			io.stderr:write("unknown option ", opt)
-		end
-		i = i + 1
-	end
-	
-	local argcount = table.getn(arg)
-	if not arg or i > argcount then
-		io.stderr:write([[
-Script for pre-compilation of Lua script files
-By Renato Maia <maia@tecgraf.puc-rio.br>
-
-usage: lua precompiler.lua [options] <scripts>
+local start, errmsg = _M(...)
+if not start or help then
+	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
+	io.stderr:write([[
+Lua Script Pre-Compiler 1.1  Copyright (C) 2006-2007 Tecgraf, PUC-Rio
+Usage: ]],_NAME,[[.lua [options] [inputs]
   
-  options:
+  [inputs] is a sequence of names that may be file paths or package names, use
+  the options described below to indicate how they should be interpreted. If no
+  [inputs] is provided then such names are read from the standard input.
+  
+Options:
+  
+  -b, -bytecodes  Flag that indicates the provided [inputs] are files containing
+                  bytecodes (e.g. instead of source code), like the output of
+                  the 'luac' compiler. When this flag is used no compilation is
+                  performed by this script.
   
   -d, -directory  Directory where the output files should be generated. Its
                   default is the current directory.
   
-  -f, -filename   Name used to form the name of the files generated. Two files
-                  are generates: a source code file with the sufix '.c' with
-                  the pre-compiled scripts and a header file with the sufix
-                  '.h' with function signatures. Its default is 'precompiled'.
+  -l, -luapath    Sequence os path templates used to infer package names from
+                  file paths and vice versa. These templates follows the same
+                  format of the 'package.path' field of Lua. Its default is the
+                  value of 'package.path' that currently is set to:
+                  "]],luapath,[["
   
-  -l, -luapath    Root directory of the script files to be compiled.
-                  The script files must follow the same hierarchy of the
-                  packages they implement, similarly to the hierarchy imposed
-                  by the value of the 'package.path' defined in the standard
-                  Lua distribution. Its default is the current directory.
+  -n, -names      Flag that indicates provided input names are actually package
+                  names and the real file path should be inferred from
+                  the path defined by -luapath option. This flag can be used in
+                  conjunction with the -bytecodes flag to indicate that inferred
+                  file paths contains bytecodes instead of source code.
+  
+  -o, -output     Name used to form the name of the files generated. Two files
+                  are generated: a source code file with the sufix '.c' with
+                  the pre-compiled scripts and a header file with the sufix
+                  '.h' with function signatures. Its default is ']],output,[['.
   
   -p, -prefix     Prefix added to the signature of the functions generated.
-                  Its default is LUAOPEN_API.
+                  Its default is ']],prefix,[['.
+  
 ]])
-		os.exit(1)
-	end
-	
-	return i, argcount
-end
-
-function getname(file)
-	local name = string.match(file, "(.+)%..+")
-	if string.find(name, INIT_PAT) then
-		name = string.sub(name, 1, -6)
-	end
-	return string.gsub(name, FILE_SEP, FUNC_SEP)
+	os.exit(1)
 end
 
 --------------------------------------------------------------------------------
 
-local start, finish = processargs(arg)
+local function escapepattern(pattern)
+	return pattern:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+end
 
-Options.luapath   = adjustpath(Options.luapath)
-Options.directory = adjustpath(Options.directory)
-local filepath    = Options.directory..Options.filename
+local function adjustpath(path)
+	if path ~= "" and not path:find(filesep.."$") then
+		return path..FILE_SEP
+	end
+	return path
+end
+
+local filesep  = escapepattern(FILE_SEP)
+local pathsep  = escapepattern(PATH_SEP)
+local pathmark = escapepattern(PATH_MARK)
+local filepath = adjustpath(directory)..output
+
+--------------------------------------------------------------------------------
+
+local function readinput(file, name)
+	if bytecodes then
+		file = assert(io.open(file))
+		file = file:read("*a"), file:close()
+	else
+		file = string.dump(assert(loadfile(file)))
+	end
+	return file
+end
+
+local template = "[^"..pathsep.."]+"
+local function getbytecodes(name)
+	if names then
+		local file = name:gsub("%.", FILE_SEP)
+		local err = {}
+		for path in luapath:gmatch(template) do
+			path = path:gsub(pathmark, file)
+			local file = io.open(path)
+			if file then
+				file:close()
+				return readinput(path)
+			end
+			table.insert(err, string.format("\tno file '%s'", path))
+		end
+		err = table.concat(err, "\n")
+		error(string.format("module '%s' not found:\n%s", name, err))
+	end
+	return readinput(name)
+end
+
+local function allequals(...)
+	local name = ...
+	for i = 1, select("#", ...) do
+		if name ~= select(i, ...) then return nil end
+	end
+	return name
+end
+
+local function funcname(name)
+	if not names then
+		local result
+		for path in luapath:gmatch(template) do
+			path = path:gsub(pathmark, "\0")
+			path = escapepattern(path)
+			path = path:gsub("%z", "(.-)")
+			path = string.format("^%s$", path)
+			result = allequals(name:match(path)) or result
+		end
+		if not result then
+			return nil, "unable to figure package name for file '"..name.."'"
+		end
+		return result:gsub(filesep, FUNC_SEP)
+	end
+	return name:gsub("%.", FUNC_SEP)
+end
+
+--------------------------------------------------------------------------------
+
+local inputs = { select(start, ...) }
+if #inputs == 0 then
+	for name in io.stdin:lines() do
+		inputs[#inputs+1] = name
+	end
+end
 
 local outc = assert(io.open(filepath..".c", "w"))
 local outh = assert(io.open(filepath..".h", "w"))
 
+local guard = output:upper():gsub("[^%w]", "_")
+
 outh:write([[
-#ifndef __]],string.upper(Options.filename),[[__
-#define __]],string.upper(Options.filename),[[__
+#ifndef __]],guard,[[__
+#define __]],guard,[[__
 
 #include <lua.h>
 
-#ifndef ]],Options.prefix,[[ 
-#define ]],Options.prefix,[[ 
+#ifndef ]],prefix,[[ 
+#define ]],prefix,[[ 
 #endif
 
 ]])
@@ -125,41 +189,37 @@ outh:write([[
 outc:write([[
 #include <lua.h>
 #include <lauxlib.h>
-#include "]],Options.filename,[[.h"
+#include "]],output,[[.h"
 
 ]])
 
-for i = start, finish do local file = arg[i]
-	local bytecodes = string.dump(assert(loadfile(Options.luapath..file)))
-	outc:write("static const unsigned char B",i-start,"[]={\n")
-	for index = 1, string.len(bytecodes) do
-  	outc:write(string.format("%3u,", string.byte(bytecodes, index)))
-		if math.fmod(index, 20) == 0 then outc:write("\n") end
-  end
+for i, input in ipairs(inputs) do
+	local bytecodes = getbytecodes(input)
+	outc:write("static const unsigned char B",i,"[]={\n")
+	for j = 1, #bytecodes do
+		outc:write(string.format("%3u,", bytecodes:byte(j)))
+		if j % 20 == 0 then outc:write("\n") end
+	end
 	outc:write("\n};\n\n")
 end
 
-for index = start, finish do local file = arg[index]
-	local i = index - start
-	local func = getname(file)
-
-	outh:write(Options.prefix," int luaopen_",func,"(lua_State *L);\n")
-
+for i, input in ipairs(inputs) do
+	local func = assert(funcname(input))
+	outh:write(prefix," int luaopen_",func,"(lua_State *L);\n")
 	outc:write(
-Options.prefix,[[ int luaopen_]],func,[[(lua_State *L) {
+prefix,[[ int luaopen_]],func,[[(lua_State *L) {
 	int arg = lua_gettop(L);
-	luaL_loadbuffer(L,(const char*)B]],i,[[,sizeof(B]],i,[[),"]],file,[[");
+	luaL_loadbuffer(L,(const char*)B]],i,[[,sizeof(B]],i,[[),"]],input,[[");
 	lua_insert(L,1);
 	lua_call(L,arg,1);
 	return 1;
 }
 ]])
-
 end
 
 outh:write([[
 
-#endif /* __]],string.upper(Options.filename),[[__ */
+#endif /* __]],guard,[[__ */
 ]])
 
 outh:close()

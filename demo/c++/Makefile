@@ -9,7 +9,7 @@ OBJS= oilaccess.o \
       main.o
 
 INCS= -I$(LUA_INC) -I$(OIL)/src
-LIBS= -L$(LUA_LIB) -L$(OIL)/src -lstdc++ -lm -ldl -llua -lluasocket -loilbit
+LIBS= -L$(LUA_LIB) -L$(OIL)/src -lstdc++ -llua -lluasocket -loilall
 
 CPPFLAGS= $(INCS)
 
@@ -20,7 +20,7 @@ all: $T
 $(OBJS): $(LOHS)
 
 $T:	$(OBJS)
-	$(CC) -o $@ $(OBJS) $(LIBS)
+	g++ -o $@ $? $(LIBS)
 	
 clean:
 	rm -f $T $(OBJS)

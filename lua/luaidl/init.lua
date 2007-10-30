@@ -1,8 +1,7 @@
 --
 -- Project:  LuaIDL
--- Version:  0.6.2b
+-- Version:  0.8.6b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 28/09/2006
 -- Filename: init.lua
 -- 
 
@@ -21,6 +20,8 @@ module 'luaidl'
 
 local _pre    = require 'luaidl.pre'
 local sin     = require 'luaidl.sin'
+
+VERSION = '0.8.6b'
 
 --- Preprocesses an IDL code. 
 -- 
@@ -59,11 +60,7 @@ function prefile( filename, options )
 end
 
 function parseAux( idl, options )
-  local callbacks
-  if options then
-    callbacks = options.callbacks
-  end --if
-  local status, tab_output = pcall( sin.parse, idl, callbacks )
+  local status, tab_output = pcall( sin.parse, idl, options )
   if status then
     return unpack( tab_output )
   else

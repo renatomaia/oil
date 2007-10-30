@@ -40,10 +40,9 @@ end
 -- Exporting
 --------------------------------------------------------------------------------
 
-local scheduler = require "scheduler"
-local oil       = require "oil"
-
-oil.loadidlfile("philo.idl")
-oil.writeIOR(oil.newobject(ObserverHome, "ObserverHome"), "observer.ior")
-scheduler.new(oil.run)
-scheduler.run()
+require "oil"
+oil.main(function()
+	oil.loadidlfile("philo.idl")
+	oil.writeto("observer.ior", oil.tostring(oil.newservant(ObserverHome, "ObserverHome")))
+	oil.run()
+end)

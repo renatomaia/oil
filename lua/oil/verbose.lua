@@ -1,158 +1,94 @@
-local tostring = tostring
-local type     = type
+--------------------------------------------------------------------------------
+------------------------------  #####      ##     ------------------------------
+------------------------------ ##   ##  #  ##     ------------------------------
+------------------------------ ##   ## ##  ##     ------------------------------
+------------------------------ ##   ##  #  ##     ------------------------------
+------------------------------  #####  ### ###### ------------------------------
+--------------------------------                --------------------------------
+----------------------- An Object Request Broker in Lua ------------------------
+--------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
+-- Release: 0.4                                                              --
+-- Title  : Verbose Support                                                   --
+-- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
+--------------------------------------------------------------------------------
 
-local string = require "string"
+local rawget = rawget
+local type   = type
+local unpack = unpack
+
 local math   = require "math"
+local string = require "string"
 
-local verbose = require "loop.debug.verbose"
+local ObjectCache = require "loop.collection.ObjectCache"
+local Viewer      = require "loop.debug.Viewer"
+local Verbose     = require "loop.debug.Verbose"
+local Inspector   = require "loop.debug.Inspector"
 
-oil = oil or {}
-oil.verbose = verbose
-package.loaded["oil.verbose"] = verbose
-setfenv(1, verbose)
+module("oil.verbose", Verbose)
 
-Viewer.maxdepth = 2
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
---
--- aspect selections
---
-addgroup("ir"       , "ir_manager","ir_classes","ir_cache")
-
-addgroup("orb"      , "servant","broker")
-addgroup("iiop"     , "open","close","transport")
-addgroup("open"     , "connect","listen")
-addgroup("transport", "send","receive")
-addgroup("cdr"      , "marshall","unmarshall")
-addgroup("idl"      , "null","void","short","long","ushort","ulong","float",
-                      "double","boolean","char","octet","any","TypeCode",
-                      "string","Object","struct","union","enum","sequence",
-                      "array","typedef","except","operation")
---
--- architectural levels
---
-addgroup(1, "server","client")       -- API level
-addgroup(2, "proxy","manager")       -- object level
-addgroup(3, "invoke","orb")          -- ORB level
-addgroup(4, "iiop","ior","giop")     -- protocol level
-addgroup(5, "cdr","tcode")           -- marshalling level
-addgroup(6, "idl")                   -- definition level
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function newIDL(kind, name, from, to)
-	if Flags[kind] then
-		write(kind, {"defining new ", kind, ": ", name,
-			from = from,
-			to   = to  ,
-		})
-	end
+viewer = Viewer{
+	maxdepth = 1,
+	labels = ObjectCache(),
+}
+function viewer.labels:retrieve(value)
+  local type = type(value)
+  local id = rawget(self, type) or 0
+  self[type] = id + 1
+  local label = {}
+  repeat
+    label[#label + 1] = string.byte("A") + (id % 26)
+    id = math.floor(id / 26)
+  until id <= 0
+  return string.format("%s:%s", type, string.char(unpack(label)))
 end
 
---------------------------------------------------------------------------------
+function output(self, output)
+	self.viewer.output = output
+end
+
+groups.broker = { "acceptor", "dispatcher", "proxies" }
+groups.communication = { "mutex", "invoke", "listen", "message", "channels" }
+groups.transport = { "marshal", "unmarshal" }
+groups.idltypes = { "idl", "repository" }
+
+_M:newlevel{ "broker" }
+_M:newlevel{ "invoke", "listen" }
+_M:newlevel{ "mutex" }
+_M:newlevel{ "message" }
+_M:newlevel{ "channels" }
+_M:newlevel{ "transport" }
+_M:newlevel{ "hexastream" }
+_M:newlevel{ "idltypes" }
 
 local pos
 local count
-local function readable_hexa(char)
-	count = count + 1
-	if count == pos
-		then format = "[%02x]"
-		else format = " %02x "
-	end
-	column = math.mod(count, 8)
-	if column == 0 then
-		format = format.."\n"
-	elseif column == 1 then
-		local cols = count.."-"..(count + 7)
-		format = gettabs()..cols..string.rep(" ", 7 - string.len(cols))..format
-	end
-	return (string.format(format, string.byte(char)))
-end
-function format_rawdata(rawdata, cursor)
+function custom:hexastream(rawdata, cursor)
+	local viewer = self.viewer
+	local output = viewer.output
+	local lines = math.ceil(math.log10(#rawdata))
+	lines = string.format("%%%dd-%%%dd:", lines, lines)
 	count = 0
 	pos = cursor
-	return "\n"..string.gsub(rawdata, "(.)", readable_hexa)
-end
-
-function marshallOf(tcode, value, buffer, final)
-	if Flags.marshall then
-		local formated = ""
-		if type(Details) == "table" and Details.marshall or Details == true then
-			formated = format_rawdata(buffer:getdata(), buffer.cursor)
+	for char in rawdata:gmatch("(.)") do
+		count = count + 1
+		column = math.mod(count, 8)
+		if column == 1 then
+			output:write("\n",viewer.prefix,lines:format(count, count + 7))
 		end
-		marshall{"marshall of ", tcode._type, " ",
-		         tcode.name or tcode.repID,
-		         value and " (got "..tostring(value)..")" or "",
-		         formated,
-			value = value,
-			--tcode = tcode,
-		}
-		if not final then addtab() end
-	end
-end
-
-function unmarshallOf(tcode, value, buffer, final)
-	if Flags.unmarshall then
-		local formated = ""
-		if type(Details) == "table" and Details.unmarshall or Details == true then
-			formated = format_rawdata(buffer:getdata(), buffer.cursor)
+		local hexa
+		if count == pos
+			then hexa = "[%02x]"
+			else hexa = " %02x "
 		end
-		unmarshall{"unmarshall of ", tcode._type, " ",
-		           tcode.name or tcode.repID or "",
-		           value and " (got "..tostring(value)..")" or "",
-		           formated,
-			value = value,
-			--tcode = tcode,
-		}
-		if not final then addtab() end
+		output:write(hexa:format(string.byte(char)))
 	end
 end
 
 --------------------------------------------------------------------------------
 
-local GIOPMessageTypeName = {
-	[0] = "Request",
-	[1] = "Reply",
-	[2] = "CancelRequest",
-	[3] = "LocateRequest",
-	[4] = "LocateReply",
-	[5] = "CloseConnection",
-	[6] = "MessageError",
-	[7] = "Fragment",
-}
+_M:flag("debug", true)
+_M:flag("print", true)
 
-function newMsg(message_type, giop_version)
-	if Flags.send then
-		send({"create GIOP 1.", giop_version, " ",
-		      GIOPMessageTypeName[message_type], " message"
-		}, true)
-	end
-end
-
-function newHead(giop, header, body)
-	if Flags.send then
-		send({"create GIOP ", giop.GIOP_version.major, ".", 
-		     giop.GIOP_version.minor, " header for ",
-		     GIOPMessageTypeName[giop.message_type],
-			giop   = giop,
-			header = header,
-			body   = body,
-		}, true)
-	end
-end
-
-function gotMsg(magic, version, order, message_type, message_size, stream)
-	if Flags.receive then
-		removetab()
-		receive{"got ", magic or "no message", " ",
-		        version and (version.major.."."..version.minor.." ") or " ",
-		        GIOPMessageTypeName[message_type],
-			order  = (order~=nil) and (order and "little" or "big").."-endian" or nil,
-			size   = message_size,
-			--stream = stream,
-		}
-	end
-end
+I = Inspector{ viewer = viewer }
+function inspect:debug() self.I:stop(4) end

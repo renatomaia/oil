@@ -24,17 +24,16 @@ INSTALL_DATA= cp -r
 #INSTALL_EXEC= install -m 0755
 #INSTALL_DATA= install -m 0644
 
-# If you are using Lua-5.0.2 then uncomment the following line to include the
-# compatibility module.
+# Add any necessary compilation flags.
 #
-#COMPAT_51= compat-5.1.o
-#INSTALL_LMOD= $(INSTALL_TOP)/share/lua/5.0
-#INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/5.0
-#LUAINTFLAGS= -lcompat-5.1.lua
-#MYCFLAGS= -DCOMPAT_51
-#MYLIBS= -llualib
-
+MYCFLAGS=
 MYLDFLAGS=
+
+# If the lua_Number of your Lua compilation can store casted values of
+# 'long long', 'unsigned long long' and 'long double' then you can uncomment the
+# following line to add support for CORBA large numeric types.
+#
+#MYCFLAGS+= -DLARGE_NUMBERS
 
 # == END OF USER SETTINGS. NO NEED TO CHANGE ANYTHING BELOW THIS LINE =========
 
@@ -52,11 +51,11 @@ RANLIB= ranlib
 RM= rm -f
 LIBS= -lm -ldl -llua $(MYLIBS)
 
-V= 0.3
+V= 0.4
 
-LUAINT= $(LUA_BIN)/lua $(LUAINTFLAGS)
+LUA= $(LUA_BIN)/lua -epackage.path=[[../lua/?.lua]]
 
 # Flags for pre-compilation of Lua scripts
-PC_FLAGS= -p OIL_API
+PC_FLAGS= -p OIL_API -l "../lua/?.lua;../lua/?/init.lua"
 # Flags for generation of pre-loader of Lua scripts
 PLD_FLAGS= -p OIL_API

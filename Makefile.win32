@@ -8,12 +8,12 @@ TO_INC= oilbit.h
 TO_LIB= oilbit.lib oilbit.exp
 TO_DLL=	oilbit.dll
 
-TO_LDR=	loop luaidl oil scheduler
+TO_LDR=	loop luaidl oil
 
-BND_INC=	loop.h luaidl.h oil.h scheduler.h
-BND_LIB=	loop.lib luaidl.lib oil.lib scheduler.lib \
-        	loop.exp luaidl.exp oil.exp scheduler.exp
-BND_DLL=	loop.dll luaidl.dll oil.dll scheduler.dll
+BND_INC=	loop.h luaidl.h oil.h
+BND_LIB=	loop.lib luaidl.lib oil.lib \
+        	loop.exp luaidl.exp oil.exp
+BND_DLL=	loop.dll luaidl.dll oil.dll
 
 PLD_INC=	oilall.h
 PLD_LIB=	oilall.lib oilall.exp
@@ -60,6 +60,11 @@ installc: console $(INSTALL_BIN)
 
 local:
 	$(MAKE) install INSTALL_TOP=.. INSTALL_EXEC="cp -p" INSTALL_DATA="cp -p"
+
+none:
+	@echo Please do: make PLATFORM
+	@echo where PLATFORM is one of these: $(PLATS)
+	@echo See INSTALL for complete instructions.
 
 # create installation dirs
 $(INSTALL_DIR) $(INSTALL_BIN) $(INSTALL_CMOD)\oil:

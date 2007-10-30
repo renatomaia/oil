@@ -1,4 +1,4 @@
-local oo = require "loop.simple"
+local oo = require "loop.simple"                                                local verbose = require "oil.verbose"
 
 --------------------------------------------------------------------------------
 -- Fork Component
@@ -33,10 +33,9 @@ end
 -- Exporting
 --------------------------------------------------------------------------------
 
-local scheduler = require "scheduler"
-local oil       = require "oil"
-
-oil.loadidlfile("philo.idl")
-oil.writeIOR(oil.newobject(ForkHome, "ForkHome"), "fork.ior")
-scheduler.new(oil.run)
-scheduler.run()
+require "oil"
+oil.main(function()
+	oil.loadidlfile("philo.idl")
+	oil.writeto("fork.ior", oil.tostring(oil.newservant(ForkHome, "ForkHome")))
+	oil.run()
+end)

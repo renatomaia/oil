@@ -1,57 +1,35 @@
--------------------------------------------------------------------------------
----------------------- ##       #####    #####   ######  ----------------------
----------------------- ##      ##   ##  ##   ##  ##   ## ----------------------
----------------------- ##      ##   ##  ##   ##  ######  ----------------------
----------------------- ##      ##   ##  ##   ##  ##      ----------------------
----------------------- ######   #####    #####   ##      ----------------------
-----------------------                                   ----------------------
------------------------ Lua Object-Oriented Programming -----------------------
--------------------------------------------------------------------------------
--- Project: LOOP Collections - Object Collections Implemented in LOOP        --
--- Release: 1.0 alpha                                                        --
--- Title  : Ordered Set Optimized for Insertions and Removals                --
--- Author : Renato Maia <maia@inf.puc-rio.br>                                --
--- Date   : 13/12/2004 13:51                                                 --
--------------------------------------------------------------------------------
--- Notes:                                                                    --
---   Storage of strings equal to the name of one method prevents its usage.  --
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+---------------------- ##       #####    #####   ######  -----------------------
+---------------------- ##      ##   ##  ##   ##  ##   ## -----------------------
+---------------------- ##      ##   ##  ##   ##  ######  -----------------------
+---------------------- ##      ##   ##  ##   ##  ##      -----------------------
+---------------------- ######   #####    #####   ##      -----------------------
+----------------------                                   -----------------------
+----------------------- Lua Object-Oriented Programming ------------------------
+--------------------------------------------------------------------------------
+-- Project: LOOP Class Library                                                --
+-- Release: 2.3 beta                                                          --
+-- Title  : Ordered Set Optimized for Insertions and Removals                 --
+-- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
+--------------------------------------------------------------------------------
+-- Notes:                                                                     --
+--   Storage of strings equal to the name of one method prevents its usage.   --
+--------------------------------------------------------------------------------
 
-local table = require "table"
-local loop  = require "loop"
-local oo    = require "loop.base"
+local oo = require "loop.base"
 
-module("loop.collection.OrderedSet", loop.define(oo.class()), loop.seeapi(oo))
+--------------------------------------------------------------------------------
+-- key constants ---------------------------------------------------------------
+--------------------------------------------------------------------------------
 
-------------------------------------------------------------------------------
--- key constants -------------------------------------------------------------
-------------------------------------------------------------------------------
+local FIRST = newproxy()
+local LAST = newproxy()
 
-local FIRST = {}
-local LAST = {}
+module("loop.collection.OrderedSet", oo.class)
 
-------------------------------------------------------------------------------
--- constructor ---------------------------------------------------------------
-------------------------------------------------------------------------------
-
-function __init(class, elems)
-	local self = {}
-	if elems then
-		local size = table.getn(elems)
-		if size > 0 then
-			self[FIRST] = elems[1]
-			self[LAST] = elems[1]
-			for i = 2, size do
-				push_back(self, elems[i])
-			end
-		end
-	end
-	return rawnew(class, self)
-end
-
-------------------------------------------------------------------------------
--- basic functionality -------------------------------------------------------
-------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- basic functionality ---------------------------------------------------------
+--------------------------------------------------------------------------------
 
 local function iterator(self, previous)
 	return self[previous], previous
@@ -62,7 +40,7 @@ function sequence(self)
 end
 
 function contains(self, element)
-	return (self[element] ~= nil) or (element == self[LAST])
+	return element ~= nil and (self[element] ~= nil or element == self[LAST])
 end
 
 function first(self)
@@ -78,11 +56,15 @@ function empty(self)
 end
 
 function insert(self, element, previous)
-	if previous == nil
-		then previous = self[LAST] or FIRST
-		else if not contains(self, previous) then return end
-	end
-	if not contains(self, element) then
+	if element ~= nil and not contains(self, element) then
+		if previous == nil then
+			previous = self[LAST]
+			if previous == nil then
+				previous = FIRST
+			end
+		elseif not contains(self, previous) then
+			return
+		end
 		if self[previous] == nil
 			then self[LAST] = element
 			else self[element] = self[previous]
@@ -93,42 +75,44 @@ function insert(self, element, previous)
 end
 
 function previous(self, element, start)
-	local previous = start or FIRST
-	repeat
-		if self[previous] == element then
-			return previous
-		end
-		previous = self[previous]
-	until previous == nil
+	if contains(self, element) then
+		local previous = (start == nil and FIRST or start)
+		repeat
+			if self[previous] == element then
+				return previous
+			end
+			previous = self[previous]
+		until previous == nil
+	end
 end
 
 function remove(self, element, start)
 	local prev = previous(self, element, start)
-	if prev then
+	if prev ~= nil then
 		self[prev] = self[element]
 		if self[LAST] == element
 			then self[LAST] = prev
 			else self[element] = nil
 		end
-		return element
+		return element, prev
 	end
 end
 
 function replace(self, old, new, start)
 	local prev = previous(self, old, start)
-	if prev then
+	if prev ~= nil and new ~= nil and not contains(self, new) then
 		self[prev] = new
 		self[new] = self[old]
 		if old == self[LAST]
 			then self[LAST] = new
 			else self[old] = nil
 		end
-		return old
+		return old, prev
 	end
 end
 
-function push_front(self, element)
-	if not contains(self, element) then
+function pushfront(self, element)
+	if element ~= nil and not contains(self, element) then
 		if self[FIRST] ~= nil
 			then self[element] = self[FIRST]
 			else self[LAST] = element
@@ -138,7 +122,7 @@ function push_front(self, element)
 	end
 end
 
-function pop_front(self)
+function popfront(self)
 	local element = self[FIRST]
 	self[FIRST] = self[element]
 	if self[FIRST] ~= nil
@@ -148,8 +132,8 @@ function pop_front(self)
 	return element
 end
 
-function push_back(self, element)
-	if not contains(self, element) then
+function pushback(self, element)
+	if element ~= nil and not contains(self, element) then
 		if self[LAST] ~= nil
 			then self[ self[LAST] ] = element
 			else self[FIRST] = element
@@ -159,21 +143,21 @@ function push_back(self, element)
 	end
 end
 
-------------------------------------------------------------------------------
--- function aliases ----------------------------------------------------------
-------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- function aliases ------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 -- set operations
-add = push_back
+add = pushback
 
 -- stack operations
-push = push_front
-pop = pop_front
+push = pushfront
+pop = popfront
 top = first
 
 -- queue operations
-enqueue = push_back
-dequeue = pop_front
+enqueue = pushback
+dequeue = popfront
 head = first
 tail = last
 

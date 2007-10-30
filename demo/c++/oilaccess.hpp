@@ -34,7 +34,7 @@ namespace OiLAccess {
 		~ExportedObject();
 	public:
 		Actual *getObject();
-		void pushOnStack(lua_State *state);
+		void pushOnStack();
 	};
 
 	template <class Actual> class Exported {
@@ -63,7 +63,7 @@ namespace OiLAccess {
 
 		int registerObject(Actual *object);
 		void unregisterObject(int index);
-		void pushObject(lua_State *L, int index);
+		void pushObject(int index);
 	};
 
 };
@@ -92,8 +92,8 @@ namespace OiLAccess {
 		{ return actualObject; }
 	
 	template <class Actual>
-	void ExportedObject<Actual>::pushOnStack(lua_State *state)
-		{ exportedClass->pushObject(state, registerIndex); }
+	void ExportedObject<Actual>::pushOnStack()
+		{ exportedClass->pushObject(registerIndex); }
 
 	//
 	// auxilary template functions
@@ -212,12 +212,12 @@ namespace OiLAccess {
 	}
 	
 	template <class Actual>
-	void Exported<Actual>::pushObject(lua_State *L, int index)
+	void Exported<Actual>::pushObject(int index)
 	{
-		lua_pushregistry(L, OBJECT_REGISTRY);  // OBJECTS
-		lua_pushnumber(L, index);              // OBJECTS, index
-		lua_rawget(L, -2);                     // OBJECTS, object
-		lua_remove(L, -2);                     // object
+		lua_pushregistry(luaState, OBJECT_REGISTRY);  // OBJECTS
+		lua_pushnumber(luaState, index);              // OBJECTS, index
+		lua_rawget(luaState, -2);                     // OBJECTS, object
+		lua_remove(luaState, -2);                     // object
 	}
 
 	template <class Actual>

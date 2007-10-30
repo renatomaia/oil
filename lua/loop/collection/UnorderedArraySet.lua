@@ -1,31 +1,26 @@
--------------------------------------------------------------------------------
----------------------- ##       #####    #####   ######  ----------------------
----------------------- ##      ##   ##  ##   ##  ##   ## ----------------------
----------------------- ##      ##   ##  ##   ##  ######  ----------------------
----------------------- ##      ##   ##  ##   ##  ##      ----------------------
----------------------- ######   #####    #####   ##      ----------------------
-----------------------                                   ----------------------
------------------------ Lua Object-Oriented Programming -----------------------
--------------------------------------------------------------------------------
--- Project: LOOP Collections - Object Collections Implemented in LOOP        --
--- Release: 1.0 alpha                                                        --
--- Title  : Unordered Array Optimized for Containment Check                  --
--- Author : Renato Maia <maia@inf.puc-rio.br>                                --
--- Date   : 29/10/2005 18:48                                                 --
--------------------------------------------------------------------------------
--- Notes:                                                                    --
---   Can only store non-numeric values.                                      --
---   Storage of strings equal to the name of one method prevents its usage.  --
--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+---------------------- ##       #####    #####   ######  -----------------------
+---------------------- ##      ##   ##  ##   ##  ##   ## -----------------------
+---------------------- ##      ##   ##  ##   ##  ######  -----------------------
+---------------------- ##      ##   ##  ##   ##  ##      -----------------------
+---------------------- ######   #####    #####   ##      -----------------------
+----------------------                                   -----------------------
+----------------------- Lua Object-Oriented Programming ------------------------
+--------------------------------------------------------------------------------
+-- Project: LOOP Class Library                                                --
+-- Release: 2.3 beta                                                          --
+-- Title  : Unordered Array Optimized for Containment Check                   --
+-- Author : Renato Maia <maia@inf.puc-rio.br>                                 --
+--------------------------------------------------------------------------------
+-- Notes:                                                                     --
+--   Can only store non-numeric values.                                       --
+--   Storage of strings equal to the name of one method prevents its usage.   --
+--------------------------------------------------------------------------------
 
-local rawget         = rawget
-local loop           = require "loop"
-local oo             = require "loop.simple"
-local UnorderedArray = require "loop.collection.UnorderedArray"
+local rawget = rawget
+local oo     = require "loop.base"
 
-module("loop.collection.UnorderedArraySet",
-	loop.define( oo.class({}, UnorderedArray) )
-)
+module("loop.collection.UnorderedArraySet", oo.class)
 
 valueat = rawget
 indexof = rawget
@@ -35,15 +30,27 @@ function contains(self, value)
 end
 
 function add(self, value)
-	UnorderedArray.add(self, value)
-	self[value] = size(self)
+	if self[value] == nil then
+		self[#self+1] = value
+		self[value] = #self
+		return value
+	end
 end
 
 function remove(self, value)
-	removeat(self, self[value])
+	local index = self[value]
+	if index then
+		local size = #self
+		if index ~= size then
+			local last = self[size]
+			self[index], self[last] = last, index
+		end
+		self[value] = nil
+		self[size] = nil
+		return value
+	end
 end
 
 function removeat(self, index)
-	self[ self[index] ] = nil
-	return UnorderedArray.remove(self, index)
+	return self:remove(self[index])
 end

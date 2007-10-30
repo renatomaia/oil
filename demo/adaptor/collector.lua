@@ -1,21 +1,4 @@
-require "scheduler"
-require "oil"
-require "adaptor"
-
-oil.loadidl[[
-	struct Author {
-		string name;
-		string email;
-	};
-	typedef sequence<Author> AuthorSeq;
-	struct Paper {
-		string title;
-		AuthorSeq authors;
-	};
-	interface Collector {
-		void submit(in Paper paper);
-	};
-]]
+local oo = require "oil.oo"
 
 Collector = oo.class{}
 
@@ -49,15 +32,36 @@ function Collector:submit(paper)
 	end
 end
 
-local c1 = oil.newobject(Collector(), "Collector")
-local c2 = oil.newobject(Collector(), "Collector")
-local c3 = oil.newobject(Collector(), "Collector")
+--------------------------------------------------------------------------------
 
-oil.writeIOR(c1, "c1.ior")
-oil.writeIOR(c2, "c2.ior")
-oil.writeIOR(c3, "c3.ior")
-
-oil.writeIOR(oil.newobject(Adaptor("Collector"), "ComponentAdaptor"), "adaptor.ior")
-
-scheduler.new(oil.run)
-scheduler.run()
+require "oil"
+oil.main(function()
+	require "adaptor"
+	
+	oil.loadidl[[
+		struct Author {
+			string name;
+			string email;
+		};
+		typedef sequence<Author> AuthorSeq;
+		struct Paper {
+			string title;
+			AuthorSeq authors;
+		};
+		interface Collector {
+			void submit(in Paper paper);
+		};
+	]]
+	
+	local c1      = oil.newservant(Collector(), "Collector")
+	local c2      = oil.newservant(Collector(), "Collector")
+	local c3      = oil.newservant(Collector(), "Collector")
+	local adaptor = oil.newservant(Adaptor("Collector"), "ComponentAdaptor")
+	
+	oil.writeto("c1.ior"     , oil.tostring(c1))
+	oil.writeto("c2.ior"     , oil.tostring(c2))
+	oil.writeto("c3.ior"     , oil.tostring(c3))
+	oil.writeto("adaptor.ior", oil.tostring(adaptor))
+	
+	oil.run()
+end)

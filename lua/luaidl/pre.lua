@@ -1,8 +1,7 @@
 --
 -- Project:  LuaIDL
--- Version:  0.6.2b
+-- Version:  0.8.6b
 -- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
--- Last modification: 28/09/2006
 -- Filename: pre.lua
 -- 
 

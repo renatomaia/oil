@@ -9,11 +9,11 @@ TO_INC= oilbit.h
 TO_LIB= liboilbit.a
 SO_LIB= liboilbit
 
-TO_LUA=	loop luaidl oil scheduler
+TO_LUA=	loop luaidl oil
 
-BND_INC=	loop.h luaidl.h oil.h scheduler.h
-BND_LIB=	libloop.a libluaidl.a liboil.a libscheduler.a
-BND_SOL=	loop luaidl oil scheduler
+BND_INC=	loop.h luaidl.h oil.h
+BND_LIB=	libloop.a libluaidl.a liboil.a
+BND_SOL=	loop luaidl oil
 
 PLD_INC=	oilall.h
 PLD_LIB=	liboilall.a
@@ -25,7 +25,7 @@ INSTALL_DIR= $(INSTALL_INC) $(INSTALL_LIB) \
 
 all: $(PLAT)
 
-$(PLATS) a so clean:
+$(PLATS) bundles preload console a so clean:
 	cd src; $(MAKE) $@
 
 test:	all
@@ -57,6 +57,14 @@ installc: console $(INSTALL_BIN)
 
 local:
 	$(MAKE) install INSTALL_TOP=.. INSTALL_EXEC="cp -p" INSTALL_DATA="cp -p"
+
+no-verbose:
+	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\-\[\[VERBOSE\]\]/-- [[VERBOSE]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\-\[\[DEBUG\]\]/-- [[DEBUG]]/g" $$f; done
+
+verbose:
+	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\- \[\[VERBOSE\]\]/--[[VERBOSE]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\- \[\[DEBUG\]\]/--[[DEBUG]]/g" $$f; done
 
 none:
 	@echo "Please do"

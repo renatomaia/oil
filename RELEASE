@@ -1,0 +1,95 @@
+OiL 0.4 alpha
+
+[New Features]
+
+- Deferred calls (aka "futures") [demo deferred];
+- ORB shutdown operation [demo selfcall];
+- CORBA request interception [demo interceptors];
+- CORBA's _is_equivalent operation;
+- Customizable component-based architecture [see 'oil.assemble' function];
+- IDL large numbers: long long, unsigned long long, long double [see config];
+	NOTE: Lua must be changed so lua_Number is 'long double'.
+
+[Improved Features]
+
+Application façade:
+	oil.VERSION
+	oil.types                    -- improved alternative to oil.getLIR()
+	oil.tasks                    -- instead of scheduler
+	oil.tostring(object)         -- instead of obj:_ior()
+	oil.deactivate(obj|key|impl) -- improved alternative to obj:_deactivate()
+	oil.sleep(time)              -- instead of scheduler.sleep(time)
+	oil.pcall(func, ...)         -- instead of scheduler.pcall(func, ...)
+	oil.time()                   -- alternative to socket.gettime()
+	oil.main(func)               -- instead of scheduler.new(func, ...); scheduler.run()
+	oil.newthread(func, ...)     -- instead of scheduler.start(func, ...)
+	oil.newencoder()
+	oil.newdecoder(string)
+	oil.newexcept(body)          -- alternative to oil.Exception(body)
+	oil.setexcatch(func, type)
+	oil.shutdown()
+	oil.writeto(file, text)      -- similar to oil.writeIOR(obj, file)
+	oil.readfrom(file)           -- instead of oil.readIOR(file)
+	oil.setclientinterceptor(iceptor)
+	oil.setserverinterceptor(iceptor)
+Integrated CORBA IR:
+	- Ability to change IR definitions;
+	- Ability to load module parts using different 'oil.loadidl*' calls;
+	- Consistent storage of all IDL definitions, not only interfaces;
+	- Standard CORBA exceptions are loaded by default;
+	- Ability to import any definition from the remote delegated IR (oil.setIR);
+GIOP implementation:
+	- Support for marshaling of typecode 'null' and anys containing values of type
+	  'null';
+	- 'nil' values used as 'any' are automatically coded as 'null';
+	- Any's now provide the field _anytype to identify the IDL type of the value;
+	- Sequences with 'nil' values can have field 'n' to define its size;
+	- Automatic reconnections when connection is closed. WARNING: Operation
+	  invocation may be issued many times if no reply is sent (no at-most-once
+	  guarantees);
+Proxies:
+	- 'oil.narrow' and 'proxy:_narrow' now accepts any valid interface
+	  specification, i.e. repID, absoulute name, IDL descriptor, or remote IR
+	  object;
+	- The function used to handle exceptions can be defined for all proxies of a
+	  given interface by function 'oil.setexcatch(handler [, interface])'.
+	  If no interface is provided then the handler is set for all proxies.
+	  Previously, this handler could only be set for individual proxies by field
+	  '__exceptions';
+	- Now, if the exception handler function returns (i.e. not raise a Lua error)
+	  then the exception is ignored and the values returned are used as the
+	  results of the invocation that raised in the original exception;
+	  Addition of 'oil.deactivate(<corbaobj | implobj | objkey> [, interface])'
+	  that removes an object from the ORB;
+Servants:
+	- Automatically generated object keys start with '\0' to provide a way for the
+	  application to avoid collisions with defined keys;
+	- A single Lua object can be used as implementation of different CORBA objects
+	  created with automatic keys as long as they implement different interfaces
+	  because object keys now contains the interface descriptor hash-code.
+	  WARN: Each time a Lua object is used as an object with a different interface
+	  a new CORBA object is created for each interface, which will be the actual
+	  (i.e. most specific) interface of the new CORBA object. To avoid implicit
+	  creation of different CORBA objects with different interfaces for a simgle
+	  Lua object, set the '__idltype' field of the objet meta-table (i.e. its
+	  class) to the interface (repID, absolute name, IDL descriptor, or remote IR
+	  object) that should be used;
+	- The interface of an implicitly created CORBA object can also be defined by
+	  field '__idltype' of the object implementation itself (in older versions,
+	  only the '__idltype' field of the metatable could be used);
+Verbose support:
+	- Prints parameter values and objects;
+	- New level distribution:
+		1: Operation invocation and dispatching;
+		2: GIOP request and reply processing;
+		3: Mutual exclusion channel access (concurrent mode);
+		4: GIOP message creation and handling (i.e. requests and replies);
+		5: Socket channels creation and handling (i.e. connection and transport);
+		6: Value (un)marshaling;
+		7: Hexadecimal view of marshaled streams;
+		8: Creation of IDL descriptors and internal IR operation;
+Development support
+	- Utility script to create Lua scripts that feed the internal IR with
+	  descriptions described in IDL files;
+	- New demo about exception handling;
+	- Unix shell scripts for execution of demos;

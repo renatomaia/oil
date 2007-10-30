@@ -1,38 +1,55 @@
-require "oil"
-require "oil.cos.naming"
+#!/usr/local/bin/lua
+--------------------------------------------------------------------------------
+-- @script  OiL Naming Service Daemon
+-- @version 1.1
+-- @author  Renato Maia <maia@tecgraf.puc-rio.br>
+--
+print("OiL Naming Service 1.1  Copyright (C) 2006-2007 Tecgraf, PUC-Rio")
 
-local helpmsg = [[
-Usage:
-	nsd.lua [options]
-	
-	options:
-		--port <port number>
-		--ior <IOR file>
-		--log <log file>
-		--verb <level>
-]]
-if arg then
-	local i = 1
-	while arg[i] do
-		local val = arg[i]
-		if val == "--help" or not string.find(val, "^--") then
-			io.stderr:write(helpmsg)
-			os.exit()
-		else
-			i = i + 1
-			arg[string.sub(val, 3)] = tonumber(arg[i]) or arg[i]
-		end
-		i = i + 1
+local select = select
+local io     = require "io"
+local os     = require "os"
+local oil    = require "oil"
+local naming = require "oil.corba.services.naming"
+
+module("oil.corba.services.nsd", require "loop.compiler.Arguments")
+_optpat = "^%-%-(%w+)(=?)(.-)$"
+verb = 0
+port = 0
+ior  = ""
+ir = ""
+function log(optlist, optname, optvalue)
+	local file, errmsg = io.open(optvalue, "w")
+	if file
+		then oil.verbose:output(file)
+		else return errmsg
 	end
-	if arg.log then oil.verbose.output(io.open(arg.log, "w")) end
-	if arg.verb then oil.verbose.level(arg.verb) end
-
-	oil.init(arg)
 end
-	
-oil.loadidlfile "CosNaming.idl"
-ns = oil.newobject(oil.cos.naming.new())
 
-if arg and arg.ior then oil.writeIOR(ns, arg.ior) end
+local argidx, errmsg = _M(...)
+if not argidx or argidx <= select("#", ...) then
+	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
+	io.stderr:write([[
+Usage:	nsd.lua [options]
+Options:
+	--verb <level>
+	--log <file>
+	--ior <file>
+	--port <number>
+	--ir <objref>
 
-oil.run()
+]])
+	os.exit(1)
+end
+
+oil.main(function()
+	oil.verbose:level(verb)
+	if port > 0 then oil.init{ port = port } end
+	if ir ~= ""
+		then oil.setIR(oil.narrow(oil.newproxy(ir)))
+		else oil.loadidlfile("CosNaming.idl")
+	end
+	ns = oil.newservant(naming.new())
+	if ior ~= "" then oil.writeto(ior, oil.tostring(ns)) end
+	oil.run()
+end)
