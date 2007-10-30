@@ -181,7 +181,7 @@ function reissue(self, channel, request)                                        
 	return success, except, except and channel
 end
 
-function getreply(self, channel, request, probe)                                --[[VERBOSE]] verbose:invoke(true, "get a reply from communication channel")
+function getreply(self, channel, probe)                                         --[[VERBOSE]] verbose:invoke(true, "get a reply from communication channel")
 	local context = self.context
 	if probe then
 		if not channel:probe() then

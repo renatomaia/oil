@@ -37,7 +37,7 @@ context = false
 Results = oo.class{}
 
 function Results:results()
-	return unpack(self, 1, self.resultcount)
+	return self.success, unpack(self, 1, self.resultcount)
 end
 
 --------------------------------------------------------------------------------
@@ -50,7 +50,7 @@ local function callhandler(self, ...)
 end
 
 local function packresults(...)
-	return Results{ resultcount = select("#", ...) + 1, true, ... }
+	return Results{ success = true, resultcount = select("#", ...), ... }
 end
 
 --------------------------------------------------------------------------------
@@ -73,7 +73,11 @@ function Proxy:checkresults(operation, success, ...)
 end
 
 function Proxy:deferredresults()                                                --[[VERBOSE]] verbose:proxies("getting deferred results of ",self.operation)
-	return Proxy.checkresults(self.proxy, self.operation, Results.results(self))
+	return Proxy.checkresults(
+		self.proxy,
+		self.operation,
+		oo.classof(self).results(self)
+	)
 end
 
 local operation
