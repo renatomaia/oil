@@ -207,11 +207,11 @@ function remove(self, routine)                                                  
 	end
 end
 
-function suspend(self, time)
+function suspend(self, time, ...)
 	local routine = self:checkcurrent()
 	self.running:remove(routine, self.currentkey)
 	if time then self.sleeping:enqueue(routine, self:time() + time) end           --[[VERBOSE]] self.verbose:threads(routine," waiting for ",time," seconds")
-	return coroutine.yield()
+	return coroutine.yield(...)
 end
 
 function resume(self, routine, ...)                                             --[[VERBOSE]] self.verbose:threads("resuming ",routine)
