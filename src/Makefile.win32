@@ -44,15 +44,15 @@ LOOP_PCK= \
 	../lua/loop/thread/SocketScheduler.lua \
 	../lua/loop/thread/Timer.lua
 LUAIDL_PCK= \
-	../lua/luaidl/init.lua \
+	../lua/luaidl.lua \
 	../lua/luaidl/lex.lua \
 	../lua/luaidl/pre.lua \
 	../lua/luaidl/sin.lua
 OIL_PCK= \
+	../lua/oil.lua \
 	../lua/oil/assert.lua \
 	../lua/oil/component.lua \
 	../lua/oil/Exception.lua \
-	../lua/oil/init.lua \
 	../lua/oil/oo.lua \
 	../lua/oil/port.lua \
 	../lua/oil/properties.lua \
@@ -62,26 +62,26 @@ OIL_PCK= \
 	../lua/oil/arch/corba.lua \
 	../lua/oil/arch/ludo.lua \
 	../lua/oil/arch/typed.lua \
+	../lua/oil/builder.lua \
 	../lua/oil/builder/base.lua \
 	../lua/oil/builder/cooperative.lua \
 	../lua/oil/builder/corba.lua \
-	../lua/oil/builder/init.lua \
 	../lua/oil/builder/ludo.lua \
 	../lua/oil/builder/typed.lua \
+	../lua/oil/corba/giop.lua \
 	../lua/oil/corba/giop/Codec.lua \
 	../lua/oil/corba/giop/Exception.lua \
 	../lua/oil/corba/giop/Indexer.lua \
-	../lua/oil/corba/giop/init.lua \
 	../lua/oil/corba/giop/Listener.lua \
 	../lua/oil/corba/giop/Messenger.lua \
 	../lua/oil/corba/giop/ProxyOps.lua \
 	../lua/oil/corba/giop/Referrer.lua \
 	../lua/oil/corba/giop/Requester.lua \
 	../lua/oil/corba/giop/ServantOps.lua \
+	../lua/oil/corba/idl.lua \
 	../lua/oil/corba/idl/Compiler.lua \
 	../lua/oil/corba/idl/Importer.lua \
 	../lua/oil/corba/idl/Indexer.lua \
-	../lua/oil/corba/idl/init.lua \
 	../lua/oil/corba/idl/ir.lua \
 	../lua/oil/corba/idl/Registry.lua \
 	../lua/oil/corba/idl/sysex.lua \
@@ -90,9 +90,9 @@ OIL_PCK= \
 	../lua/oil/corba/iiop/Profiler.lua \
 	../lua/oil/corba/interceptors/ClientSide.lua \
 	../lua/oil/corba/interceptors/ServerSide.lua \
+	../lua/oil/corba/services/event.lua \
 	../lua/oil/corba/services/event/Dispatcher.lua \
 	../lua/oil/corba/services/event/Factory.lua \
-	../lua/oil/corba/services/event/init.lua \
 	../lua/oil/corba/services/event/Queue.lua \
 	../lua/oil/corba/services/event/Reaper.lua \
 	../lua/oil/corba/services/naming.lua \

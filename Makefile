@@ -81,7 +81,7 @@ env:
 	@echo ""
 	@echo "Add the following paths to the proper enviroment variables to set up OiL $V:"
 	@echo ""
-	@echo "LUA_PATH  += ';$(INSTALL_LMOD)/?.lua;$(INSTALL_LMOD)/?/init.lua'"
+	@echo "LUA_PATH  += ';$(INSTALL_LMOD)/?.lua'"
 	@echo "LUA_CPATH += ';$(INSTALL_CMOD)/?.so'"
 	@echo ""
 

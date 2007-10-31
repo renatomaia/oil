@@ -45,16 +45,16 @@ LOOP_PCK= $(addprefix ../lua/, \
 	loop/thread/Timer.lua \
 )
 LUAIDL_PCK= $(addprefix ../lua/, \
-	luaidl/init.lua \
+	luaidl.lua \
 	luaidl/lex.lua \
 	luaidl/pre.lua \
 	luaidl/sin.lua \
 )
 OIL_PCK= $(addprefix ../lua/, \
+	oil.lua \
 	oil/assert.lua \
 	oil/component.lua \
 	oil/Exception.lua \
-	oil/init.lua \
 	oil/oo.lua \
 	oil/port.lua \
 	oil/properties.lua \
@@ -64,26 +64,26 @@ OIL_PCK= $(addprefix ../lua/, \
 	oil/arch/corba.lua \
 	oil/arch/ludo.lua \
 	oil/arch/typed.lua \
+	oil/builder.lua \
 	oil/builder/base.lua \
 	oil/builder/cooperative.lua \
 	oil/builder/corba.lua \
-	oil/builder/init.lua \
 	oil/builder/ludo.lua \
 	oil/builder/typed.lua \
+	oil/corba/giop.lua \
 	oil/corba/giop/Codec.lua \
 	oil/corba/giop/Exception.lua \
 	oil/corba/giop/Indexer.lua \
-	oil/corba/giop/init.lua \
 	oil/corba/giop/Listener.lua \
 	oil/corba/giop/Messenger.lua \
 	oil/corba/giop/ProxyOps.lua \
 	oil/corba/giop/Referrer.lua \
 	oil/corba/giop/Requester.lua \
 	oil/corba/giop/ServantOps.lua \
+	oil/corba/idl.lua \
 	oil/corba/idl/Compiler.lua \
 	oil/corba/idl/Importer.lua \
 	oil/corba/idl/Indexer.lua \
-	oil/corba/idl/init.lua \
 	oil/corba/idl/ir.lua \
 	oil/corba/idl/Registry.lua \
 	oil/corba/idl/sysex.lua \
@@ -92,9 +92,9 @@ OIL_PCK= $(addprefix ../lua/, \
 	oil/corba/iiop/Profiler.lua \
 	oil/corba/interceptors/ClientSide.lua \
 	oil/corba/interceptors/ServerSide.lua \
+	oil/corba/services/event.lua \
 	oil/corba/services/event/Dispatcher.lua \
 	oil/corba/services/event/Factory.lua \
-	oil/corba/services/event/init.lua \
 	oil/corba/services/event/Queue.lua \
 	oil/corba/services/event/Reaper.lua \
 	oil/corba/services/naming.lua \

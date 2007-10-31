@@ -205,7 +205,7 @@ table { padding-left: 100px; }
 	
 	<p>In order to load OiL package in the Lua stand-alone interpreter, you must add the paths where you installed OiL and LuaSocket to the <code>LUA_PATH</code> and <code>LUA_CPATH</code> environment variables. For example, if you installed Lua files of OiL and LuaSocket (see <code>INSTALL_LMOD</code> macro in file <code>config</code>) into directory <code>/usr/local/share/lua/5.1/</code> then <code>LUA_PATH</code> must be set to:</p>
 
-	<p><code>LUA_PATH="/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua"</code></p>
+	<p><code>LUA_PATH="/usr/local/share/lua/5.1/?.lua"</code></p>
 
 	<p>A similar approach is used for the <code>LUA_CPATH</code> environment variable. Supose you have installed the C libraries of OiL and LuaSocket (see <code>INSTALL_CMOD</code> macro in file <code>config</code>) into directory <code>/usr/local/lib/lua/5.1/</code> then <code>LUA_CPATH</code> must be set to:</p>
 
