@@ -1,0 +1,19 @@
+native c;
+
+module MOD{
+
+const char CTE = 'a';
+
+typedef char C,C1;
+interface X {
+  typedef long l,l1;
+  typedef char c[5];
+};
+
+};
+
+typedef char LOCK;
+
+module MOD {
+  interface OTHER{};
+};

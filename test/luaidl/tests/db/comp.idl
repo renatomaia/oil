@@ -1,0 +1,6 @@
+interface Foo { } ;
+
+module homes {
+	component MyComponent {};
+};
+

@@ -1,0 +1,217 @@
+module MPA {
+	
+	typedef sequence<any> ValueSeq;
+
+	struct NamedValue {
+		string name;
+		string type;
+	};
+	typedef sequence<NamedValue> NamedValueSeq;
+	
+	interface OperationInvoker {
+		void call(in ValueSeq arg, out ValueSeq res);
+	};
+	
+	interface OperationBehavior : OperationInvoker {
+		void define(in string luacode);
+	};
+	
+	interface OperationDescriber {
+		attribute string name;
+		attribute NamedValueSeq parameters;
+		attribute NamedValueSeq results;
+	};
+	
+	interface ObjectBehavior {
+		void define(in string member, in string luavalue);
+	};
+	
+	struct MethodDescription {
+		string name;
+		NamedValueSeq parameters;
+		NamedValueSeq results;
+	};
+	typedef sequence<MethodDescription> MethodDescriptionSeq;
+	interface ObjectDescriber {
+		attribute string classname;
+		attribute NamedValueSeq attributes;
+		attribute MethodDescriptionSeq methods;
+	};
+	
+	struct ObjectDef {
+		string id;
+	};
+	interface ObjectInstance {
+		attribute string id;
+		void set(in string name, in any value);
+		any get(in string name);
+		void call(in string method, in ValueSeq arg, out ValueSeq res);
+	};
+	typedef sequence<ObjectInstance> ObjectInstanceSeq;
+	interface ObjectManager {
+		ObjectInstance new(in ObjectDef obj);
+		ObjectInstance get(in string id);
+		ObjectInstanceSeq all();
+	};
+	
+	interface CommBridge {
+		void set(in string name, in any value);
+		any get(in string name);
+	};
+	
+	component AuxiliaryFunction {
+		provides OperationBehavior behavior;
+		provides OperationDescriber metainfo;
+	};
+	
+	component ObjectClass {
+		provides ObjectBehavior behavior;
+		provides ObjectDescriber metainfo;
+		provides ObjectManager instances;
+	};
+	
+	component PointClass : ObjectClass {
+		uses CommBridge bridge;
+	};
+
+	home FunctionHome manages AuxiliaryFunction {};
+	home ClassHome manages ObjectClass {};
+	
+////////////////////////////////////////////////////////////////////////////////
+	
+	interface ThreadContext {
+		any index(in string name);
+		void newindex(in string name, in any value);
+	};
+	
+	interface FlowThread {};
+	
+	interface FlowExecution {
+		void suspend();
+		void resume();
+		void halt();
+	};
+	
+	interface FlowControl {
+		FlowExecution execute(in string name, in ValueSeq args);
+	};
+	
+	interface FlowAction {
+		oneway void execute(in ThreadContext ctext);
+	};
+	
+	interface FlowThreads {
+		FlowThread start(in FlowAction action, in ThreadContext ctext);
+		void suspend();
+		void resume(in FlowThread thread);
+		FlowThread current();
+		void pushcontext(in ThreadContext ctext);
+		ThreadContext popcontext();
+	};
+	
+	component Executor {
+		provides FlowControl control;
+		provides FlowThreads threads;
+		uses multiple OperationInvoker flows;
+	};
+	
+	component ControlFlow {
+		provides OperationInvoker invoker;
+		uses FlowThreads executor;
+		uses FlowAction entry;
+	};
+
+	home FlowHome manages ControlFlow {};
+	
+////////////////////////////////////////////////////////////////////////////////
+	
+	typedef sequence<FlowThread> FlowThreadSeq;
+	
+	interface ThreadSync {
+		void synchronize(in FlowThreadSeq threads);
+	};
+
+	component Element {
+		provides FlowAction action;
+	};
+	
+	component Command : Element {
+		uses FlowAction next;
+	};
+	
+	component Test : Element {
+		uses FlowAction success;
+		uses FlowAction failure;
+	};
+	
+	component Iterate : Element {
+		uses FlowAction iteration;
+		uses FlowAction next;
+	};
+	
+	component Fork : Element {
+		uses multiple FlowAction paths;
+		uses multiple FlowAction waits;
+		uses ThreadSync sync;
+		uses FlowThreads threads;
+	};
+	
+	component Sync : Element {
+		provides ThreadSync register;
+		uses FlowAction next;
+		uses FlowThreads threads;
+	};
+	
+////////////////////////////////////////////////////////////////////////////////
+	
+	interface ExpressionDef {
+		attribute string expression;
+	};
+	
+	interface ObjectCall {
+		attribute string variable;
+		attribute string member;
+		attribute string operation;
+		attribute string values;
+	};
+	
+	interface FunctionCall {
+		attribute string parameters;
+	};
+	
+	interface FlowCall {
+		attribute string parameters;
+	};
+
+////////////////////////////////////////////////////////////////////////////////
+	
+	component ExpressionEval : Command supports ExpressionDef{};
+	component ObjectEval     : Command supports ObjectCall   {};
+	component FunctionEval   : Command supports FunctionCall { uses OperationInvoker auxfunc; };
+	component FlowEval       : Command supports FlowCall     { uses OperationInvoker flow; };
+
+	component ExpressionTest : Test supports ExpressionDef{};
+	component ObjectTest     : Test supports ObjectCall   {};
+	component FunctionTest   : Test supports FunctionCall { uses OperationInvoker auxfunc; };
+	component FlowTest       : Test supports FlowCall     { uses OperationInvoker flow; };
+	
+	component ForAllEquipments : Iterate { uses ObjectManager equipments; };
+
+////////////////////////////////////////////////////////////////////////////////
+	
+	home ExpressionEvalHome manages ExpressionEval   {};
+	home ObjectEvalHome     manages ObjectEval       {};
+	home FunctionEvalHome   manages FunctionEval     {};
+	home FlowEvalHome       manages FlowEval         {};
+
+	home ExpressionTestHome manages ExpressionTest   {};
+	home ObjectTestHome     manages ObjectTest       {};
+	home FunctionTestHome   manages FunctionTest     {};
+	home FlowTestHome       manages FlowTest         {};
+
+	home ForAllHome         manages ForAllEquipments {};
+
+	home ForkHome           manages Fork             {};
+	home SyncHome           manages Sync             {};
+	
+};

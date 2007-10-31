@@ -1,0 +1,28 @@
+module MyMod {
+        interface MyIface {
+                struct MyStruct {
+                        struct MyType1 { long f; } field1;
+                };
+                
+                enum MyEnum { One, Other, Another };
+                //union MyUnion switch(MyEnum) {
+                //        case One : MyStruct::MyType1 field1;
+                //        case Other: struct MyType2 { long f; } field2;
+                //};
+                
+                exception MyExcept {
+                        MyStruct::MyType1 field1;
+                  //      MyUnion::MyType2 field2;
+                        struct MyType3 { long f; } field3;
+                };
+                attribute MyStruct::MyType1 attrib1;
+                //attribute MyUnion::MyType2 attrib2;
+                attribute MyExcept::MyType3 attrib3;
+        };
+        
+        interface MyOtherIface {
+                attribute MyIface::MyStruct::MyType1 attrib1;
+                //attribute MyIface::MyUnion::MyType2 attrib2;
+                attribute MyIface::MyExcept::MyType3 attrib3;
+        }; }; 
+

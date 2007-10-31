@@ -1,0 +1,8 @@
+
+interface Hello {
+	//readonly attribute long count;
+	readonly attribute unsigned long count;
+	attribute boolean quiet;
+
+	string say_hello_to(in string name);
+};

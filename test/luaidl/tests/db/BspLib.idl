@@ -1,0 +1,187 @@
+/// @file BspLib.idl
+///    Contains the declarations of Interfaces and types related to the implementation
+///    of InteGrade's BSP library.
+///
+
+  ///
+  /// subTypes module - Contains types that are used by the 'types' module. This
+  /// separation exists for because O^2 cannot handle declaration and use of a type
+  /// in the same module.
+  ///
+  module subTypes{
+
+    typedef sequence<octet> mem;
+
+    ///
+    /// ProcessInfo - Holds a process Id & IOR. Used to inform other processes.
+    ///
+    struct ProcessInfo{
+
+      long pid;   ///< The process BSP PID
+      string ior; ///< The process IOR
+
+    };
+
+  };
+
+  ///
+  ///
+  /// types module - Contains types used by interface declarations. Those types
+  /// must be kept separate due to a current O2 limitation.
+  ///
+  module types{
+
+
+    ///
+    /// BspPut - contains data that represents a bsp_put operation.
+    ///
+    struct BspPut{
+
+      long logicAddr;       ///< Logical memory address to where data will be written
+      long offset;          ///< Offset from logicAddr that indicates the real position
+                            ///    to were data will be copied (that is, data will be copied
+                            ///    to physical address logicAddr maps to + offset)
+
+      long nBytes;          ///< Number of bytes to be written
+      long superstep;       ///< The superstep in which the bsp_put request was issued
+      subTypes::mem memArea;///< Memory contents to be written at the destination address
+
+    };
+
+
+
+    ///
+    ///  BspSend - contains data that represents a bsp_send operation.
+    ///
+    struct BspSend{
+                             //FIXME: tirei pid daqui
+      subTypes::mem tag;
+      long tagSize;
+      long nBytes;          ///< Number of bytes to be written
+      long superstep;       ///< The superstep in which the bsp_send request was issued
+      subTypes::mem payload;
+
+    };
+
+
+    ///
+    ///  BspGetRequest - contains data that represents the <b>request</b> of a bsp_get operation.
+    ///
+    struct BspGetRequest{
+
+       long pid;       ///< The BSP process ID of the task that issued the bsp_get request
+       long logicSrc;  ///< The logical address from where data will be copied
+       long offset;    ///< Offset that will be added to the source address to determine
+                       //      the starting position from where data will be copied
+       long nBytes;    ///< Number of bytes to be read
+       long superstep; ///< The superstep in which the bsp_get request was issued
+       long dst;       ///< The destination address to were data will be written at
+                       // the requesting process
+    };
+
+
+    ///
+    /// BspGetReply - contains data that represents the <b>reply</b> of a bsp_get operation.
+    ///
+    struct BspGetReply{
+
+       long nBytes;          ///< Number of bytes contained in the requested memory area
+       long superstep;       ///< The superstep in which the bsp_get request was issued.
+                             ///  Note that request and reply happens in the same superstep.
+
+       long dst;             ///< The destination address to were data will be written at
+                             /// the requesting process
+       subTypes::mem memArea;///< Memory contents to be written at the destination address
+
+    };
+
+    typedef sequence<subTypes::ProcessInfo> ProcessInfoSequence;
+
+ };
+
+  module bspLib{
+
+    ///
+    ///   This is the CORBA entity that will handle ALL BSP related communications.
+    ///   This interface may include methods belonging to the BspLib API or internal
+    ///   methods used by our implementation
+    ///
+    interface BspProxy{
+
+      ///
+      ///   Called by a remote bspProxy to inform its ior to be used in subsequent
+      ///   communications.
+      ///
+      ///   @param pid - the BSP PID correspondig to the IOR
+      ///   @param ior - the ior of another bspProxy
+      ///
+      void registerRemoteIor(in string ior);
+
+      ///
+      ///
+      /// Called ONLY by process zero in order to set the BSP PID of a BspProxy
+      ///
+      /// @param pid - the new BSP PID of the BspProxy
+      ///
+      void takeYourPid(in long pid);
+
+
+      ///**
+      // Called by a remote task to perform a write on the BSP process represented
+      // by this proxy.
+      //
+     // @param  bspSend - BspSend struct that contains details of the operation
+      //
+      //*/
+      void bspSend(in types::BspSend bspSend);
+
+      ///
+      /// Called by a remote task to perform a write on the BSP process represented
+      /// by this proxy.
+      ///
+      /// @param  bspPut - BspPut struct that contains details of the operation
+      ///
+
+      void bspPut(in types::BspPut bspPut);
+
+      ///
+      /// Called by another BSP task in order to request the contents of a given memory
+      /// area.
+      ///
+      /// @param request - Contains information regarding the request
+      ///
+      void bspGetRequest(in types::BspGetRequest request);
+
+      ///
+      /// Called by another BSP task in order to reply to one of our bspGetRequets
+      ///
+      /// @param reply - Contains information regarding the reply
+      ///
+      void bspGetReply(in types::BspGetReply reply);
+
+      ///
+      ///  Called <b>only at Process Zero</b> to indicate that a given process
+      ///  reached the synchronization barrier.
+      ///
+      ///  @param pid - the BSP process ID of the BSP process that reached the
+      ///  barrier
+      ///
+      void bspSynch(in long pid, in long superstep);
+
+      ///
+      ///  Called <b>only by Process Zero</b> in order to indicate that all process
+      ///  reached the synchronization barrier
+      ///
+      ///  @param pid - The process id of process zero(useful only for debugging)
+      ///
+      void bspSynchDone();
+
+      void registerOtherProcessIors(in types::ProcessInfoSequence processInfoSequence);
+
+
+    };
+  };
+
+
+
+

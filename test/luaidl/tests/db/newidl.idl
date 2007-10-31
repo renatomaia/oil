@@ -1,0 +1,32 @@
+typedef char NewChar ;
+
+module MOD {
+
+interface A { 
+
+  exception E { NewChar e1; } ;
+  exception E1 { long i; } ;
+
+  struct C {
+    NewChar d[10][2] ;
+  } ;
+
+  enum Colors {
+    Blue,
+    Purple,
+    Red
+  } ;
+
+  typedef sequence <string,10> seqString,oi ;
+
+  readonly attribute char c ;
+
+  oneway void foo() raises (E) ;
+  double sum( in double a, in double b ) raises ( E,E1 );
+
+} ;
+
+interface B:A {
+} ;
+
+} ;

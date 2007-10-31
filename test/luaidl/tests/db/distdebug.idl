@@ -1,0 +1,15 @@
+module eventflow {
+	
+	module distdebug {
+		
+		interface Inspectable {
+			string evaluate(in string expression);
+			string execute(in string code);
+		};
+		
+		interface Pauser {
+			boolean locked(in string identifier);
+		};
+	};
+	
+};

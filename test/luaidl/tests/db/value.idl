@@ -1,0 +1,26 @@
+interface I {
+} ;
+
+abstract valuetype VB {
+} ;
+
+custom valuetype VB2 supports I {
+} ;
+
+valuetype VT ;
+
+valuetype V : truncatable ::VB, VB2 supports I {
+  attribute char C ;
+  typedef long L ;
+  public char C1, C2 ;
+  private string S ;
+  factory F (
+    in long long LL,
+    in char C3
+  ) ;
+} ;
+
+
+valuetype VT sequence<I> ;
+
+

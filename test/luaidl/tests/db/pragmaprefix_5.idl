@@ -1,0 +1,5 @@
+#pragma prefix "X"
+interface X { } ;
+#pragma prefix ""
+interface Y { } ;
+

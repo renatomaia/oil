@@ -1,0 +1,6 @@
+module Concurrency {
+	interface Server {
+		boolean do_something_for(in double seconds);
+	};
+};
+

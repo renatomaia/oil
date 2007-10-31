@@ -1,0 +1,46 @@
+	interface F {
+		typedef long c;
+	};
+
+	module mod {
+		interface X {
+			typedef char b;
+		};
+	};
+
+module A {
+	enum TypeEnum {
+		ushort_tag,
+		string_tag,
+		octet_tag,
+		short_tag,
+		type_tag,
+		objref_tag,
+		long_tag,
+		any_tag,
+		double_tag,
+		char_tag,
+		float_tag,
+		enum_tag,
+		boolean_tag,
+		ulong_tag,
+		void_tag
+	};
+
+	union FullUnion switch (TypeEnum) {
+		case type_tag: ::CORBA::TypeCode type_value;
+		case type_tag: long_tag teste02;
+		case "teste": long_tag teste02;
+		case ::type_tag: long_tag teste02;
+		case string_tag: F::c teste02;
+		case enum_tag: mod::X::b teste02;
+		case void_tag: ::F teste02;
+		default:
+		case 1:
+		case 2: 
+			char_tag teste02;
+
+//			case ::CORBA::TypeCode: long_tag teste02;
+	};
+
+};

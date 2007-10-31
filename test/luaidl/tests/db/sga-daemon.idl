@@ -1,0 +1,217 @@
+/*
+ * sga-daemon.idl
+ *
+ * $Author: ururahy $
+ * $Revision: 1.7 $ - $Date: 2005/05/25 19:55:30 $
+ */
+
+#ifndef _SGA_DAEMON_IDL
+#define _SGA_DAEMON_IDL
+
+#include "sga-manager.idl"
+
+/**
+ * Interfaces entre SGA e SSI (SGA Manager) para gerência da execução remota
+ * de algoritmos.
+ */
+module csbase {
+module server {
+module services {
+module sgaservice {
+module idl {
+
+   /**
+    * Estados de um processo.
+    */
+   enum ProcessState {
+     RUNNING,
+     SLEEPING,
+     WAITING,
+     FINISHED
+   };
+
+   /**
+    * Informações para monitoração de um processo.
+    * As informações sobre um processo em execução na máquina hospedeira
+    * são tipicamente obtidas através da execução do comando 'ps'.
+    */
+   struct ProcessInfo {
+      long pid;
+      long ppid;
+      string command;
+      string execHost;
+      ProcessState state;
+      long processorId;
+      double memoryRamSizeMb;
+      double memorySwapSizeMb;
+      double CPUPerc;
+      long CPUTimeSec;
+      long wallTimeSec;
+   };
+
+   /**
+    * Informações para monitoração de um comando.
+    * A execução de um comando pode gerar um ou mais processos, portanto são 
+    * fornecidas as informações de todos os processos que compõem o comando.
+    */
+   typedef sequence<ProcessInfo> CommandInfo;
+
+   /**
+    * Carga na máquina hospedeira do SGA.
+    * Essa informação corresponde ao percentual de ocupação do(s) 
+    * processador(es) do nó. Deve-se observar que este 
+    * percentual pode ser maior que 100% (valor superior a 1.0) caso o número
+    * de processos ativos exceda o número de processadores disponíveis.
+    */
+   struct HostLoadAvgPerc {
+     double loadAvg1min;  /**< carga no último minuto */
+     double loadAvg5min;  /**< carga nos últimos 5 minutos */
+     double loadAvg15min; /**< carga nos últimos 15 minutos */
+   };
+
+   /**
+    * Tipos de ordenação de bytes de processador.
+    */
+   enum ByteOrder {
+     LITTLE_ENDIAN,
+     BIG_ENDIAN
+   };
+
+   struct StaticNodeInfo {
+     string name;          /**< Nome do nó */
+     string platform_id;   /**< Identificador de plataforma do nó */
+     long num_processors;   /**< Num. de processadores do nó */
+     long memory_ram_info_mb;   /**< Tamanho da memória RAM do nó */
+     long memory_swap_info_mb;   /**< Tamanho da memória de swap do nó */
+     long clock_speed_mhz; /**< Velocidade do processador do nó. */
+     string file_separator; /**< Separador de arquivos. */
+     string ssi_root_directory; /**< Diretório raiz para localização do SSI. */
+     ByteOrder byte_order;  /**< Ordernação de bytes no processador do nó. */
+   };
+
+   struct DynamicNodeInfo {
+     string name;                       /**< Nome do nó */
+     HostLoadAvgPerc load_avg_perc;     /**< Carga de CPU */
+     double memory_ram_free_perc;       /**< Memória RAM livre */
+     double memory_swap_free_perc;      /**< Memória swap livre */
+   };
+
+   typedef sequence<string> NodeNamesInfo;
+   typedef sequence<StaticNodeInfo> NodesStaticInfo;
+   typedef sequence<DynamicNodeInfo> NodesDynamicInfo;
+
+   interface SGAServer;
+
+   /**
+    * Interface do gerenciador de um comando.
+    * Para cada comando executado pelo SGA é criado um gerenciador de
+    * comando.
+    */
+   interface SGACommand {
+      /**
+       * Identificação do processo principal.
+       * @return identificação (pid) do processo principal do comando
+       */
+      long    getPid();
+
+      /**
+       * Indica se o comando ainda está ativo (em execução).
+       * @return true se o comando está em execução
+       */
+      boolean isRunning();
+
+      /**
+       * Fornece as informações de monitoração de um comando.
+       * @return informações de monitoração de todos os processos 
+       * que compõem o comando.
+       */
+      CommandInfo getCommandInfo();
+
+      /**
+       * Fornece a referência para o SGA.
+       * @return referência para o SGA responsável pela execução do comando
+       */
+      SGAServer getSGAServer();
+
+      /**
+       * Termina a execução do comando.
+       */
+      oneway void kill();
+   };
+
+   /**
+    * Interface do SGA daemon.
+    */
+   interface SGAServer {
+      /**
+       * Verifica se o SGA representa um cluster
+       * @return true
+       */
+      boolean isCluster();
+
+      /**
+       * Verifica se o SGA está ativo
+       * @return true
+       */
+      boolean isAlive();
+
+      /**
+       *
+       */
+      NodesStaticInfo getNodesStaticInfo();
+
+      /**
+       *
+       */
+      NodesDynamicInfo getNodesDynamicInfo();
+
+      /**
+       * Verifica se o SGA possui um determinado requisito externo
+       * que o habilite para execução de um comando.
+       * @return true se o SGA possui tal requisito.
+       */
+      boolean meetsRequirement(in string requirement);
+
+      /**
+       * Verifica se o SGA está apto a receber comandos.
+       * @return true se o SGA pode receber requisições de execução
+       */
+      boolean isEnabled();
+
+      /**
+       * Obtém os nomes das máquinas gerenciadas pelo SGA.
+       * @remark Este método deve ser utilizado somente quando
+       * tem-se a configuração de cluster.
+       * @return uma seqüência com os nomes dos nós (na mesma ordem
+       * das seqüências de memória, monitoração e CPU).
+       */
+      NodeNamesInfo getNodeNames();
+
+      /**
+       * Obtém a identificação da máquina hospedeira
+       * @return nome (hostname) da máquina hospedeira do SGA
+       */
+      string getHostName();
+
+      /**
+       * Requisição de execução de um comando.
+       * @param command comando a ser executado
+       * @param cmdid identificador do comando a ser executado
+       * @return referência para o comando
+       */
+      SGACommand executeCommand( in string command, in string cmdid, in string hostName);
+      
+      /**
+       * Solicita a finalização do daemon
+       */
+      oneway void kill(in long status);
+   };
+
+}; 
+}; 
+};
+};
+};
+
+#endif
+

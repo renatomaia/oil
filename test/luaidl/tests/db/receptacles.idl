@@ -1,0 +1,13 @@
+// Definition in IDL 3.0:
+module receptacles {
+	interface NamedObject {
+		attribute string name;
+	};
+	interface ReceptacleWriter {
+		void print_connections();
+	};
+//	component MyComponent supports ReceptacleWriter {
+//		uses multiple NamedObject myreceptacle;
+//	};
+};
+	

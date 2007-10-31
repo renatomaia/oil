@@ -1,0 +1,4 @@
+#pragma prefix "D"
+#include "pragmaprefix_3_inc.idl"
+interface D { } ;
+

@@ -1,0 +1,9 @@
+module b {
+    typedef any t;
+  };
+  module c {
+    interface i {
+      void m (in ::b::t p);
+    };
+  }; 
+

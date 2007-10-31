@@ -1,0 +1,3 @@
+#pragma prefix "A"
+interface A { } ;
+

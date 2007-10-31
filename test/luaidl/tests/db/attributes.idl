@@ -1,0 +1,8 @@
+// Definition in IDL 3.0
+module attributes {
+	component MyComponent {
+		readonly attribute string name;
+		attribute long value;
+	};
+};
+

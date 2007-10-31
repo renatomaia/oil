@@ -1,0 +1,24 @@
+#ifndef LC_IDL
+#define LC_IDL
+
+module OpenBus {
+
+module LifeCycle {
+
+interface Resource {
+    long getDelay();
+};
+
+interface Stethoscope {
+    void beat (in Resource resource);
+};
+
+interface Heart {
+    void start(in long delay);
+};
+
+};
+
+};
+
+#endif

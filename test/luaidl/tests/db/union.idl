@@ -1,0 +1,9 @@
+module M {
+  
+  union U switch ( long ) 
+  {
+    case 0: long b ;
+    case 1: long a ;
+  } ;
+
+} ;

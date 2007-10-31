@@ -1,0 +1,6 @@
+interface X {
+  struct Y {
+    char a ;
+    long w ;
+  } ;
+} ;

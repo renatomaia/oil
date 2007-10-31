@@ -1,0 +1,15 @@
+interface I {
+  void foo( in long a, in long b ) ;
+} ;
+
+component C {
+  provides Object O ;
+} ;
+
+exception E { } ;
+
+home H supports I manages C {
+  void foo2() ; 
+  factory FO ( in char c1, in char c2 ) raises ( E ) ;
+  finder  FI ( in long X ) ;
+} ;

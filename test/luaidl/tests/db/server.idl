@@ -1,0 +1,502 @@
+module MPA {
+	
+	/*
+	 * Types
+	 */
+	
+	typedef string ValueTypeID;
+	typedef sequence<ValueTypeID> ValueTypeIDSeq;
+	
+	struct TypedName {
+		ValueTypeID type;
+		string name;
+	};
+	typedef sequence<TypedName> TypedNameSeq;
+	
+	/*
+	 * Values
+	 */
+	
+	enum TypeKind { NIL, BOOL, INT, REAL, TEXT, OBJ };
+	
+	typedef string InstanceID;
+	
+	//union TypedValue switch(TypeKind) {
+	//	case TypeKind::BOOL: boolean boolval;
+	//	case TypeKind::INT : long realval;
+	//	case TypeKind::REAL: double intval;
+	//	case TypeKind::TEXT: string textval;
+	//	case TypeKind::OBJ : InstanceID objval;
+	//};
+	//typedef sequence<TypedValue> TypedValueSeq;
+	
+	typedef sequence<any> ValueSeq;
+	
+	module PreConfig {
+		
+		/*
+		 * Auxiliary Functions
+		 */
+		
+		typedef string FunctionID;
+		typedef string Implementation;
+		
+		struct FunctionDescription {
+			FunctionID id;
+			string name;
+			string description;
+			TypedNameSeq parameters;
+			TypedNameSeq results;
+			Implementation code;
+		};
+		typedef sequence<FunctionDescription> FunctionDescriptionSeq;
+		
+		/*
+		 * Object Classes
+		 */
+		
+		typedef string MemberID;
+		
+		typedef string AccessMode;
+		
+		struct AttributeDescription {
+			MemberID id;
+			string name;
+			string description;
+			ValueTypeID type;
+			AccessMode access;
+		};
+		typedef sequence<AttributeDescription> AttributeDescriptionSeq;
+		
+		struct MethodDescription {
+			MemberID id;
+			string name;
+			string description;
+			TypedNameSeq parameters;
+			TypedNameSeq results;
+			Implementation code;
+		};
+		typedef sequence<MethodDescription> MethodDescriptionSeq;
+		
+		struct ClassDescription {
+			ValueTypeID id;
+			string name;
+			string description;
+			ValueTypeIDSeq bases;
+			AttributeDescriptionSeq attributes;
+			MethodDescriptionSeq methods;
+		};
+		typedef sequence<ClassDescription> ClassDescriptionSeq;
+		
+		/*
+		 * Pre-Configuration
+		 */
+		
+		exception FunctionAlreadyExists { FunctionID func; };
+		exception FunctionNotFound { FunctionID func; };
+		exception FunctionInUse { FunctionID func; };
+		exception TypeAlreadyExists { ValueTypeID type; };
+		exception TypeNotFound { ValueTypeID type; };
+		exception TypeInUse { ValueTypeID type; };
+		exception BadFunctionImpl {
+			FunctionID func;
+			string message;
+		};
+		exception BadMethodImpl {
+			ValueTypeID class;
+			MemberID member;
+			string message;
+		};
+		
+		interface PreConfigurator {
+			void loadConfiguration(in ClassDescriptionSeq classes,
+			                       in FunctionDescriptionSeq functions,
+			                       in boolean force)
+				raises (TypeNotFound, BadFunctionImpl, BadMethodImpl,
+				        FunctionAlreadyExists, TypeAlreadyExists);
+			
+			void clearConfiguration() raises (FunctionInUse, TypeInUse);
+		};
+	};
+};
+
+module MPA {
+	
+	module Plant {
+		
+		/*
+		 * Plant Equipment/Point Instances
+		 */
+		
+		struct InstanceDescription {
+			InstanceID ID;
+			ValueSeq ATTRIBUTES;
+		};
+		struct ClassInstancesDescription {
+			ValueTypeID class;
+			sequence<InstanceDescription> values;
+		};
+		typedef sequence<ClassInstancesDescription> ClassInstancesDescriptionSeq;
+		
+		/*
+		 * Exceptions
+		 */
+		
+		exception PlantInUse {};
+		exception InstanceAlreadyExists {
+			InstanceID id;
+			ValueTypeID class;
+		};
+		exception BadInstance {
+			InstanceID id;
+			ValueTypeID class;
+			PreConfig::MemberID member;
+		};
+		
+		/*
+		 * Plant Management
+		 */
+		
+		interface PlantConfigurator {
+			void loadPlant(in ClassInstancesDescriptionSeq instances,
+			               in boolean force)
+				raises (BadInstance, PreConfig::TypeNotFound,
+				        InstanceAlreadyExists);
+			void clearPlant() raises (PlantInUse);
+		};
+	
+	};
+	
+};
+
+module MPA {
+	
+	module Flows {
+		
+		/*
+		 * Building Blocks
+		 */
+		
+		typedef long ElementID;
+		typedef sequence<ElementID> ElementIDSeq;
+		
+		struct CommandDescription {
+			ElementID next;
+		};
+		struct ChoiceDescription {
+			ElementID success;
+			ElementID failure;
+		};
+		struct ForeachDescription {
+			ElementID iteration;
+			ElementID next;
+		};
+		struct ForkDescription {
+			ElementIDSeq paths;
+			ElementIDSeq syncs;
+		};
+		struct SyncDescription {
+			ElementID next;
+		};
+		
+		enum BlockType { COMMAND, CHOICE, FOREACH, FORK, SYNC };
+		
+		union BlockDescription switch (BlockType) {
+			case COMMAND: CommandDescription command;
+			case CHOICE : ChoiceDescription  choice;
+			case FOREACH: ForeachDescription foreach;
+			case FORK   : ForkDescription    fork;
+			case SYNC   : SyncDescription    sync;
+		};
+		
+		/*
+		 * Actions
+		 */
+		
+		typedef string FlowID;
+		typedef string MemberOpID;
+		
+		typedef string Expression;
+		typedef string Variable;
+		
+		typedef sequence<Expression> ExpressionSeq;
+		typedef sequence<Variable> VariableSeq;
+		
+		enum FlowOpID { START, STOP };
+		
+		struct ExpressionDescription {
+			ExpressionSeq expressions;
+			VariableSeq variables;
+		};
+		struct FunctionCallDescription {
+			PreConfig::FunctionID functionid;
+			ExpressionSeq expressions;
+			VariableSeq variables;
+		};
+		struct FlowCallDescription {
+			FlowID flowid;
+			FlowOpID operation;
+			ExpressionSeq expressions;
+			VariableSeq variables;
+		};
+		struct ObjectCallDescription {
+			Variable objname;
+			PreConfig::MemberID member;
+			MemberOpID operation;
+			ExpressionSeq expressions;
+			VariableSeq variables;
+		};
+		struct ClassIterationDescription {
+			ValueTypeID classid;
+			Variable variable;
+		};
+		
+		enum ActionType { EXPRESSION, FUNCTIONCALL, FLOWCALL, OBJECTCALL,
+		                 CLASSITERATION };
+		
+		union ActionDescription switch (ActionType) {
+			case EXPRESSION    : ExpressionDescription expression;
+			case FUNCTIONCALL  : FunctionCallDescription functioncall;
+			case FLOWCALL      : FlowCallDescription flowcall;
+			case OBJECTCALL    : ObjectCallDescription objectcall;
+			case CLASSITERATION: ClassIterationDescription classiteration;
+		};
+		
+		/*
+		 * Flows
+		 */
+		
+		struct VariableInit {
+			Variable name;
+			ValueTypeID type;
+			any value;
+		};
+		typedef sequence<VariableInit> VariableInitSeq;
+		
+		struct ElementDescription{
+			BlockDescription block;
+			ActionDescription action;
+		};
+		typedef sequence<ElementDescription> ElementDescriptionSeq;
+		
+		struct FlowDescription {
+			FlowID id;
+			string name;
+			string description;
+			boolean isApplication;
+			VariableInitSeq globals;
+			TypedNameSeq parameters;
+			TypedNameSeq results;
+			PreConfig::FunctionID errorFunction;
+			FlowID haltFlow;
+			ElementDescriptionSeq elements;
+		};
+		typedef sequence<FlowDescription> FlowDescriptionSeq;
+		
+		exception FlowInUse { FlowID flow; };
+		
+		interface ControlFlow {
+			readonly attribute FlowID id;
+			attribute string name;
+			attribute string description;
+			readonly attribute boolean isApplication;
+			
+			readonly attribute long calls;
+			
+			FlowDescription describe();
+			
+			void remove(in boolean force) raises (FlowInUse);
+		};
+		
+		/*
+		 * Flow Configurator
+		 */
+		
+		exception FlowAlreadyExists { FlowID flow; };
+		exception FlowNotFound { FlowID flow; };
+		exception BadFlowElement {
+			ElementID id;
+			ElementDescription element;
+			string message;
+		};
+		
+		struct RegisteredFlow {
+			FlowID id;
+			string name;
+			string description;
+			boolean isApplication;
+			
+			ControlFlow flow;
+		};
+		typedef sequence<RegisteredFlow> RegisteredFlowSeq;
+		
+		interface FlowConfigurator {
+			void loadFlows(in FlowDescriptionSeq flows, in boolean force)
+				raises (FlowAlreadyExists, FlowInUse, FlowNotFound,
+				        BadFlowElement, PreConfig::FunctionNotFound,
+				        PreConfig::TypeNotFound);
+			void clearFlows() raises (FlowInUse);
+			RegisteredFlowSeq describeFlows();
+		};
+		
+	};
+	
+};
+
+module MPA {
+	
+	module Monitor {
+		
+		/*
+		 * Application State Snapshot
+		 */
+		
+		typedef string ThreadID;
+		
+		struct VariableSnapshot {
+			Flows::Variable variable;
+			any value;
+		};
+		typedef sequence<VariableSnapshot> VariableSnapshotSeq;
+		
+		struct ThreadSnapshot {
+			ThreadID id;
+			ThreadID parent;
+			VariableSnapshotSeq variables;
+		};
+		typedef sequence<ThreadSnapshot> ThreadSnapshotSeq;
+		
+		struct ApplicationSnapshot {
+			VariableSnapshotSeq variables;
+			ThreadSnapshotSeq threads;
+		};
+		
+		/*
+		 * Application State Stream
+		 */
+		
+		struct ThreadFilter {
+			Flows::Variable variable;
+			any value;
+		};
+		typedef sequence<ThreadFilter> ThreadFilterSeq;
+		
+		struct StateStreamData {
+			unsigned long msgno;
+			ThreadID thread;
+			Flows::FlowID flow;
+			Flows::ElementID element;
+			VariableSnapshot changes;
+		};
+		
+		struct StreamGapNotification {
+			unsigned long msgno;
+		};
+		
+		struct StateStreamDescription {
+			string destinyhost;
+			long destinyport;
+			ThreadFilterSeq filters;
+		};
+		
+		/*
+		 * Application Monitoring Manager
+		 */
+		
+		exception BadFilter { ThreadFilter filter; };
+		exception ConnectionFailure {
+			string destinyhost;
+			long destinyport;
+		};
+		
+		interface ApplicationMonitor {
+			ApplicationSnapshot getSnapShot();
+			
+			void allocStateStream(in StateStreamDescription stream)
+				raises (ConnectionFailure, BadFilter);
+		};
+		
+	};
+	
+	module Executor {
+		
+		enum ApplicationState { executing, stopped, suspended };
+		
+		exception IsStopped {};
+		
+		interface FlowApplication : Flows::ControlFlow {
+			attribute Executor::ApplicationState state;
+			
+			boolean start();
+			boolean stop();
+			boolean pause() raises (Executor::IsStopped);
+			
+			Monitor::ApplicationMonitor monitor();
+		};
+		
+		struct ApplicationDescription {
+			Flows::FlowID id;
+			string name;
+			string description;
+			
+			FlowApplication application;
+		};
+		typedef sequence<ApplicationDescription> ApplicationDescriptionSeq;
+		
+		typedef long ObserverSubscription;
+		
+		interface FlowsObserver {
+			
+			struct FlowObservation {
+				Flows::FlowID id;
+				string name;
+				string description;
+				boolean isApplication;
+				long calls;
+				ApplicationState status;
+			};
+			typedef sequence<FlowObservation> FlowObservationSeq;
+			
+			void notify(in FlowObservationSeq info);
+			
+		};
+		
+		interface FlowExecutor {
+			ApplicationDescriptionSeq describeApplications();
+			
+			ObserverSubscription subscribeObserver(in FlowsObserver observer);
+			FlowsObserver unsubscribeObserver(in ObserverSubscription subscriptionid);
+		};
+		
+	};
+
+};
+
+module MPA {
+	
+	module Server {
+		
+		interface ServerManager {
+			void reset();
+			void shutdown(in double timeout);
+			
+			readonly attribute PreConfig::PreConfigurator config;
+			readonly attribute Plant::PlantConfigurator   plant;
+			readonly attribute Flows::FlowConfigurator    flows;
+			readonly attribute Executor::FlowExecutor     executor;
+		};
+		
+	};
+
+};
+
+//module MPA {
+//	component ExecutionServer{
+//		provides PreConfig::PreConfigurator  config;
+//		provides Plant::PlantConfigurator plant;
+//		provides Flows::FlowConfigurator  flows;
+//		provides Executor::FlowExecutor   executor;
+//		provides Server::ServerManager    manager;
+//	};
+//};
+

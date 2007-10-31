@@ -1,0 +1,801 @@
+/*
+ *  MICO --- an Open Source CORBA implementation
+ *  Copyright (c) 1997-2003 by The Mico Team
+ *
+ *  This file was automatically generated. DO NOT EDIT!
+ */
+
+#ifndef __INTERFACES_IDL__
+#define __INTERFACES_IDL__
+
+module MPA {
+
+  interface OperationInvoker;
+
+  interface OperationBehavior;
+
+  interface OperationDescriber;
+
+  interface ObjectBehavior;
+
+  interface ObjectDescriber;
+
+  interface ObjectInstance;
+
+  interface ObjectManager;
+
+  interface CommBridge;
+
+  interface AuxiliaryFunction;
+
+  interface ObjectClass;
+
+  interface PointClass;
+
+  interface FunctionHomeExplicit;
+
+  interface FunctionHomeImplicit;
+
+  interface FunctionHome;
+
+  interface ClassHomeExplicit;
+
+  interface ClassHomeImplicit;
+
+  interface ClassHome;
+
+  interface ThreadContext;
+
+  interface FlowThread;
+
+  interface FlowExecution;
+
+  interface FlowControl;
+
+  interface FlowAction;
+
+  interface FlowThreads;
+
+  interface Executor;
+
+  interface ControlFlow;
+
+  interface FlowHomeExplicit;
+
+  interface FlowHomeImplicit;
+
+  interface FlowHome;
+
+  interface ThreadSync;
+
+  interface Element;
+
+  interface Command;
+
+  interface Test;
+
+  interface Iterate;
+
+  interface Fork;
+
+  interface Sync;
+
+  interface ExpressionDef;
+
+  interface ObjectCall;
+
+  interface FunctionCall;
+
+  interface FlowCall;
+
+  interface ExpressionEval;
+
+  interface ObjectEval;
+
+  interface FunctionEval;
+
+  interface FlowEval;
+
+  interface ExpressionTest;
+
+  interface ObjectTest;
+
+  interface FunctionTest;
+
+  interface FlowTest;
+
+  interface ForAllEquipments;
+
+  interface ExpressionEvalHomeExplicit;
+
+  interface ExpressionEvalHomeImplicit;
+
+  interface ExpressionEvalHome;
+
+  interface ObjectEvalHomeExplicit;
+
+  interface ObjectEvalHomeImplicit;
+
+  interface ObjectEvalHome;
+
+  interface FunctionEvalHomeExplicit;
+
+  interface FunctionEvalHomeImplicit;
+
+  interface FunctionEvalHome;
+
+  interface FlowEvalHomeExplicit;
+
+  interface FlowEvalHomeImplicit;
+
+  interface FlowEvalHome;
+
+  interface ExpressionTestHomeExplicit;
+
+  interface ExpressionTestHomeImplicit;
+
+  interface ExpressionTestHome;
+
+  interface ObjectTestHomeExplicit;
+
+  interface ObjectTestHomeImplicit;
+
+  interface ObjectTestHome;
+
+  interface FunctionTestHomeExplicit;
+
+  interface FunctionTestHomeImplicit;
+
+  interface FunctionTestHome;
+
+  interface FlowTestHomeExplicit;
+
+  interface FlowTestHomeImplicit;
+
+  interface FlowTestHome;
+
+  interface ForAllHomeExplicit;
+
+  interface ForAllHomeImplicit;
+
+  interface ForAllHome;
+
+  interface ForkHomeExplicit;
+
+  interface ForkHomeImplicit;
+
+  interface ForkHome;
+
+  interface SyncHomeExplicit;
+
+  interface SyncHomeImplicit;
+
+  interface SyncHome;
+
+};
+
+#include "CCM.idl"
+
+module MPA {
+
+  typedef sequence< any > ValueSeq;
+
+  typedef sequence< MPA::ObjectInstance > ObjectInstanceSeq;
+
+  struct NamedValue {
+    string name;
+    string type;
+  };
+
+  typedef sequence< MPA::NamedValue > NamedValueSeq;
+
+  interface OperationInvoker
+  {
+    void call( in MPA::ValueSeq arg, out MPA::ValueSeq res );
+  };
+
+  interface OperationBehavior :
+    ::MPA::OperationInvoker
+  {
+    void define( in string luacode );
+  };
+
+  interface OperationDescriber
+  {
+    attribute string name;
+    attribute MPA::NamedValueSeq parameters;
+    attribute MPA::NamedValueSeq results;
+  };
+
+  interface ObjectBehavior
+  {
+    void define( in string member, in string luavalue );
+  };
+
+  struct MethodDescription {
+    string name;
+    MPA::NamedValueSeq parameters;
+    MPA::NamedValueSeq results;
+  };
+
+  typedef sequence< MPA::MethodDescription > MethodDescriptionSeq;
+
+  interface ObjectDescriber
+  {
+    attribute string classname;
+    attribute MPA::NamedValueSeq attributes;
+    attribute MPA::MethodDescriptionSeq methods;
+  };
+
+  struct ObjectDef {
+    string id;
+  };
+
+  interface ObjectInstance
+  {
+    attribute string id;
+    void set( in string name, in any value );
+    any get( in string name );
+    void call( in string method, in MPA::ValueSeq arg, out MPA::ValueSeq res );
+  };
+
+  interface ObjectManager
+  {
+    MPA::ObjectInstance new( in MPA::ObjectDef obj );
+    MPA::ObjectInstance get( in string id );
+    MPA::ObjectInstanceSeq all();
+  };
+
+  interface CommBridge
+  {
+    void set( in string name, in any value );
+    any get( in string name );
+  };
+
+  interface AuxiliaryFunction :
+    ::Components::CCMObject
+  {
+    MPA::OperationBehavior provide_behavior();
+    MPA::OperationDescriber provide_metainfo();
+  };
+
+  interface ObjectClass :
+    ::Components::CCMObject
+  {
+    MPA::ObjectBehavior provide_behavior();
+    MPA::ObjectManager provide_instances();
+    MPA::ObjectDescriber provide_metainfo();
+  };
+
+  interface PointClass :
+    ::MPA::ObjectClass
+  {
+    void connect_bridge( in MPA::CommBridge conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::CommBridge disconnect_bridge()
+      raises( ::Components::NoConnection );
+    MPA::CommBridge get_connection_bridge();
+  };
+
+  interface FunctionHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface FunctionHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::AuxiliaryFunction create();
+  };
+
+  interface FunctionHome :
+    ::MPA::FunctionHomeExplicit,
+    ::MPA::FunctionHomeImplicit
+  {
+  };
+
+  interface ClassHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface ClassHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::ObjectClass create();
+  };
+
+  interface ClassHome :
+    ::MPA::ClassHomeExplicit,
+    ::MPA::ClassHomeImplicit
+  {
+  };
+
+  interface ThreadContext
+  {
+    any index( in string name );
+    void newindex( in string name, in any value );
+  };
+
+  interface FlowThread
+  {
+  };
+
+  interface FlowExecution
+  {
+    void suspend();
+    void resume();
+    void halt();
+  };
+
+  interface FlowControl
+  {
+    MPA::FlowExecution execute( in string name, in MPA::ValueSeq args );
+  };
+
+  interface FlowAction
+  {
+    oneway void execute( in MPA::ThreadContext ctext );
+  };
+
+  interface FlowThreads
+  {
+    MPA::FlowThread start( in MPA::FlowAction action, in MPA::ThreadContext ctext );
+    void suspend();
+    void resume( in MPA::FlowThread thread );
+    MPA::FlowThread current();
+    void pushcontext( in MPA::ThreadContext ctext );
+    MPA::ThreadContext popcontext();
+  };
+
+  interface Executor :
+    ::Components::CCMObject
+  {
+    MPA::FlowControl provide_control();
+    MPA::FlowThreads provide_threads();
+    struct flowsConnection {
+      MPA::OperationInvoker objref;
+      Components::Cookie ck;
+    };
+
+    typedef sequence< MPA::Executor::flowsConnection > flowsConnections;
+
+    Components::Cookie connect_flows( in MPA::OperationInvoker connection )
+      raises( ::Components::ExceededConnectionLimit, ::Components::InvalidConnection );
+    MPA::OperationInvoker disconnect_flows( in Components::Cookie ck )
+      raises( ::Components::InvalidConnection );
+    MPA::Executor::flowsConnections get_connections_flows();
+  };
+
+  interface ControlFlow :
+    ::Components::CCMObject
+  {
+    MPA::OperationInvoker provide_invoker();
+    void connect_executor( in MPA::FlowThreads conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowThreads disconnect_executor()
+      raises( ::Components::NoConnection );
+    MPA::FlowThreads get_connection_executor();
+    void connect_entry( in MPA::FlowAction conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowAction disconnect_entry()
+      raises( ::Components::NoConnection );
+    MPA::FlowAction get_connection_entry();
+  };
+
+  interface FlowHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface FlowHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::ControlFlow create();
+  };
+
+  interface FlowHome :
+    ::MPA::FlowHomeExplicit,
+    ::MPA::FlowHomeImplicit
+  {
+  };
+
+  typedef sequence< MPA::FlowThread > FlowThreadSeq;
+
+  interface ThreadSync
+  {
+    void synchronize( in MPA::FlowThreadSeq threads );
+  };
+
+  interface Element :
+    ::Components::CCMObject
+  {
+    MPA::FlowAction provide_action();
+  };
+
+  interface Command :
+    ::MPA::Element
+  {
+    void connect_next( in MPA::FlowAction conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowAction disconnect_next()
+      raises( ::Components::NoConnection );
+    MPA::FlowAction get_connection_next();
+  };
+
+  interface Test :
+    ::MPA::Element
+  {
+    void connect_success( in MPA::FlowAction conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowAction disconnect_success()
+      raises( ::Components::NoConnection );
+    MPA::FlowAction get_connection_success();
+    void connect_failure( in MPA::FlowAction conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowAction disconnect_failure()
+      raises( ::Components::NoConnection );
+    MPA::FlowAction get_connection_failure();
+  };
+
+  interface Iterate :
+    ::MPA::Element
+  {
+    void connect_iteration( in MPA::FlowAction conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowAction disconnect_iteration()
+      raises( ::Components::NoConnection );
+    MPA::FlowAction get_connection_iteration();
+    void connect_next( in MPA::FlowAction conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowAction disconnect_next()
+      raises( ::Components::NoConnection );
+    MPA::FlowAction get_connection_next();
+  };
+
+  interface Fork :
+    ::MPA::Element
+  {
+    struct pathsConnection {
+      MPA::FlowAction objref;
+      Components::Cookie ck;
+    };
+
+    typedef sequence< MPA::Fork::pathsConnection > pathsConnections;
+
+    Components::Cookie connect_paths( in MPA::FlowAction connection )
+      raises( ::Components::ExceededConnectionLimit, ::Components::InvalidConnection );
+    MPA::FlowAction disconnect_paths( in Components::Cookie ck )
+      raises( ::Components::InvalidConnection );
+    MPA::Fork::pathsConnections get_connections_paths();
+    struct waitsConnection {
+      MPA::FlowAction objref;
+      Components::Cookie ck;
+    };
+
+    typedef sequence< MPA::Fork::waitsConnection > waitsConnections;
+
+    Components::Cookie connect_waits( in MPA::FlowAction connection )
+      raises( ::Components::ExceededConnectionLimit, ::Components::InvalidConnection );
+    MPA::FlowAction disconnect_waits( in Components::Cookie ck )
+      raises( ::Components::InvalidConnection );
+    MPA::Fork::waitsConnections get_connections_waits();
+    void connect_sync( in MPA::ThreadSync conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::ThreadSync disconnect_sync()
+      raises( ::Components::NoConnection );
+    MPA::ThreadSync get_connection_sync();
+    void connect_threads( in MPA::FlowThreads conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowThreads disconnect_threads()
+      raises( ::Components::NoConnection );
+    MPA::FlowThreads get_connection_threads();
+  };
+
+  interface Sync :
+    ::MPA::Element
+  {
+    MPA::ThreadSync provide_register();
+    void connect_next( in MPA::FlowAction conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowAction disconnect_next()
+      raises( ::Components::NoConnection );
+    MPA::FlowAction get_connection_next();
+    void connect_threads( in MPA::FlowThreads conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::FlowThreads disconnect_threads()
+      raises( ::Components::NoConnection );
+    MPA::FlowThreads get_connection_threads();
+  };
+
+  interface ExpressionDef
+  {
+    attribute string expression;
+  };
+
+  interface ObjectCall
+  {
+    attribute string variable;
+    attribute string member;
+    attribute string operation;
+    attribute string values;
+  };
+
+  interface FunctionCall
+  {
+    attribute string parameters;
+  };
+
+  interface FlowCall
+  {
+    attribute string parameters;
+  };
+
+  interface ExpressionEval :
+    ::MPA::Command,
+    ::MPA::ExpressionDef
+  {
+  };
+
+  interface ObjectEval :
+    ::MPA::Command,
+    ::MPA::ObjectCall
+  {
+  };
+
+  interface FunctionEval :
+    ::MPA::Command,
+    ::MPA::FunctionCall
+  {
+    void connect_auxfunc( in MPA::OperationInvoker conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::OperationInvoker disconnect_auxfunc()
+      raises( ::Components::NoConnection );
+    MPA::OperationInvoker get_connection_auxfunc();
+  };
+
+  interface FlowEval :
+    ::MPA::Command,
+    ::MPA::FlowCall
+  {
+    void connect_flow( in MPA::OperationInvoker conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::OperationInvoker disconnect_flow()
+      raises( ::Components::NoConnection );
+    MPA::OperationInvoker get_connection_flow();
+  };
+
+  interface ExpressionTest :
+    ::MPA::Test,
+    ::MPA::ExpressionDef
+  {
+  };
+
+  interface ObjectTest :
+    ::MPA::Test,
+    ::MPA::ObjectCall
+  {
+  };
+
+  interface FunctionTest :
+    ::MPA::Test,
+    ::MPA::FunctionCall
+  {
+    void connect_auxfunc( in MPA::OperationInvoker conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::OperationInvoker disconnect_auxfunc()
+      raises( ::Components::NoConnection );
+    MPA::OperationInvoker get_connection_auxfunc();
+  };
+
+  interface FlowTest :
+    ::MPA::Test,
+    ::MPA::FlowCall
+  {
+    void connect_flow( in MPA::OperationInvoker conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::OperationInvoker disconnect_flow()
+      raises( ::Components::NoConnection );
+    MPA::OperationInvoker get_connection_flow();
+  };
+
+  interface ForAllEquipments :
+    ::MPA::Iterate
+  {
+    void connect_equipments( in MPA::ObjectManager conxn )
+      raises( ::Components::AlreadyConnected, ::Components::InvalidConnection );
+    MPA::ObjectManager disconnect_equipments()
+      raises( ::Components::NoConnection );
+    MPA::ObjectManager get_connection_equipments();
+  };
+
+  interface ExpressionEvalHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface ExpressionEvalHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::ExpressionEval create();
+  };
+
+  interface ExpressionEvalHome :
+    ::MPA::ExpressionEvalHomeExplicit,
+    ::MPA::ExpressionEvalHomeImplicit
+  {
+  };
+
+  interface ObjectEvalHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface ObjectEvalHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::ObjectEval create();
+  };
+
+  interface ObjectEvalHome :
+    ::MPA::ObjectEvalHomeExplicit,
+    ::MPA::ObjectEvalHomeImplicit
+  {
+  };
+
+  interface FunctionEvalHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface FunctionEvalHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::FunctionEval create();
+  };
+
+  interface FunctionEvalHome :
+    ::MPA::FunctionEvalHomeExplicit,
+    ::MPA::FunctionEvalHomeImplicit
+  {
+  };
+
+  interface FlowEvalHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface FlowEvalHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::FlowEval create();
+  };
+
+  interface FlowEvalHome :
+    ::MPA::FlowEvalHomeExplicit,
+    ::MPA::FlowEvalHomeImplicit
+  {
+  };
+
+  interface ExpressionTestHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface ExpressionTestHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::ExpressionTest create();
+  };
+
+  interface ExpressionTestHome :
+    ::MPA::ExpressionTestHomeExplicit,
+    ::MPA::ExpressionTestHomeImplicit
+  {
+  };
+
+  interface ObjectTestHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface ObjectTestHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::ObjectTest create();
+  };
+
+  interface ObjectTestHome :
+    ::MPA::ObjectTestHomeExplicit,
+    ::MPA::ObjectTestHomeImplicit
+  {
+  };
+
+  interface FunctionTestHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface FunctionTestHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::FunctionTest create();
+  };
+
+  interface FunctionTestHome :
+    ::MPA::FunctionTestHomeExplicit,
+    ::MPA::FunctionTestHomeImplicit
+  {
+  };
+
+  interface FlowTestHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface FlowTestHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::FlowTest create();
+  };
+
+  interface FlowTestHome :
+    ::MPA::FlowTestHomeExplicit,
+    ::MPA::FlowTestHomeImplicit
+  {
+  };
+
+  interface ForAllHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface ForAllHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::ForAllEquipments create();
+  };
+
+  interface ForAllHome :
+    ::MPA::ForAllHomeExplicit,
+    ::MPA::ForAllHomeImplicit
+  {
+  };
+
+  interface ForkHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface ForkHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::Fork create();
+  };
+
+  interface ForkHome :
+    ::MPA::ForkHomeExplicit,
+    ::MPA::ForkHomeImplicit
+  {
+  };
+
+  interface SyncHomeExplicit :
+    ::Components::CCMHome
+  {
+  };
+
+  interface SyncHomeImplicit :
+    ::Components::KeylessCCMHome
+  {
+    MPA::Sync create();
+  };
+
+  interface SyncHome :
+    ::MPA::SyncHomeExplicit,
+    ::MPA::SyncHomeImplicit
+  {
+  };
+
+};
+
+#endif

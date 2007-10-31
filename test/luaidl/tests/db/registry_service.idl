@@ -1,0 +1,40 @@
+#ifndef RS_IDL
+#define RS_IDL
+
+#include "scs.idl"
+#include "life_cycle.idl"
+
+module OpenBus {
+
+module RS {
+
+struct ServiceOffer {
+    string description;
+    string type;
+    SCS::IComponent iComponent;
+};
+
+struct Criterion {
+    string name;
+    string value;
+};
+typedef sequence<Criterion> Criteria;
+
+typedef long Identifier;
+
+interface IdentifierResource : LifeCycle::Resource {
+    Identifier getIdentifier();
+};
+
+interface RegistryService : SCS::IComponent {
+    IdentifierResource register(in ServiceOffer serviceOffer);
+    void unregister(in Identifier identifier);
+    void refresh(in Identifier identifier, in ServiceOffer serviceOffer);
+    SCS::IComponent find (in Criteria criteria, in string type);
+};
+
+};
+
+};
+
+#endif

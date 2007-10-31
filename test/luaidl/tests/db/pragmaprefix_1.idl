@@ -1,0 +1,5 @@
+#pragma prefix "B"
+module M {
+#include "pragmaprefix_1_inc.idl"
+};
+

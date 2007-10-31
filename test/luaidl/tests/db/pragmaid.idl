@@ -1,0 +1,9 @@
+module mod {
+  interface X {
+  } ;
+} ;
+
+#pragma ID mod "IDL:mod:2.0"
+#pragma ID mod::X "IDL:mod/X:3.0"
+
+

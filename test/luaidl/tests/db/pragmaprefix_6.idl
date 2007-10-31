@@ -1,0 +1,6 @@
+#pragma prefix "E"
+
+module M {
+  interface X { } ;
+} ;
+

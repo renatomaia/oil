@@ -1,0 +1,19 @@
+struct D;
+
+typedef D DCL;
+
+struct S {
+  char a, b;
+  struct S1 {
+    long a;
+    struct INS {
+      long long l;
+    } IO;
+  } dcl;
+};
+
+struct D {
+  long long d;
+};
+
+

@@ -1,0 +1,10 @@
+module Concurrency {
+	interface Server {
+		boolean do_something_for(in long seconds);
+	};
+};
+module DynamicAdaptation {
+	interface Adaptor {
+		void update_definitions(in string definitions);
+	};
+};

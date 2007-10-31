@@ -1,0 +1,8 @@
+exception e { };
+
+interface foo {
+  void op1(in long a, in char b, out char r, inout char s);
+  long op2(in long a, in long b) raises(e);
+  void op3() raises(e) context("teste");
+  long op4(inout long long a) raises(e) context("cool");
+};

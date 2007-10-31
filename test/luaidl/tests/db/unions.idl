@@ -1,0 +1,21 @@
+module A {
+  enum E { RED, GREEN, YELLOW };
+};
+  enum E { RED, GREEN, YELLOW };
+
+union U switch(::A::E) {
+//  case ::A::E::GREEN:
+  case A::GREEN:
+  case ::A::GREEN:
+  case GREEN:
+    long u1;
+  case YELLOW:
+    long u2;
+  case 4:
+  case 5:
+    long long u3;
+  case 6:
+  default:
+    short u4;
+
+};

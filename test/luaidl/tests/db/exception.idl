@@ -1,0 +1,9 @@
+module CosNaming {
+  enum NotFoundReason {
+	    missing_node, not_context, not_object
+	};
+  exception NotFound {
+	    NotFoundReason why;
+	    string rest_of_name;
+	};
+} ;

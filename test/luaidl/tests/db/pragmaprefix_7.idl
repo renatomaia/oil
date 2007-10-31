@@ -1,0 +1,10 @@
+module K {
+  module M {
+    #pragma prefix "E"
+    interface W { } ;
+    #include "pragmaprefix_7_inc.idl"
+    interface F { } ;
+  } ;
+  interface C { } ;
+} ;
+

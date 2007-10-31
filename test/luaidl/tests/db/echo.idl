@@ -1,0 +1,121 @@
+module ORBTests {
+	enum TypeEnum {
+		ushort_tag,
+		string_tag,
+		octet_tag,
+		short_tag,
+		type_tag,
+		objref_tag,
+		long_tag,
+		any_tag,
+		double_tag,
+		char_tag,
+		float_tag,
+		enum_tag,
+		boolean_tag,
+		ulong_tag,
+		void_tag
+	};
+	exception EmptyExcept {};
+	exception FullExcept {
+		unsigned short ushort_value;
+		string string_value;
+		octet octet_value;
+		short short_value;
+		::CORBA::TypeCode type_value;
+		Object objref_value;
+		long long_value;
+		any any_value;
+		double double_value;
+		char char_value;
+		float float_value;
+		TypeEnum enum_value;
+		boolean boolean_value;
+		unsigned long ulong_value;
+	};
+	struct FullStruct {
+		unsigned short ushort_value;
+		string string_value;
+		octet octet_value;
+		short short_value;
+		::CORBA::TypeCode type_value;
+		Object objref_value;
+		long long_value;
+		any any_value;
+		double double_value;
+		char char_value;
+		float float_value;
+		TypeEnum enum_value;
+		boolean boolean_value;
+		unsigned long ulong_value;
+	};
+	union FullUnion switch (TypeEnum) {
+		case ushort_tag: unsigned short ushort_value;
+		case string_tag: string string_value;
+		case octet_tag: octet octet_value;
+		case short_tag: short short_value;
+		case type_tag: ::CORBA::TypeCode type_value;
+		case objref_tag: Object objref_value;
+		case long_tag: long long_value;
+		case any_tag: any any_value;
+		case double_tag: double double_value;
+		case char_tag: char char_value;
+		case float_tag: float float_value;
+		case enum_tag: TypeEnum enum_value;
+		case boolean_tag: boolean boolean_value;
+		case ulong_tag: unsigned long ulong_value;
+	};
+	typedef sequence<unsigned short> ushortSeq;
+	typedef sequence<string> stringSeq;
+	typedef sequence<FullUnion> unionSeq;
+	typedef sequence<octet> octetSeq;
+	typedef sequence<short> shortSeq;
+	typedef sequence<FullStruct> structSeq;
+	typedef sequence<::CORBA::TypeCode> typeSeq;
+	typedef sequence<Object> objrefSeq;
+	typedef sequence<long> longSeq;
+	typedef sequence<any> anySeq;
+	typedef sequence<double> doubleSeq;
+	typedef sequence<char> charSeq;
+	typedef sequence<float> floatSeq;
+	typedef sequence<TypeEnum> enumSeq;
+	typedef sequence<boolean> booleanSeq;
+	typedef sequence<unsigned long> ulongSeq;
+	interface Echo {
+		void echo_void();
+		unsigned short echo_ushort(in unsigned short value);
+		ushortSeq echo_ushorts(in ushortSeq value);
+		string echo_string(in string value);
+		stringSeq echo_strings(in stringSeq value);
+		FullUnion echo_union(in FullUnion value);
+		unionSeq echo_unions(in unionSeq value);
+		octet echo_octet(in octet value);
+		octetSeq echo_octets(in octetSeq value);
+		short echo_short(in short value);
+		shortSeq echo_shorts(in shortSeq value);
+		FullStruct echo_struct(in FullStruct value);
+		structSeq echo_structs(in structSeq value);
+		::CORBA::TypeCode echo_type(in ::CORBA::TypeCode value);
+		typeSeq echo_types(in typeSeq value);
+		Object echo_objref(in Object value);
+		objrefSeq echo_objrefs(in objrefSeq value);
+		long echo_long(in long value);
+		longSeq echo_longs(in longSeq value);
+		any echo_any(in any value);
+		anySeq echo_anys(in anySeq value);
+		double echo_double(in double value);
+		doubleSeq echo_doubles(in doubleSeq value);
+		char echo_char(in char value);
+		charSeq echo_chars(in charSeq value);
+		float echo_float(in float value);
+		floatSeq echo_floats(in floatSeq value);
+		TypeEnum echo_enum(in TypeEnum value);
+		enumSeq echo_enums(in enumSeq value);
+		boolean echo_boolean(in boolean value);
+		booleanSeq echo_booleans(in booleanSeq value);
+		unsigned long echo_ulong(in unsigned long value);
+		ulongSeq echo_ulongs(in ulongSeq value);
+		void raise_empty() raises (EmptyExcept);
+		void raise_full() raises (FullExcept);
+	};
+};

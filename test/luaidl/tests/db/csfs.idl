@@ -1,0 +1,443 @@
+module csfs {
+
+    module remote {
+
+/**
+ * FileServer representa o servidor de arquivos remotos e mantem
+ * uma referencia para a raiz da arvore do sistema de arquivos exportado.
+ * Diversos servidores de arquivo podem coexistir em uma mesma maquina, através
+ * de processos e portas TCP distintos.
+ */
+        interface FileServer;
+
+/**
+ * RemoteFile representa um arquivo remoto. Um arquivo, como na
+ * maioria dos sistemas de arquivos tradicionais, pode representar um diretorio
+ * ou um arquivo de dados.
+ */
+        interface RemoteFile;
+
+/**
+ * Channel representa o mecanismo de interacao com os arquivos de
+ * dados, definindo fluxos que permitem a leitura e escrita nos arquivos
+ * remotos.
+ */
+        interface Channel;
+
+/**
+ * ReadChannel representa o canal de leitura de um arquivo remoto.
+ */
+        interface ReadChannel;
+
+/**
+ * WriteChannel representa o canal de escrita de um arquivo remoto.
+ */
+        interface WriteChannel;
+
+/**
+ * RandomAccessChannel representa o canal de acesso randomico ao
+ * arquivo remoto, suas funcionalidades englobam as funcionalidades dos canais
+ * de leitura e escrita. Tipicamente, o desempenho das operacoes serah
+ * prejudicado.
+ */
+        interface RandomAccessChannel;
+
+/**
+ * Path eh um caminho representado por uma sequencia de strings, todos os
+ * elementos da sequencia, exceto o ultimo, representam um diretorio do sistema
+ * de arquivos local, ou um mount point definido para um outro sistema de
+ * arquivos. O ultimo elemento da sequencia pode representar um arquivo de
+ * dados, um diretorio, ou um mount point.
+ */
+        typedef sequence<string> Path;
+
+        typedef sequence<string> FieldSequence;
+/**
+ * FileSequence representa uma lista de arquivos, usualmente os filhos de um
+ * diretorio.
+ */
+        typedef sequence<RemoteFile> FileSequence;
+
+/**
+ * OctetSequence representa uma lista de bytes, usualmente utilizado na leitura
+ * ou escrita de dados, e na obtencao do hash (MD5) do arquivo.
+ */
+        typedef sequence<octet> OctetSequence;
+
+        struct Metadata {
+            string field;
+            OctetSequence value;
+        };
+
+        typedef sequence<Metadata> MetadataSequence;
+
+/**
+ * FileAlreadyExistsException indica um conflito entre um arquivo
+ * preexistente e um arquivo que estah sendo criado.
+ */
+        exception FileAlreadyExistsException {
+            Path name;
+        };
+
+/**
+ * FileNotFoundException indica que um arquivo nao pode ser encontrado.
+ */
+        exception FileNotFoundException {
+            Path name;
+        };
+
+/**
+ * FileInUseException indica que um arquivo estah sendo usado pelo sistema e
+ * que a operacao solicitada nao pode ser realizada. Vale salientar que o
+ * acesso externo ao arquivo nao eh representado por essa excecao e o
+ * comportamento final eh indeterminado.
+ */
+        exception FileInUseException {
+            Path name;
+        };
+
+/**
+ * NotFileException indica que o arquivo nao corresponde a um arquivo de dados.
+ */
+        exception NotFileException {
+            Path name;
+        };
+
+/**
+ * NotDirectoryException indica que o arquivo nao corresponde a um diretorio.
+ */
+        exception NotDirectoryException {
+            Path name;
+        };
+
+/**
+ * NotEmptyException indica que o diretorio nao estah vazio.
+ */
+        exception NotEmptyException {
+            Path name;
+        };
+
+/**
+ * InvalidPathException indica que um caminho invalido foi fornecido.
+ * Por exemplo:
+ * 1. um caminho fora da arvore exportada (como ".." sobre a raiz).
+ * 2. um caminho contendo o caracter "/" ou "\"
+ * 3. um caminho contendo caracteres invalidos de acordo com o sistema de
+ *    arquivos local.
+ */
+        exception InvalidPathException {
+            Path name;
+        };
+
+/**
+ * ClosedChannelException indica que o canal nao pode ser utilizado por
+ * estar atualmente fechado. Um canal pode estar fechado por ter recebido uma
+ * solicitacao ao metodo close() ou por ter passado por um periodo de
+ * inatividade. O fechamento automatico do canal eh necessario para evitar
+ * alocacao indefinida de recursos.
+ */
+        exception ClosedChannelException {
+            Channel ch;
+        };
+
+/**
+ * InvalidStateException indica que o objeto remoto se encontra em um estado
+ * incompativel com a solicitacao atual, como no caso onde um arquivo foi
+ * removido. O atributo message indica qual o problema enfrentado pelo servidor.
+ */
+        exception InvalidStateException {
+            string message;
+            Path name;
+        };
+
+/**
+ * Verificar definicao na declaracao desse elemento (acima).
+ */
+        interface RemoteFile {
+
+/**
+ * Cria um diretorio no caminho especificado. Caso o caminho possua mais de
+ * um elemento, todos os elementos necessarios sao criados.
+ */
+            RemoteFile createDirectory(in Path name)
+                raises(FileAlreadyExistsException, NotDirectoryException,
+                       InvalidPathException, InvalidStateException);
+/**
+ * Cria um arquivo de dados no caminho especificado. Caso o caminho possua
+ * mais de um elemento, todos os elementos necessarios sao criados.
+ */
+            RemoteFile createFile(in Path name)
+                raises(FileAlreadyExistsException, NotDirectoryException,
+                       InvalidPathException, InvalidStateException);
+
+/**
+ * Indica se esse RemoteFile representa um diretorio.
+ */
+            boolean isDirectory()
+                raises(InvalidStateException);
+
+/**
+ * Cria um Mount Point para um outro arquivo, potencialmente em outro sistema
+ * de arquivos. Caso o caminho possua mais de um elemento, todos os elementos
+ * necessarios sao criados e o ultimo representa o mount propriamente dito.
+ */
+            boolean addMountPoint(in Path name, in RemoteFile target)
+                raises(FileAlreadyExistsException, NotDirectoryException,
+                       InvalidPathException, InvalidStateException);
+
+/**
+ * Remove um mount point. Como a operação de "remove" requer uma referencia
+ * ao arquivo a ser removido e a tentativa de recuperar o mount retorna o
+ * arquivo alvo do mount, nao eh possivel remover um mount point atraves
+ * do "remove". Essa funcao remove o mount sem alterar o arquivo alvo.
+ */
+            RemoteFile removeMountPoint(in Path name)
+                raises(NotDirectoryException, InvalidPathException,
+                       FileNotFoundException, InvalidStateException);
+
+/**
+ * Recupera o nome do arquivo.
+ */
+            string getName()
+                raises(InvalidStateException);
+
+/**
+ * Recupera toda a sequencia de elementos necessária para recupertar o arquivo.
+ * Esse caminho eh absoluto no contexto do servidor de arquivos e nao expoe
+ * a localizacao do arquivo no sistema de arquivos local.
+ */
+            Path getFullName()
+                raises(InvalidStateException);
+
+/**
+ * Copia o conteudo do arquivo de dados para um outro arquivo de dados.
+ * O metodo utilizado na copia eh definido através do servidor. Dois metodos
+ * estao disponiveis:
+ * 1. Metodo CORBA, onde os canais so utilizados para a escrita dos dados.
+ * 2. Metodo NIO, onde a transferencia eh realizada atraves de sockets e
+ *    NIO Channels.
+ */
+            boolean copyTo(in RemoteFile destination)
+                raises(NotFileException, InvalidStateException);
+
+/**
+ * Remove um arquivo. Caso o arquivo de dados esteja em uso, ou o diretorio
+ * nao esteja vazio, uma excecao eh lancada. A validacao do uso corrente do
+ * arquivo eh feita no contexto do sistema (sem condiderar o uso por
+ * aplicacoes externas). Esse metodo nao remove uma arvore de diretorios.
+ * A semantica da remocao recursiva eh dependente do uso dado ao sistema e
+ * funcao deve ser implementada externamente.
+ */
+            boolean remove()
+                raises(FileInUseException, NotEmptyException,
+                       InvalidStateException);
+
+/**
+ * Recupera um filho especifico de um diretorio. O caminho pode conter diretorios
+ * e definicoes de Mount Points.
+ */
+            RemoteFile getChild(in Path name)
+                raises(NotDirectoryException, InvalidPathException,
+                       FileNotFoundException, InvalidStateException);
+
+/**
+ * Recupera a lista de arquivos de um diretorio.
+ */
+            FileSequence getChildren()
+                raises(NotDirectoryException, InvalidStateException);
+
+/**
+ * Recupera o arquivo pai. No caso de Mount Point, retorna o diretorio pai ao
+ * arquivo que estah referenciado no mount (e nao o diretorio onde o mount foi
+ * adicionado).
+ */
+            RemoteFile getParent()
+                raises(InvalidPathException, InvalidStateException);
+
+/**
+ * Indica o tamanho do arquivo de dados.
+ */
+            long long size()
+                raises(NotFileException,InvalidStateException);
+
+/**
+ * Calcula o hash (MD5) do arquivo de dados.
+ */
+            OctetSequence hash()
+                raises(NotFileException, InvalidStateException);
+
+/**
+ * Recupera o servidor de arquivos ao qual esse arquivo estah associado.
+ */
+            FileServer getFileServer();
+
+/**
+ * Recupera o canal de leitura para esse arquivo de dados.
+ */
+            ReadChannel getReadChannel()
+                raises(NotFileException, InvalidStateException);
+
+/**
+ * Recupera o canal de escrita para esse arquivo de dados.
+ */
+            WriteChannel getWriteChannel()
+                raises(NotFileException, InvalidStateException);
+
+/**
+ * Recupera o canal de acesso randomico (leitura e escrita) para esse arquivo
+ * de dados.
+ */
+            RandomAccessChannel getRandomAccessChannel()
+                raises(NotFileException, InvalidStateException);
+
+
+/**
+ * Metadada related stuff
+ */
+            void setMetadata(in MetadataSequence metadata)
+                raises(NotFileException, InvalidStateException);
+
+            MetadataSequence getMetadata(in FieldSequence fields)
+                raises(NotFileException, InvalidStateException);
+
+            MetadataSequence getAllMetadata()
+                raises(NotFileException, InvalidStateException);
+
+            void updateMetadata(in MetadataSequence metadata)
+                raises(NotFileException, InvalidStateException);
+
+/**
+ * Non-Portable operations (check what to do)
+ */
+            void enableExecutionPermission()
+                raises(InvalidStateException);
+
+        };
+
+/**
+ * Verificar definicao na declaracao desse elemento (acima).
+ */
+        interface Channel {
+
+/**
+ * indica se o canal estah aberto.
+ */
+            boolean isOpen() raises(InvalidStateException);
+
+/**
+ * Recupera o arquivo de dados associado a esse canal.
+ */
+            RemoteFile getFile() raises(InvalidStateException);
+
+/**
+ * fecha o canal.
+ */
+            void close() raises(InvalidStateException);
+
+        };
+
+/**
+ * Verificar definicao na declaracao desse elemento (acima).
+ */
+        interface WriteChannel : Channel {
+
+/**
+ * Escreve uma sequencia de bytes no canal. O numero de bytes escritos eh igual
+ * ao parametro size, e em caso de sucesso, o mesmo valor eh retornado.
+ */
+            long write(in unsigned long size, in OctetSequence buffer)
+                raises(ClosedChannelException, InvalidStateException);
+
+        };
+
+/**
+ * Verificar definicao na declaracao desse elemento (acima). A funcao skip deve
+ * receber valores positivos.
+ */
+        interface ReadChannel : Channel {
+
+/**
+ * Ignora os proximos bytes do arquivo. O numero de bytes realmente ignorados
+ * eh retornado pelo metodo.
+ */
+            unsigned long long skip(in unsigned long long num)
+                raises(ClosedChannelException, InvalidStateException);
+
+/**
+ * Le uma sequencia de bytes do canal. O numero de bytes lido eh retornado pelo
+ * metodo e pode ser tao grande quando o parametro passado.
+ */
+            long read(in unsigned long size, inout OctetSequence buffer)
+                raises(ClosedChannelException, InvalidStateException);
+
+        };
+
+/**
+ * Verificar definicao na declaracao desse elemento (acima). Em relacao a funcao
+ * skip, esse canal pode receber valores negativos, com o objetivo de voltar a
+ * uma posicao anterior. O ponteiro fica confinado no arquivo, limitado pelo seu
+ * tamanho e pela posicao zero.
+ */
+        interface RandomAccessChannel : ReadChannel, WriteChannel {
+
+/**
+ * Ajusta o ponteiro do arquivo para uma determinada posicao dentro do arquivo.
+ */
+            void seek(in unsigned long long num)
+                raises(ClosedChannelException, InvalidStateException);
+
+        };
+
+/**
+ * Verificar definicao na declaracao desse elemento (acima).
+ */
+        interface FileServer {
+
+/**
+ * Recupera o nome simbolico desse servidor de arquivos.
+ */
+            string getName();
+
+/**
+ * Recupera a referencia para o arquivo que corresponde a raiz da arvore
+ * exportada por esse servidor.
+ */
+            RemoteFile getRoot();
+
+/**
+ * Atribui o valor desejado para o tamanho do bloco de escrita, utilizado na
+ * funcao de copia via CORBA.
+ */
+            void setTransferBlockSize(in long size);
+
+/**
+ * Recupera o tamanho do bloco que serah utilizado nas futuras copias via CORBA.
+ */
+            long getTransferBlockSize();
+
+/**
+ * Atribui o metodo a ser utilizado na copia de arquivos de dados.
+ */
+            void setTransferMethod(in string method);
+
+/**
+ * Recupera o nome do metodo utilizado na copia de arquivos de dados.
+ */
+            string getTransferMethod();
+
+/**
+ * Recupera o endereco do servidor NIO a ser utilizado na copia de arquivo de
+ * dados seguindo o metodo NIO.
+ */
+            string getNIOCopyServerAddress();
+
+/**
+ * Recupera o espaco livre no sistema de arquivos, retorno em MegaBytes.
+ */
+            long long getFreeSpace();
+
+/** debug purposes */
+            void shutdown();
+        };
+    };
+};

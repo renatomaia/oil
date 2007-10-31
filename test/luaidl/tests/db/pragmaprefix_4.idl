@@ -1,0 +1,4 @@
+module M {
+  #include "pragmaprefix_4_inc.idl"
+} ;
+

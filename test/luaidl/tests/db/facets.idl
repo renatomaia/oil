@@ -1,0 +1,9 @@
+// Definition in IDL 3.0:
+module facets {
+	interface FacetInterface {
+		void facet_operation();
+	};
+	component MyComponent {
+		provides FacetInterface myfacet;
+	};
+};

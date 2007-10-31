@@ -1,0 +1,14 @@
+/*
+ * sga.idl
+ *
+ * $Author: taciana $
+ * $Revision: 1.1 $ - $Date: 2003/06/30 20:05:05 $
+ */
+
+#ifndef _SGA_IDL
+#define _SGA_IDL
+
+#include "sga-manager.idl"
+#include "sga-daemon.idl"
+
+#endif

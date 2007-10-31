@@ -1,0 +1,165 @@
+module PerfTest {
+	
+	struct MyStruct {
+		short           short_value  ;
+		unsigned short  ushort_value ;
+		long            long_value   ;
+		unsigned long   ulong_value  ;
+		float           float_value  ;
+		double          double_value ;
+		boolean         boolean_value;
+		octet           octet_value  ;
+		string          string_value ;
+	};
+	
+/*	union MyUnion switch(short) {
+		case 8: short          short_value  ;
+		case 7: unsigned short ushort_value ;
+		case 6: long           long_value   ;
+		case 5: unsigned long  ulong_value  ;
+		case 4: float          float_value  ;
+		case 3: double         double_value ;
+		case 2: boolean        boolean_value;
+		case 1: octet          octet_value  ;
+		case 0: string         string_value ;
+	};
+*/	
+	enum MyEnum { MON, TUE, WED, THU, FRI };
+	
+	typedef sequence<string> MySequence;
+	typedef string           MyArray[5];
+	typedef string           MyTypedef ;
+	
+	exception MyExcept {
+		short          short_value  ;
+		unsigned short ushort_value ;
+		long           long_value   ;
+		unsigned long  ulong_value  ;
+		float          float_value  ;
+		double         double_value ;
+		boolean        boolean_value;
+		octet          octet_value  ;
+		string         string_value ;
+	};
+	
+	interface OnlyCall {
+		void simple();
+		void raising() raises (MyExcept);
+	};
+
+	interface OneWayIn {
+		void shortvalue   (in short          value);
+		void longvalue    (in long           value);
+		void ushortvalue  (in unsigned short value);
+		void ulongvalue   (in unsigned long  value);
+		void floatvalue   (in float          value);
+		void doublevalue  (in double         value);
+		void booleanvalue (in boolean        value);
+		void charvalue    (in char           value);
+		void octetvalue   (in octet          value);
+		void stringvalue  (in string         value);
+		
+		void structvalue  (in MyStruct   value);
+//		void unionvalue   (in MyUnion    value);
+		void enumvalue    (in MyEnum     value);
+		void sequencevalue(in MySequence value);
+		void arrayvalue   (in MyArray    value);
+		void typedefvalue (in MyTypedef  value);
+		
+		void TypeCodevalue(in MyTypedef  value);
+		void anyvalue     (in any        value);
+	};
+
+	interface OneWayOut {
+		void shortvalue   (out short          value);
+		void longvalue    (out long           value);
+		void ushortvalue  (out unsigned short value);
+		void ulongvalue   (out unsigned long  value);
+		void floatvalue   (out float          value);
+		void doublevalue  (out double         value);
+		void booleanvalue (out boolean        value);
+		void charvalue    (out char           value);
+		void octetvalue   (out octet          value);
+		void stringvalue  (out string         value);
+		
+		void structvalue  (out MyStruct   value);
+//		void unionvalue   (out MyUnion    value);
+		void enumvalue    (out MyEnum     value);
+		void sequencevalue(out MySequence value);
+		void arrayvalue   (out MyArray    value);
+		void typedefvalue (out MyTypedef  value);
+		
+		void TypeCodevalue(out MyTypedef  value);
+		void anyvalue     (out any        value);
+	};
+
+	interface EchoInOut {
+		void shortvalue   (inout short          value);
+		void longvalue    (inout long           value);
+		void ushortvalue  (inout unsigned short value);
+		void ulongvalue   (inout unsigned long  value);
+		void floatvalue   (inout float          value);
+		void doublevalue  (inout double         value);
+		void booleanvalue (inout boolean        value);
+		void charvalue    (inout char           value);
+		void octetvalue   (inout octet          value);
+		void stringvalue  (inout string         value);
+		
+		void structvalue  (inout MyStruct   value);
+//		void unionvalue   (inout MyUnion    value);
+		void enumvalue    (inout MyEnum     value);
+		void sequencevalue(inout MySequence value);
+		void arrayvalue   (inout MyArray    value);
+		void typedefvalue (inout MyTypedef  value);
+		
+		void TypeCodevalue(inout MyTypedef  value);
+		void anyvalue     (inout any        value);
+	};
+
+	interface Returned {
+		short          shortvalue   ();
+		long           longvalue    ();
+		unsigned short ushortvalue  ();
+		unsigned long  ulongvalue   ();
+		float          floatvalue   ();
+		double         doublevalue  ();
+		boolean        booleanvalue ();
+		char           charvalue    ();
+		octet          octetvalue   ();
+		string         stringvalue  ();
+		               
+		MyStruct       structvalue  ();
+//		MyUnion        unionvalue   ();
+		MyEnum         enumvalue    ();
+		MySequence     sequencevalue();
+		MyArray        arrayvalue   ();
+		MyTypedef      typedefvalue ();
+		
+		MyTypedef      TypeCodevalue();
+		any            anyvalue     ();
+	};
+
+	interface ReturnedEcho {
+		short          shortvalue   (in short          value);
+		long           longvalue    (in long           value);
+		unsigned short ushortvalue  (in unsigned short value);
+		unsigned long  ulongvalue   (in unsigned long  value);
+		float          floatvalue   (in float          value);
+		double         doublevalue  (in double         value);
+		boolean        booleanvalue (in boolean        value);
+		char           charvalue    (in char           value);
+		octet          octetvalue   (in octet          value);
+		string         stringvalue  (in string         value);
+		               
+		MyStruct       structvalue  (in MyStruct   value);
+//		MyUnion        unionvalue   (in MyUnion    value);
+		MyEnum         enumvalue    (in MyEnum     value);
+		MySequence     sequencevalue(in MySequence value);
+		MyArray        arrayvalue   (in MyArray    value);
+		MyTypedef      typedefvalue (in MyTypedef  value);
+		
+		MyTypedef      TypeCodevalue(in MyTypedef  value);
+		any            anyvalue     (in any        value);
+	};
+	
+};

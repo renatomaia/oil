@@ -1,0 +1,16 @@
+interface I {
+  typedef long L ;
+} ;
+
+interface I2 {
+  typedef char C ;
+} ;
+
+module Z {
+  interface F { } ;
+} ;
+
+component X supports ::I, I2 {
+  provides Object O ;
+  provides I XI ;
+} ;

@@ -1,0 +1,11 @@
+module CosNaming {
+  enum TypeKind { NIL, BOOL, INT, REAL, TEXT };
+    union TypedValue switch(TypeKind) {
+      case BOOL: boolean boolval; // LuaIDL não acha o BOOL
+      case INT : long intval;
+      case REAL: double realbal;
+      case TEXT: string textval;
+    };
+
+  enum BindingType { nobject, ncontext };
+} ;

@@ -1,0 +1,6 @@
+module M { interface X { }; } ;
+
+typedef char new ;
+
+#pragma ID M "IDL:MM:1.0"
+

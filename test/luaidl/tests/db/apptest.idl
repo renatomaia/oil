@@ -1,0 +1,26 @@
+module AppTest {
+  interface Testing {
+    oneway void say(in string text);
+    oneway void sayagain(in string text);
+  };
+  module NestedModule {
+    interface WhaatInterface {
+      float sum( in float a, in float b );
+    };
+  };
+};
+
+module Mod2 {
+  struct date {
+    long day;
+    long month;
+    long year;
+    string text;
+  };
+    
+  interface Testing {
+    typedef string mytype;
+    oneway void say(in mytype text);
+    oneway void print_time( in date currDate );
+  };  
+};

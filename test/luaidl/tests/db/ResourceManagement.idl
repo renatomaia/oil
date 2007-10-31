@@ -1,0 +1,290 @@
+//FIXME: Removed oneway, leaving only void to deal with current O^2 limitation
+//FIXME: Uncomment modules when O^2 adds support for nested modules
+//FIXME: uncomment block comments when O^2 adds support for them
+//FIXME: Separate in different IDL files when supported by O^2
+
+  //--------------------------------------------------------------------------------------
+  module subsubtypes{
+
+    typedef sequence<string> FileNameSeq; ///< A sequence of filenames 
+    typedef sequence<octet> File;         ///< A file, represented as a binary stream 
+
+  };
+
+  //--------------------------------------------------------------------------------------
+  module subtypes{
+
+    ///
+    /// Struct FileStruct - Represents a File with its associated filename
+    ///
+    struct FileStruct{
+      string filename;        ///< The name of the given file
+      subsubtypes::File file; ///< File contents, represented as a binary stream
+    };
+
+    ///
+    /// Struct AsctRequestId - a request ID as issued by the grid client(ASCT)
+    ///
+    struct AsctRequestId{
+      string appMainRequestId; ///< The ID of the requested application
+      string appNodeRequestId; ///< The ID of ONE of the nodes of the requested application
+    };
+  };
+
+  //--------------------------------------------------------------------------------------
+  module types{
+
+    typedef sequence<subtypes::FileStruct> FileSeq;
+
+    ///
+    /// Struct StaticInfo - Holds static information of a given node.
+    ///
+    struct StaticInfo{
+      string hostName;      ///< Hostname
+      string osName;        ///< OSName
+      string osVersion;     ///< OSVersion
+      string processorName; ///< Processor Maker
+      long processorMhz;    ///< Processor Operating Frequency
+      long totalRAM;        ///< Total RAM
+      long totalSwap;       ///< Total swap space
+    };
+
+    ///
+    /// Struct DynamicInfo - Holds dynamic information of a given node.
+    ///
+    struct DynamicInfo{
+      long freeRAM;    ///< Available RAM, in bytes
+      long freeSwap;   ///< Available swap, in bytes
+      long fsFree;     ///< Available disk space, in bytes
+      long filesFree;  ///< Maximum number of files that can be created
+      string cpuUsage; ///< Used CPU percentage
+      long fsTotal;    ///< Total disk space (variable due to the way it is calculated)
+      long filesTotal; ///< Total files (variable due to the way it is calculated)
+    };
+
+    ///
+    /// OfferSpecs - Holds information about an execution request that was accepted by a LRM
+    ///
+    struct OfferSpecs{
+      string lrmIor;
+      subtypes::AsctRequestId asctRequestId;
+      string lrmRequestId;
+    };
+
+    ///
+    ///Struct CommonExecutionSpecs - Contains details that applies to all nodes of a given
+    ///application, be it sequential, Bag-Of-Tasks, or BSP
+    ///
+    struct CommonExecutionSpecs{
+      string requestingAsctIor;      ///< IOR of the ASCT which originated the request
+      string grmIor;                 ///< FIXME: Should we drop it, cos we only have one LRM?
+      string applicationId;          ///< a unique identifier used to fetch the application
+                                     ///    from an Application Repository
+      string applicationConstraints; ///< Constraints that should be applied to execution
+                                     /// (e.g. platform, amount of memory, etc...)
+      string applicationPreferences; ///< Preferences that should be applied when looking
+                                     ///    for a host to the application
+      string deniedExecution;        ///< List of LRMs which refused to execute the application
+    };
+
+    ///
+    ///Struct DistinctExecutionSpecs - Contains information that apply to ONE SPECIFIC node
+    ///of a given application, be it sequential, Bag-Of-Tasks, or BSP
+    ///
+    struct DistinctExecutionSpecs{
+      subtypes::AsctRequestId asctRequestId;///< The ID of the request, as issued by the grid
+                                            ///  client (ASCT)
+      string applicationArgs;               ///< The application arguments
+      subsubtypes::FileNameSeq outputFiles; ///< The application output files names
+    };
+
+
+    ///
+    ///Struct BspInfo - Used to inform if a node of the BSP application is the Process Zero,
+    ///otherwise it contains the Process Zero IOR
+    ///
+    struct BspInfo{
+      boolean isProcessZero; ///< True ONLY if the node is Process Zero
+      string processZeroIor; ///< If isProcessZero is false, contains the Process Zero IOR 
+    };
+
+  };//types
+
+  //--------------------------------------------------------------------------------------
+  module yetAnotherType{
+
+    typedef sequence<types::DistinctExecutionSpecs> DistExecSpecsSeq; ///< A sequence of
+                                                                      /// DistinctExecutionSpecs
+  };
+
+  //--------------------------------------------------------------------------------------
+  module interfaces{
+
+    ///
+    ///Interface LRM - Represent the LRM abstraction, which is responsible for providing
+    ///information about resource availability on a given InteGrade machine. It also
+    ///allows for the execution of grid applications on a given node
+    ///
+    interface Lrm{
+
+      ///
+      ///Sets the interval between each query to determine available
+      ///system resources(e.g. Free RAM and CPU)
+      ///
+      /// @param seconds - sample interval in seconds
+      ///
+      void setSampleInterval(in long seconds);
+
+      ///
+      ///Sets the maximum interval between updates sent to the GRM
+      ///
+      ///@param seconds - keep-alive interval in seconds
+      ///
+      void setKeepAliveInterval(in long seconds);
+
+      ///
+      ///Called by a GRM to test if the given LRM is up
+      ///
+      void ping();
+
+      ///
+      /// Receive a remote execution request from a GRM
+      ///
+      /// Analog to 2k's "perform_query"
+      ///
+      /// @param commonSpecs - common specs to all application nodes
+      /// @param distinctSpecs - specific specs regarding a given application node. In
+      /// the case of sequential applications, there is only one spec
+      ///
+      void remoteExecutionRequest(in types::CommonExecutionSpecs commonSpecs,
+                                  in types::DistinctExecutionSpecs distinctSpecs);
+
+
+      ///
+      ///Return an application's output files
+      ///
+      /// @param appId - the ID of the application which files should be returned
+      ///
+      types::FileSeq requestOutputFiles(in string appId);
+
+      ///
+      ///Returns the status of a given application(i.e. running or finished)
+      ///
+      /// @param appId - id of the application which will have its status returned
+      ///
+      string getStatus(in string appId);
+
+      ///
+      ///Kills an application
+      ///
+      /// @param appId - id of the application which will be killed
+      ///
+      void kill(in string appId);
+
+    };//Lrm
+
+    ///
+    ///Inteface GRM - the GRM acts as the cluster information service, storing information
+    ///regarding resource availability in each of the cluster nodes. It also serves as a
+    ///scheduling service, scheduling grid applications to cluster nodes.
+    ///
+    interface Grm{
+
+      ///
+      /// Registers a LRM with this GRM
+      ///
+      /// @param lrmIor - LRM's IOR
+      /// @param staticInfo - Node's Static Info
+      ///
+      void registerLrm (in string lrmIor, in types::StaticInfo staticInfo);
+
+      ///
+      /// Updates LRM information in this GRM
+      ///
+      /// @param lrmIor - LRM's IOR
+      /// @param dynamicInfo - Node's Dynamic Info
+      ///
+      void sendUpdate (in string lrmIor, in types::DynamicInfo dynamicInfo);
+
+      ///
+      /// Receive a execution request from a LRM, that should be redirected to a suitable
+      /// LRM, if any
+      ///
+      /// Analog to 2k's "perform_query"
+      ///
+      /// @param commonSpecs - common specs to all application nodes
+      /// @param distinctSpecs - specific specs regarding a given application node. In
+      /// the case of sequential applications, there is only one spec
+      /// @param forceDifferentMachines - if true, the GRM will only service the request
+      /// if EACH of the application nodes can be executed on a different machine
+      ///
+      void remoteExecutionRequest(in types::CommonExecutionSpecs commonSpecs,
+                                  in yetAnotherType::DistExecSpecsSeq distinctSpecs,
+                                  in boolean forceDifferentMachines);
+
+    };//interface Grm
+
+    ///
+    ///Inteface ASCT - the ASCT allows a user to register application with an Application
+    ///Repository. It also allows the user to submit execution requests to a GRM, specifying
+    ///constraints and preferences, if applicable
+    ///
+    interface Asct{
+
+      ///
+      ///
+      /// Receive confirmation from a remote LRM that accepted our
+      /// execution request
+      ///
+      /// Analog to 2k's "ACK"
+      ///
+      /// @param offSpecs - Offer information
+      ///
+      void acceptedExecutionRequest(in types::OfferSpecs offSpecs);
+
+      ///
+      /// Receive notice that one of our queries was rejected
+      /// by all other LRMs (Though we can retry again if we
+      /// so wish)
+      ///
+      /// Analog to 2k's "NACK"
+      ///
+      /// @param requestId - Id of the refused request
+      ///
+      ///
+      void refusedExecutionRequest(in subtypes::AsctRequestId asctRequestId);
+
+      ///
+      /// Receive request for input files needed to allow the remote execution of
+      /// a request made by this ASCT
+      ///
+      /// @param asctRequestId - the request ID as issued by the requesting ASCT,
+      /// used to retrieve the correspondent input files
+      /// @return all files needed by the remote execution
+      ///
+      types::FileSeq requestInputFiles(in subtypes::AsctRequestId asctRequestId);
+
+      ///
+      /// Receive notification that a given application finished executing
+      ///
+      /// @param appId - the id of the finished application
+      ///
+      void appFinished(in subtypes::AsctRequestId asctRequestId);
+
+      ///
+      /// Register a BSP application's node
+      ///
+      /// @param appId - ASCT application ID of the correspondent application request
+      /// @param bspProxyIor - bspProxyIor
+      ///
+      /// @returns a BspInfo, indicating if the given application node should act as
+      /// process zero, or as a regular node. In the last situation, BspInfo will
+      /// contain the Process Zero IOR
+      types::BspInfo registerBspNode(in string appMainRequestId,
+                                     in string bspProxyIor);
+
+    };//Asct
+
+
+
+}; //Interfaces

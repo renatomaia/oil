@@ -1,0 +1,563 @@
+
+/**
+ * @mainpage
+ * @section intro Introdução
+ * O serviço WIO oferece um conjunto de classes CORBA para acesso
+ * ao sistema de arquivos dos ambientes cliente-servidor implementados
+ * com o CSBASE.
+ * <p>
+ * Essas classes implementadas em <i>servants</i> dentro do serviço
+ * <b>WIO Service</b> do CSBASE. 
+ * <p>
+ * Seu pacote Java é:
+ * <ul>
+ * <li><code>package csbase.server.services.wioservice</code>
+ * </ul>
+ */
+
+/**
+ * @file wio.idl
+ * Arquivo de especificação da IDL para o serviço WIO (Web/IO).
+ * $Id: wio.idl,v 1.17 2004/12/06 18:27:44 clinio Exp $
+ * @author André Luiz Clinio
+ */
+
+#ifndef _WIO_IDL
+#define _WIO_IDL
+
+/**
+ * Módulo do CSBASE
+ */
+module csbase {
+/**
+ * Módulo do servidor CSBASE.
+ */
+module server {
+/**
+ * Módulo dos serviços no CSBASE.
+ */
+module services {
+
+/** 
+ * Módulo com as interfaces entre um cliente WIO remoto e o 
+ * servidor de arquivos (WIOService) no CSBASE.
+ */
+module wioservice {
+
+/**
+ * Módulo das classes geradas pelo compilador idl para geração
+ * do servidor CSBASE.
+ */
+module idl {
+
+   /**
+    * Exceção vinda do servidor de operações no FS remoto.
+    */
+   exception WIOServiceException {
+     string message; /**< Mensagem vinda do servidor */
+   };
+
+   /**
+    * Informação sobre uma data/hora relativa a um arquivo/diretório
+    * de arquivos CSBASE (hora do servidor).
+    */
+   struct WIODateTimeInfo {
+     long day;  /**< Dia */
+     long month;  /**< Mês*/
+     long year; /**< Ano */
+     long hour; /**< Hora */
+     long minute; /**< Minuto */
+     long second; /**< Segundo */
+   };
+
+   /**
+    * Informação de um arquivo no projeto remoto dentro do servidor
+    * de arquivos CSBASE.
+    */
+   struct FileInfo {
+     string fileType;  /**< Tipo do arquivo */
+     long sizeBytes;  /**< Tamanho em bytes */
+     string path; /**< Path completo no projeto */
+     boolean isDirectory; /**< Flag de diretório */
+     boolean underConstruction; /**< Flag de em construção */
+   };
+
+   /**
+    * Tipo de seqüência de informações de arquivos em um projeto remoto
+    * no servidor CSBASE.
+    */
+   typedef sequence<FileInfo> FileInfos;
+
+   /**
+    * Informação de projetos compartilhados.
+    */
+   struct UserProject{
+     string ownerId;   /**< Identificador do usuário dono do projeto*/
+     string ownerName; /**< Nome do usuário dono */
+     string projectId; /**< Identificador do projeto. */
+   };
+
+   /**
+    *
+    */
+   typedef sequence<UserProject> UserProjects;
+
+   /**
+    * Modos de abertura de um arquivo remoto.
+    * @see WIOFile::open
+    * @see WIOFile::close
+    */
+   enum WIOFileMode {
+     NOT_OPENED, /**< Arquivo não está aberto. */
+     MODE_READ,  /**< Arquivo está aberto para leitura.  */
+     MODE_WRITE  /**< Arquivo está aberto para escrita. */
+   };
+
+   /**
+    * Modos de ajuste de posicionamento da posição corrente do
+    * arquivo remoto (em bytes).
+    * @see WIOFile::seek
+    */
+   enum SeekType {
+     SEEK_TYPE_SET, /**< Ajuste de posição absoluta no arquivo. */
+     SEEK_TYPE_CUR, /**< Ajuste relativo à posição corrente no arquivo. */
+     SEEK_TYPE_END /**< Ajuste de posição a partir do fim do arquivo. */
+   };
+
+   /**
+    * Tipo de representa uma seqüência de bytes que é transmitida nas
+    * operações de read e write do arquivo remoto.
+    * @see WIOFile::read
+    * @see WIOFile::write
+    */
+   typedef sequence<octet> Bytes;
+
+   /* Declaração implícita para uso no WIOFile */
+   interface WIOProject;
+
+   /**
+    * Interface de objeto que representa um arquivo ou diretório
+    * remoto no servidor CSBASE.
+    */
+   interface WIOFile{
+
+     /**
+      * Método para finalização do arquivo remoto.
+      */
+     void destroy() raises (WIOServiceException);
+
+     /**
+      * Método para consulta da descrição do arquivo.
+      * @return uma string de descrição.
+      */
+     string getDescription() raises (WIOServiceException);
+
+     /**
+      * Método para ajuste da descrição do arquivo.
+      * @param description uma string de descrição.
+      * @return um flag indicando o sucesso da operação
+      */
+     void setDescription(in string description) raises (WIOServiceException);
+
+     /**
+      * Método para acréscimo na descrição do arquivo.
+      * @param description uma string de descrição adicionada.
+      * @return um flag indicando o sucesso da operação
+      */
+     void appendDescription(in string description) raises (WIOServiceException);
+
+     /**
+      * Método para consulta do path remoto do arquivo.
+      * @return uma string que representa o arquivo em um path 
+      * no projeto remoto.
+      */
+     string getPath() raises (WIOServiceException);
+
+     /**
+      * Método para consulta do <code>WIOFile</code> superior (diretório)
+      * do objeto remoto.
+      * @return um diretório remoto do tipo WIOFile.
+      */
+     WIOFile getParent() raises (WIOServiceException);
+
+     /**
+      * Consulta ao projeto remoto a que pertence o arquivo (diretório).
+      * @return um projeto remoto.
+      */
+     WIOProject getProject() raises (WIOServiceException);
+
+     /**
+      * Método para consulta da permissão de leitura do arquivo.
+      * @return um flag booleano indicativo.
+      */
+     boolean canRead() raises (WIOServiceException);
+
+     /**
+      * Método para consulta da permissão de escrita do arquivo.
+      * @return um flag booleano indicativo.
+      */
+     boolean canWrite() raises (WIOServiceException);
+
+     /** 
+      * Método de consulta ao modo no qual o arquivo se encontra.
+      * @return o modo indicado pela enumeração <code>WIOFileMode</code>.
+      * @see WIOFileMode
+      */
+     WIOFileMode getMode() raises (WIOServiceException);
+
+     /**
+      * Método para consulta se o objeto remoto representa um diretório.
+      * @return um flag booleano indicativo.
+      */
+     boolean isDirectory() raises (WIOServiceException);
+
+     /**
+      * Método para retorno do tipo do arquivo. O servidor de arquivos
+      * CSBASE caracteriza o arquivo remoto por um atributo próprio ao
+      * invés de basear-se em sua extensão.
+      */
+     string getFileType() raises (WIOServiceException);
+
+     /**
+      * Método de consulta do número de objetos remotos existentes dentro
+      * deste <code>WIOFile</code>. 
+      * @return o número de arquivos/diretórios existentes dentro do diretório
+      * ou 0 (zero) caso o objeto remoto seja um arquivo.
+      * @see WIOFile::isDirectory
+      */
+     long getNumFiles() raises (WIOServiceException);
+
+     /**
+      * Método de consulta ao momento da última modificação do arquivo
+      * @return o momento medido pelo servidor.
+      * @see WIODateTimeInfo
+      */
+     WIODateTimeInfo lastModificationTime() raises (WIOServiceException);
+
+     /**
+      * Método de consulta ao momento da criação do arquivo
+      * @return o momento medido pelo servidor.
+      * @see WIODateTimeInfo
+      */
+     WIODateTimeInfo creationTime() raises (WIOServiceException);
+
+     /**
+      * Método de consulta do estado (em construção do arquivo)
+      * @return um flag indicativo
+      */
+     boolean isUnderConstruction() raises (WIOServiceException);
+
+     /**
+      * Método de consulta do estado de publicado
+      * @return um flag indicativo
+      */
+     boolean isPublished() raises (WIOServiceException);
+
+     /**
+      * Método de consulta de quem criou o arquivo
+      * @return o identificador
+      */
+     string whoCreated() raises (WIOServiceException);
+
+
+     /**
+      * Método de consulta ao i-ésimo objeto remoto dentro do 
+      * <code>WIOFile</code>. 
+      * @param i o índice do objeto remoto desejado que deve estar entre 0 
+      * (zero) e N-1 (número máximo dado por <code>getNumFiles()</code>). 
+      */
+     WIOFile getFile(in long i) raises (WIOServiceException);
+
+     /**
+      * Método para abertura do arquivo.
+      * @param mode modo de abertura (leitura ou escrita).
+      * @return um flag indicativo da corretude da operação.
+      */
+     void open(in WIOFileMode mode) raises (WIOServiceException);
+
+     /**
+      * Método para fechamento do arquivo remoto.
+      * @return um flag indicativo da corretude do fechamento.
+      */
+     void close() raises (WIOServiceException);
+
+     /**
+      * Método para leitura do arquivo.
+      * @param size quantidade de bytes a ser lida.
+      * @param buffer uma seqüência de bytes.
+      * @return o número de bytes lidos
+      */
+     long read(in long size, inout Bytes buffer) raises (WIOServiceException);
+
+     /** 
+      * Método de consulta ao tamanho do arquivo.
+      * @return o tamanho do arquivo em bytes.
+      */
+     long size() raises (WIOServiceException);
+
+     /**
+      * Método apra ajuste do tamanho do arquivo remoto.
+      * @param size o novo tamanho desejado.
+      * @return um flag indicativo da corretude do redimensionamento.
+      */
+     void resize(in long size) raises (WIOServiceException);
+
+     /**
+      * Método para escrita no arquivo.
+      * @param content uma seqüência de bytes a ser escrita na posição
+      * corrente do arquivo.
+      * @return a quantidade de bytes efetivamente escritas no arquivo.
+      * @see WIOFile::tell
+      */
+     long write(in Bytes content) raises (WIOServiceException);
+
+     /**
+      * Método para ajuste da posição corrente do arquivo.
+      * @param offset o deslocamento a partir de posição solicitada.
+      * @param type indicação da posição solicitada.
+      * @return um flag indicativo da corretude da ação.
+      * @see SeekType
+      */    
+     void seek(in long offset, in SeekType type) raises (WIOServiceException);
+
+     /**
+      * Método para consulta da posição corrente do arquivo.
+      * @return o deslocamento a partir de posição corrente.
+      * @see WIOFile::seek
+      */
+     long tell() raises (WIOServiceException);
+
+     /**
+      * Método para verificação se a posição corrente do arquivo
+      * equivale ao seu fim, indicando final do arquivo (EOF).
+      * @return um flag booleano indicando final de arquivo.
+      */
+     boolean eof() raises (WIOServiceException);
+   };
+
+
+   /**
+    * Objeto remoto que representa um projeto remoto no servidor
+    * CSBASE.
+    */
+   interface WIOProject {
+
+      /**
+       * Consulta ao número de arquivos abertos no projeto.
+       * @return o número de arquivos abertos.
+       */
+      long getNumOpenedFiles() raises (WIOServiceException);
+
+      /**
+       * Consulta ao máximo de arquivos abertos por projeto.
+       * @return o número máximo de arquivos.
+       */
+      long getMaxOpenedFiles() raises (WIOServiceException);
+ 
+      /**
+       * Método para finalização do projeto remoto.
+       */
+      void destroy() raises (WIOServiceException);
+
+      /**
+       * Método para consulta ao identificador do projeto remoto.
+       * @return o identificador
+       */
+      string getId() raises (WIOServiceException);
+
+      /**
+       * Método para consulta ao usuário (owner) do projeto remoto.
+       * @return o login do usuário a que pertence o projeto.
+       */
+      string getUser() raises (WIOServiceException);
+
+      /**
+       * Método para consulta ao diretório raiz do projeto.
+       * @return um objeto do tipo <code>WIOFile</code>.
+       */
+      WIOFile getRootFile() raises (WIOServiceException);
+
+      /**
+       * Método para obtenção de um arquivo/diretório remoto com base 
+       * em um path.
+       * @param path uma string que representa o path remoto com o
+       * caracter separador definido pelo servidor de arquivos.
+       * @return um objeto do tipo <code>WIOFile</code> que representa
+       * o arquivo (ou diretório) remoto.
+       */
+      WIOFile getFile(in string path) raises (WIOServiceException);
+
+      /**
+       * Método de consulta dos objetos (arquivos e diretórios)
+       * existentes no projeto <b>(AINDA NÃO IMPLEMENTADO)</b>.
+       * @param path um path para um diretório remoto.
+       * @param recursive um flag indicativo de busca recursiva.
+       * @return uma seqüência de infomáções.
+       */
+      FileInfos getFilesInfo(in string path, in boolean recursive)
+      raises (WIOServiceException);
+
+
+      /**
+       * Método de consulta sobre a existência de um arquivo remoto.
+       * @param path uma string que representa o path remoto com o
+       * caracter separador definido pelo servidor de arquivos.
+       * @return um flag booleano indicativo da existência.
+       */
+      boolean fileExists(in string path) raises (WIOServiceException);
+
+      /**
+       * Método para renomear um arquivo ou diretório remoto.
+       * @param path o path do objeto remoto.
+       * @param newName o novo nome.
+       * @return um flag booleano indicativo da corretude da ação.
+       */
+      void renameFile(in string path, in string newName) 
+      raises (WIOServiceException);
+
+      /**
+       * Método para apagar um arquivo ou diretório remoto.
+       * @param path o path remoto do arquivo.
+       * @return um flag booleano indicativo da corretude da ação.
+       */
+      void deleteFile(in string path) raises (WIOServiceException);
+
+      /**
+       * Método para mover um arquivo dentro do projeto.
+       * @param fromPath o path origem remoto do arquivo.
+       * @param toPath o path destino remoto do arquivo.
+       * @return um flag booleano indicativo da corretude da ação.
+       */
+      void moveFile(in string fromPath, in string toPath) 
+      raises (WIOServiceException);
+
+      /**
+       * Método para copiar um arquivo dentro do projeto.
+       * @param fromPath o path origem remoto do arquivo.
+       * @param toPath o path destino remoto do arquivo.
+       * @return um flag booleano indicativo da corretude da ação.
+       */
+      void copyFile(in string fromPath, in string toPath) 
+      raises (WIOServiceException);
+
+      /**
+       * Método para criação de um arquivo remoto no projeto.
+       * @param path o path remoto desejado.
+       * @param type o tipo do arquivo no servidor CSBASE.
+       * @param userId identificador do usuário que cria o arquivo.
+       * @return um objeto do tipo <code>WIOFile</code> que representa o novo 
+       * arquivo criado.
+       */
+      WIOFile createFile(in string path, in string type, in string userId)
+      raises (WIOServiceException);
+
+      /**
+       * Método para criação de um diretório remoto no projeto.
+       * @param path o path remoto desejado.
+       * @return um objeto do tipo <code>WIOFile</code> que representa o novo 
+       * diretório criado.
+       */
+      WIOFile createDirectory(in string path) raises (WIOServiceException);
+   };
+
+   /**
+    * Seqüência de identificadores de projetos.
+    */
+   typedef sequence<string> ProjectIds;
+
+   /**
+    * Objeto remoto que representa um sistema de arquivos remoto do
+    * servidor CSBASE.
+    */
+   interface WIOFileSystem {
+
+      /**
+       * Consulta ao número de projetos abertos no servidor.
+       * @return o número de projetos abertos.
+       */
+      long getNumOpenedProjects() raises (WIOServiceException);
+
+      /**
+       * Consulta ao máximo de projetos abertos por servidor.
+       * @return o número máximo de projetos.
+       */
+      long getMaxOpenedProjects() raises (WIOServiceException);
+ 
+      /**
+       * Método para consultar o tamanho máximo permitido pelo servidor
+       * para uma leitura de arquivo em uma única vez
+       * @return o tamanho da leitura máxima em bytes.
+       */
+      long getMaxReadKb() raises (WIOServiceException);
+
+      /**
+       * Método para consultar o tamanho máximo permitido pelo servidor
+       * para uma escrita em arquivo de uma única vez
+       * @return o tamanho da escrita máxima em bytes.
+       */
+      long getMaxWriteKb() raises (WIOServiceException);
+
+      /**
+       * Método de consulta ao caracter separador dos paths dos
+       * arquivos remotos (depende do servidor).
+       * @return o caracter separador que deve ser usado nos paths.
+       */
+      string getSeparatorChar() raises (WIOServiceException);
+
+      /**
+       * Método para fazer a checagem de usuário/senha no servidor 
+       * de arquivos remoto.
+       * @param userId login do usuário.
+       * @param passwd senha a ser verificada.
+       * @return um flag booleano de validação da senha.
+       */
+      boolean checkPassword(in string userId, in string passwd);
+
+      /**
+       * Método de consulta à lista de projetos de um usuário.
+       * @param userId login do usuário.
+       * @param passwd senha a ser verificada.
+       * @return uma lista (seqüência) de identificadores de projeto.
+       */
+      ProjectIds getProjects(in string userId, in string passwd)
+      raises (WIOServiceException);
+
+      /**
+       * Método de consulta à lista de projetos que o usuário participa
+       * @param userId login do usuário.
+       * @param passwd senha a ser verificada.
+       * @return uma lista (seqüência) de identificadores de projeto.
+       */
+      UserProjects getProjectsFromOthers(in string userId, in string passwd)
+      raises (WIOServiceException);
+
+      /**
+       * Método para abertura de um projeto remoto.
+       * @param userId login do usuário.
+       * @param passwd senha a ser verificada.
+       * @param projectId identificador do projeto a ser aberto.
+       * @return uma referência remota ao objeto que representa o projeto.
+       */
+      WIOProject openProject(in string userId, in string passwd, 
+      in string projectId) raises (WIOServiceException);
+
+      /**
+       * Método para abertura de um projeto remoto de outro usuário.
+       * @param userId login do usuário.
+       * @param passwd senha a ser verificada.
+       * @param ownerId login do usuário dono do projeto.
+       * @param projectId identificador do projeto a ser aberto.
+       * @return uma referência remota ao objeto que representa o projeto.
+       */
+      WIOProject openProjectFromOthers(in string userId, in string passwd, 
+      in string ownerId, in string projectId) 
+      raises (WIOServiceException);
+   };
+
+};
+};
+};
+};
+};
+
+#endif

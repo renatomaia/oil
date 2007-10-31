@@ -1,0 +1,7 @@
+execpath = (os.getenv("OIL_HOME") or ".").."/test/oil/dtests/concurrency/";
+services = {
+	Server = { command = "lua server.lua" };
+};
+tasks = {
+	Tester = { dtestscript = "tester.lua" };
+};

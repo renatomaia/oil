@@ -1,0 +1,13 @@
+interface X{
+  attribute unsigned long num_ball ;
+  readonly attribute short index ;
+  long add( in long a, in long b ) ; 
+  void start() ;
+} ;
+
+local interface Y {
+  char foo(in char a) ;
+ } ;
+
+abstract interface Z { } ;
+

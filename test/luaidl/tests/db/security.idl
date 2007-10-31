@@ -1,0 +1,29 @@
+module subtypes{
+	typedef sequence<octet> Value; 
+};
+
+module types{
+	struct Stream{
+		subtypes::Value value;
+	};
+};
+
+module interfaces{
+interface Lsm
+{
+ 	types::Stream initContext(in string name, in string pass);
+ 	types::Stream signMessage(in types::Stream message);
+ 	types::Stream unsignMessage(in types::Stream message);
+
+};
+
+interface  Gsm
+{
+	types::Stream sendReceiveStream(in types::Stream token);
+	types::Stream test(in types::Stream msgSigned); 
+ 	types::Stream checkSignature(in types::Stream message);
+ 	types::Stream requestSignature(in types::Stream id,in types::Stream message);
+	void finish(in types::Stream message);
+};
+};
+

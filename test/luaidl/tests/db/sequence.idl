@@ -1,0 +1,3 @@
+interface M {
+ typedef sequence <long,100> numbers ;
+} ;

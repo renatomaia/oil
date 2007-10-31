@@ -1,0 +1,140 @@
+/*
+ * sga-manager.idl
+ *
+ * $Author: ururahy $
+ * $Revision: 1.3 $ - $Date: 2004/05/25 23:06:18 $
+ */
+
+#ifndef _SGA_MANAGER_IDL
+#define _SGA_MANAGER_IDL
+
+#include "sga-daemon.idl" 
+
+/** 
+ * Interfaces entre SGA e SSI (SGA Manager) para gerência da execução remota
+ * de algoritmos.
+ */
+module csbase {
+module server {
+module services {
+module sgaservice {
+module idl {
+
+   interface SGAServer;
+   interface SGACommand;
+
+   /**
+    * Informações sobre o fim da execução de um comando.
+    * Essas informações correspondem, basicamente, às estatísticas fornecidas 
+    * pelo comando 'time'.
+    */
+   struct CompletedCommandInfo {
+     long elapsedTimeSec;
+     long userTimeSec;
+     long cpuTimeSec;
+   };
+
+   /**
+    * Informações sobre um comando recuperado.
+    * cmdid  identificação do comando recuperado
+    * cmdRef referência para o gerenciador de comando
+    */
+   struct RetrievedInfo {
+     string     cmdId;
+     SGACommand cmdRef;
+   };
+
+   /**
+    * Informações de todos os comandos que foram recuperados.
+    */
+   typedef sequence<RetrievedInfo> RetrievedCmds;
+
+   /**
+    * Interface implementada pelo SGA Manager (SSI)
+    */
+   interface SGAManager {
+      /**
+       * SGA avisa ao manager que está ativo.
+       * @param sga referência para o SGA
+       * @param hostname nome da máquina hospedeira do SGA
+       * @return true se o SGA foi registrado com sucesso junto ao SSI
+       */
+      boolean registerSGA( in SGAServer sga, in string hostname );
+
+      /**
+       * SGA avisa ao manager que sairá do ar.
+       * @param sga referência para o SGA
+       * @param hostname nome da máquina hospedeira do SGA
+       */
+      //void unregisterSGA( in SGAServer sga, in string hostname );
+      void unregisterSGA(in string hostname );
+
+      /**
+       * SGA avisa ao manager que está apto a receber novos comandos.
+       * @param sga referência para o SGA
+       * @param hostname nome da máquina hospedeira do SGA
+       */
+      void setSGAEnabled(in SGAServer sga, in string hostname );
+
+      /**
+       * SGA avisa ao manager que não pode receber novos comandos.                     * Essa notificação é enviada quando, através de algum procedimento
+       * local à máquina hospedeira, o SGA é solicitado a suspender,
+       * temporariamente, a execução de novos comandos (por exemplo,
+       * em caso de necessidade de reserva dos recursos da máquina hospedeira
+       * para a execução de uma tarefa prioritária). No entanto, o SGA
+       * e os gerenciadores de comandos em execução continuarão ativos,
+       * e atendendo a requisições de monitoração.
+       * @param sga referência para o SGA
+       * @param hostname nome da máquina hospedeira do SGA
+       */
+      void setSGADisabled(in SGAServer sga, in string hostname);
+
+      /**
+       * SGA avisa ao manager que um comando terminou.
+       * @param cmd referência para o gerenciador de comando
+       * @param info informações sobre o término de execução do comando
+       * @return true se o Manager aceitou a notificação
+       *         false se o Manager desconhece o SGA 
+       *          (pode acontecer se o Manager esteve fora do ar, 
+       *           o que exige um novo registro do SGA)
+       */
+      boolean commandCompleted( in string hostname,
+           in SGACommand cmd, in string cmdid,
+           in CompletedCommandInfo info, in string cmdstring );
+
+      /**
+       * SGA avisa ao manager que um comando foi perdido.
+       * @return true se o Manager aceitou a notificação
+       *         false se o Manager desconhece o SGA 
+       *          (pode acontecer se o Manager esteve fora do ar, 
+       *           o que exige um novo registro do SGA)
+       */
+      boolean commandLost( in string hostname,
+           in string cmdid, in string cmdstring );
+
+      /**
+       * SGA avisa ao manager que um comando foi recuperado.
+       * @param sganame nome da máquina hospedeira do SGA
+       * @param cmds comandos recuperados pelo SGA.
+       * @return true se os comandos foram registrados com sucesso junto ao SSI
+       */
+      boolean commandRetrieved( in string sganame, in RetrievedCmds cmds);
+
+      /**
+       * SGA verifica se o Manager está acessível.
+       * @return true se o Manager está acessível e o registro do SGA 
+       *              está válido
+       * Um retorno "false" é uma indicação de que o Manager esteve fora do
+       * ar, o que exige um novo registro do SGA junto ao mesmo.
+       */
+      //boolean isAlive( in SGAServer sga, in string hostname);
+      boolean isRegistered(in string hostname);
+   };
+
+};
+};
+};
+};
+};
+
+#endif

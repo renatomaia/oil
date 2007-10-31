@@ -1,0 +1,7 @@
+component A {
+  attribute long X ;
+} ;
+
+component B :A {
+  provides Object O ;
+} ;

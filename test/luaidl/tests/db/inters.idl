@@ -1,0 +1,21 @@
+interface I;
+
+interface IB {
+  attribute char attr;
+};
+
+interface IB2 {
+};
+
+interface I : ::IB,IB2 {
+  typedef char C;
+  void foo(in long a, out long b);
+};
+
+abstract interface A {
+  typedef long double LD;
+};
+
+local interface L {
+  typedef unsigned long long LD;
+};

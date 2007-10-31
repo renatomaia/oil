@@ -1,0 +1,13 @@
+exception E {};
+exception E1 { };
+
+typedef long T;
+
+interface X {
+  typedef long c;
+  attribute char a,a1;
+  readonly attribute long RD,RD1;
+  attribute long r setraises(::E, E1);
+  attribute long e getraises(::E) setraises(::E1);
+  readonly attribute char W raises(E,E1);
+};

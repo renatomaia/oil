@@ -1,0 +1,38 @@
+module types{
+ //*A serialized application
+ //
+ //*/
+ typedef sequence<octet> Application;
+
+};
+
+
+module interfaces{
+
+//FIXME: Should these methods be oneway????
+//FIXME: Consider that applications can be BIG(Overflows,etc....)
+
+  ///* ApplicationRepository defines a service that allows applications
+  //*  to be stored and retrieved
+  //*/
+  interface ApplicationRepository{
+
+
+    ///*
+    //  Registers an application in the repository.
+    //
+    //  @param app - serialized application to be registered
+    //  @returns an unique identifier that allows one to retrive this app later
+    //*/
+    string registerApplication(in types::Application app);
+
+    ///* Retrieves an application registered on the ApplicationRepository
+    //   @param appId - the id of the application to be retrieved
+    //   @returns the serialized application
+    //
+    //*/
+    types::Application getApplication(in string appId);
+
+  };
+
+};

@@ -1,0 +1,23 @@
+module M {
+  
+//  const long CTE = 1 ;
+  
+//  enum Shirts {
+   //SS,HH
+  //} ;
+
+  enum Colors {
+   red,blue
+  } ;
+
+//  const long red = 3 ;
+
+  union U switch ( Colors ) 
+  {
+    //case CTE: long a ;
+    case red: long b ;
+    case 10: long a ;
+ //   case 2: long a ;
+  } ;
+
+} ;
