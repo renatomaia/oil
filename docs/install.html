@@ -1,0 +1,229 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+<title>OiL: The Lua Object Request Broker Project</title>
+<style type="text/css">
+<!-- 
+@import "oil.css";
+@import "layout1.css";
+dt { margin-top: 10px; }
+table { padding-left: 100px; }
+--></style>
+</head>
+
+<body>
+
+<div id="Header"><h3>The Lua Object Request Broker</h3></div>
+<div id="Logo"><img alt="small (1K)" src="small.gif" height="49" width="80" /></div>
+
+<div id="Menu">
+	<h3>Menu</h3>
+	<hr>
+	<p>
+		<a href="index.html" title="OiL site main page">Home</a><br>
+		<a href="install.html" title="Installation instructions">Install</a><br>
+			<ul>
+				<li><a href="install.html#download">Download</a></li>
+				<li><a href="install.html#build">Building</a></li>
+				<li><a href="install.html#setup">Setup</a></li>
+			</ul>
+		<a href="docs.html" title="User manual">Manual</a><br>
+		<a href="papers.html" title="Published papers">Papers</a><br>
+		<a href="features.html" title="List of features currently supported">Features</a><br>
+		<a href="versions.html" title="List of all versions of OiL">Versions</a><br>
+		<a href="people.html" title="Who does develop the OiL?">People</a><br>
+		<a href="http://www.luaforge.net/projects/oil" title="Project page at LuaForge">LuaForge</a><br>
+	</p>
+</div>
+
+<div class="content">
+	<a name="download"><h1>Download</h1></a>
+
+	<p>You can download the OiL package from the following link. See below for instructions about building OiL and its required software packages.</p>
+	
+	<ul>
+		<li>
+		OiL 0.4 beta
+		[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta.tar.gz">tar.gz</a>]
+		[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta.zip">zip</a>]
+		</li>
+	</ul>
+	
+	<p><strong>Windows Binaries:</strong> If you just want to give OiL a try in a Windows platform then just download the <a href="http://luaforge.net/frs/download.php/????/oil-0.4b-win32.zip">OiL Win32 Binaries</a> and extract its contents into a folder. After this, you will be able to run all the demos included in the package by executing the batch files included in the folder of each demo.</p>
+</div>
+
+<div class="content">
+	<a name="build"><h1>Building</h1></a>
+	
+	<p>If you want to use OiL in a Unix system or want to make a particular OiL built in order to include it in an application, then you have to build some required software packages, namely the Lua language and the libraries for socket and bit manipulation support in Lua. The required software packages are listed below.</p>
+	
+	<ul>
+		<li>Lua 5.1</li>
+		<li>LuaSocket 2.0</li>
+		<li>OiL's Bit Manipulation Library (included in the OiL package)</li>
+	</ul>
+	
+	<p><strong>Note:</strong> If you plan to build any of the packages listed here in a Windows platform and you don't have a C compiler, then you can donwload for free the <a href="http://msdn2.microsoft.com/en-us/express/aa979597.aspx">Microsoft Visual Studio C++ Express</a> and <a href="http://www.microsoft.com/downloads/details.aspx?familyid=0baf2b35-c656-4969-ace8-e4c0c0716adb">Microsoft Platform SDK</a>. Follow the instructions defined <a href="http://msdn2.microsoft.com/en-us/express/aa700755.aspx">here</a>.</p>	
+
+	<h2>Required Software Packages</h2>
+
+	<h3>Lua 5.1</h3>
+
+	<p>Download Lua 5.1 package from <a href="http://www.lua.org/">Lua web site</a>, then follow the instructions in INSTALL file included in the package. If you plan to build Lua in a Windows platform, then you can use the <a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua51/lua-5.1.tar.gz">Lua 5.1 package</a> provided by the OiL team. To build the package provided by OiL team you must do the following:</p>
+	
+	<dl>
+		<dt>Linux:</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you extracted the package files</li>
+			<li>read and edit file <code>Makefile</code> to suit your needs</li>
+			<li>run command <code>make linux install</code></li>
+			</ol>
+		</dd>
+		<dt>Windows: (dynamic libraries).</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you extracted the package files</li>
+			<li>read and edit file <code>Makefile.win32</code> to suit your needs</li>
+			<li>run command <code>nmake /f Makefile.win32 dll install</code></li>
+			</ol>
+		</dd>
+		<dt>Windows: (static libraries)</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you extracted the package files</li>
+			<li>read and edit file <code>Makefile.win32</code> to suit your needs</li>
+			<li>run command <code>nmake /f Makefile.win32 static install</code></li>
+			</ol>
+		</dd>
+	</dl>
+	
+	<h3>LuaSocket 2.0</h3>
+
+	<p>Download LuaSocket 2.0 package from <a href="http://www.tecgraf.puc-rio.br/luasocket/">LuaSocket web site</a>, then follow the instructions in INSTALL file included in the package. If you have any problems to use the LuaSocket official package, you can try the <a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua51/luasocket-2.0.tar.gz">LuaSocket 2.0 package</a> provided by the OiL team. To build the package provided by OiL team you must do the following:</p>
+
+	<dl>
+		<dt>Linux:</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you extracted the package files</li>
+			<li>read and edit file <code>config</code> to suit your needs</li>
+			<li>run command <code>make linux install</code></li>
+			</ol>
+		</dd>
+		<dt>Windows: (dynamic libraries that can be loaded from Lua console).</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you extracted the package files</li>
+			<li>read and edit file <code>config.win32</code> to suit your needs</li>
+			<li>run command <code>nmake /f Makefile.win32 dll install</code></li>
+			</ol>
+		</dd>
+		<dt>Windows: (static libraries)</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you extracted the package files</li>
+			<li>read and edit file <code>config.win32</code> to suit your needs</li>
+			<li>run command <code>nmake /f Makefile.win32 static install-lib</code></li>
+			</ol>
+		</dd>
+	</dl>
+	
+	<h2>OiL 0.4</h2>
+	
+	<p>OiL is almost entirely written in Lua, however it uses a bit manipulation library written in C. Therefore, to install OiL, you need to build its bit manipulation support. To build and install OiL you must choose one of the options described below.</p>
+
+	<h3>Standard</h3>
+	<p>Installs the Lua files and bit manipuation library for dynamic loading. This option is useful for playing with OiL implementation, because you will be able to modify its implementation by changing the Lua files.</p>
+	<dl>
+		<dt>Unix:</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you opened the package</li>
+			<li>read and edit file <code>config</code> to suit your needs</li>
+			<li>run command <code>make install</code></li>
+			</ol>
+		</dd>
+		<dt>Windows:</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you opened the package</li>
+			<li>read and edit file <code>config.win32</code> to suit your needs</li>
+			<li>run command <code>nmake /f Makefile.win32 install</code></li>
+			</ol>
+		</dd>
+	</dl>
+
+	<h3>Pre-Compiled</h3>
+	<p>Installs a set of libraries containing all modules that compose OiL implementation already pre-compiled. This option is useful for users that don't intend to make changes in OiL implemenation.</p>
+	<dl>
+		<dt>Unix:</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you opened the package</li>
+			<li>read and edit file <code>config</code> to suit your needs</li>
+			<li>run command <code>make installb</code></li>
+			</ol>
+		</dd>
+		<dt>Windows:</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you opened the package</li>
+			<li>read and edit file <code>config.win32</code> to suit your needs</li>
+			<li>run command <code>nmake /f Makefile.win32 installb</code></li>
+			</ol>
+		</dd>
+	</dl>
+
+	<h3>Preloading</h3>
+	<p>Installs a single library containing the bit manipuation library and all OiL Lua files already pre-compiled for preloading into embedded Lua applications. This option is useful for developers that intend to include OiL in other applications by linking into a single file. See demo 'run' for more details.</p>
+	<dl>
+		<dt>Unix:</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you opened the package</li>
+			<li>read and edit file <code>config</code> to suit your needs</li>
+			<li>run command <code>make installp</code></li>
+			</ol>
+		</dd>
+		<dt>Windows:</dt>
+		<dd>
+			<ol>
+			<li>go to the folder you opened the package</li>
+			<li>read and edit file <code>config.win32</code> to suit your needs</li>
+			<li>run command <code>nmake /f Makefile.win32 installp</code></li>
+			</ol>
+		</dd>
+	</dl>
+</div>
+
+<div class="content">
+	<a name="setup"><h1>Environment Setup</h1></a>
+	
+	<p>In order to load OiL package in the Lua stand-alone interpreter, you must add the paths where you installed OiL and LuaSocket to the <code>LUA_PATH</code> and <code>LUA_CPATH</code> environment variables. For example, if you installed Lua files of OiL and LuaSocket (see <code>INSTALL_LMOD</code> macro in file <code>config</code>) into directory <code>/usr/local/share/lua/5.1/</code> then <code>LUA_PATH</code> must be set to:</p>
+
+	<p><code>LUA_PATH="/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua"</code></p>
+
+	<p>A similar approach is used for the <code>LUA_CPATH</code> environment variable. Supose you have installed the C libraries of OiL and LuaSocket (see <code>INSTALL_CMOD</code> macro in file <code>config</code>) into directory <code>/usr/local/lib/lua/5.1/</code> then <code>LUA_CPATH</code> must be set to:</p>
+
+	<p><code>LUA_CPATH="/usr/local/lib/lua/5.1/?.so"</code></p>
+	
+	<p>For further information on the use of <code>LUA_PATH</code> and  <code>LUA_CPATH</code> environment variable, check the <a href="http://www.lua.org/manual/5.1/manual.html#pdf-package.path">Lua manual</a>.</p>
+</div>
+
+<div class="content">
+	<h3><small>Copyright (C) 2004-2005 Tecgraf, PUC-Rio</small></h3>
+	<small>This project is currently being maintained by <a href="http://www.tecgraf.puc-rio.br">Tecgraf</a> at <a href="http://www.puc-rio.br">PUC-Rio</a> with grants by <a href="http://www.capes.gov.br">CAPES</a> and <a href="http://www.cnpq.br">CNPq</a>.</small>
+</div>
+
+<div id="Board">
+</div>
+
+<!-- BlueRobot was here. -->
+
+</body>
+
+</html>

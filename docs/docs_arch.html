@@ -1,0 +1,186 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+<title>OiL: The Lua Object Request Broker Project</title>
+<style type="text/css" media="all"><!--
+@import "oil.css";
+@import "layout1.css";
+dt { margin-top: 10px; }
+table { padding-left: 10px; }
+--></style>
+</head>
+
+<body>
+
+<div id="Header"><h3>The Lua Object Request Broker</h3></div>
+<div id="Logo"><img alt="small (1K)" src="small.gif" height="49" width="80" /></div>
+
+<div id="Menu">
+	<h3>Menu</h3>
+	<hr>
+	<p>
+		<a href="index.html" title="OiL site main page">Home</a><br>
+		<a href="install.html" title="Installation instructions">Install</a><br>
+		<a href="docs.html" title="User manual">Manual</a><br>
+			<ul>
+				<li><a href="docs_lib.html" title="Main library programming interface">Library API</a><br></li>
+				<li><a href="docs_obj.html" title="Object implementation and access">CORBA Objects</a><br></li>
+				<li><a href="docs_map.html" title="CORBA type mapping into Lua">Type Mapping</a><br></li>
+				<li><a href="docs_arch.html" title="Component-based implementation">Customization</a><br></li>
+			</ul>
+		<a href="papers.html" title="Published papers">Papers</a><br>
+		<a href="features.html" title="List of features currently supported">Features</a><br>
+		<a href="versions.html" title="List of all versions of OiL">Versions</a><br>
+		<a href="people.html" title="Who does develop the OiL?">People</a><br>
+		<a href="http://www.luaforge.net/projects/oil" title="Project page at LuaForge">LuaForge</a><br>
+	</p>
+</div>
+
+<div class="content">
+	<h1>Component-Based Architecture</h1>
+	
+	<p>OiL provides a component-based implementation that follows the <a href="http://loop.luaforge.net/docs_component.html">component model</a> provided by the LOOP library.
+	This component-based implementation provides better modularization and organization of the code, and thus provide better support for customization and adaptability of the implementation.</p>
+
+	<p>Basically, OiL is a component-based framework for ORBs in Lua.
+	It provides a standard API and programming model and defines a simplified API to plug in different distributed object protocols like CORBA.
+	The diagram below illustrates the architecture defined by OiL.</p>
+
+	<img src="kernel_arch.jpg">
+
+	<h2>Architecture Definition</h2>
+	
+	<p>The architecture described above is defined by module <code>oil.arch.base</code>, <code>oil.arch.typed</code>, and <code>oil.arch.cooperative</code>.
+	The latter two just extends the architecture defined by module <code>oil.arch.base</code> by addition of new components and connections that are used to support type-checked and concurrent invocations.
+	Each architecture module defines a set of <a href="http://loop.luaforge.net/docs_component.html#templates">component templates</a> and a function named <code>assemble</code> that receives a table containing a component instance for each template defined by the architecture and then establishes connections between these components accordingly to the defined architecture.
+	See files <code>lua/oil/arch/*.lua</code> of the OiL distribution for examples of this way of architecture definition.
+	Below, there is a simplified definition of a module that defines the basic kernel architecture of OiL.</p>
+	
+	<pre>
+local component = require "oil.component" -- Component Model used by OiL
+local port      = require "oil.port"      -- Component Port Model used by OiL
+
+
+-- CLIENT SIDE
+ClientBroker = component.Template{
+  broker     = port.Facet,
+  proxies    = port.Receptacle,
+  references = port.Receptacle,
+}
+ObjectProxies = component.Template{
+  proxies = port.Facet,
+  invoker = port.Receptacle,
+}
+OperationInvoker = component.Template{
+  invoker   = port.Facet,
+  requester = port.Receptacle,
+}
+
+-- SERVER SIDE
+ServerBroker = component.Template{
+  broker     = port.Facet,
+  objects    = port.Receptacle,
+  acceptor   = port.Receptacle,
+  references = port.Receptacle,
+}
+RequestDispatcher = component.Template{
+  objects    = port.Facet,
+  dispatcher = port.Facet,
+}
+RequestReceiver = component.Template{
+  acceptor   = port.Facet,
+  dispatcher = port.Receptacle,
+  listener   = port.Receptacle,
+}
+
+function assemble(components)
+  setfenv(1, components) -- to avoid the 'components.' prefix.
+
+  -- Client side
+  OperationInvoker.requester = OperationRequester.requests
+  ObjectProxies.invoker      = OperationInvoker.invoker
+  ClientBroker.proxies       = ObjectProxies.proxies
+  ClientBroker.references    = ObjectReferrer.references
+
+  -- Server side
+  RequestReceiver.listener   = RequestListener.listener
+  RequestReceiver.dispatcher = RequestDispatcher.dispatcher
+  ServerBroker.objects       = RequestDispatcher.dispatcher
+  ServerBroker.acceptor      = RequestReceiver.acceptor
+  ServerBroker.references    = ObjectReferrer.references
+end
+	</pre>
+	
+	<h2>Component Builders</h2>
+	
+	<p>The architecture defined by the modules cited above just define a skeleton where component implementations are filled prior the completion of the ORB implementation.
+	The definition of the actual component implementations is defined by modules under the name space <code>oil.builder</code>.
+	These builder modules must provide a function called <code>create</code> that receives a table with component instances and is able to add to this table component instances for each <a href="http://loop.luaforge.net/docs_component.html#templates">component template</a> defined by the architecture.</p>
+	
+	<p>A component builder module may create components only for a subset of the architecture and leave the component instance set to be filled by other builder modules.
+	Therefore, a component builder must not create a component if there is already a component instance for that template in the table of component instances that is passed to function <code>create</code>.
+	To detect this, the builder modules rely on the convention that each component in the instance table is indexed by the name of the corresponding template.
+	The module <code>oil.builder</code> provides the auxiliary function <code>create(factories, components)</code> that receives table <code>factories</code> that shall map names (template names actually) to <a href="http://loop.luaforge.net/docs_components.html#factories">component factories</a> that are used to create component instances if no instance is registered in the instance table <code>components</code>.
+See files <code>lua/oil/builder/*.lua</code> of the OiL distribution for examples of builder modules.
+	Below, there is the definition of a builder module that defines a set of factories of components for the architecture exemplified above and uses function <code>oil.builder.create</code> to create component instances.</p>
+	
+	<pre>
+local arch    = require "oil.arch.base"
+local builder = require "oil.builder"
+
+local factories = {
+  ClientBroker      = arch.ClientBroker     {require "oil.kernel.base.Client"    },
+  ObjectProxies     = arch.ObjectProxies    {require "oil.kernel.base.Proxies"   },
+  OperationInvoker  = arch.OperationInvoker {require "oil.kernel.base.Invoker"   },
+  ServerBroker      = arch.ServerBroker     {require "oil.kernel.base.Server"    },
+  RequestDispatcher = arch.RequestDispatcher{require "oil.kernel.base.Dispatcher"},
+  RequestReceiver   = arch.RequestReceiver  {require "oil.kernel.base.Receiver"  },
+  OperatingSystem   = arch.OperatingSystem  {require "oil.kernel.base.Sockets"   },
+}
+
+function create(components)
+  return builder.create(factories, components)
+end
+	</pre>
+	
+	<h2>Assemble Construction</h2>
+	
+	<p>Since component builders may only define part of the architecture implementation, it might be necessary to execute a sequence of them to complete the ORB implementation.
+	Furthermore, these builders must be executed in the proper order so builders that redefine the implementation defined by other builder is executed first.
+	This is done by function <code>oil.builder.build(flavor, components)</code>.
+	The parameter <code>flavor</code> is a string containing names separated by semicolons (<code>;</code>).
+	For each name the function <code>oil.builder.build</code> checks for the existence of a builder with that name in package namespace <code>oil.builder.*</code>.
+	If the builder module is found then its <code>create</code> function is called to create component instances in table <code>components</code>.
+	After all builder modules found are executed, a similar procedure is performed for architecture modules.
+	In other words, each architecture module defined by a name in string <code>flavor</code> (in package namespace <code>oil.arch.*</code>) its assemble function is called to establish the proper connections between components.</p>
+	
+	<p>The described assemble construction method allows us to define new architecture modules that define new connections between components as well as builder modules that might provide alternative component implementations for those provided by the OiL standard distribution.
+	This model for extension of the OiL architecture and implementation allied to the possibility to reuse the classes provided by the standard OiL distribution by means of inheritance (OiL implementation is provided as a set of extensible classes) or composition (these same classes can be used in conjunction with others objects to compose a component implementation) and all the flexibility provided by the Lua language makes OiL easily customizable for different needs and applications.</p>
+	
+	<h2>Final Remarks</h2>
+	
+	<p>The <code>oil</code> module only defines facade functions that are actually delegated to the components of an assemble built using flavor defined by global variable <code>OIL_FLAVOR</code>.
+	Therefore, file <code>lua/oil/init.lua</code> also works as an example of the way the components of the OiL implementation are used to perform the ORB tasks.</p>
+	
+	<p>Additionally, multiple assembles can be created by operation <code><a href="docs_lib.html#assemble">oil.assemble</a></code> and used in a single application simultaneously.
+	It is worth noticing that in such case, each assemble defines a different ORB with different components that do not share resources.
+	For example, the two assembles will probably use different sockets, port numbers, servant maps, etc.
+	However, it is possible to create assembles that share common components, but to do so you should create and assemble components by hand and not using the utility function <code>oil.builder.create</code>.</p>
+</div>
+
+<div class="content">
+	<h3><small>Copyright (C) 2004-2005 Tecgraf, PUC-Rio</small></h3>
+	<small>This project is currently being maintained by <a href="http://www.tecgraf.puc-rio.br">Tecgraf</a> at <a href="http://www.puc-rio.br">PUC-Rio</a> with grants by <a href="http://www.capes.gov.br">CAPES</a> and <a href="http://www.cnpq.br">CNPq</a>.</small>
+</div>
+
+<div id="Board">
+</div>
+
+<!-- BlueRobot was here. -->
+
+</body>
+
+</html>

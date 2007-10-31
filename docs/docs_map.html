@@ -1,0 +1,423 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+<title>OiL: The Lua Object Request Broker Project</title>
+<style type="text/css" media="all"><!--
+@import "oil.css";
+@import "layout1.css";
+@import "table.css";
+dt { margin-top: 10px; }
+table { padding-left: 10px; }
+--></style>
+</head>
+
+<body>
+
+<div id="Header"><h3>The Lua Object Request Broker</h3></div>
+<div id="Logo"><img alt="small (1K)" src="small.gif" height="49" width="80" /></div>
+
+<div id="Menu">
+	<h3>Menu</h3>
+	<hr>
+	<p>
+		<a href="index.html" title="OiL site main page">Home</a><br>
+		<a href="install.html" title="Installation instructions">Install</a><br>
+		<a href="docs.html" title="User manual">Manual</a><br>
+			<ul>
+				<li><a href="docs_lib.html" title="Main library programming interface">Library API</a><br></li>
+				<li><a href="docs_obj.html" title="Object implementation and access">CORBA Objects</a><br></li>
+				<li><a href="docs_map.html" title="CORBA type mapping into Lua">Type Mapping</a><br></li>
+			</ul>
+		<a href="papers.html" title="Published papers">Papers</a><br>
+		<a href="features.html" title="List of features currently supported">Features</a><br>
+		<a href="versions.html" title="List of all versions of OiL">Versions</a><br>
+		<a href="people.html" title="Who does develop the OiL?">People</a><br>
+		<a href="http://www.luaforge.net/projects/oil" title="Project page at LuaForge">LuaForge</a><br>
+	</p>
+</div>
+
+<div class="content">
+
+<h1>Type Mapping</h1>
+
+<h2><a name="basic">Basic Types</a></h2>
+
+<p>All CORBA numeric types are mapped into the <code>number</code> type of Lua.
+Usually, the number type of Lua has the same precision of the <code>double</code> of C, but this can be changed at compilation of Lua.
+<!-- Since all CORBA numeric types are mapped into the same type in Lua, then the information of the actual CORBA type is lost, for example, if a number is used as an <code>any</code>, then it is marshaled as a CORBA double regardless its original type. --></p>
+
+<p>All CORBA string types are mapped to the <code>string</code> type of Lua. Therefore, there are no constrains about the size of string values inside Lua.
+The <code>char</code> type is also mapped into the <code>string</code> type of Lua, but <code>char</code> values are strings with a single character.
+<!-- Again, the actual string type is lost when the value is mapped into Lua. By default all Lua strings are mapped to the unbounded CORBA string type. --></p>
+
+<p>The CORBA <code>boolean</code> type is mapped into the <code>boolean</code> type of Lua. However, when a value of type other than <code>boolean</code> is marshaled into a CORBA boolean it is mapped into <code>true</code>, except for <code>nil</code> that is mapped into <code>false</code>.</p>
+
+<h2><a name="enum">Enumerations</a></h2>
+
+<p>Enumeration values are mapped into a string containing the name of the enum value.
+For example, consider the following IDL definition:</p>
+
+<pre>
+enum WeekDay{ sun, mon, tue, wed, thu, fri, sat };
+interface Calendar {
+	void setday(in WeekDay day);
+	void nextday();
+	WeekDay today();
+};
+</pre>
+
+<p>Then the following code tests whether the result of operation <code>today</code> returns the enumeration value <code>sun</code></p>
+
+<pre>
+if calendar:today() == "sun" then
+	print "Go home and rest!"
+end
+</pre>
+
+<p>On the other hand, both strings and numbers can be marshaled into enum values if they match the name or the numeric value of an enumeration.
+For example, the following lines produce the same results.</p>
+
+<pre>
+calendar:setday("sun")
+calendar:setday(0)
+</pre>
+
+<h2><a name="struct">Structures</a></h2>
+
+<p>Structure values are mapped to a Lua table that maps all the name of the fields defined in the IDL definition into their proper values.
+For example, consider the following IDL definition.</p>
+
+<pre>
+struct Book {
+	long   isbn;
+	string title;
+	string author;
+	string publisher;
+	long   year;
+};
+interface Library {
+	Book get_book(in long isbn);
+	void add_book(in Book book);
+};
+</pre>
+
+<p>Then, the following code prints the fields of the <code>Book</code> structure.</p>
+
+<pre>
+book = library:get_book(book_id)
+print("ISBN:"     , book.isbn     )
+print("Title:"    , book.title    )
+print("Author:"   , book.author   )
+print("Publisher:", book.publisher)
+print("Year:"     , book.year     )
+</pre>
+
+<p>In order to marshal a <code>struct</code> value, you must provide a value (<i>e.g.</i> a table) that index all the <code>struct</code> fields to its proper values.
+For instance, to marshal a structure of type <code>Book</code> you could use one of the following possibilities.</p>
+
+<pre>
+-- table containing the actual values
+library:add_book({
+	isbn      = 8590379817,
+	title     = "Programming in Lua",
+	author    = "Roberto Ierusalimschy",
+	publisher = "Lua.org",
+	year      = 2003,
+})
+
+-- userdata that index field values into its proper values
+local books = database:query([[
+	SELECT isbn, title, author, publisher, year
+	FROM Books
+	WHERE year > 2000
+]])
+for _, book in ipairs(books) do
+	-- book is a userdata used to get
+	-- values from a database query
+	library:add_book(book)
+end
+</pre>
+
+<h2><a name="sequence">Sequences</a></h2>
+
+<p>Sequence values are mapped to Lua arrays containing the values of the sequence.
+Actually, Lua arrays are tables mapping values at integer indices ranging from 1 to the number of elements in the array.
+In order to marshal sequences, you must create a Lua array that contains the values of the sequence.
+For example, suppose the following IDL definition.</p>
+
+<pre>
+interface NumberCompare {
+	double max(in sequence&lt;long&gt; numbers);
+};
+</pre>
+
+<p>Then, the following code invokes <code>max</code> with a sequence of <code>long</code> values.</p>
+
+<pre>
+print("Maximum is:", compare:max({64,33,52,15,29}))
+</pre>
+
+<p>If a sequence contains <code>nil</code> values then it must define field <code>n</code> that contains the number of elements of the sequence.
+All sequences creates by OiL provides this field <code>n</code>.</p>
+
+<p>For better performance, sequences of octets are mapped to a string containing the character value corresponding to each octet of the sequence.
+This is possible because Lua strings can contain any character value, including the NULL character.</p>
+
+<h2><a name="array">Arrays</a></h2>
+
+<p>Array values are mapped similarly to the way sequences are.
+However, Lua arrays marshaled as CORBA arrays must have the exact number of elements as defined by the CORBA array type.</p>
+
+<p>Again, for better performance, arrays of octets are mapped to a string containing the character values corresponding to each octet of the array.</p>
+
+<h2><a name="union">Unions</a></h2>
+
+<p>Union values are mapped to tables containing information about the discriminator and the actual union value.
+Union tables contain the following fields:</p>
+
+<pre>
+_switch = &lt;value of the discriminator&gt;
+_value = &lt;value of the selected union field&gt;
+_field = &lt;name of the selected union field&gt;
+</pre>
+
+<p>Additionally, union values offer shortcuts to its value: you can access the value of the union by the selected union field name, for example, suppose the following IDL union definition:</p>
+
+<pre>
+union MyUnion switch(short) {
+      case 1: string onechoice;
+      case 2: long otherchoice;
+      case 3: double anotherchoice;
+}
+</pre>
+
+<p>Then you can access the union value like the following:</p>
+
+<pre>
+local union = myobject:get_unionvalue()
+if union._switch == 1 then
+      print(union.onechoice)
+elseif union._switch == 2 then
+      print(union.otherchoice)
+elseif union._switch == 3 then
+      print(union.anotherchoice)
+end
+</pre>
+
+<p>In order to marshal some union value you must create a table that matches one of the following options:</p>
+
+<pre>
+_switch = &lt;value of the discriminator&gt;
+_value = &lt;value of the selected union field&gt;
+
+_field = &lt;name of the selected union field&gt;
+_value = &lt;value of the selected union field&gt;
+</pre>
+
+<p>You can also use the union shortcuts to create union values, so it is possible to place the union value at the union field name, so OiL will assume the corresponding discriminator. For example, suppose the IDL union described above, than you could create a matching union value using one of the following options (the formats are presented in order of precedence):</p>
+
+<pre>
+union = { _switch = 0 }
+union = { _switch = 2, _value = 1024 }
+union = { _switch = 3, anotherchoice = 0.625 }
+union = { _field = "otherchoice", _value = 1024 }
+union = { _field = "anotherchoice", anotherchoice = 0.625 }
+union = { onechoice = "my string value" }
+</pre>
+
+<h2><a name="TypeCode">TypeCodes</a></h2>
+
+<p>TypeCode values are mapped to a table containing the fields that describes the type accordingly to representation of <code>typecode</code>s defined by CDR.
+This table representing a CORBA typecode is its IDL type descriptor.</p>
+
+<p>Basic types are represented by pre-defined tables exported by <code>oil.idl</code> module.
+Below there is a list of the IDL descriptors of CORBA basic types that are exported by <code>oil.idl</code> module.</p>
+
+<table align="center">
+	<!--<caption>Basic type IDL descriptors</caption>-->
+	<thead>
+		<tr><th>Descriptor</th><th>CORBA type</th></tr>
+	</thead>
+	<tbody>
+		<tr><td><code>oil.idl.void    </code></td><td>void          </td></tr>
+		<tr><td><code>oil.idl.short   </code></td><td>short         </td></tr>
+		<tr><td><code>oil.idl.long    </code></td><td>long          </td></tr>
+		<tr><td><code>oil.idl.ushort  </code></td><td>unsigned short</td></tr>
+		<tr><td><code>oil.idl.ulong   </code></td><td>unsigned long </td></tr>
+		<tr><td><code>oil.idl.float   </code></td><td>float         </td></tr>
+		<tr><td><code>oil.idl.double  </code></td><td>double        </td></tr>
+		<tr><td><code>oil.idl.boolean </code></td><td>boolean       </td></tr>
+		<tr><td><code>oil.idl.char    </code></td><td>char          </td></tr>
+		<tr><td><code>oil.idl.octet   </code></td><td>octet         </td></tr>
+		<tr><td><code>oil.idl.any     </code></td><td>any           </td></tr>
+		<tr><td><code>oil.idl.TypeCode</code></td><td>TypeCode      </td></tr>
+		<tr><td><code>oil.idl.string  </code></td><td>string        </td></tr>
+	</tbody>
+</table>
+
+<p>Constructed types descriptors must present a pre-defined structure.
+Module <code>oil.idl</code> provides constructors for creating descriptors for these types.
+Below, there are examples of how to use these construtors to create descriptors that can be used as TypeCodes.</p>
+
+<h3>Enumeration</h3>
+<pre>
+local MyEnum = oil.idl.enum{
+	-- typedef information
+	repID = "IDL:MyEnum:1.0",
+	name = "MyEnum",
+	-- list of enumeration values
+	"text", "number", "logic",
+}
+</pre>
+
+<h3>Structure</h3>
+<pre>
+local MyStruct = oil.idl.struct{
+	-- typedef information
+	repID = "IDL:MyStruct:1.0",
+	name = "MyStruct",
+	-- list of struct fields
+	{ type = oil.idl.string , name = "text"   },
+	{ type = oil.idl.double , name = "number" },
+	{ type = oil.idl.boolean, name = "logic"  },
+}
+</pre>
+
+<h3>Sequence</h3>
+<pre>
+local MyStringSeq  = oil.idl.sequence{ oil.idl.string }
+local MyBoundedSeq = oil.idl.sequence{ oil.idl.string, maxlength = 100 }
+</pre>
+
+<h3>Array</h3>
+<pre>
+local MyStringArray = oil.idl.array{ oil.idl.string, length = 100 }
+</pre>
+
+<h3>Union</h3>
+<pre>
+local MyUnion = oil.idl.union{
+	-- typedef information
+	repID = "IDL:MyUnion:1.0",
+	name = "MyUnion",
+	-- union discriminant definition
+	switch = oil.idl.short,
+	default = 0, -- first option is the default
+	-- list of union options
+	{ label = 1, type = oil.idl.string , name = "text"   },
+	{ label = 2, type = oil.idl.double , name = "number" },
+	{ label = 3, type = oil.idl.boolean, name = "logic"  },
+}
+</pre>
+
+<h3>Exception</h3>
+<pre>
+local MyExcept = oil.idl.union{
+	-- typedef information
+	repID = "IDL:MyExcept:1.0",
+	name = "MyExcept",
+	-- list of exception members
+	{ type = oil.idl.string, name = "message" },
+	{ type = oil.idl.string, name = "file"    },
+	{ type = oil.idl.long  , name = "line"    },
+}
+</pre>
+
+<h3>Object</h3>
+<pre>
+local HelloObjectRef = oil.idl.Object{
+	repID = "IDL:Hello:1.0",
+	name = "Hello",
+}
+</pre>
+
+<h2><a name="any">Anys</a></h2>
+
+<p><code>any</code> values are mapped as a table containing the actual value at field <code>_anyval</code>.
+The descriptor of the actual CORBA type of a <code>any</code> is the metatable of this container table.
+This way, unmashaled <code>any</code> values can be used forward as the value of function arguments of type <code>any</code> and be marshaled with the proper CORBA type.
+The same approach is used to marshal values as <code>any</code> values, that is, the metatable of these values must be the descriptor of its actual CORBA type.
+Every unmarshaled value created by OiL that is mapped into a table (e.g. struct, union, sequence, arrays, etc) already defines its metatable as the related IDL type descriptor.</p>
+
+<p>In order to marshal some value as an <code>any</code> you must set its meta-table to the type descritor of its proper CORBA type.
+For values mapped to Lua types other than table, OiL defines a default mapping to allow these values to be marshaled as <code>any</code>s.
+These default mapping is illustrated in the table below.</p>
+
+<table align="center" width="300">
+	<!--<caption>Basic type IDL descriptors</caption>-->
+	<thead>
+		<tr><th><center>Type of Lua Value</center></th><th><center>Default Type of Any</center></th></tr>
+	</thead>
+	<tbody align="center">
+		<tr><td>nil    </td><td>null   </td></tr>
+		<tr><td>number </td><td>double </td></tr>
+		<tr><td>string </td><td>string </td></tr>
+		<tr><td>boolean</td><td>boolean</td></tr>
+	</tbody>
+</table>
+
+<p>To marshal values of these types as <code>any</code>s with a CORBA type different from the default one, you must create a table that contains a field <code>_anyval</code> with the actual value of the <code>any</code> and then set the metatable of this wrapping table to the proper CORBA type.
+Alternatively, the application may create values with custom metatables.
+In that case, the actual CORBA type is defined by the field <code>__idltype</code> of the custom metatable.
+For illutrative purpose, the code below can be used to create <code>any</code>s with values of different types.</p>
+
+<pre>
+-- any value containing a long
+local longany = setmetatable({ _anyval = 4 }, oil.idl.long)
+
+-- any value containing a struct
+local mystruct = { ... }
+local structany1 = setmetatable(mystruct, oil.idl.struct{ ... })
+
+-- any value containing a struct with a custom metatable
+local mystruct = setmetatable({ ... }, {
+       __index = function(tab, key) ... end,
+       __idltype =  oil.idl.struct{ ... },
+})
+local structany2 = mystruct
+
+-- any value containing a sequence of anys
+local myanyseq = { longany, structany1, structany2 }
+local seqany = setmetatable(myanyseq, oil.idl.sequence{ oil.idl.any })
+</pre>
+
+<h2><a name="exception">Exceptions</a></h2>
+
+<p>Like structure values, exceptions are mapped to a table that maps all the names of the fields defined in the IDL definition into their proper values.
+However, the exception value contains an additional field at index 1 that contains the repository ID of the exception.
+For example, suppose the following IDL exception definition.</p>
+
+<pre>
+exception ScriptError {
+	string script;
+	string message;
+};
+</pre>
+
+<p>A valid exception value for this definition would be</p>
+
+<pre>
+local MyScriptError = { "IDL:ScriptError:1.0",
+	script = "HelloWorld.lua",
+	message = "attempt to call method `say_hello_to' (a nil value)",
+}
+</pre>
+
+</div>
+
+<div class="content">
+	<h3><small>Copyright (C) 2004-2005 Tecgraf, PUC-Rio</small></h3>
+	<small>This project is currently being maintained by <a href="http://www.tecgraf.puc-rio.br">Tecgraf</a> at <a href="http://www.puc-rio.br">PUC-Rio</a> with grants by <a href="http://www.capes.gov.br">CAPES</a> and <a href="http://www.cnpq.br">CNPq</a>.</small>
+</div>
+
+<div id="Board">
+</div>
+
+<!-- BlueRobot was here. -->
+
+</body>
+
+</html>

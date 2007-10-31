@@ -1,0 +1,279 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+<title>OiL: The Lua Object Request Broker Project</title>
+<style type="text/css">
+<!-- 
+@import "oil.css";
+@import "layout1.css";
+@import "table.css";
+-->
+</style>
+</head>
+
+<body>
+
+<div id="Header"><h3>The Lua Object Request Broker</h3></div>
+<div id="Logo"><img alt="small (1K)" src="small.gif" height="49" width="80" /></div>
+
+<div id="Menu">
+	<h3>Menu</h3>
+	<hr>
+	<p>
+		<a href="index.html" title="OiL site main page">Home</a><br>
+		<a href="install.html" title="Installation instructions">Install</a><br>
+		<a href="docs.html" title="User manual">Manual</a><br>
+		<a href="papers.html" title="Published papers">Papers</a><br>
+		<a href="features.html" title="List of features currently supported">Features</a><br>
+		<a href="versions.html" title="List of all versions of OiL">Versions</a><br>
+		<a href="people.html" title="Who does develop the OiL?">People</a><br>
+		<a href="http://www.luaforge.net/projects/oil" title="Project page at LuaForge">LuaForge</a><br>
+	</p>
+</div>
+
+<div class="content">
+	<h1>Current Features</h1>
+
+	<a href="#supported">Supported features</a>
+	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+	<a href="#unsupported">Not supported features</a>
+	
+	<hr>
+
+	<a name="supported"></a>
+	<table summary="List of features currently supported by OiL">
+		<caption>Supported features</caption>
+		<thead>
+			<tr>	
+  			<th>Feature
+  			<th>Tested
+  			<th>Since
+  			<th>Limitations
+			</tr>	
+		</thead>
+
+		<tbody> <tr><td class="title" colspan=4>Types and marshalling
+		<tr>
+			<td>Commom primitive IDL types
+				<UL>
+					<LI>Numeric types
+					<LI>Structs
+					<LI>Unions
+					<LI>Sequences
+					<LI>Arrays
+					<LI>String
+				</UL>
+			<td>Partial
+			<td>O2
+		<tr>
+			<td>Advanced primitive IDL types
+				<UL>
+					<LI>long long
+					<LI>unsigned long long
+					<LI>long double
+			<td>Partial
+			<td>0.4
+		<tr>
+			<td>Object references
+			<td>Yes
+			<td>O2
+		<tr>
+			<td>TypeCodes for supported types
+			<td>Partial
+			<td>O2
+			<td>
+		<tr>
+			<td>CORBA's Any
+			<td>Yes
+			<td>O2
+
+		<tbody> <tr><td class="title" colspan=4> Protocols
+		<tr>
+			<td>GIOP 1.0
+			<td>Yes
+			<td>O2
+		<tr>
+			<td>IIOP 1.0
+			<td>Yes
+			<td>O2
+
+		<tbody> <tr><td class="title" colspan=4> Object references
+		<tr>
+			<td>Stringfied IOR's
+			<td>Yes
+			<td>O2
+		<tr>
+			<td>corbaloc URLs
+			<td>Yes
+			<td>0.2
+
+		<tbody> <tr><td class="title" colspan=4> ORB and servants
+		<tr>
+			<td><code>_non_existent</code> basic operation
+			<td>Yes
+			<td>0.2
+		<tr>
+			<td><code>_is_a</code> basic operation
+			<td>Yes
+			<td>0.3
+		<tr>
+			<td><code>_interface</code> basic operation
+			<td>Yes
+			<td>0.3
+		<tr>
+			<td>ORB net interface and port definition
+			<td>No
+			<td>O2
+		<tr>
+			<td>Definition of host and port for IOR generation
+			<td>No
+			<td>0.1
+		<tr>
+			<td>Multiple ORB instances
+			<td>Yes
+			<td>0.1
+		<tr>
+			<td>Attribute implementation as servant fields
+			<td>Yes
+			<td>O2
+		<tr>
+			<td>Attribute implementation by _set_ and _get_ operations
+			<td>Yes
+			<td>0.1
+		<tr>
+			<td>Concurrent request handling
+			<td>Yes
+			<td>0.3
+		<tr>
+			<td>Absolute interface names
+			<td>Yes
+			<td>0.3
+		<tr>
+			<td>Shutdown operation
+			<td>Yes
+			<td>0.4
+		<tr>
+			<td>Operation invocation and dispatch interception
+			<td>Yes
+			<td>0.4
+
+		<tbody> <tr><td class="title" colspan=4>CORBA Services
+		<tr>
+			<td>Integrated interface repository
+			<td>Yes
+			<td>0.3
+		<tr>
+			<td>Naming service
+			<td>Yes
+			<td>0.3.1
+
+		<tbody> <tr><td class="title" colspan=4> Dynamic proxies
+		<tr>
+			<td><code>_non_existent</code> basic operation
+			<td>Yes
+			<td>0.2
+		<tr>
+			<td><code>_interface</code> basic operation
+			<td>Yes
+			<td>O2
+		<tr>
+			<td><code>_is_a</code> basic operation
+			<td>Yes
+			<td>0.3
+		<tr>
+			<td><code>_is_equivalent</code> basic operation
+			<td>Yes
+			<td>0.4
+		<tr>
+			<td>oneway operations
+			<td>No
+			<td>0.1
+		<tr>
+			<td>deferred invocations (futures)
+			<td>Yes
+			<td>0.4
+
+	</table>
+	<br>	
+	<br>	
+	<br>	
+	<a name="unsupported"></a>
+	<table summary="List of features currently not supported by OiL">
+		<caption>Not supported features</caption>
+		<thead>
+			<th>Feature
+			<th>Priority
+			<th>Assigned
+			<th>Requirements
+
+		<tbody> <tr><td class="title" colspan=4>Types and marshalling
+		<tr>
+			<td>Advanced primitive IDL types
+				<UL>
+					<LI>wide char
+					<LI>wide string
+					<LI>fixed decimals
+		<tr>
+			<td>Value types
+			<td>medium (maia)
+			<td>Maia
+			<td>LuaIDL support
+		<tr>
+			<td>Other IDL types
+				<UL>
+					<LI>Principal
+					<LI>Abstract interfaces
+					<LI>Native
+
+		<tbody> <tr><td class="title" colspan=4> Protocols
+		<tr>
+			<td>IIOP 1.1 - 1.2 support
+			<td>medium (IME-USP)
+			<td>Theóphilo
+		<tr>
+			<td>Firewall bypass support
+			<td>medium (IME-USP)
+			<td>Theóphilo
+
+		<tbody> <tr><td class="title" colspan=4> Object references
+		<tr>
+			<td>Initial References
+		<tr>
+			<td>corbaname URLs
+		<tr>
+			<td>FTP URLs (optional)
+		<tr>
+			<td>HTTP URLs (optional)
+
+		<tbody> <tr><td class="title" colspan=4> ORB and servants
+		<tr>
+			<td>POA manament and policies
+
+		<tbody> <tr><td class="title" colspan=4>CORBA Services
+		<tr>
+			<td>Trading service
+		<tr>
+			<td>Event service
+		<tr>
+			<td>Notification service
+
+		<tbody> <tr><td class="title" colspan=4> Dynamic proxies
+		<tr>
+			<td><code>_is_nil</code> basic operation
+
+	</table>
+</div>
+
+<div class="content">
+	<h3><small>Copyright (C) 2004-2005 Tecgraf, PUC-Rio</small></h3>
+	<small>This project is currently being maintained by <a href="http://www.tecgraf.puc-rio.br">Tecgraf</a> at <a href="http://www.puc-rio.br">PUC-Rio</a> with grants by <a href="http://www.capes.gov.br">CAPES</a> and <a href="http://www.cnpq.br">CNPq</a>.</small>
+</div>
+
+<!-- BlueRobot was here. -->
+
+</body>
+
+</html>

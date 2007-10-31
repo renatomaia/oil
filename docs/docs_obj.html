@@ -1,0 +1,321 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+<title>OiL: The Lua Object Request Broker Project</title>
+<style type="text/css" media="all"><!--
+@import "oil.css";
+@import "layout1.css";
+dt { margin-top: 10px; }
+table { padding-left: 10px; }
+--></style>
+</head>
+
+<body>
+
+<div id="Header"><h3>The Lua Object Request Broker</h3></div>
+<div id="Logo"><img alt="small (1K)" src="small.gif" height="49" width="80" /></div>
+
+<div id="Menu">
+	<h3>Menu</h3>
+	<hr>
+	<p>
+		<a href="index.html" title="OiL site main page">Home</a><br>
+		<a href="install.html" title="Installation instructions">Install</a><br>
+		<a href="docs.html" title="User manual">Manual</a><br>
+			<ul>
+				<li><a href="docs_lib.html" title="Main library programming interface">Library API</a><br></li>
+				<li><a href="docs_obj.html" title="Object implementation and access">CORBA Objects</a><br></li>
+				<li><a href="docs_map.html" title="CORBA type mapping into Lua">Type Mapping</a><br></li>
+			</ul>
+		<a href="papers.html" title="Published papers">Papers</a><br>
+		<a href="features.html" title="List of features currently supported">Features</a><br>
+		<a href="versions.html" title="List of all versions of OiL">Versions</a><br>
+		<a href="people.html" title="Who does develop the OiL?">People</a><br>
+		<a href="http://www.luaforge.net/projects/oil" title="Project page at LuaForge">LuaForge</a><br>
+	</p>
+</div>
+
+<div class="content">
+
+<h1>CORBA Objects</h1>
+
+<p>This chapter describes how CORBA objects are implemented using the OiL ORB, as well as how to create and use object proxies to access remote CORBA objects.</p>
+
+<h2>Lua Objects</h2>
+
+<p>Although Lua is not an object-oriented language, it is possible to write programs using an object-oriented programming style.
+Actually, Lua supports this style directly by some syntactic sugar.
+An object in Lua can be implemented as a table (or other indexable value) that indexes attribute names to their values and operation names to the functions that implement them.
+For further information on the implementation of objects in Lua see chapter 16 of the book <cite>Programming in Lua</cite> by Roberto Ierusalimschy.</p>
+
+<p>Furthermore, OiL uses the <a href="http://loop.luaforge.net/">LOOP</a> library for support of object-oriented programming that is currently maintained as a sub-project inside the OiL project.
+The implementation of the CORBA objects created using OiL can be created using class models of the <a href="http://loop.luaforge.net/">LOOP</a> library.</p>
+
+<h2><a name="impl">Implementation</a></h2>
+
+<p>CORBA objects are created with OiL are implemented by a Lua object that have the same attributes and operations of the supported IDL interface.
+Since OiL is a dynamic ORB, the implementation object does not have to implement the attributes and operations until they are accessed by CORBA clients.
+Furthermore, OiL implies no additional restrictions on the implementation object besides the fact that it must map attribute and operation names to their values and implementation.
+Therefore, an implementation object may be any indexable value of Lua, including an <code>userdata</code>.
+This section, presents how CORBA objects are implemented using a Lua object (<i>i.e.</i> an implementation table).</p>
+
+<h3><a name="implops">Operations</a></h3>
+
+<p>Operations are implemented as operations of the implementation object.
+These operations receive as parameters the implementation object (<i>i.e.</i> the <code>self</code> parameter) and the values of all <code>in</code> and <code>inout</code> parameters of the operation invocation.
+The values of these parameters are in the same relative order as defined by the operation IDL definition.
+The operation of the implementation object must return the value returned by the CORBA operation as well as the output value of its <code>out</code> and <code>inout</code> parameters.
+Again, the values of these parameters must be returned in the same relative order as defined by the operation IDL definition and after the returned value of the operation.
+Operations which returned value type is <code>void</code> may not return an additional value before the output value of  <code>out</code> and <code>inout</code> parameters.</p>
+
+<p>For example, suppose the following IDL interface that is used to connect a channel to a given host defined by parameter <code>host</code>.
+Parameter <code>attempts</code> is used to define the max number of attempts to establish the connection, and also informs the actual number of attempts until the successful or failed connection.
+Parameter <code>port</code> is used to inform the port actually used (from a previously defined set of port numbers) in the successful attempt to establish the connection.
+The returned value indicates the success or failure of the connection.</p>
+
+<pre>
+interface Channel {
+	boolean connect(in string host, inout long attempts, out long port);
+};
+</pre>
+
+<p>A possible implementation would be</p>
+
+<pre>
+local impl = {}
+function impl:connect(host, max)
+	for actual = 1, max do
+		local port = self:getnextport()
+		conn = socket.connect(host, port)
+		if conn then
+			self.conn = conn
+			return true,   -- returned value
+			       actual, -- value of attempts parameter
+			       port    -- value of port parameter
+		end
+	end
+	return false, -- returned value
+	       max,   -- value of attempts parameter
+	       -1     -- value of port parameter
+end
+
+oil.newobject(impl, "Channel")
+</pre>
+
+<h3><a name="implatt">Attributes</a></h3>
+
+<p>An attribute can be implemented as a table field that contains its value.
+For example, suppose the following IDL definition.</p>
+
+<pre>
+interface Hello {
+	attribute long count;
+	void say_hello_to(in string name);
+};
+</pre>
+
+Then, a possible implementation would be
+
+<pre>
+local impl = { count = 0 }
+function impl:say_hello_to(name)
+	self.count = self.count + 1
+	print("Hello "..name.."!")
+end
+
+oil.newobject(impl, "Hello")
+</pre>
+
+<p>The value of field <code>count</code> is used as the value of attribute with same name.
+Alternatively, attributes can be implemented as a pair of <code>_get_</code> and <code>_set_</code> functions.
+For example, the example above could be rewritten like the following.</p>
+
+<pre>
+local impl = { names = {} }
+function impl:_get_count()
+	return table.getn(self.names)
+end
+function impl:_set_count(value)
+	table.setn(self.names, value)
+end
+function impl:say_hello_to(name)
+	table.insert(self.names, name)
+	print("Hello "..name.."!")
+end
+
+oil.newobject(impl, "Hello")
+</pre>
+
+<h3><a name="implexp">Exceptions</a></h3>
+
+<p>Exceptions are mapped to tables that contains the values of it fields and the repository ID of the exception at index 1.
+Exceptions are raised as Lua errors which message is the table that represents the raised exception.
+For example, suppose the following IDL definition that defined an interface for executing Lua scripts on a remote computer.</p>
+
+<pre>
+exception CompilationError {
+	string script;
+	string message;
+};
+exception ExecutionError {
+	string script;
+	string message;
+};
+
+interface RemoteLua {
+	void run_script(in string path)
+		raises (CompilationError, ExecutionError);
+};
+</pre>
+
+<p>A possible implementation would be</p>
+
+<pre>
+local impl = {}
+function impl:run_script(path)
+	local chunk, errmsg = loadfile(path)
+	if not chunk then
+		-- raise CompilationError exception
+		error{ "IDL:CompilationError:1.0",
+			script = path,
+			message = errmsg,
+		}
+	end
+	local success, errmsg = pcall(chunk)
+	if not success then
+		-- raise ExecutionError exception
+		error{ "IDL:ExecutionError:1.0",
+			script = path,
+			message = errmsg,
+		}
+	end
+end
+
+oil.newobject(impl, "RemoteLua")
+</pre>
+
+<p>Additionally, OiL defines the operation <code>oil.assert.raise</code> that can be used instead of Lua basic function <code>error</code> to raise exceptions that can be converted to a string (using <code>tostring</code> function of Lua) that describes the exception.</p>
+
+<h2><a name="proxy">Proxies</a></h2>
+
+<p>OiL enables the access to remote CORBA objects by means of object proxies, which are local Lua objects that represents the remote object in the application.
+Object proxies are creates by function <code>oil.newproxy</code> of the OiL library API.
+Actions taken over an object proxy like attribute access or method invocations are delegated to the remote CORBA object.
+This section, describes how to access CORBA objects services using OiL object proxies.</p>
+
+<h3><a name="prxops">Operations</a></h3>
+
+<p>In order to perform an operation invocation over a remote CORBA object, just perform the operation call over a proxy for the proper object.
+The way to pass and receive the values of parameters follows the same pattern used by the implementation of CORBA objects.
+Therefore, at an operation invocation over an object proxy, the application must pass the proxy (<i>i.e.</i> the <code>self</code> parameter) and the values of all <code>in</code> and <code>inout</code> parameters.
+The values of these parameters are in the same relative order as defined by the operation IDL definition.
+As a result, The operation of the object proxy will return the value returned by the CORBA operation as well as the output value of its <code>out</code> and <code>inout</code> parameters.
+Again, the values of these parameters are returned in the same relative order as defined by the operation IDL definition and after the returned value of the operation.
+Operations which returned value type is <code>void</code> does not return an additional value before the output value of  <code>out</code> and <code>inout</code> parameters.
+For example, suppose the following IDL definition.</p>
+
+<pre>
+interface Channel {
+	boolean connect(in string host, inout long attempts, out long port);
+};
+</pre>
+
+<p>Then, the code below performs a remote invocation of operation <code>connect</code> passing the string value <code>"localhost"</code> as the <code>host</code> parameter and value 3 as the <code>attempts</code> parameter, then it stores the returned value, the resulting value of parameter <code>attempts</code> and the output value of parameter <code>port</code> on the local variables <code>success</code>, <code>attempts</code> and <code>port</code>, respectively.</p>
+
+<pre>
+local proxy = oil.newproxy (oil.readIOR("channel.ior"), "Channel")
+
+local success, attempts, port = proxy:connect("localhost", 3)
+
+if success then
+	io.write("successfully connect to host ", host,
+	         " at port ", port,
+	         " after ", attempts, " attempts.")
+else
+	io.write("unable to connect to a port of host ", host,
+	         " after 3 attempts.")
+end
+</pre>
+
+<h3><a name="prxatt">Attributes</a></h3>
+
+<p>Attributes can be accessed by means of a pair of <code>_get_</code> and <code>_set_</code> functions.
+For example, the code below is equivalent to the code presented above.</p>
+
+<pre>
+interface Hello {
+	attribute long count;
+	void say_hello_to(in string name);
+};
+</pre>
+
+<p>Then, the code below reads the value of attribute <code>count</code> and then sets it to zero.</p>
+
+<pre>
+local proxy = oil.newproxy(oil.readIOR("hello.ior"), "Hello")
+
+print("Value of count is:", proxy:_get_count())
+proxy:_set_count(0)
+</pre>
+
+<h3><a name="prxexp">Exceptions</a></h3>
+
+<p>Exceptions are mapped to tables that contains the values of it fields and the repository ID of the exception at index 1.
+Exceptions are raised by the object proxy as a Lua error which message is the table that represents the raised exception.
+For example, to catch a CORBA exception raised by operation <code>run_script</code> of interface <code>RemoteLua</code> presented previously you can use the following code</p>
+
+<pre>
+local success, errmsg = oil.pcall(remoteLua.run_script, remoteLua, "/usr/lua/scripts/error.lua")
+if not success then
+	print("Caught an exception with repID:", errmsg[1])
+	print("  Failed scrpt:", errmsg.script)
+	print("  Error message:", errmsg.message)
+end
+</pre>
+
+<p>Alternatively you can also define an exception handler for a given proxy.
+This is done by defining of field <code>__exceptions</code> of the proxy as a function that will be called whenever an exception is raised at invocation of an operation though that proxy.
+The exception handler function receives the following parameters.</p>
+
+<table>
+	<tr>
+		<td valign="top"><code>self</code></td>
+		<td valign="top"><b>object</b></td>
+		<td valign="top"></td>
+		<td>The proxy which operation has raised the exception.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>exception</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top"></td>
+		<td>Raised exception.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>operation</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top"></td>
+		<td>IDL description of the operation that raised the exception.
+		When OiL is used without type support the operation description is the operation name.</td>
+	</tr>
+</table>
+
+<p>The exception handler function can be defined for all proxies of a given interface or for all proxies by function <a href="docs_lib.html#setexcatch"><code>oil.setexcatch</code></a>.</p>
+
+</div>
+
+<div class="content">
+	<h3><small>Copyright (C) 2004-2005 Tecgraf, PUC-Rio</small></h3>
+	<small>This project is currently being maintained by <a href="http://www.tecgraf.puc-rio.br">Tecgraf</a> at <a href="http://www.puc-rio.br">PUC-Rio</a> with grants by <a href="http://www.capes.gov.br">CAPES</a> and <a href="http://www.cnpq.br">CNPq</a>.</small>
+</div>
+
+<div id="Board">
+</div>
+
+<!-- BlueRobot was here. -->
+
+</body>
+
+</html>

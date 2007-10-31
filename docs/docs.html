@@ -1,0 +1,171 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+<title>OiL: The Lua Object Request Broker Project</title>
+<style type="text/css" media="all"><!--
+@import "oil.css";
+@import "layout1.css";
+dt { margin-top: 10px; }
+table { padding-left: 10px; }
+--></style>
+</head>
+
+<body>
+
+<div id="Header"><h3>The Lua Object Request Broker</h3></div>
+<div id="Logo"><img alt="small (1K)" src="small.gif" height="49" width="80" /></div>
+
+<div id="Menu">
+	<h3>Menu</h3>
+	<hr>
+	<p>
+		<a href="index.html" title="OiL site main page">Home</a><br>
+		<a href="install.html" title="Installation instructions">Install</a><br>
+		<a href="docs.html" title="User manual">Manual</a><br>
+			<ul>
+				<li><a href="docs_lib.html" title="Main library programming interface">Library API</a><br></li>
+				<li><a href="docs_obj.html" title="Object implementation and access">CORBA Objects</a><br></li>
+				<li><a href="docs_map.html" title="CORBA type mapping into Lua">Type Mapping</a><br></li>
+			</ul>
+		<a href="papers.html" title="Published papers">Papers</a><br>
+		<a href="features.html" title="List of features currently supported">Features</a><br>
+		<a href="versions.html" title="List of all versions of OiL">Versions</a><br>
+		<a href="people.html" title="Who does develop the OiL?">People</a><br>
+		<a href="http://www.luaforge.net/projects/oil" title="Project page at LuaForge">LuaForge</a><br>
+	</p>
+</div>
+
+<div class="content">
+	<h1>Contents</h1>
+
+	<h3><a href="docs_lib.html">Library API</a></h3>
+	<ol>
+		<li>
+			<b>ORB Management</b> 
+			<ol>
+				<li><a href="docs_lib.html#Config"><b><code>oil.Config</code></b></a></li> 
+				<li><a href="docs_lib.html#init"><b><code>oil.init</code></b></a><code>([config])</code></li>
+				<li><a href="docs_lib.html#pending"><b><code>oil.pending</code></b></a><code>()</code></li>
+				<li><a href="docs_lib.html#run"><b><code>oil.run</code></b></a><code>()</code></li>
+				<li><a href="docs_lib.html#shutdown"><b><code>oil.shutdown</code></b></a><code>()</code></li>
+				<li><a href="docs_lib.html#step"><b><code>oil.step</code></b></a><code>()</code></li>
+			</ol>
+		</li>
+		<li>
+			<b>Interface Repository</b> 
+			<ol>
+				<li><a href="docs_lib.html#getLIR"><b><code>oil.getLIR</code></b></a><code>()</code></li>
+				<li><a href="docs_lib.html#getIR"><b><code>oil.getIR</code></b></a><code>()</code></li>
+				<li><a href="docs_lib.html#loadidl"><b><code>oil.loadidl</code></b></a><code>(idlcode)</code></li>
+				<li><a href="docs_lib.html#loadidlfile"><b><code>oil.loadidlfile</code></b></a><code>(filename)</code></li>
+				<li><a href="docs_lib.html#setIR"><b><code>oil.setIR</code></b></a><code>(remoteIR)</code></li>
+				<li><a href="docs_lib.html#types"><b><code>oil.types</code></b></a></li>
+			</ol>
+		</li>
+		<li>
+			<b>Servants</b> 
+			<ol>
+				<li><a href="docs_lib.html#deactivate"><b><code>oil.deactivate</code></b></a><code>(object)</code></li>
+				<li><a href="docs_lib.html#newobject"><b><code>oil.newservant</code></b></a><code>(impl, interface, [key])</code></li>
+				<li><a href="docs_lib.html#tostring"><b><code>oil.tostring</code></b></a><code>(object)</code></li>
+			</ol>
+		</li>
+		<li>
+			<b>Proxies</b> 
+			<ol>
+				<li><a href="docs_lib.html#narrow"><b><code>oil.narrow</code></b></a><code>(proxy, [interface])</code></li>
+				<li><a href="docs_lib.html#newproxy"><b><code>oil.newproxy</code></b></a><code>(reference, [interface])</code></li>
+			</ol>
+		</li>
+		<li>
+			<b>Threads</b> 
+			<ol>
+				<li><a href="docs_lib.html#main"><b><code>oil.main</code></b></a><code>(function)</code></li>
+				<li><a href="docs_lib.html#newthread"><b><code>oil.newthread</code></b></a><code>(function, ...)</code></li>
+				<li><a href="docs_lib.html#pcall"><b><code>oil.pcall</code></b></a><code>(function, ...)</code></li>
+				<li><a href="docs_lib.html#sleep"><b><code>oil.sleep</code></b></a><code>(delay)</code></li>
+				<li><a href="docs_lib.html#tasks"><b><code>oil.tasks</code></b></a></li>
+				<li><a href="docs_lib.html#time"><b><code>oil.time</code></b></a><code>()</code></li>
+			</ol>
+		</li>
+		<li>
+			<b>Marshaling</b> 
+			<ol>
+				<li><a href="docs_lib.html#newdecoder"><b><code>oil.newdecoder</code></b></a><code>(stream)</code></li>
+				<li><a href="docs_lib.html#newencoder"><b><code>oil.newencoder</code></b></a><code>()</code></li>
+			</ol>
+		</li>
+		<li>
+			<b>Exceptions</b> 
+			<ol>
+				<li><a href="docs_lib.html#newexpect"><b><code>oil.newexcept</code></b></a><code>(body)</code></li>
+				<li><a href="docs_lib.html#setexcatch"><b><code>oil.setexcatch</code></b></a><code>(function [, interface])</code></li>
+			</ol>
+		</li>
+		<li>
+			<b>Interception</b> 
+			<ol>
+				<li><a href="docs_lib.html#setclientinterceptor"><b><code>oil.setclientinterceptor</code></b></a><code>([interceptor])</code></li>
+				<li><a href="docs_lib.html#setserverinterceptor"><b><code>oil.setserverinterceptor</code></b></a><code>([interceptor])</code></li>
+			</ol>
+		</li>
+		<li>
+			<b>File Utilities</b> 
+			<ol>
+				<li><a href="docs_lib.html#readfrom"><b><code>oil.readfrom</code></b></a><code>(filename)</code></li>
+				<li><a href="docs_lib.html#writeto"><b><code>oil.writeto</code></b></a><code>(filename, text)</code></li>
+			</ol>
+		</li>
+	</ol>
+
+	<h3><a href="docs_obj.html">CORBA Objects</a></h3>
+	<ol>
+		<li>
+			<a href="docs_obj.html#impl"><b>Implementation</b></a> 
+			<ol>
+				<li><a href="docs_obj.html#implops"><b>Operations</b></a></li> 
+				<li><a href="docs_obj.html#implatt"><b>Attributes</b></a></li>
+				<li><a href="docs_obj.html#implexp"><b>Exceptions</b></a></li>
+			</ol>
+		</li>
+		<li>
+			<a href="docs_obj.html#proxy"><b>Proxies</b></a>
+			<ol>
+				<li><a href="docs_obj.html#prxops"><b>Operations</b></a></li> 
+				<li><a href="docs_obj.html#prxatt"><b>Attributes</b></a></li>
+				<li><a href="docs_obj.html#prxexp"><b>Exceptions</b></a></li>
+			</ol>
+		</li>
+	</ol>
+
+	<h3><a href="docs_map.html">Type Mapping</a></h3>
+	<ol>
+		<li><a href="docs_map.html#basic"><b>Basic Types</b></a></li> 
+		<li><a href="docs_map.html#enum"><b>Enumerations</b></a></li> 
+		<li><a href="docs_map.html#struct"><b>Structures</b></a></li> 
+		<li><a href="docs_map.html#sequence"><b>Sequences</b></a></li> 
+		<li><a href="docs_map.html#array"><b>Arrays</b></a></li> 
+		<li><a href="docs_map.html#union"><b>Unions</b></a></li> 
+		<li><a href="docs_map.html#TypeCode"><b>TypeCodes</b></a></li> 
+		<li><a href="docs_map.html#any"><b>Anys</b></a></li> 
+		<li><a href="docs_map.html#exception"><b>Exceptions</b></a></li> 
+	</ol>
+
+</div>
+
+<div class="content">
+	<h3><small>Copyright (C) 2004-2005 Tecgraf, PUC-Rio</small></h3>
+	<small>This project is currently being maintained by <a href="http://www.tecgraf.puc-rio.br">Tecgraf</a> at <a href="http://www.puc-rio.br">PUC-Rio</a> with grants by <a href="http://www.capes.gov.br">CAPES</a> and <a href="http://www.cnpq.br">CNPq</a>.</small>
+</div>
+
+<div id="Board">
+</div>
+
+<!-- BlueRobot was here. -->
+
+</body>
+
+</html>
