@@ -1,9 +1,10 @@
+local string = require "string"
 local oil    = require "oil"
 local utils  = require "dtest.run.utils"
 local checks = ...
 
-local host   = utils.hostof("Server")
-local server = oil.narrow(utils.objectbyinfo(host, 2809, "Server"))
+local corbaloc = string.format("corbaloc::%s:2809/Server", utils.hostof("Server"))
+local server = oil.narrow(utils.waitfor(oil.newproxy(corbaloc, oil.corba.idl.object)))
 
 local future = server:___start(-1)
 oil.sleep(1)

@@ -1,4 +1,7 @@
-execpath = (os.getenv("OIL_HOME") or ".").."/test/oil/dtests/concurrency/";
+local OIL_HOME = assert(os.getenv("OIL_HOME"),
+	"OIL_HOME environment variable not defined")
+
+execpath = OIL_HOME.."/test/oil/dtests/concurrency/";
 services = {
 	Server = { command = "lua server.lua" };
 };
