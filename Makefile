@@ -9,7 +9,7 @@ TO_INC= oilbit.h
 TO_LIB= liboilbit.a
 SO_LIB= liboilbit
 
-TO_LUA=	loop luaidl oil
+TO_LUA=	loop luaidl.lua luaidl oil.lua oil
 
 BND_INC=	loop.h luaidl.h oil.h
 BND_LIB=	libloop.a libluaidl.a liboil.a

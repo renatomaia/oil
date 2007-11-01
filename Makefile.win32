@@ -8,7 +8,7 @@ TO_INC= oilbit.h
 TO_LIB= oilbit.lib oilbit.exp
 TO_DLL=	oilbit.dll
 
-TO_LDR=	loop luaidl oil
+TO_LDR=	loop luaidl.lua luaidl oil.lua oil
 
 BND_INC=	loop.h luaidl.h oil.h
 BND_LIB=	loop.lib luaidl.lib oil.lib \
