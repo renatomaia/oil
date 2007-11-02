@@ -183,10 +183,8 @@ end
 
 function getreply(self, channel, probe)                                         --[[VERBOSE]] verbose:invoke(true, "get a reply from communication channel")
 	local context = self.context
-	if probe then
-		if not channel:probe() then
-			return true                                                               --[[VERBOSE]],verbose:invoke(false, "no reply available at the moment")
-		end
+	if probe and not channel:probe() then
+		return true                                                                 --[[VERBOSE]],verbose:invoke(false, "no reply available at the moment")
 	end
 	local result, except
 	local msgid, header, decoder = context.messenger:receivemsg(channel)

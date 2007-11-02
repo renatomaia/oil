@@ -75,6 +75,9 @@ local function update(channel, requestid, success, ...)
 end
 
 function getreply(self, channel, probe)
+	if probe and not channel:probe() then
+		return true
+	end
 	local result, errmsg = channel:receive()
 	if result then
 		local decoder = self.context.codec:decoder(result:gsub("%z", "\n"))
