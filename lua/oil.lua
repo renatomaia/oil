@@ -522,14 +522,14 @@ pcall = TaskManager and TaskManager.pcall or luapcall
 -- @usage oil.main(oil.run)
 -- @usage oil.main(function() print(oil.tostring(oil.getLIR())) oil.run() end)
 --
-function main(main)
+function main(main, ...)
 	assert.type(main, "function", "main function")
 	if TaskManager then
 		local tasks = TaskManager.tasks
-		assert.results(tasks:register(coroutine.create(main)))
-		return TaskManager.control:run()
+		assert.results(tasks:register(coroutine.create(main), tasks.currentkey))
+		return TaskManager.control:run(...)
 	else
-		return main()
+		return main(...)
 	end
 end
 
