@@ -19,6 +19,10 @@ local oo = require "oil.oo"
 
 module("oil.kernel.base.Sockets", oo.class)
 
+function __index(self, field)
+	return _M[field] or socket[field]
+end
+
 function select(self, recvt, sendt, timeout)
 	return socket.select(recvt, sendt, timeout)
 end
