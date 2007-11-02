@@ -17,7 +17,7 @@ oil.main(function()
 	local calls = {}
 	for id, time in ipairs(arg) do
 		print(id, "about to request work for "..time.." seconds")
-		calls[proxy:___do_something_for(tonumber(time))] = id
+		calls[proxy.__deferred:do_something_for(tonumber(time))] = id
 	end
 	
 	-- wait for the replies
