@@ -44,8 +44,8 @@ end
 
 local function callhandler(self, ...)
 	local handler = rawget(self, "__exceptions") or
-	                rawget(oo.classof(self), "__exceptions") or
-	                rawget(Proxy, "__exceptions")
+	                oo.classof(self).__exceptions
+	if not handler then return error((...)) end
 	return handler(self, ...)
 end
 
@@ -55,61 +55,57 @@ end
 
 --------------------------------------------------------------------------------
 
-Proxy = oo.class()
-
-function Proxy:__exceptions(except)
-	error(except)
-end
-
-function Proxy:checkcall(operation, reply, except)
+function checkcall(self, operation, reply, except)
 	return reply or packresults(callhandler(self, except, operation))
 end
 
-function Proxy:checkresults(operation, success, ...)
+function checkresults(self, operation, success, ...)
 	if not success then
 		return callhandler(self, ..., operation)
 	end
 	return ...
 end
 
-function Proxy:deferredresults()                                                --[[VERBOSE]] verbose:proxies("getting deferred results of ",self.operation)
-	return Proxy.checkresults(
+--------------------------------------------------------------------------------
+
+Proxy = oo.class()
+
+local operation
+
+function Proxy:invoke(...)                                                      --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+	return checkresults(self, operation, 
+	       	checkcall(self, operation,
+	       		self.__context.invoker:invoke(self, operation, ...)
+	       	):results()
+	       )
+end
+
+function Proxy:__index(field)
+	operation = field
+	return oo.classof(self).invoke
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+Deferred = oo.class({ __index = Proxy.__index }, Proxy)
+
+function deferredresults(self)                                                  --[[VERBOSE]] verbose:proxies("getting deferred results of ",self.operation)
+	return checkresults(
 		self.proxy,
 		self.operation,
 		oo.classof(self).results(self)
 	)
 end
 
-local operation
-
-function Proxy:defer(...)                                                       --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
-	local reply = Proxy.checkcall(self, operation,
+function Deferred:invoke(...)                                                   --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
+	self = self[1]
+	local reply = checkcall(self, operation,
 		self.__context.invoker:invoke(self, operation, ...))
 	reply.proxy = self
 	reply.operation = operation
-	reply.results = Proxy.deferredresults
+	reply.results = deferredresults
 	return reply
-end
-
-function Proxy:invoke(...)                                                      --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-	return Proxy.checkresults(self, operation, 
-	       	Proxy.checkcall(self, operation,
-	       		self.__context.invoker:invoke(self, operation, ...)
-	       	):results()
-	       )
-end
-
-function Proxy:currentop(value)
-	operation = value
-end
-
-Proxy.DeferredPattern = "^___(.+)$"
-
-function Proxy:__index(field)
-	if type(field) == "string" then
-		operation = field
-		return field:match(Proxy.DeferredPattern) and Proxy.defer or Proxy.invoke
-	end
 end
 
 --------------------------------------------------------------------------------
@@ -117,6 +113,7 @@ end
 
 function proxyto(self, reference)
 	reference.__context = self.context
+	reference.__deferred = Deferred{ reference }
 	return Proxy(reference)
 end
 

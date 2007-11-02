@@ -43,44 +43,50 @@ context = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local CachedIndex = oo.class({}, Proxies.Proxy)
+local Proxy = Proxies.Proxy
+local Deferred = Proxies.Deferred
+
+local CachedIndex = oo.class({}, Proxy)
+
+function CachedIndex:newinvoker(operation)
+	return function(self, ...)                                                    --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+		return Proxies.checkresults(self, operation, 
+		       	Proxies.checkcall(self, operation,
+		       		self.__context.invoker:invoke(self, operation, ...)
+		       	):results()
+		       )
+	end
+end
 
 function CachedIndex:__index(field)
 	if type(field) == "string" then
-		local deferred = field:match(CachedIndex.DeferredPattern)
 		local context = self.__context
-		local operation, value, cached = context.indexer:valueof(self.__type,
-		                                                         deferred or field)
+		local operation, value, cached = context.indexer:valueof(self.__type, field)
 		if cached then
 			if operation and value == nil then
-				if deferred then
-					value = function(self, ...)                                           --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
-						local reply = CachedIndex.checkcall(self, operation,
-							self.__context.invoker:invoke(self, operation, ...))
-						reply.proxy = self
-						reply.operation = operation
-						reply.results = CachedIndex.deferredresults
-						return reply
-					end
-				else
-					value = function(self, ...)                                           --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-						return CachedIndex.checkresults(self, operation, 
-						       	CachedIndex.checkcall(self, operation,
-						       		self.__context.invoker:invoke(self, operation, ...)
-						       	):results()
-						       )
-					end
-				end
+				value = oo.classof(self):newinvoker(operation)
 			end
 			self[field] = value
-		else
-			if operation and value == nil then
-				local proxies = context.proxies
-				CachedIndex:currentop(operation)
-				value = deferred and CachedIndex.defer or CachedIndex.invoke
-			end
+		elseif operation and value == nil then
+			value = oo.superclass(oo.classof(self)).__index(self, operation)
 		end
 		return value
+	end
+end
+
+--------------------------------------------------------------------------------
+
+local DeferredIndex = oo.class({ __index = CachedIndex.__index }, Deferred--[[, CachedIndex]])
+
+function DeferredIndex:newinvoker(operation)
+	return function(self, ...)                                                   --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
+		self = self[1]
+		local reply = Proxies.checkcall(self, operation,
+			self.__context.invoker:invoke(self, operation, ...))
+		reply.proxy = self
+		reply.operation = operation
+		reply.results = Proxies.deferredresults
+		return reply
 	end
 end
 
@@ -93,6 +99,10 @@ function __init(self, object)
 		return CachedIndex(oo.initclass{
 			__context = self.context,
 			__type = type,
+			__deferred = DeferredIndex(oo.initclass{
+				__context = self.context,
+				__type = type,
+			}),
 		})
 	end
 	return self
@@ -105,7 +115,9 @@ function proxyto(self, reference, type)                                         
 	type = type or context.indexer:typeof(reference)
 	local result, except = self.classes[type]
 	if result then
-		result = oo.rawnew(result, reference)
+		reference = oo.rawnew(result, reference)
+		reference.__deferred = oo.rawnew(result.__deferred, {reference})
+		result = reference
 	else
 		except = Exception{
 			reason = "type",
