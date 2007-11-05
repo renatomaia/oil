@@ -1,9 +1,9 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.6b
--- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
+-- Version:  0.8.7b
+-- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: init.lua
--- 
+--
 
 local assert  = assert
 local error   = error
@@ -13,7 +13,6 @@ local type    = type
 local unpack  = unpack
 
 local io      = require "io"
-local os      = require "os"
 local string  = require "string"
 
 module 'luaidl'
@@ -21,10 +20,10 @@ module 'luaidl'
 local _pre    = require 'luaidl.pre'
 local sin     = require 'luaidl.sin'
 
-VERSION = '0.8.6b'
+VERSION = '0.8.7b'
 
---- Preprocesses an IDL code. 
--- 
+--- Preprocesses an IDL code.
+--
 -- @param idl String with IDL code.
 -- @param options (optional)Table with preprocessor options, the available keys are:
 -- 'incpath', a table with include paths;
@@ -35,7 +34,7 @@ function pre( idl, options )
 end
 
 --- Preprocesses an IDL file.
--- 
+--
 -- @param filename The IDL filename.
 -- @param options (optional)Table with preprocessor options, the available keys are:
 -- 'incpath', a table with include paths.
@@ -59,7 +58,7 @@ function prefile( filename, options )
   return str
 end
 
-function parseAux( idl, options )
+local function parseAux( idl, options )
   local status, tab_output = pcall( sin.parse, idl, options )
   if status then
     return unpack( tab_output )
@@ -69,7 +68,7 @@ function parseAux( idl, options )
 end
 
 --- Parses an IDL code.
--- 
+--
 -- @param idl String with IDL code.
 -- @param options (optional)Table with parser and preprocessor options, the available keys are:
 -- 'callbacks', a table of callback methods;
@@ -83,16 +82,16 @@ function parse(idl, options)
 end
 
 --- Parses an IDL file.
--- Calls the method 'prefile' with 
+-- Calls the method 'prefile' with
 -- the given arguments, and so it parses the output of 'prefile'
--- calling the method 'parse'. 
+-- calling the method 'parse'.
 -- @param filename The IDL filename.
 -- @param options (optional)Table with parser and preprocessor options, the available keys are:
 -- 'callbacks', a table of callback methods;
 -- 'incpath', a table with include paths.
 -- @return A graph(lua table),
 -- that represents an IDL definition in Lua, for each IDL definition found.
--- @see prefile 
+-- @see prefile
 -- @see parse
 function parsefile( filename, options )
   local t = type( filename )

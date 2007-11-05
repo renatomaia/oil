@@ -1,9 +1,9 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.6b
--- Author:   Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>
+-- Version:  0.8.7b
+-- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: pre.lua
--- 
+--
 
 local error  = error
 local io     = require "io"
@@ -14,7 +14,7 @@ local string = require "string"
 local table  = require "table"
 local type   = type
 
-module( 'luaidl.pre' )
+module 'luaidl.pre'
 
 
 local tab_macros
@@ -47,7 +47,7 @@ local function processDirective(...)
     READ = true
     return ''
   end --if
-  if ( READ ) then 
+  if ( READ ) then
     if ( directive == 'define' ) then
       local macro = arg[ 2 ]
       local value = arg[ 3 ]
@@ -60,9 +60,9 @@ local function processDirective(...)
         for _, v in ipairs( incpath ) do
           path = v..'/'..incFilename
           fh, msg = io.open( path )
-          if fh then 
+          if fh then
             break
-          end --if      
+          end --if
         end --for
       end --if
       if not fh then
@@ -72,8 +72,8 @@ local function processDirective(...)
       local incENDNumLine = currNumLine + 1
       local OUTFilename = currFilename
       incSource = _run( incSource, tab_options )
-      return string.format( '# %d "%s" 1\n%s# %d "%s" 2\n', 
-                            1, path, 
+      return string.format( '# %d "%s" 1\n%s# %d "%s" 2\n',
+                            1, path,
                             incSource,
                             incENDNumLine, OUTFilename
                           )
@@ -101,7 +101,7 @@ function _run( source, ptab_options )
   local numLine
   if ( not homedir ) then
     addString( output, string.format( '# 1 "%s"\n', currFilename ) )
-    homedir, numLine = string.gsub( currFilename, '(.*/).*', '%1' )   
+    homedir, numLine = string.gsub( currFilename, '(.*/).*', '%1' )
     if ( numLine == 0 ) then
       homedir = ''
     end --if

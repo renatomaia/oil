@@ -1,4 +1,4 @@
-local database = (os.getenv("OIL_HOME") or ".").."/test/luaidl/tests/db/"
+local database = (os.getenv("OIL_HOME") or "..").."/test/luaidl/tests/db/"
 
 local luaidl     = require "luaidl"
 local FileStream = require "loop.serial.FileStream"
