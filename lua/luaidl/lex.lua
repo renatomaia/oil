@@ -1,6 +1,6 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.7b
+-- Version:  0.8.8b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: lex.lua
 --
@@ -34,7 +34,7 @@ tab_tokens = { TK_ID = 257, TK_ABSTRACT = 258, TK_ANY = 259, TK_ATTRIBUTE = 260,
               TK_WSTRING = 321, TK_INTEGER_LITERAL = 322, TK_FLOAT_LITERAL = 323,
               TK_CHAR_LITERAL = 324, TK_WCHAR_LITERAL = 325, TK_STRING_LITERAL = 326,
               TK_WSTRING_LITERAL = 327, TK_FIXED_LITERAL = 328, TK_PRAGMA_PREFIX = 329,
-              TK_PRAGMA_ID = 330, TK_TYPECODE = 331, TK_MANAGES = 332,
+              TK_PRAGMA_ID = 330, TK_MANAGES = 332,
              }
 
 local tab_keywords = {
@@ -103,7 +103,6 @@ local tab_keywords = {
                 ['void']          = { token = tab_tokens.TK_VOID },
                 ['wchar']         = { token = tab_tokens.TK_WCHAR },
                 ['wstring']       = { token = tab_tokens.TK_WSTRING },
---                ['TypeCode']    = { token = tab_tokens.TK_TYPECODE },
               }
 
 local tab_symbols

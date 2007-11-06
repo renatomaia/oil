@@ -1,6 +1,6 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.7b
+-- Version:  0.8.8b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: init.lua
 --
@@ -20,7 +20,7 @@ module 'luaidl'
 local _pre    = require 'luaidl.pre'
 local sin     = require 'luaidl.sin'
 
-VERSION = '0.8.7b'
+VERSION = '0.8.8b'
 
 --- Preprocesses an IDL code.
 --
@@ -70,10 +70,11 @@ end
 --- Parses an IDL code.
 --
 -- @param idl String with IDL code.
--- @param options (optional)Table with parser and preprocessor options, the available keys are:
--- 'callbacks', a table of callback methods;
--- 'incpath', a table with include paths;
--- 'filename',the IDL filename.
+-- @param options (optional)Table with parser and preprocessor options, the available keys are:<br>
+-- 'callbacks', a table of callback methods.<br>
+-- 'incpath', a table with include paths.<br>
+-- 'filename',the IDL filename.<br>
+-- 'notypecode', a flag that deactivates the implicit definition of a CORBA::TypeCode.<br>
 -- @return A graph(lua table),
 -- that represents an IDL definition in Lua, for each IDL definition found.
 function parse(idl, options)
@@ -86,9 +87,10 @@ end
 -- the given arguments, and so it parses the output of 'prefile'
 -- calling the method 'parse'.
 -- @param filename The IDL filename.
--- @param options (optional)Table with parser and preprocessor options, the available keys are:
--- 'callbacks', a table of callback methods;
--- 'incpath', a table with include paths.
+-- @param options (optional)Table with parser and preprocessor options, the available keys are:<br>
+-- 'callbacks', a table of callback methods.<br>
+-- 'incpath', a table with include paths.<br>
+-- 'notypecode', a flag that deactivates the implicit definition of a CORBA::TypeCode.<br>
 -- @return A graph(lua table),
 -- that represents an IDL definition in Lua, for each IDL definition found.
 -- @see prefile

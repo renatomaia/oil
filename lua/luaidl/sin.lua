@@ -1,6 +1,6 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.7b
+-- Version:  0.8.8b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: sin.lua
 --
@@ -424,17 +424,17 @@ tab_firsts.rule_26  = set_firsts { 'TK_STRUCT', 'TK_UNION' }
 tab_firsts.rule_27  = set_firsts { 'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY', 'TK_OBJECT',
                         'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT', 'TK_DOUBLE', 'TK_SHORT',
                         'TK_UNSIGNED', 'TK_SEQUENCE' , 'TK_STRING', 'TK_FIXED' ,
-                        'TK_ID', ":", 'TK_STRUCT', 'TK_UNION', 'TK_ENUM', 'TK_TYPECODE',
+                        'TK_ID', ":", 'TK_STRUCT', 'TK_UNION', 'TK_ENUM',-- 'TK_TYPECODE',
                       }
 tab_firsts.rule_28  = set_firsts { 'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY', 'TK_OBJECT',
                         'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT', 'TK_DOUBLE', 'TK_SHORT',
                         'TK_UNSIGNED', 'TK_SEQUENCE' , 'TK_STRING', 'TK_FIXED' ,
-                        'TK_ID', ":", 'TK_TYPECODE',
+                        'TK_ID', ":",-- 'TK_TYPECODE',
                        }
 tab_firsts.rule_29  = set_firsts { 'TK_STRUCT', 'TK_UNION', 'TK_ENUM' }
 tab_firsts.rule_30  = set_firsts { 'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY', 'TK_OBJECT',
                         'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT', 'TK_DOUBLE', 'TK_SHORT',
-                        'TK_UNSIGNED', 'TK_TYPECODE',
+                        'TK_UNSIGNED',-- 'TK_TYPECODE',
                        }
 tab_firsts.rule_31  = set_firsts { 'TK_SEQUENCE', 'TK_STRING', 'TK_FIXED' }
 tab_firsts.rule_32  = set_firsts { 'TK_ID', ':' }
@@ -580,7 +580,7 @@ tab_firsts.rule_207  = set_firsts { 'TK_ONEWAY', 'TK_VOID', 'TK_STRING', 'TK_ID'
                         'TK_OBJECT', 'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT',
                         'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED','TK_TYPEDEF',
                         'TK_ENUM', 'TK_NATIVE', 'TK_UNION', 'TK_STRUCT',
-                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE', 'TK_TYPECODE',
+                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE',-- 'TK_TYPECODE',
                        }
 
 tab_firsts.rule_209  = tab_firsts.rule_14
@@ -589,7 +589,7 @@ tab_firsts.rule_212  = set_firsts { 'TK_READONLY', 'TK_ATTRIBUTE' }
 tab_firsts.rule_213  = set_firsts { 'TK_ONEWAY', 'TK_VOID', 'TK_STRING', 'TK_ID', ':',
                         'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY',
                         'TK_OBJECT', 'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT',
-                        'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED', 'TK_TYPECODE',
+                        'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED',-- 'TK_TYPECODE',
                        }
 
 tab_firsts.rule_216  = set_firsts { 'TK_READONLY' }
@@ -614,11 +614,11 @@ tab_firsts.rule_243  = set_firsts { 'TK_ONEWAY' }
 tab_firsts.rule_244  = set_firsts { 'TK_VOID', 'TK_STRING', 'TK_ID', ':',
                         'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY',
                         'TK_OBJECT', 'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT',
-                        'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED', 'TK_TYPECODE',
+                        'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED',-- 'TK_TYPECODE',
                        }
 tab_firsts.rule_245  = set_firsts { 'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY', 'TK_OBJECT',
                         'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT', 'TK_DOUBLE', 'TK_SHORT',
-                        'TK_UNSIGNED', 'TK_STRING', 'TK_ID', ":", 'TK_TYPECODE',
+                        'TK_UNSIGNED', 'TK_STRING', 'TK_ID', ":",-- 'TK_TYPECODE',
                        }
 tab_firsts.rule_246  = set_firsts { 'TK_VOID' }
 
@@ -642,7 +642,7 @@ tab_firsts.rule_285  = set_firsts { 'TK_ONEWAY', 'TK_VOID', 'TK_STRING', 'TK_ID'
                         'TK_OBJECT', 'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT',
                         'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED','TK_TYPEDEF',
                         'TK_ENUM', 'TK_NATIVE', 'TK_UNION', 'TK_STRUCT',
-                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE', 'TK_TYPECODE',
+                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE',-- 'TK_TYPECODE',
                         'TK_PUBLIC', 'TK_PRIVATE',
                         'TK_FACTORY' }
 tab_firsts.rule_287  = tab_firsts.rule_207
@@ -684,7 +684,7 @@ tab_firsts.rule_359  = set_firsts { 'TK_ONEWAY', 'TK_VOID', 'TK_STRING', 'TK_ID'
                         'TK_OBJECT', 'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT',
                         'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED','TK_TYPEDEF',
                         'TK_ENUM', 'TK_NATIVE', 'TK_UNION', 'TK_STRUCT',
-                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE', 'TK_TYPECODE',
+                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE',-- 'TK_TYPECODE',
                         'TK_FACTORY', 'TK_FINDER'
                        }
 tab_firsts.rule_361  = tab_firsts.rule_207
@@ -724,7 +724,7 @@ tab_follow.rule_157  = set_firsts { '}' }
 tab_follow.rule_161  = set_firsts { 'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY', 'TK_OBJECT',
                         'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT', 'TK_DOUBLE', 'TK_SHORT',
                         'TK_UNSIGNED', 'TK_SEQUENCE' , 'TK_STRING', 'TK_FIXED' ,
-                        'TK_ID', ":", 'TK_STRUCT', 'TK_UNION', 'TK_ENUM', 'TK_TYPECODE',
+                        'TK_ID', ":", 'TK_STRUCT', 'TK_UNION', 'TK_ENUM',-- 'TK_TYPECODE',
                        }
 tab_follow.rule_162  = set_firsts { ":" }
 tab_follow.rule_167  = set_firsts { "}" }
@@ -779,6 +779,7 @@ local token = lex.token
 local tab_curr_scope
 local tab_namespaces
 local tab_prefix_pragma_stack
+local CORBAVisible
 
 -- this a list of type declarations
 local TAB_TYPEID = {
@@ -843,7 +844,6 @@ local TAB_BASICTYPE = {
                [ 'LONG' ]      = { _type = TAB_TYPEID[ 'LONG' ] },
                [ 'FIXED' ]     = { _type = TAB_TYPEID[ 'FIXED' ] },
                [ 'VOID' ]      = { _type = TAB_TYPEID[ 'VOID' ] },
---               [ 'TYPECODE' ]  = { _type = TAB_TYPEID[ 'TYPECODE' ] },
 }
 
 local TAB_IMPLICITTYPE = {
@@ -994,7 +994,6 @@ local TAB_VALUEEXPECTED = {
   [lex.tab_tokens.TK_FIXED_LITERAL]   = "<fixed literal>",
   [lex.tab_tokens.TK_PRAGMA_PREFIX]   = "<pragma prefix>",
   [lex.tab_tokens.TK_PRAGMA_ID]       = "<pragma id>",
-  [lex.tab_tokens.TK_TYPECODE]        = TAB_TYPEID.TYPECODE,
   [lex.tab_tokens.TK_MANAGES]         = "manages",
 }
 
@@ -1039,37 +1038,20 @@ local function getAbsolutename( scope, name )
   return scope.absolute_name..'::'..name
 end
 
-local function dclName( name, target, tab, error_msg )
+local function dclName( name, target, value, error_msg )
   local absolutename = getAbsolutename(tab_curr_scope, name)
-  if tab_namespaces[ absolutename ] then
+  if tab_namespaces[absolutename] then
     if not error_msg then
       error_msg = ERRMSG_DECLARED
     end
-    semanticError( string.format( error_msg, name ) )
+    semanticError(string.format(error_msg, name))
   else
-    if tab then
-      tab.name = name
-      table.insert(target, tab)
+    if value then
+      value.name = name
+      table.insert(target, value)
     else
       tab_namespaces[absolutename] = {tab_namespace = name}
       table.insert(target, name)
-    end
-  end
-end
-
-local function new_name( key, name, tab, value, error_msg, keyv )
-  key = tab_curr_scope.absolute_name..'.'..key
-  local absolutename = getAbsolutename( tab_curr_scope, name )
---  if ( tab_namespaces[ key ] ) then
-  if ( tab_namespaces[ absolutename ] ) then
-    semanticError( string.format( error_msg, name ) )
-  else
---    tab_namespaces[ key ] = { }
-    tab_namespaces[ absolutename ] = { }
-    if keyv then
-      tab[ keyv ] = value
-    else
-      table.insert( tab, value )
     end
   end
 end
@@ -1085,15 +1067,7 @@ local function get_scope( part )
   return s
 end
 
-local function reconhecer_sem_pragma( token_expected )
-  if (token_expected ~= token) then
-    local value_expected = TAB_VALUEEXPECTED[token_expected]
-    if not value_expected then
-      value_expected = "'"..token_expected.."'"
-    end
-    sinError(value_expected)
-  end
-end
+local reconhecer
 
 local function getToken()
   token = lex.lexer(stridl)
@@ -1108,37 +1082,38 @@ local function getToken()
   end
   lex.tab_linemarks = { }
 
+-- The ID Pragma
+-- #pragma ID <name> "<id>"
   if (token == lex.tab_tokens.TK_PRAGMA_ID) then
     token = lex.lexer(stridl)
-    local tab_scope = scoped_name(600)
+    local definition = scoped_name(600)
     local repid = lex.tokenvalue
-    reconhecer_sem_pragma(lex.tab_tokens.TK_STRING_LITERAL, 'string literal')
-    local absolutename = tab_scope.absolute_name
+    reconhecer(lex.tab_tokens.TK_STRING_LITERAL)
+    local absolutename = definition.absolute_name
     if tab_namespaces[absolutename].pragmaID then
-      if (tab_scope.repID ~= repid) then
+      if (definition.repID ~= repid) then
         semanticError("repository ID ever defined")
       end
     else
       tab_namespaces[absolutename].pragmaID = true
-      tab_scope.repID = repid
+      definition.repID = repid
     end
-    token = getToken()
+-- The Prefix Pragma
+-- #pragma prefix "<string>"
   elseif (token == lex.tab_tokens.TK_PRAGMA_PREFIX) then
-    token = lex.lexer( stridl )
-    reconhecer_sem_pragma( lex.tab_tokens.TK_STRING_LITERAL, "string literal" )
-    local prefix_pragma = lex.tokenvalue
-    if tab_namespaces[ tab_curr_scope.absolute_name ].prefix then
-      table.remove( tab_prefix_pragma_stack )
+    token = lex.lexer(stridl)
+    local prefix = lex.tokenvalue
+    if tab_namespaces[tab_curr_scope.absolute_name].prefix then
+      table.remove(tab_prefix_pragma_stack)
     end
-    --tab_namespaces[ tab_curr_scope.absolute_name ].prefix = prefix_pragma
-    tab_namespaces[ tab_curr_scope.absolute_name ].prefix = true
-    table.insert( tab_prefix_pragma_stack, prefix_pragma )
-    token = getToken()
+    table.insert(tab_prefix_pragma_stack, prefix)
+    reconhecer(lex.tab_tokens.TK_STRING_LITERAL)
+    tab_namespaces[tab_curr_scope.absolute_name].prefix = true
   end
   return token
 end
 
-local function reconhecer( tokenExpected )
+function reconhecer( tokenExpected )
   if (tokenExpected == token) then
     token = getToken()
   else
@@ -1153,8 +1128,6 @@ end
 local function define( name, type, value )
   local absolutename = getAbsolutename(tab_curr_scope, name)
   local tab_definitions
-  -- Is there this scope ? Whenever exist and it is a module, then we
-  -- must reopen this module...
   if (tab_namespaces[absolutename]) then
     if (
         tab_namespaces[absolutename].tab_namespace._type == TAB_TYPEID.MODULE
@@ -1178,7 +1151,7 @@ local function define( name, type, value )
   local curr_root  = get_scope( 'curr_root' )
   local curr_scope = get_scope( 'curr_scope' )
 
-  local prefix = tab_prefix_pragma_stack[ table.getn( tab_prefix_pragma_stack ) ]
+  local prefix = tab_prefix_pragma_stack[ #tab_prefix_pragma_stack ]
   if tab_namespaces[ tab_curr_scope.absolute_name ].prefix then
     curr_root = prefix
   end
@@ -1214,11 +1187,11 @@ local function define( name, type, value )
   value.definitions = tab_definitions
 
 -- tab_curr_scope ~= tab_output ????
-    if ( tab_is_contained[type] and tab_curr_scope ~= tab_output ) then
-      table.insert(tab_curr_scope.definitions, value)
-    else
-      table.insert(tab_curr_scope, value)
-    end
+  if ( tab_is_contained[type] and tab_curr_scope ~= tab_output ) then
+    table.insert(tab_curr_scope.definitions, value)
+  else
+    table.insert(tab_curr_scope, value)
+  end
 
   if (tab_define_scope[type]) then
     tab_namespaces[absolutename] = {
@@ -1231,7 +1204,6 @@ local function define( name, type, value )
   else
     tab_namespaces[absolutename] = {tab_namespace = value}
   end
-
   return true, value
 end
 
@@ -1517,9 +1489,6 @@ function base_type_spec()
   elseif (tab_firsts.rule_42[token]) then
     reconhecer(lex.tab_tokens.TK_VALUEBASE)
     return TAB_BASICTYPE.VALUEBASE
---  elseif (token == lex.tab_tokens['TK_TYPECODE']) then
---    reconhecer( lex.tab_tokens.TK_TYPECODE, "'TypeCode'" )
---    return TAB_BASICTYPE.TYPECODE
 --  else
 --    sinError( tab_ERRORMSG[ 05 ] )
   end
@@ -2878,7 +2847,6 @@ function readonly_attr_spec_dec(type)
   local attribute = {type = type, readonly = true}
   local name = simple_dcl()
   define(name, TAB_TYPEID.ATTRIBUTE, attribute)
---  dclName(name, attribute)
   readonly_attr_spec_dec_tail(attribute)
   if tab_callbacks.attribute then
     tab_callbacks.attribute(attribute)
@@ -2888,7 +2856,6 @@ end
 function attr_declarator(type)
   local attribute = {type = type}
   local name = simple_dcl()
---  dclName(name, attribute)
   define(name, TAB_TYPEID.ATTRIBUTE, attribute)
   attr_declarator_tail(attribute)
   if tab_callbacks.attribute then
@@ -2931,7 +2898,6 @@ function simple_dcl_l(type, readonly)
     local attribute = {type = type, readonly = readonly}
     local name = simple_dcl()
     define(name, TAB_TYPEID.ATTRIBUTE, attribute)
---    dclName(name, attribute)
     simple_dcl_l(type)
   elseif (token == ';') then
     -- empty
@@ -3099,7 +3065,7 @@ function provides_dcl()
   tab_provides.interface_type = interface_type()
   reconhecer( lex.tab_tokens.TK_ID, '<identifier>' )
   local name = lex.tokenvalue_previous
-  new_name( name, name, tab_curr_scope.declarations, tab_provides, ERRMSG_DECLARED, name )
+--  new_name( name, name, tab_curr_scope.declarations, tab_provides, ERRMSG_DECLARED, name )
 end
 
 function interface_type()
@@ -3125,7 +3091,7 @@ function uses_dcl()
   tab_uses.interface_type = interface_type()
   reconhecer( lex.tab_tokens.TK_ID)
   local name = lex.tokenvalue_previous
-  new_name( name, name, tab_curr_scope.declarations, tab_uses, ERRMSG_DECLARED, name )
+--  new_name( name, name, tab_curr_scope.declarations, tab_uses, ERRMSG_DECLARED, name )
 end
 
 function multiple_e()
@@ -3145,7 +3111,7 @@ function emits_dcl()
   reconhecer( lex.tab_tokens.TK_EMITS)
   local name = lex.tokenvalue_previous
   local tab_uses = { _type = 'emits' }
-  new_name( name, name, tab_curr_scope.declarations, tab_emits, ERRMSG_DECLARED, name )
+--  new_name( name, name, tab_curr_scope.declarations, tab_emits, ERRMSG_DECLARED, name )
   tab_uses.event_type = scoped_name( 341 )
   reconhecer( lex.tab_tokens.TK_ID)
   tab_uses.evtsrc = lex.tokenvalue_previous
@@ -3156,7 +3122,7 @@ function publishes_dcl()
   reconhecer( lex.tab_tokens.TK_PUBLISHES)
   local name = lex.tokenvalue_previous
   local tab_publishes = { _type = 'publishes' }
-  new_name( name, name, tab_curr_scope.declarations, tab_publishes, ERRMSG_DECLARED, name )
+--  new_name( name, name, tab_curr_scope.declarations, tab_publishes, ERRMSG_DECLARED, name )
   tab_uses.event_type = scoped_name( 342 )
   reconhecer( lex.tab_tokens.TK_ID)
   tab_uses.evtsrc = lex.tokenvalue_previous
@@ -3167,7 +3133,7 @@ function consumes_dcl()
   reconhecer( lex.tab_tokens.TK_CONSUMES)
   local name = lex.tokenvalue_previous
   local tab_publishes = { _type = 'consumes' }
-  new_name( name, name, tab_curr_scope.declarations, tab_consumes, ERRMSG_DECLARED, name )
+--  new_name( name, name, tab_curr_scope.declarations, tab_consumes, ERRMSG_DECLARED, name )
   tab_uses.event_type = scoped_name( 343 )
   reconhecer( lex.tab_tokens.TK_ID)
   tab_uses.evtsink = lex.tokenvalue_previous
@@ -3276,8 +3242,8 @@ function factory_dcl()
     reconhecer(lex.tab_tokens.TK_ID)
     local name = lex.tokenvalue_previous
     local tab_factory = { _type = TAB_TYPEID.FACTORY, name = name }
-    new_name( name, name,
-           tab_curr_scope.members, tab_factory, ERRMSG_OPDECLARED, name )
+--    new_name( name, name,
+--           tab_curr_scope.members, tab_factory, ERRMSG_OPDECLARED, name )
     reconhecer("(")
     init_param_dcls(tab_factory)
     reconhecer(")")
@@ -3303,11 +3269,11 @@ function init_param_dcl(tab_factory)
     local tab_type_spec = param_type_spec()
     reconhecer(lex.tab_tokens.TK_ID)
     local param_name = lex.tokenvalue_previous
-    new_name( tab_factory.name..'._parameters.'..param_name,
-           param_name, tab_factory.parameters,
-           { mode = 'PARAM_IN', type = tab_type_spec, name = param_name },
-           ERRMSG_PARAMDECLARED
-  )
+--    new_name( tab_factory.name..'._parameters.'..param_name,
+--           param_name, tab_factory.parameters,
+--           { mode = 'PARAM_IN', type = tab_type_spec, name = param_name },
+--           ERRMSG_PARAMDECLARED
+--  )
   else
     sinError("'in'")
   end
@@ -3331,8 +3297,8 @@ function finder_dcl()
     reconhecer(lex.tab_tokens.TK_ID)
     local name = lex.tokenvalue_previous
     local tab_finder = { _type = TAB_TYPEID.FINDER, name = name }
-    new_name( name, name,
-           tab_curr_scope.members, tab_finder, ERRMSG_OPDECLARED, name )
+--    new_name( name, name,
+--           tab_curr_scope.members, tab_finder, ERRMSG_OPDECLARED, name )
     reconhecer("(")
     init_param_dcls(tab_finder)
     reconhecer(")")
@@ -3477,8 +3443,8 @@ function init_dcl()
     reconhecer(lex.tab_tokens.TK_ID)
     local name = lex.tokenvalue_previous
     local tab_factory = { _type = TAB_TYPEID.FACTORY, name = name }
-    new_name( name, name,
-           tab_curr_scope.members, tab_factory, ERRMSG_OPDECLARED, name )
+--    new_name( name, name,
+--           tab_curr_scope.members, tab_factory, ERRMSG_OPDECLARED, name )
     reconhecer("(")
     init_param_dcls(tab_factory)
     reconhecer(")")
