@@ -29,13 +29,14 @@ oil.run()
 
 Client = [=====================================================================[
 checks = oil.dtests.checks
-worker = oil.dtests.getbyinfo("Server", 2809, "worker")
+worker = oil.dtests.resolve("Server", 2809, "worker")
 
 -- synchronous call
 start = oil.time()
-worker:work(1)
+result = worker:work(1)
 checks:assert(oil.time() - start > 1, "synchronous operation didn't wait.")
 checks:assert(worker:count(), checks.is(1, "wrong number of performed operations."))
+checks:assert(result, checks.is(1, "wrong results."))
 
 -- asynchronous call
 future = worker.__deferred:work(2)
@@ -43,16 +44,31 @@ oil.sleep(1)
 checks:assert(not future:ready(), "unfinished operation returned.")
 oil.sleep(2)
 checks:assert(future:ready(), "finished operation was not ready.")
-checks:assert(future:results(), checks.is(2, "wrong results."))
+ok, result = future:results()
+checks:assert(ok == true, "operation results indicated a unexpected error.")
+checks:assert(result, checks.is(2, "wrong results."))
+checks:assert(future:evaluate(), checks.is(2, "wrong results."))
 checks:assert(worker:count(), checks.is(2, "wrong number of performed operations."))
 
 -- asynchronous call, but waiting for results
 future = worker.__deferred:work(3)
 oil.sleep(1)
 start = oil.time()
-checks:assert(future:results(), checks.is(3, "wrong results."))
+checks:assert(future:evaluate(), checks.is(3, "wrong results."))
 checks:assert(oil.time() - start > 1, "results on unfinished operation didn't wait.")
 checks:assert(worker:count(), checks.is(3, "wrong number of performed operations."))
+ok, result = future:results()
+checks:assert(ok == true, "operation results indicated a unexpected error.")
+checks:assert(result, checks.is(3, "wrong results."))
+
+-- protected synchronous call
+start = oil.time()
+ok, result = worker.__try:work(1)
+checks:assert(oil.time() - start > 1, "synchronous operation didn't wait.")
+checks:assert(worker:count(), checks.is(4, "wrong number of performed operations."))
+checks:assert(ok == true, "operation results does not indicates success")
+checks:assert(result, checks.is(1, "wrong results."))
+
 --[Client]=====================================================================]
 
 return Suite{

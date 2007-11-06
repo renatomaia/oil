@@ -1,4 +1,6 @@
 local Suite = require "loop.test.Suite"
 return Suite{
-	ProxyInvoke = require "oil.dtests.kernel.ProxyInvoke",
+	MethodInvocation = require "oil.dtests.kernel.MethodInvocation",
+	ExceptionCatch   = require "oil.dtests.kernel.ExceptionCatch",
+	ObjectOperations = require "oil.dtests.corba.ObjectOperations",
 }
