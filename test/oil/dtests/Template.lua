@@ -1,10 +1,11 @@
 
-local assert  = assert
-local error   = error
-local ipairs  = ipairs
-local pairs   = pairs
-local setfenv = setfenv
-local type    = type
+local assert   = assert
+local error    = error
+local ipairs   = ipairs
+local pairs    = pairs
+local setfenv  = setfenv
+local tonumber = tonumber
+local type     = type
 
 local math   = require "math"
 local os     = require "os"
@@ -93,7 +94,7 @@ function __call(self, infos)
 			if type(name) == "string" then
 				local command = Command(infos[name])
 				command.id = name
-				command.command = LuaProcess:format(hostname, portno)
+				command.command = LuaProcess:format(hostname, portno, name)
 				local process = helper:start(command)
 				HostTable[#HostTable+1] = TableEntry:format(name, process:_get_host())
 				Processes[name] = {
@@ -123,7 +124,8 @@ function __call(self, infos)
 		
 		-- get results
 		local success = assert(Master:receive())
-		local result = assert(Master:receive())
+		local size = assert(tonumber(assert(Master:receive())))
+		local result = assert(Master:receive(size))
 		Master:close()
 		
 		-- kill all processes

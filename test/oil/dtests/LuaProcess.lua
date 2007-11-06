@@ -1,6 +1,6 @@
 local socket = require "socket"
 local Results = require "loop.test.Results"
-local Message = "%s\n%s\n"
+local Message = "%s\n%d\n%s\n"
 local conn = assert(socket.connect(HOST, PORT))
 repeat
 	local results = Results()
@@ -38,4 +38,5 @@ repeat
 	else
 		result = "protocol"
 	end
-until not conn:send(Message:format(result, tostring(errmsg)))
+	errmsg = tostring(errmsg)
+until not conn:send(Message:format(result, #errmsg, errmsg))
