@@ -82,8 +82,8 @@ function corbaloc(self, encoded)
 		local profiler = self.context.profiler[token]
 		if profiler then
 			return {
-				_type_id = "",
-				_profiles = { profiler:decodeurl(data) },
+				type_id = "",
+				profiles = { profiler:decodeurl(data) },
 			}
 		end
 	end
@@ -99,15 +99,15 @@ end
 
 function referenceto(self, objectkey, ...)
 	local ior = {
-		_type_id = self.context.types:typeof(objectkey).repID,
-		_profiles = {},
+		type_id = self.context.types:typeof(objectkey).repID,
+		profiles = {},
 	}
 	for i = 1, select("#", ...) do
 		local acceptorinfo = select(i, ...)
 		local tag = acceptorinfo.tag or 0
 		local profiler = self.context.profiler[tag]
 		if profiler then
-			ior._profiles[#ior._profiles + 1] = {
+			ior.profiles[#ior.profiles + 1] = {
 				tag          = tag,
 				profile_data = profiler:encode(objectkey, acceptorinfo),
 			}

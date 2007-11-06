@@ -67,13 +67,9 @@ function object(self, object, key, type)
 		key = key or KeyFmt:format(self:hashof(object), self:hashof(result))
 		result, except = context.mapper:register(result, key)
 		if result then
-			result, except = context.objects:register(object, key)
-			if result then
-				object = result
-				result, except = context.references:referenceto(key, self.config)
-				if result then
-					result, except = table.copy(result, object)
-				end
+			result, except = Server.object(self, object, key)
+			if not result then
+				context.mapper:unregister(key)
 			end
 		end
 	end
@@ -82,22 +78,20 @@ end
 
 function remove(self, key, objtype)
 	local context = self.context
-	local temp = type(key)
-	if temp == "table" then
-		key = rawget(key, "_key") or key
-	end
-	if temp ~= "string" then
-		objtype, temp = context.types:resolve(objtype)
-		if objtype
-			then key = KeyFmt:format(self:hashof(key), self:hashof(objtype))
+	local result, except
+	if type(key) == "table" then key = rawget(key, "_key") or key end
+	if type(key) ~= "string" then
+		result, except = context.types:resolve(result)
+		if result
+			then key = KeyFmt:format(self:hashof(key), self:hashof(result))
 			else key = nil
 		end
 	end
 	if key then
-		objtype, temp = context.mapper:unregister(key)
-		if objtype then
-			objtype, temp = context.objects:unregister(key)
+		result, except = context.mapper:unregister(key)
+		if result then
+			result, except = context.objects:unregister(key)
 		end
 	end
-	return objtype, temp
+	return result, except
 end

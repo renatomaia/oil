@@ -83,25 +83,23 @@ function object(self, object, key)
 		object = result
 		result, except = context.references:referenceto(key, self.config)
 		if result then
-			result = table.copy(result, object)
+			object.__reference = result
+			result = object
+		else
+			context.objects:unregister(key)
 		end
 	end
 	return result, except
 end
 
 function remove(self, key)
-	local type = type(key)
-	if type == "table" then
-		key = rawget(key, "_key") or key
-	end
-	if type ~= "string" then
-		key = "\0"..self:hashof(key)
-	end
+	if type(key) == "table" then key = rawget(key, "_key") or key end
+	if type(key) ~= "string" then key = "\0"..self:hashof(key) end
 	return context.objects:unregister(key)
 end
 
 function tostring(self, object)
-	return self.context.references:encode(object)
+	return self.context.references:encode(object.__reference)
 end
 
 function retrieve(self, key)

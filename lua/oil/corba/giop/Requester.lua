@@ -89,7 +89,7 @@ end
 function getchannel(self, reference)                                            --[[VERBOSE]] verbose:invoke(true, "get communication channel")
 	local channel, except = reference[ChannelKey]
 	if not channel then
-		for _, profile in ipairs(reference._profiles) do                            --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",profile.tag,"]")
+		for _, profile in ipairs(reference.profiles) do                             --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",profile.tag,"]")
 			local tag = profile.tag
 			local context = self.context
 			local channels = context.channels[tag]

@@ -32,10 +32,10 @@
 --------------------------------------------------------------------------------
 
 local ipairs = ipairs
-local type   = type
 
 local oo        = require "oil.oo"
 local assert    = require "oil.assert"
+local Proxies   = require "oil.kernel.base.Proxies"
 local idl       = require "oil.corba.idl"
 local giop      = require "oil.corba.giop"
 local Indexer   = require "oil.corba.giop.Indexer"                              --[[VERBOSE]] local verbose = require "oil.verbose"
@@ -47,51 +47,76 @@ oo.class(_M, Indexer)
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function context(self, context)
-	self.localops = {}
+function context(component, context)
+	local localops = {}
 	
-	function self.localops:_non_existent()
-		local operation = giop.ObjectOperations._non_existent
-		local success, result = context.invoker:invoke(self, operation)
-		if success then
-			success, result = success:results()
-			if
-				not success and
-				( result.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" or
-				  result.reason == "closed" )
-			then
-				success, result = true, true
-			end
-		elseif result.reason == "connect" or result.reason == "closed" then
+	local function _non_existentresults(self)
+		local success, result = oo.classof(self).results(self)
+		if
+			not success and
+			( result.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" or
+			  result.reason == "closed" )
+		then
 			success, result = true, true
 		end
+		return success, result
+	end
+	function localops:_non_existent()
+		local reply, except = context.invoker:invoke(
+			self.__reference, 
+			giop.ObjectOperations._non_existent
+		)
+		if reply then
+			reply.results = _non_existentresults
+		elseif except.reason == "connect" or except.reason == "closed" then
+			reply = Proxies.packresults(true)
+		end
+		return reply, except
+	end
+	
+	local function _narrowresults(self)
+		local success, result = oo.classof(self).results(self)
 		if success then
-			return result
+			result = context.types:lookup_id(result:_get_id()) or
+			         context.types:register(result)
+			result = self.__context.proxies:proxyto(self.__reference, result)
+		end
+		return success, result
+	end
+	function localops:_narrow(iface)
+		local reply, except
+		if iface == nil then
+			reply, except = context.invoker:invoke(
+				self.__reference, 
+				giop.ObjectOperations._interface
+			)
+			if reply then
+				reply.__context = self.__context
+				reply.__reference = self.__reference
+				reply.results = _narrowresults
+			end
 		else
-			local handler = self._excepthandler
-			if handler then
-				return handler(self, operation, result)
-			else
-				assert.exception(result)
+			reply, except = context.types:resolve(iface)
+			if reply then
+				reply, except = self.__context.proxies:proxyto(self.__reference, reply)
+			end
+			if reply then
+				reply = Proxies.packresults(reply)
 			end
 		end
+		return reply, except
 	end
 	
-	function self.localops:_narrow(iface)
-		if iface == nil then
-			iface = context.__component:importinterfaceof(self)
-		else
-			iface = assert.results(context.types:resolve(iface))
-		end
-		return self.__context.proxies:proxyto(self, iface)
-	end
-	
-	function self.localops:_is_equivalent(reference)
+	local IsEquivalentReply = Proxies.packresults(true)
+	local NotEquivalentReply = Proxies.packresults(false)
+	function localops:_is_equivalent(proxy)
+		local reference = proxy.__reference
+		local ref = self.__reference
 		local tags = {}
-		for _, profile in ipairs(reference._profiles) do
+		for _, profile in ipairs(reference.profiles) do
 			tags[profile.tag] = profile
 		end
-		for _, profile in ipairs(self._profiles) do
+		for _, profile in ipairs(ref.profiles) do
 			local tag = profile.tag
 			local other = tags[tag]
 			if other then
@@ -100,14 +125,15 @@ function context(self, context)
 					profiler and
 					profiler:equivalent(profile.profile_data, other.profile_data)
 				then
-					return true
+					return IsEquivalentReply
 				end
 			end
 		end
-		return false
+		return NotEquivalentReply
 	end
 	
-	self.context = context
+	component.localops = localops
+	component.context = context
 end
 
 function importinterfaceof(self, reference)
@@ -128,7 +154,7 @@ end
 --------------------------------------------------------------------------------
 
 function typeof(self, reference)
-	local type = reference._type_id
+	local type = reference.type_id
 	local types = self.context.types
 	return self.context.types:lookup_id(type) or
 	       self:importinterfaceof(reference)

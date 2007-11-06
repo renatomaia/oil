@@ -24,7 +24,7 @@ oil.main(function()
 	repeat
 		for call, id in pairs(calls) do
 			if call:ready() then
-				if call:results()
+				if call:evaluate()
 					then print(id, "result received successfully")
 					else print(id, "got an unexpected result")
 				end

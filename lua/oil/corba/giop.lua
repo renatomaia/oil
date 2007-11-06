@@ -37,8 +37,8 @@ TaggedProfile = idl.struct{
 }
                   -- underscore character allows using IOR as proxy objects
 IOR = idl.struct{ -- because it avoids name clashes with object members.
-	{name = "_type_id" , type = idl.string                 },
-	{name = "_profiles", type = idl.sequence{TaggedProfile}},
+	{name = "type_id" , type = idl.string                 },
+	{name = "profiles", type = idl.sequence{TaggedProfile}},
 }
 
 --------------------------------------------------------------------------------

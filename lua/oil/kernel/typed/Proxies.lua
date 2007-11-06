@@ -25,6 +25,7 @@
 
 --[[VERBOSE]] local select = select
 
+local pairs  = pairs
 local rawget = rawget
 local type   = type
 
@@ -41,70 +42,64 @@ module("oil.kernel.typed.Proxies", oo.class)
 context = false
 
 --------------------------------------------------------------------------------
---------------------------------------------------------------------------------
 
-local Proxy = Proxies.Proxy
-local Deferred = Proxies.Deferred
-
-local CachedIndex = oo.class({}, Proxy)
-
-function CachedIndex:newinvoker(operation)
-	return function(self, ...)                                                    --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-		return Proxies.checkresults(self, operation, 
-		       	Proxies.checkcall(self, operation,
-		       		self.__context.invoker:invoke(self, operation, ...)
-		       	):results()
-		       )
-	end
+local function initcache(self, cache)
+	return oo.rawnew(self, oo.initclass(cache))
 end
-
-function CachedIndex:__index(field)
-	if type(field) == "string" then
-		local context = self.__context
-		local operation, value, cached = context.indexer:valueof(self.__type, field)
-		if cached then
-			if operation and value == nil then
-				value = oo.classof(self):newinvoker(operation)
+function newcache(methodmaker)
+	return oo.class{
+		__init = initcache,
+		__index = function(self, field)
+			if type(field) == "string" then
+				local context = self.__context
+				local operation, value = context.indexer:valueof(self.__type, field)
+				if value ~= nil then
+					return methodmaker(value, operation)
+				elseif operation then
+					return methodmaker(function(self, ...)                                --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+						return context.invoker:invoke(self.__reference, operation, ...)
+					end, operation)
+				end
 			end
-			self[field] = value
-		elseif operation and value == nil then
-			value = oo.superclass(oo.classof(self)).__index(self, operation)
 		end
-		return value
-	end
+	}
 end
 
 --------------------------------------------------------------------------------
 
-local DeferredIndex = oo.class({ __index = CachedIndex.__index }, Deferred--[[, CachedIndex]])
-
-function DeferredIndex:newinvoker(operation)
-	return function(self, ...)                                                   --[[VERBOSE]] verbose:proxies("deferred call to ",operation, ...)
-		self = self[1]
-		local reply = Proxies.checkcall(self, operation,
-			self.__context.invoker:invoke(self, operation, ...))
-		reply.proxy = self
-		reply.operation = operation
-		reply.results = Proxies.deferredresults
-		return reply
-	end
-end
+ProxyClass     = newcache(Proxies.makemethod)
+ProtectedClass = newcache(Proxies.makeprotected)
+DeferredClass  = newcache(Proxies.makedeferred)
 
 --------------------------------------------------------------------------------
+
+local Extras = {
+	__deferred =  DeferredClass,
+	__try = ProtectedClass,
+}
 
 function __init(self, object)
 	self = oo.rawnew(self, object)
-	self.classes = ObjectCache()
-	function self.classes.retrieve(_, type)
-		return CachedIndex(oo.initclass{
-			__context = self.context,
-			__type = type,
-			__deferred = DeferredIndex(oo.initclass{
+	self.classes = ObjectCache{
+		retrieve = function(_, type)
+			return ProxyClass{
 				__context = self.context,
 				__type = type,
-			}),
-		})
+			}
+		end
+	}
+	local extras = {}
+	for label, class in pairs(Extras) do
+		extras[label] = ObjectCache{
+			retrieve = function(_, type)
+				return class{
+					__context = self.context,
+					__type = type,
+				}
+			end
+		}
 	end
+	self.extras = extras
 	return self
 end
 
@@ -115,9 +110,13 @@ function proxyto(self, reference, type)                                         
 	type = type or context.indexer:typeof(reference)
 	local result, except = self.classes[type]
 	if result then
-		reference = oo.rawnew(result, reference)
-		reference.__deferred = oo.rawnew(result.__deferred, {reference})
-		result = reference
+		result = oo.rawnew(result, { __reference = reference })
+		for label, classes in pairs(self.extras) do
+			local class = classes[type]
+			if class then
+				result[label] = oo.rawnew(class, { __reference = reference })
+			end
+		end
 	else
 		except = Exception{
 			reason = "type",
@@ -134,6 +133,12 @@ function excepthandler(self, handler, type)
 		local result, except = self.classes[type]
 		if result then
 			result.__exceptions = handler
+			for label, classes in pairs(self.extras) do
+				local class = classes[type]
+				if class then
+					class.__exceptions = handler
+				end
+			end
 		else
 			except = Exception{
 				reason = "type",

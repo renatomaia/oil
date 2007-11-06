@@ -407,14 +407,14 @@ end
 
 function Decoder:Object(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local ior = self:struct(giop.IOR)
-	if ior._type_id == "" then                                                    --[[VERBOSE]] verbose:unmarshal "got a null reference"
+	if ior.type_id == "" then                                                     --[[VERBOSE]] verbose:unmarshal "got a null reference"
 		ior = nil
 	else
 		local context = self.context
 		local objects = context.objects
 		local profilers = context.profiler
 		if objects and profilers then
-			for _, profile in ipairs(ior._profiles) do
+			for _, profile in ipairs(ior.profiles) do
 				local profiler = profilers[profile.tag]
 				if profiler then
 					local object = profiler:belongsto(profile.profile_data, objects.config)
@@ -707,13 +707,15 @@ function Encoder:any(value)                                                     
 	self:put(value, idltype)                                                      --[[VERBOSE]] verbose:marshal(false)
 end
 
-local NullReference = { _type_id = "", _profiles = { n=0 } }
+local NullReference = { type_id = "", profiles = { n=0 } }
 function Encoder:Object(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype)
+	local reference
 	if value == nil then
-		value = NullReference
+		reference = NullReference
 	else
 		assert.type(value, "table", "object reference", "MARSHAL")
-		if not value._type_id or not value._profiles then
+		reference = value.__reference
+		if not reference then
 			local objects = self.context.objects
 			if objects then                                                           --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
 				local objtype = value.__idltype
@@ -728,13 +730,17 @@ function Encoder:Object(value, idltype)                                         
 				if idltype._type == "Object" then
 					idltype = idltype.repID
 				end
-				value = assert.results(objects:object(value, nil, idltype))               --[[VERBOSE]] verbose:marshal(false)
+				value = assert.results(objects:object(value, nil, idltype))             --[[VERBOSE]] verbose:marshal(false)
+				reference = value.__reference
 			else
 				assert.illegal(value, "Object, unable to create from value", "MARHSALL")
 			end
 		end
 	end
-	self:struct(value, giop.IOR)                                                  --[[VERBOSE]] verbose:marshal(false)
+
+if reference == nil then verbose:debug() end
+
+	self:struct(reference, giop.IOR)                                              --[[VERBOSE]] verbose:marshal(false)
 end
 
 function Encoder:struct(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype)
