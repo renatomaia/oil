@@ -1,6 +1,6 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.8b
+-- Version:  0.8.9b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: pre.lua
 --

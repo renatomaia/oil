@@ -1,6 +1,6 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.8b
+-- Version:  0.8.9b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: sin.lua
 --
@@ -778,7 +778,9 @@ local token = lex.token
 
 local tab_curr_scope
 local tab_namespaces
-local tab_prefix_pragma_stack
+-- It is a stack of roots.
+local ROOTS
+local currentScope
 local CORBAVisible
 
 -- this a list of type declarations
@@ -885,7 +887,8 @@ local tab_accept_definition = {
     [ TAB_TYPEID.EXCEPTION ] = true,
     [ TAB_TYPEID.INTERFACE ] = true,
     [ TAB_TYPEID.MODULE ] = true,
-
+--??
+    [ TAB_TYPEID.COMPONENT ] = true,
     [ TAB_TYPEID.HOME ] = true,
     [ TAB_TYPEID.VALUETYPE ] = true,
     [ TAB_TYPEID.EVENTTYPE ] = true,
@@ -898,6 +901,7 @@ local tab_define_scope = {
   [ TAB_TYPEID.STRUCT ] = true,
   [ TAB_TYPEID.UNION ] = true,
   [ TAB_TYPEID.MODULE ] = true,
+  [ TAB_TYPEID.COMPONENT ] = true,
 }
 
 local tab_is_contained = {
@@ -1027,9 +1031,19 @@ local function isForward()
 end
 
 local function gotoFatherScope()
-  if tab_namespaces[tab_curr_scope.absolute_name].prefix then
-    tab_namespaces[tab_curr_scope.absolute_name].prefix = false
-    table.remove(tab_prefix_pragma_stack)
+  if (ROOTS[#ROOTS].scope == tab_curr_scope.absolute_name) then
+    table.remove(ROOTS)
+  end
+  currentRoot = ROOTS[#ROOTS].root
+  if (tab_curr_scope._type == TAB_TYPEID.MODULE) then
+    currentRoot = string.gsub(currentRoot, "::[^:]+$", "")
+    ROOTS[#ROOTS].root = currentRoot
+  elseif (tab_curr_scope._type == TAB_TYPEID.INTERFACE) or
+         (tab_curr_scope._type == TAB_TYPEID.STRUCT) or
+         (tab_curr_scope._type == TAB_TYPEID.UNION) or
+         (tab_curr_scope._type == TAB_TYPEID.EXCEPTION)
+  then
+    currentScope = string.gsub(currentScope, "::[^:]+$", "")
   end
   tab_curr_scope = tab_namespaces[tab_curr_scope.absolute_name].father_scope
 end
@@ -1056,17 +1070,6 @@ local function dclName( name, target, value, error_msg )
   end
 end
 
-local function get_scope( part )
-  local t = tab_namespaces[tab_curr_scope.absolute_name]
-  local s
-  if t then
-    s = t[part]
-  else
-    s = ''
-  end
-  return s
-end
-
 local reconhecer
 
 local function getToken()
@@ -1074,10 +1077,9 @@ local function getToken()
 
   for _, linemark in ipairs(lex.tab_linemarks) do
     if linemark['1'] then
-      tab_namespaces[tab_curr_scope.absolute_name].prefix = true
-      table.insert(tab_prefix_pragma_stack, '')
+      table.insert(ROOTS, {root = '', scope = tab_curr_scope.absolute_name})
     elseif linemark['2'] then
-      table.remove(tab_prefix_pragma_stack)
+      table.remove(ROOTS)
     end
   end
   lex.tab_linemarks = { }
@@ -1103,12 +1105,11 @@ local function getToken()
   elseif (token == lex.tab_tokens.TK_PRAGMA_PREFIX) then
     token = lex.lexer(stridl)
     local prefix = lex.tokenvalue
-    if tab_namespaces[tab_curr_scope.absolute_name].prefix then
-      table.remove(tab_prefix_pragma_stack)
+    if (ROOTS[#ROOTS].scope == tab_curr_scope.absolute_name) then
+      table.remove(ROOTS)
     end
-    table.insert(tab_prefix_pragma_stack, prefix)
+    table.insert(ROOTS, {root = prefix, scope = tab_curr_scope.absolute_name})
     reconhecer(lex.tab_tokens.TK_STRING_LITERAL)
-    tab_namespaces[tab_curr_scope.absolute_name].prefix = true
   end
   return token
 end
@@ -1125,9 +1126,32 @@ function reconhecer( tokenExpected )
   end
 end
 
+local function updateGlobalName( type, name )
+  local localName = ''
+  local currentRoot = ROOTS[#ROOTS].root
+-- Whenever a module is encountered, the string "::" and the <name> are appended
+-- to the name of the current root.
+  if (type == TAB_TYPEID.MODULE) then
+    currentRoot = currentRoot..'::'..name
+-- Whenever a interface, struct, union or exception is encountered,
+-- the string "::" and the <name> are appended to the name of the current scope.
+  elseif (type == TAB_TYPEID.INTERFACE) or
+         (type == TAB_TYPEID.STRUCT) or
+         (type == TAB_TYPEID.UNION) or
+         (type == TAB_TYPEID.EXCEPTION)
+  then
+    currentScope = currentScope..'::'..name
+  else
+    localName = '::'..name
+  end
+  ROOTS[#ROOTS].root = currentRoot
+  return currentRoot, currentScope, localName
+end
+
 local function define( name, type, value )
   local absolutename = getAbsolutename(tab_curr_scope, name)
   local tab_definitions
+
   if (tab_namespaces[absolutename]) then
     if (
         tab_namespaces[absolutename].tab_namespace._type == TAB_TYPEID.MODULE
@@ -1137,6 +1161,7 @@ local function define( name, type, value )
     then
       value = tab_namespaces[absolutename].tab_namespace
       tab_curr_scope = value
+      updateGlobalName(type, name)
       return false, value
     else
       semanticError(string.format(ERRMSG_REDEFINITION, name))
@@ -1148,32 +1173,13 @@ local function define( name, type, value )
     tab_forward[absolutename] = nil
   end
 
-  local curr_root  = get_scope( 'curr_root' )
-  local curr_scope = get_scope( 'curr_scope' )
-
-  local prefix = tab_prefix_pragma_stack[ #tab_prefix_pragma_stack ]
-  if tab_namespaces[ tab_curr_scope.absolute_name ].prefix then
-    curr_root = prefix
-  end
-
-  if type == TAB_TYPEID.MODULE then
-    if curr_root ~= '' then curr_root = curr_root..'::' end
-    curr_root = curr_root..name
-  else
-    if curr_scope ~= '' then curr_scope = curr_scope..'::' end
-    curr_scope = curr_scope..name
-  end
-
-  if ( not tab_definitions and tab_accept_definition[type] ) then
+  if (not tab_definitions and tab_accept_definition[type]) then
     tab_definitions = {}
   end
 
-  local separator
-  if curr_root ~= '' and curr_scope ~= '' then
-    separator = '/'
-  else
-    separator = ''
-  end
+  local root, scope, localName = updateGlobalName(type, name)
+  repID = root..scope..localName
+  repID = string.gsub(string.gsub(repID, "^::", ""), "::", "/")
 
   if (not value) then
     value = {}
@@ -1182,12 +1188,11 @@ local function define( name, type, value )
   value.name = name
   value._type = type
   value.absolute_name = absolutename
-  value.repID = "IDL:"..string.gsub( curr_root, '::', '/' )..separator..
-                string.gsub( curr_scope, '::', '/' )..":"..lex.PRAGMA_VERSION
+  value.repID = "IDL:"..repID..":"..lex.PRAGMA_VERSION
   value.definitions = tab_definitions
 
 -- tab_curr_scope ~= tab_output ????
-  if ( tab_is_contained[type] and tab_curr_scope ~= tab_output ) then
+  if (tab_is_contained[type] and tab_curr_scope ~= tab_output) then
     table.insert(tab_curr_scope.definitions, value)
   else
     table.insert(tab_curr_scope, value)
@@ -1197,8 +1202,6 @@ local function define( name, type, value )
     tab_namespaces[absolutename] = {
                                      father_scope = tab_curr_scope,
                                      tab_namespace = value,
-                                     curr_root = curr_root,
-                                     curr_scope = curr_scope
                                    }
     tab_curr_scope = value
   else
@@ -3527,16 +3530,14 @@ function parse( _stridl, options )
   tab_namespaces            = {
                                 [''] =   {
                                   tab_namespace = tab_output,
-                                  curr_root = '',
-                                  curr_scope = '',
-                                  prefix = true
                                 }
                               }
-  tab_prefix_pragma_stack   = { }
   tab_forward               = { }
   stridl                    = _stridl
   CORBAVisible              = nil
-  table.insert(tab_prefix_pragma_stack, '')
+  currentScope              = ''
+  ROOTS                     = { }
+  table.insert(ROOTS, {root = '', scope = ''})
   lex.init()
   token = getToken()
 --Implicit definitions
@@ -3546,6 +3547,7 @@ function parse( _stridl, options )
     define('TypeCode', TAB_TYPEID.TYPECODE, TAB_IMPLICITTYPE.TYPECODE)
     gotoFatherScope()
   end
+-- starts parsing with the first grammar rule
   specification()
 -- Removing CORBA::TypeCode implicit definition
   if (not options.notypecode) and (not CORBAVisible) then
