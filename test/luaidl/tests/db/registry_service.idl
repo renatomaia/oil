@@ -1,40 +1,89 @@
 #ifndef RS_IDL
 #define RS_IDL
 
+#include "core.idl"
 #include "scs.idl"
-#include "life_cycle.idl"
 
-module OpenBus {
+module openbusidl {
 
-module RS {
+/**
+ * \brief Módulo do Serviço de Registro.
+ */
+module rs {
 
-struct ServiceOffer {
-    string description;
-    string type;
-    SCS::IComponent iComponent;
-};
+typedef sequence<string> PropertyValue;
 
-struct Criterion {
+/**
+ * \brief Representa uma propriedade.
+ */
+struct Property {
     string name;
-    string value;
+    PropertyValue value;
 };
-typedef sequence<Criterion> Criteria;
+typedef sequence<Property> PropertyList;
 
-typedef long Identifier;
+/**
+ * \brief Representa uma oferta de serviço.
+ */
+struct ServiceOffer {
+    string type; /**< \brief O tipo do serviço. */
+    string description; /**< \brief A descrição do serviço. */
+    PropertyList properties; /**< \brief Propriedades. */
+    scs::core::IComponent member; /**< \brief O membro que está ofertando o serviço. */
+};
+typedef sequence<ServiceOffer> ServiceOfferList;
 
-interface IdentifierResource : LifeCycle::Resource {
-    Identifier getIdentifier();
+/** \brief O identificador do registro de um serviço. */
+typedef Identifier RegistryIdentifier;
+
+/**
+ * \brief Representa o serviço de registro.
+ */
+interface IRegistryService : scs::core::IComponent {
+    /**
+     * \brief Registra uma oferta de serviço.
+     *
+     * \param aServiceOffer A oferta de serviço.
+     * \param[out] identifier Um identificador para o registro.
+     *
+     * \return \c true, caso a oferta de serviço tenha sido registrada, ou
+     * \c false, caso contrário.
+     */
+    boolean register(in ServiceOffer aServiceOffer, out RegistryIdentifier identifier);
+
+    /**
+     * \brief Remove uma oferta de serviço.
+     *
+     * \param identifier O identificador do registro da oferta do serviço.
+     *
+     * \return \c true, caso a oferta de serviço seja removida, ou \c false,
+     * caso contrário.
+     */
+    boolean unregister(in RegistryIdentifier identifier);
+
+    /**
+     * \brief Atualiza uma oferta de serviço.
+     *
+     * \param identifier O identificador do registro da oferta do serviço.
+     * \param newProperties O novo conjunto de propriedades associado à oferta
+     *
+     * \return \c true, caso a oferta de serviço seja atualizada, ou \c false,
+     * caso contrário.
+     */
+    boolean update(in RegistryIdentifier identifier, in PropertyList newProperties);
+
+    /**
+     * \brief Realiza uma busca por ofertas que satisfaçam a determinados critérios.
+     *
+     * \param type O tipo de serviço
+     * \param criteria Os critérios da busca.
+     *
+     * \return Os membros encontrados.
+     */
+    ServiceOfferList find (in string type, in PropertyList criteria);
 };
 
-interface RegistryService : SCS::IComponent {
-    IdentifierResource register(in ServiceOffer serviceOffer);
-    void unregister(in Identifier identifier);
-    void refresh(in Identifier identifier, in ServiceOffer serviceOffer);
-    SCS::IComponent find (in Criteria criteria, in string type);
 };
-
-};
-
 };
 
 #endif

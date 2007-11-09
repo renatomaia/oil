@@ -6,6 +6,8 @@ local Suite      = require "loop.test.Suite"
 
 local files = {
 	"const",
+  "core",
+  "data_service",
 	"enum",
 	"enum_cases",
 	"exception",
@@ -27,12 +29,15 @@ local files = {
 	"pragmaprefix_5",
 	"pragmaprefix_6",
 	"pragmaprefix_7",
+  "project_service",
 	"adaptor",
 	"ApplicationRepository",
 	"BspLib",
 	"CosNaming",
+  "registry_service",
 	"ResourceManagement",
 	"security",
+  "session_service",
 	"sga-daemon",
 	"sga-manager",
 	"sga",
@@ -66,6 +71,7 @@ local files = {
 	"structs",
 	"typedefs",
 	"unions",
+  "scs",
 	"server",
 	"echo",
 }
@@ -76,6 +82,7 @@ for _, name in ipairs(files) do
 	local idlfile = path..".idl"
 	local luafile = path..".lua"
 	Suite[name] = function(checks)
+		checks.viewer.maxdepth = -1
 		local new = assert(luaidl.parsefile(idlfile))
 		local file = io.open(luafile)
 		if file then

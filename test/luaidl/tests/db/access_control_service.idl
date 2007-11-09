@@ -1,41 +1,182 @@
-#ifndef AS_IDL
-#define AS_IDL
+#ifndef ACS_IDL
+#define ACS_IDL
 
+#include "core.idl"
 #include "scs.idl"
-#include "life_cycle.idl"
 #include "registry_service.idl"
 
-module OpenBus {
+module openbusidl {
 
-module AS {
+/**
+ * \brief Módulo do Serviço de Controle de Acesso.
+ */
+module acs {
 
-typedef long Identifier;
+/** \brief Representa o identificador de uma credencial. */
+typedef Identifier CredentialIdentifier;
 
+/** \brief Representa uma sequência de identificadores de credenciais. */
+typedef sequence<CredentialIdentifier> CredentialIdentifierList;
+
+/** \brief Representa o identificador de um observador de credencial. */
+typedef Identifier CredentialObserverIdentifier;
+
+/**
+ * \brief Representa a credencial de um membro.
+ */
 struct Credential {
-    long id;
-    string entityName;
+  CredentialIdentifier identifier; /**< \brief Identificador único. */
+  string entityName; /**< \brief Nome da entidade. */
 };
 
-interface CredentialResource : LifeCycle::Resource {
-    Identifier getIdentifier();
-    Credential getCredential();
+/**
+ * \brief Representa um observador de credenciais. Esse observador será
+ * notificado quando acontecerem alterações nas credenciais que ele observa.
+ */
+interface ICredentialObserver {
+    /**
+     * \brief Notifica que uma credencial foi removida.
+     *
+     * \param aCredential A credencial que foi removida.
+     */
+    void credentialWasDeleted(in Credential aCredential);
 };
 
-interface CredentialManagerObserver {
-    void credentialWasDeleted(in Credential credential);
+/** \brief Representa a validade de uma credencial (s). */
+typedef long Lease;
+
+interface ILeaseProvider {
+    /**
+     * \brief Renova o lease de uma credencial.
+     *
+     * \param[in] aCredential A credencial da entidade.
+     * \param[out] aLease O lease obtido.
+     *
+     * \return \c true, caso o \c lease seja renovado, ou \c false, caso
+     * contrário.
+     */
+     boolean renewLease (in Credential aCredential, out Lease aLease);
 };
 
-interface CredentialManagerObservable {
-    void addObserver(in CredentialManagerObserver observer);
-    void removeObserver(in CredentialManagerObserver observer);
-};
+/**
+ * \brief Representa o serviço de controle de acesso.
+ */
+interface IAccessControlService : scs::core::IComponent, ILeaseProvider {
+    /**
+     * \brief Autentica uma entidade através de um nome e uma senha.
+     *
+     * \param[in] name O nome.
+     * \param[in] password A senha.
+     * \param[out] aCredential Uma credencial para a entidade.
+     * \param[out] aLease Um lease que define a validade da credencial.
+     *
+     * \return \c true, caso o login seja realizado com sucesso, ou \c false,
+     * caso contrário.
+     */
+    boolean loginByPassword (in string name, in string password,
+      out Credential aCredential, out Lease aLease);
+    /**
+     * \brief Autentica uma entidade através de um nome e de uma resposta para um desafio
+     * previamente obtido.
+     *
+     * \param[in] name O nome.
+     * \param[in] answer A reposta para o desafio.
+     * \param[out] aCredential Uma credencial para a entidade.
+     * \param[out] aLease Um lease que define a validade da credencial.
+     *
+     * \return \c true, caso o login seja realizado com sucesso, ou \c false,
+     * caso contrário.
+     *
+     * \see getChallenge
+     */
+    boolean loginByCertificate (in string name, in OctetSeq answer,
+      out Credential aCredential, out Lease aLease);
+    /**
+     * \brief Obtém um desafio para uma entidade.
+     *
+     * \param name O nome da entidade.
+     *
+     * \return O desafio.
+     *
+     * \see loginByCertificate
+     */
+    OctetSeq getChallenge(in string name);
+    /**
+     * \brief Efetua o \c logout de uma entidade.
+     *
+     * \param aCredential A credencial da entidade.
+     *
+     * \return \c true, caso o \c logout seja realizado, ou \c false, caso
+     * contrário.
+     */
+    boolean logout (in Credential aCredential);
+    /**
+     * \brief Verifica se uma determinada credencial está válida.
+     *
+     * \param aCredential A credencial.
+     *
+     * \return \c true, caso a credencial esteja válida, ou \c false, caso
+     * contrário.
+     */
+    boolean isValid (in Credential aCredential);
+    /**
+     * \brief Define o serviço de registro que poderá ser obtido pelos membros
+     * autenticados.
+     *
+     * \param registryServiceComponent O componente do serviço de registro.
+     *
+     * \return \c true caso a credencial seja do serviço de registro, ou
+     * \c false, caso contrário.
+     */
+    boolean setRegistryService(in rs::IRegistryService registryServiceComponent);
 
-interface AccessControlService : CredentialManagerObservable, LifeCycle::Stethoscope {
-    Identifier loginByCredential (in Credential credential, in LifeCycle::Heart heart);
-    Credential loginByPassword (in string name, in string password); 
-    void logout (in Identifier identifier);
-    boolean validate (in Credential credential);
-    RS::RegistryService getRegistryService (in Credential credential);
+    /**
+     * \brief Obtém o serviço de registro.
+     *
+     * \return O serviço de registro
+     */
+    rs::IRegistryService getRegistryService ();
+
+    /**
+     * \brief Adiciona um observador de credenciais. Esse observador será notificado apenas sobre
+     * eventos ocorridos numa sequência de credenciais.
+     *
+     * \param observer O observador.
+     * \param someCredentialIdentifiers A sequência de credenciais.
+     *
+     * \return Um identificador para o observador.
+     */
+    CredentialObserverIdentifier addObserver(in ICredentialObserver observer, in CredentialIdentifierList someCredentialIdentifiers);
+    /**
+     * \brief Remove um observador de credenciais.
+     *
+     * \param identifier O identificador do observador.
+     *
+     * \return \c true caso o observador tenha sido removido, ou \c false, caso contrário.
+     */
+    boolean removeObserver(in CredentialObserverIdentifier identifier);
+    /**
+     * \brief Adiciona uma credencial à sequência de credenciais nas quais um determinado
+     * observador está interessado.
+     *
+     * \param observerIdentifier O identificador do observador.
+     * \param aCredentialIdentifier O identificador da credencial.
+     *
+     * \return \c true caso a credencial tenha sido adicionada à sequência de credenciais do
+     * observador, ou \c false, caso contrário.
+     */
+    boolean addCredentialToObserver(in CredentialObserverIdentifier observerIdentifier, in CredentialIdentifier aCredentialIdentifier);
+    /**
+     * \brief Remove uma credencial da sequência de credenciais nas quais um determinado
+     * observador está interessado.
+     *
+     * \param observerIdentifier O identificador do observador.
+     * \param aCredentialIdentifier O identificador da credencial.
+     *
+     * \return \c true caso a credencial tenha sido removida da sequência de credenciais do
+     * observador, ou \c false, caso contrário.
+     */
+    boolean removeCredentialFromObserver(in CredentialObserverIdentifier observerIdentifier, in CredentialIdentifier aCredentialIdentifier);
 };
 
 };

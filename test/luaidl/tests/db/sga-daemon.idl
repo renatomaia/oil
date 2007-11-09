@@ -1,8 +1,8 @@
 /*
  * sga-daemon.idl
  *
- * $Author: ururahy $
- * $Revision: 1.7 $ - $Date: 2005/05/25 19:55:30 $
+ * $Author$
+ * $Revision$ - $Date$
  */
 
 #ifndef _SGA_DAEMON_IDL
@@ -14,11 +14,15 @@
  * Interfaces entre SGA e SSI (SGA Manager) para gerência da execução remota
  * de algoritmos.
  */
-module csbase {
-module server {
-module services {
-module sgaservice {
-module idl {
+module sgaidl {
+   /**
+    * Valores retornados pelo método execNetBench
+    */
+   enum SGANetCapacity {
+     ALL,
+     NO,
+     CALC
+   };
 
    /**
     * Estados de um processo.
@@ -47,6 +51,15 @@ module idl {
       double CPUPerc;
       long CPUTimeSec;
       long wallTimeSec;
+      double executionPerc;
+   };
+
+   /** 
+    * Informações específicas sobre a execução do comando.
+    */
+   struct ExecutionInfo {
+     string key;
+     string value;
    };
 
    /**
@@ -54,51 +67,12 @@ module idl {
     * A execução de um comando pode gerar um ou mais processos, portanto são 
     * fornecidas as informações de todos os processos que compõem o comando.
     */
-   typedef sequence<ProcessInfo> CommandInfo;
-
-   /**
-    * Carga na máquina hospedeira do SGA.
-    * Essa informação corresponde ao percentual de ocupação do(s) 
-    * processador(es) do nó. Deve-se observar que este 
-    * percentual pode ser maior que 100% (valor superior a 1.0) caso o número
-    * de processos ativos exceda o número de processadores disponíveis.
-    */
-   struct HostLoadAvgPerc {
-     double loadAvg1min;  /**< carga no último minuto */
-     double loadAvg5min;  /**< carga nos últimos 5 minutos */
-     double loadAvg15min; /**< carga nos últimos 15 minutos */
-   };
-
-   /**
-    * Tipos de ordenação de bytes de processador.
-    */
-   enum ByteOrder {
-     LITTLE_ENDIAN,
-     BIG_ENDIAN
-   };
-
-   struct StaticNodeInfo {
-     string name;          /**< Nome do nó */
-     string platform_id;   /**< Identificador de plataforma do nó */
-     long num_processors;   /**< Num. de processadores do nó */
-     long memory_ram_info_mb;   /**< Tamanho da memória RAM do nó */
-     long memory_swap_info_mb;   /**< Tamanho da memória de swap do nó */
-     long clock_speed_mhz; /**< Velocidade do processador do nó. */
-     string file_separator; /**< Separador de arquivos. */
-     string ssi_root_directory; /**< Diretório raiz para localização do SSI. */
-     ByteOrder byte_order;  /**< Ordernação de bytes no processador do nó. */
-   };
-
-   struct DynamicNodeInfo {
-     string name;                       /**< Nome do nó */
-     HostLoadAvgPerc load_avg_perc;     /**< Carga de CPU */
-     double memory_ram_free_perc;       /**< Memória RAM livre */
-     double memory_swap_free_perc;      /**< Memória swap livre */
+   struct CommandInfo {
+     sequence<ProcessInfo> processData;
+     sequence<ExecutionInfo> executionData;
    };
 
    typedef sequence<string> NodeNamesInfo;
-   typedef sequence<StaticNodeInfo> NodesStaticInfo;
-   typedef sequence<DynamicNodeInfo> NodesDynamicInfo;
 
    interface SGAServer;
 
@@ -156,21 +130,26 @@ module idl {
       boolean isAlive();
 
       /**
-       *
-       */
-      NodesStaticInfo getNodesStaticInfo();
-
-      /**
-       *
-       */
-      NodesDynamicInfo getNodesDynamicInfo();
-
-      /**
        * Verifica se o SGA possui um determinado requisito externo
        * que o habilite para execução de um comando.
        * @return true se o SGA possui tal requisito.
        */
       boolean meetsRequirement(in string requirement);
+
+	  /**
+	   * Verifica se o SGA deve executar o benchmark de rede durante a
+	   * escolha de servidores (com CSFS e com benchmark de rede) ou
+	   * se a taxa de transferência entre o servidor e esse SGA deve ser
+	   * configurada para ilimitada (sem CSFS) ou limitada (com CSFS e
+	   * sem benchmark de rede)
+       * @return SGANetCapacity.CALC se o SGA deve calcular a 
+       *         capacidade de transferência.
+       *         SGANetCapacity.ALL se o SGA apresenta grande 
+       *         capacidade de transferência.
+       *         SGANetCapacity.NO se o SGA apresenta pequena 
+       *         capacidade de transferência.
+       */
+      SGANetCapacity execNetBench();
 
       /**
        * Verifica se o SGA está apto a receber comandos.
@@ -194,24 +173,41 @@ module idl {
       string getHostName();
 
       /**
+       * Obtém a identificação da máquina que deve ser contactada
+       * para transferências via CSFS.
+       * @return nome (hostname) da máquina para transferências via CSFS
+       */
+      string getCSFSHost();
+
+      /**
+       * Obtém o diretório raíz usado para transferências via CSFS.
+       * @return diretório
+       */
+      string getCSFSRootDir();
+
+      /**
        * Requisição de execução de um comando.
        * @param command comando a ser executado
        * @param cmdid identificador do comando a ser executado
+       * @param host maquina que ira executar o comando (para clusters)
+       * @param execpath diretorio de execucao do comando.
        * @return referência para o comando
        */
-      SGACommand executeCommand( in string command, in string cmdid, in string hostName);
+      SGACommand executeCommand( in string command, in string cmdid, in string hostName, in string execpath);
       
       /**
        * Solicita a finalização do daemon
        */
       oneway void kill(in long status);
+
+      /**
+       * Verifica se um arquivo existe ou se é um diretório.
+       * @param filename nome do arquivo
+       * @return true se o arquivo existe ou é um diretório
+       */
+      boolean checkExistence(in string filename);
    };
 
 }; 
-}; 
-};
-};
-};
 
 #endif
-

@@ -1,8 +1,8 @@
 /*
  * sga-manager.idl
  *
- * $Author: ururahy $
- * $Revision: 1.3 $ - $Date: 2004/05/25 23:06:18 $
+ * $Author$
+ * $Revision$ - $Date$
  */
 
 #ifndef _SGA_MANAGER_IDL
@@ -14,14 +14,79 @@
  * Interfaces entre SGA e SSI (SGA Manager) para gerência da execução remota
  * de algoritmos.
  */
-module csbase {
-module server {
-module services {
-module sgaservice {
-module idl {
+module sgaidl {
 
    interface SGAServer;
    interface SGACommand;
+
+   /**
+    * Capacidades de cada SGA medidas através de benchmarks 
+    */
+   enum CType {
+     CPU,
+     DISK_READ,
+     DISK_WRITE,
+     NET
+   };
+
+   /**
+    * Estrutura que armazena o valor de cada benchmark por sga
+    */
+   struct Capacity {
+     CType type;
+     long value;
+   };
+
+   /**
+    * Carga na máquina hospedeira do SGA.
+    * Essa informação corresponde ao percentual de ocupação do(s) 
+    * processador(es) do nó. Deve-se observar que este 
+    * percentual pode ser maior que 100% (valor superior a 1.0) caso o número
+    * de processos ativos exceda o número de processadores disponíveis.
+    */
+   struct HostLoadAvgPerc {
+     double loadAvg1min;  /**< carga no último minuto */
+     double loadAvg5min;  /**< carga nos últimos 5 minutos */
+     double loadAvg15min; /**< carga nos últimos 15 minutos */
+   };
+
+   /**
+    * Tipos de ordenação de bytes de processador.
+    */
+   enum ByteOrder {
+     LITTLE_ENDIAN,
+     BIG_ENDIAN
+   };
+
+   struct StaticNodeInfo {
+     string name;                   /**< Nome do nó */
+     string platform_id;            /**< Identificador de plataforma do nó */
+     long num_processors;           /**< Num. de processadores do nó */
+     long memory_ram_info_mb;       /**< Tamanho da memória RAM do nó */
+     long memory_swap_info_mb;      /**< Tamanho da memória de swap do nó */
+     long clock_speed_mhz;          /**< Velocidade do processador do nó. */
+     string file_separator;         /**< Separador de arquivos. */
+     string ssi_root_directory;     /**< Diretório raiz para localização do SSI. */
+     ByteOrder byte_order;          /**< Ordernação de bytes no processador do nó. */
+     sequence<string> requirements; /** Requisitos que um sga possui */
+     sequence<Capacity> capacities; /**< Resultados dos benchmarks */
+   };
+
+   struct DynamicNodeInfo {
+     string name;                       /**< Nome do nó */
+     HostLoadAvgPerc load_avg_perc;     /**< Carga de CPU */
+     double memory_ram_free_perc;       /**< Memória RAM livre */
+     double memory_swap_free_perc;      /**< Memória swap livre */
+     sequence<Capacity> capacities;     /**< Resultados dos benchmarks */
+   };
+
+   typedef sequence<StaticNodeInfo> NodesStaticInfo;
+   typedef sequence<DynamicNodeInfo> NodesDynamicInfo;
+
+   struct SGADynamicInfo {
+     boolean hasDiskAccess;      /* indica se o SGA tem acesso ao disco. */
+     NodesDynamicInfo nodesInfo; /* informações dinâmicas de cada nó. */
+   };
 
    /**
     * Informações sobre o fim da execução de um comando.
@@ -57,17 +122,30 @@ module idl {
        * SGA avisa ao manager que está ativo.
        * @param sga referência para o SGA
        * @param hostname nome da máquina hospedeira do SGA
+       * @param nodesstaticinfo informações estáticas do SGA.
+       * @param updateInterval informa de quanto em quanto tempo o SGA
+       *        deve dizer que está vivo.
        * @return true se o SGA foi registrado com sucesso junto ao SSI
        */
-      boolean registerSGA( in SGAServer sga, in string hostname );
+      boolean registerSGA( in SGAServer sga, in string hostname,
+        in NodesStaticInfo sinfo, out long updateInterval );
 
       /**
        * SGA avisa ao manager que sairá do ar.
        * @param sga referência para o SGA
        * @param hostname nome da máquina hospedeira do SGA
        */
-      //void unregisterSGA( in SGAServer sga, in string hostname );
-      void unregisterSGA(in string hostname );
+      void unregisterSGA( in SGAServer sga, in string hostname );
+
+      /**
+       * SGA envia seus os dados dinâmicos para o Manager.
+       * @param sga referência para o SGA
+       * @param hostname nome da máquina hospedeira do SGA
+       * @param dinfo informações dinâmicas do SGA.
+       * @return true se atualizou as informações
+       */
+      boolean updateSGAInfo( in SGAServer sga, in string hostname,
+        in SGADynamicInfo dinfo );
 
       /**
        * SGA avisa ao manager que está apto a receber novos comandos.
@@ -77,7 +155,8 @@ module idl {
       void setSGAEnabled(in SGAServer sga, in string hostname );
 
       /**
-       * SGA avisa ao manager que não pode receber novos comandos.                     * Essa notificação é enviada quando, através de algum procedimento
+       * SGA avisa ao manager que não pode receber novos comandos.
+       * Essa notificação é enviada quando, através de algum procedimento
        * local à máquina hospedeira, o SGA é solicitado a suspender,
        * temporariamente, a execução de novos comandos (por exemplo,
        * em caso de necessidade de reserva dos recursos da máquina hospedeira
@@ -121,20 +200,12 @@ module idl {
       boolean commandRetrieved( in string sganame, in RetrievedCmds cmds);
 
       /**
-       * SGA verifica se o Manager está acessível.
-       * @return true se o Manager está acessível e o registro do SGA 
-       *              está válido
-       * Um retorno "false" é uma indicação de que o Manager esteve fora do
-       * ar, o que exige um novo registro do SGA junto ao mesmo.
+       * SGA indica que está acessível.
+       * @return true se o SGA estava acessível e seu registro está válido.
        */
-      //boolean isAlive( in SGAServer sga, in string hostname);
-      boolean isRegistered(in string hostname);
+      boolean isRegistered(in SGAServer sga, in string hostname);
    };
 
-};
-};
-};
-};
 };
 
 #endif
