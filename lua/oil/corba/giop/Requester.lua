@@ -251,7 +251,7 @@ function getreply(self, channel, probe)                                         
 			result[1] = decoder:struct(IOR)
 		end
 	elseif (msgid == CloseConnectionID) or
-	       (msgid == nil and header.reason == "closed") then                      --[[VERBOSE]] verbose:invoke("got remote request to close channel or channel was broken")
+	       (msgid == nil and header.reason == "closed") then                      --[[VERBOSE]] verbose:invoke("got remote request to close channel or channel is broken")
 		result, except = channel:reset()
 		if result then                                                              --[[VERBOSE]] verbose:invoke(true, "reissue all pending requests")
 			for id, request in pairs(channel) do
