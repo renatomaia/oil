@@ -73,7 +73,7 @@ function receivefrom(self, channel, request, probe)
 				end
 				break
 			end
-		until result == request or probe
+		until result == request or (probe and result == true)
 	end                                                                           --[[VERBOSE]] verbose:invoke(false)
 	local handler = self[request.success]
 	if handler then
