@@ -737,9 +737,6 @@ function Encoder:Object(value, idltype)                                         
 			end
 		end
 	end
-
-if reference == nil then verbose:debug() end
-
 	self:struct(reference, giop.IOR)                                              --[[VERBOSE]] verbose:marshal(false)
 end
 
