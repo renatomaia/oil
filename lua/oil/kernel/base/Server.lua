@@ -83,7 +83,7 @@ function object(self, object, key)
 		object = result
 		result, except = context.references:referenceto(key, self.config)
 		if result then
-			object.__reference = result
+			rawset(object, "__reference", result)
 			result = object
 		else
 			context.objects:unregister(key)
