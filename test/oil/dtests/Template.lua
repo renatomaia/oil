@@ -94,7 +94,7 @@ function __call(self, infos)
 			if type(name) == "string" then
 				local command = Command(infos[name])
 				command.id = name
-				command.command = LuaProcess:format(hostname, portno, name)
+				command.command = LuaProcess:format(hostname, portno)
 				local process = helper:start(command)
 				HostTable[#HostTable+1] = TableEntry:format(name, process:_get_host())
 				Processes[name] = {
