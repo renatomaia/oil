@@ -3,6 +3,9 @@ local Template = require"oil.dtests.Template"
 local test = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
+
+oil.verbose:level(2)
+
 if oil.dtests.flavor.corba then
 	oil.loadidl[[
 		interface Worker {
@@ -28,6 +31,9 @@ oil.run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
+
+oil.verbose:level(2)
+
 checks = oil.dtests.checks
 worker = oil.dtests.resolve("Server", 2809, "worker")
 
@@ -39,6 +45,7 @@ checks:assert(worker:count(), checks.is(1, "wrong number of performed operations
 checks:assert(result, checks.is(1, "wrong results."))
 
 -- asynchronous call
+worker.__deferred:work(0)
 future = worker.__deferred:work(2)
 oil.sleep(1)
 checks:assert(not future:ready(), "unfinished operation returned.")
@@ -48,15 +55,16 @@ ok, result = future:results()
 checks:assert(ok == true, "operation results indicated a unexpected error.")
 checks:assert(result, checks.is(2, "wrong results."))
 checks:assert(future:evaluate(), checks.is(2, "wrong results."))
-checks:assert(worker:count(), checks.is(2, "wrong number of performed operations."))
+checks:assert(worker:count(), checks.is(3, "wrong number of performed operations."))
 
 -- asynchronous call, but waiting for results
+worker.__deferred:work(0)
 future = worker.__deferred:work(3)
 oil.sleep(1)
 start = oil.time()
 checks:assert(future:evaluate(), checks.is(3, "wrong results."))
 checks:assert(oil.time() - start > 1, "results on unfinished operation didn't wait.")
-checks:assert(worker:count(), checks.is(3, "wrong number of performed operations."))
+checks:assert(worker:count(), checks.is(5, "wrong number of performed operations."))
 ok, result = future:results()
 checks:assert(ok == true, "operation results indicated a unexpected error.")
 checks:assert(result, checks.is(3, "wrong results."))
@@ -65,7 +73,7 @@ checks:assert(result, checks.is(3, "wrong results."))
 start = oil.time()
 ok, result = worker.__try:work(1)
 checks:assert(oil.time() - start > 1, "synchronous operation didn't wait.")
-checks:assert(worker:count(), checks.is(4, "wrong number of performed operations."))
+checks:assert(worker:count(), checks.is(6, "wrong number of performed operations."))
 checks:assert(ok == true, "operation results does not indicates success")
 checks:assert(result, checks.is(1, "wrong results."))
 
