@@ -310,7 +310,7 @@ function union(self)
 			return rawget(union, "_value")
 		end
 	end
-	function self.__newindex(field, value)
+	function self.__newindex(union, field, value)
 		local label = self.selector[field]
 		if label then
 			rawset(union, "_switch", label)

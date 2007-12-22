@@ -849,6 +849,20 @@ function UnionDef:update(new)
 		end
 		self:_set_members(new.options)
 	end
+	
+	function self.__index(union, field)
+		if rawget(union, "_switch") == self.selector[field] then
+			return rawget(union, "_value")
+		end
+	end
+	function self.__newindex(union, field, value)
+		local label = self.selector[field]
+		if label then
+			rawset(union, "_switch", label)
+			rawset(union, "_value", value)
+			rawset(union, "_field", field)
+		end
+	end
 end
 
 function UnionDef:_get_discriminator_type() return self.switch end
