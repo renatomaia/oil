@@ -108,7 +108,7 @@ function assemble(components)
   -- Server side
   RequestReceiver.listener   = RequestListener.listener
   RequestReceiver.dispatcher = RequestDispatcher.dispatcher
-  ServerBroker.objects       = RequestDispatcher.dispatcher
+  ServerBroker.objects       = RequestDispatcher.objects
   ServerBroker.acceptor      = RequestReceiver.acceptor
   ServerBroker.references    = ObjectReferrer.references
 end

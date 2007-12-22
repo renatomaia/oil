@@ -127,7 +127,7 @@ function assemble(components)
 		RequestReceiver.dispatcher = RequestDispatcher.dispatcher
 	end
 	if ServerBroker then
-		ServerBroker.objects = RequestDispatcher.dispatcher
+		ServerBroker.objects = RequestDispatcher.objects
 		ServerBroker.acceptor = RequestReceiver.acceptor
 		ServerBroker.references = ObjectReferrer.references
 	end
