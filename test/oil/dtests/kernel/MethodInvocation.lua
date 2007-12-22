@@ -3,9 +3,6 @@ local Template = require"oil.dtests.Template"
 local test = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-
-oil.verbose:level(2)
-
 if oil.dtests.flavor.corba then
 	oil.loadidl[[
 		interface Worker {
@@ -31,9 +28,6 @@ oil.run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-
-oil.verbose:level(2)
-
 checks = oil.dtests.checks
 worker = oil.dtests.resolve("Server", 2809, "worker")
 
