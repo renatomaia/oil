@@ -1,0 +1,38 @@
+#ifndef DS_IDL
+#define DS_IDL
+
+#include "scs.idl"
+
+module openbusidl {
+
+/**
+ * \brief Módulo do Serviço de Dados
+ */
+module ds {
+
+typedef string PropertyName;
+typedef string PropertyValue;
+struct Property {
+  PropertyName name;
+  PropertyValue value;
+};
+typedef sequence<Property> PropertyList;
+
+typedef string NodeKey;
+struct Node {
+  NodeKey key;
+  PropertyList properties;
+};
+typedef sequence<Node> NodeList;
+
+interface IDataService {
+  NodeList getRoots();
+  NodeList getChildren(in NodeKey key);
+  scs::core::IComponent getComponent(in NodeKey key);
+};
+
+};
+
+};
+
+#endif

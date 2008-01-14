@@ -1,0 +1,108 @@
+#ifndef SS_IDL
+#define SS_IDL
+
+#include "core.idl"
+#include "scs.idl"
+
+module openbusidl {
+
+/**
+ * \brief Módulo do Serviço de Sessão.
+ */
+module ss {
+
+/** \brief Representa o identificador de uma sessão. */
+typedef Identifier SessionIdentifier;
+
+/** \brief Representa o identificador do membro de uma sessão. */
+typedef Identifier MemberIdentifier;
+
+/** \brief Representa um evento trocado entre membros de uma sessão */
+struct SessionEvent {
+  string type;
+  any value;
+};
+
+/**
+ * \brief Representa um receptor de eventos.
+ */
+interface SessionEventSink {
+    /**
+     * \brief Recebe um evento.
+     *
+     * \param ev O evento enviado
+     */
+  void push(in SessionEvent ev);
+
+    /**
+     * \brief Notificação de finalização do canal de comunicação.
+     */
+  void disconnect();
+};
+
+/**
+ * \brief Representa uma sessão.
+ */
+interface ISession : SessionEventSink {
+    /**
+     * \brief Obtém o identificador da sessão.
+     *
+     * \return O identificador da sessão.
+     */
+    SessionIdentifier getIdentifier();
+    /**
+     * \brief Adiciona um membro à sessão.
+     *
+     * \param member O membro.
+     *
+     * \return O identificador do membro.
+     */
+    MemberIdentifier addMember(in scs::core::IComponent member);
+    /**
+     * \brief Remove um membro da sessão.
+     *
+     * \param memberIdentifier O identificador do membro.
+     *
+     * \return \c true caso o membro tenha sido removido, ou \c false, caso contrário.
+     */
+    boolean removeMember(in MemberIdentifier memberIdentifier);
+    /**
+     * \brief Obtém todos os membros da sessão.
+     *
+     * \return A sequência de membros. Pode estar vazia caso não existam membros participando da
+     * sessão.
+     */
+    scs::core::IComponentSeq getMembers();
+};
+/** \brief Representa uma sequência de sessões. */
+typedef sequence<ISession> SessionList;
+
+/**
+ * \brief Representa o serviço de sessão.
+ */
+interface ISessionService {
+    /**
+     * \brief Cria uma sessão associada a uma credencial.
+     *
+     * \param[in] member referência para o membro que está criando a sessão
+     * \param[out] session A sessão criada.
+     * \param[out] memberIdentifier A identificação do membro para a sessão
+     *
+     * \return \c true, caso a sessão tenha sido criada, ou \c false, caso contrário.
+     */
+    boolean createSession(in scs::core::IComponent member,
+        out ISession session, out MemberIdentifier memberIdentifier);
+    /**
+     * \brief Obtém a sessão associada a uma credencial.
+     *
+     * \return A sessão ou \c nil, caso a credencial esteja inválida ou não exista sessão
+     * associada à credencial.
+     */
+    ISession getSession();
+};
+
+};
+
+};
+
+#endif

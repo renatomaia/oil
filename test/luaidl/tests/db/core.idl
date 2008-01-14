@@ -1,0 +1,24 @@
+/**
+ * \mainpage Documentação da IDL
+ */
+#ifndef CORE_IDL
+#define CORE_IDL
+
+/**
+ * \brief Módulo principal, contendo os tipos básicos utilizados pelos outros
+ * módulos.
+ */
+module openbusidl {
+
+/** \brief Representa um identificador universalmente único. */
+typedef string UUID;
+
+/** \brief Representa um identificador único. */
+typedef UUID Identifier;
+
+/** \brief Representa uma sequência de bytes. */
+typedef sequence<octet> OctetSeq;
+
+};
+
+#endif

@@ -1,0 +1,65 @@
+#ifndef PS_IDL
+#define PS_IDL
+
+#include "core.idl"
+
+module openbusidl {
+
+/**
+ * \brief Módulo do Serviço de Projetos.
+ */
+module ps {
+
+interface IFile;
+typedef sequence<IFile> FileList;
+
+interface IProject {
+  string getId();
+  string getName();
+  string getOwner();
+  IFile getRootFile();
+  void close();
+};
+typedef sequence<IProject> ProjectList;
+
+struct DataChannel {
+  string host;
+  unsigned short port;
+  OctetSeq accessKey;
+  OctetSeq fileIdentifier;
+  boolean writable;
+  long long fileSize;
+};
+
+interface IFile {
+  string getName();
+  string getPath();
+  long long getSize();
+  boolean canRead();
+  boolean canWrite();
+  boolean isDirectory();
+  FileList getFiles();
+  IProject getProject();
+  boolean createFile(in string name, in string type);
+  boolean createDirectory (in string name);
+  boolean delete();
+  boolean rename (in string newName);
+  boolean moveFile(in IFile newParent);
+  boolean copyFile(in IFile newParent);
+  DataChannel getDataChannel();
+  void close();
+};
+
+interface IProjectService {
+  ProjectList getProjects();
+  IProject getProject (in string name);
+  IFile getFile(in string path);
+  IProject createProject(in string name);
+  boolean deleteProject(in IProject aProject);
+};
+
+};
+
+};
+
+#endif
