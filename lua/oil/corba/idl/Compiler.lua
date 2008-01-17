@@ -17,7 +17,7 @@
 -- 	success:boolean, [except:table] load(idl:string)
 -- 	success:boolean, [except:table] loadfile(filepath:string)
 -- 
--- types:Receptacle
+-- registry:Receptacle
 -- 	types:table register(definition:table)
 --------------------------------------------------------------------------------
 
@@ -90,7 +90,7 @@ end
 
 function doresults(self, ...)
 	if ... then
-		return self.context.types:register(...)
+		return self.context.registry:register(...)
 	end
 	return ...
 end

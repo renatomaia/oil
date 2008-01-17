@@ -18,7 +18,7 @@
 -- 	[type:table] lookup(name:string)
 -- 	[type:table] lookup_id(repid:string)
 -- 
--- types:Receptacle
+-- registry:Receptacle
 -- 	type:table register(definition:table)
 -- 	type:table remove(definition:table)
 -- 	[type:table] lookup(name:string)
@@ -44,17 +44,17 @@ resolve = Registry.resolve
 
 function context(self, context)
 	self.context = context
-	local types = context.types
-	types:register(iridl)
+	local registry = context.registry
+	registry:register(iridl)
 	self.DefaultDefs = oo.class()
-	for id, def in pairs(types.definition_map) do
+	for id, def in pairs(registry.definition_map) do
 		self.DefaultDefs[id] = def
 	end
 end
 
 function lookup(self, search_name)
 	local context = self.context
-	local definition = context.types:lookup(search_name)
+	local definition = context.registry:lookup(search_name)
 	if not definition then
 		if context.delegated then
 			definition = context.delegated:lookup(search_name)
@@ -68,7 +68,7 @@ end
 
 function lookup_id(self, search_id)
 	local context = self.context
-	local definition = context.types:lookup_id(search_id)
+	local definition = context.registry:lookup_id(search_id)
 	if not definition then
 		if context.delegated then
 			definition = context.delegated:lookup_id(search_id)
@@ -102,11 +102,11 @@ local Contained = {
 
 function register(self, object, history)
 	local result
-	local types = self.context.types
+	local registry = self.context.registry
 	if object._get_def_kind then -- is a remote definition
 		local kind = object:_get_def_kind()
 		if kind == "dk_Repository" then
-			result = types
+			result = registry
 		elseif IDLTypes[kind] then
 			local desc
 			-- import definition specific information
@@ -122,7 +122,7 @@ function register(self, object, history)
 				object = object:_narrow("IDL:omg.org/CORBA/IDLType:1.0")
 				desc = object:_get_type()
 			end
-			result = types:register(desc)
+			result = registry:register(desc)
 		elseif Contained[kind] then
 			object = object:_narrow(Contained[kind].iface)
 			local desc = object:describe().value
@@ -158,7 +158,7 @@ function register(self, object, history)
 				end
 				
 				-- registration of the imported definition
-				result = types:register(Contained[kind].const(desc))
+				result = registry:register(Contained[kind].const(desc))
 				history[result.repID] = result
 				
 				-- following references may be recursive
@@ -191,7 +191,7 @@ function register(self, object, history)
 			error("unable to import definition of type "..object:_interface():_get_id())
 		end
 	else -- a local IDL description
-		result = types:register(object)
+		result = registry:register(object)
 	end
 	return result
 end

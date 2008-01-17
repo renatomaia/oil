@@ -4,7 +4,7 @@ local type    = type
 
 local port      = require "oil.port"
 local component = require "oil.component"
-local arch      = require "oil.arch.base"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
+local arch      = require "oil.arch.typed"                                      --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.arch.corba"
 
@@ -180,8 +180,15 @@ ServantIndexer = component.Template{
 --
 -- TYPES
 --
-TypeRepository = component.Template{
-	types = port.Facet--[[
+TypeRepository = component.Template({
+	--[[ extended interface of 'types':
+		type:table register(definition:table)
+		type:table remove(definition:table)
+		type:table resolve(type:string)
+		[type:table] lookup(name:string)
+		[type:table] lookup_id(repid:string)
+	]]
+	registry = port.Facet--[[
 		type:table register(definition:table)
 		type:table remove(definition:table)
 		type:table resolve(type:string)
@@ -196,20 +203,11 @@ TypeRepository = component.Template{
 		success:boolean, [except:table] load(idl:string)
 		success:boolean, [except:table] loadfile(filepath:string)
 	]],
-	observers = port.ListReceptacle--[[
-		???
-	]],
-	importer = port.Facet--[[
-		type:table register(definition:table)
-		type:table remove(definition:table)
-		[type:table] lookup(name:string)
-		[type:table] lookup_id(repid:string)
-	]],
 	delegated = port.Receptacle--[[
 		[type:table] lookup(name:string)
 		[type:table] lookup_id(repid:string)
 	]],
-}
+}, arch.TypeRepository)
 
 function assemble(components)
 	setfenv(1, components)
@@ -273,8 +271,7 @@ function assemble(components)
 	if ProxyIndexer then
 		ProxyIndexer.members = TypeRepository.indexer
 		ProxyIndexer.invoker = OperationInvoker.invoker
-		ProxyIndexer.types = TypeRepository.importer or
-		                     TypeRepository.types
+		ProxyIndexer.types = TypeRepository.types
 		if ReferenceProfilers then
 			for tag, profiler in pairs(ReferenceProfilers) do
 				if type(tag) == "number" then

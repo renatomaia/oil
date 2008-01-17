@@ -630,7 +630,7 @@ end
 --
 function newexcept(body)
 	assert.type(body, "table", "exception body")
-	local except = assert.results(TypeRepository.importer:resolve(body[1]))
+	local except = assert.results(TypeRepository.types:resolve(body[1]))
 	assert.type(except, "idl except", "referenced exception type")
 	body[1] = except.repID
 	return assert.Exception(body)

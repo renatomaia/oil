@@ -46,6 +46,18 @@ RequestDispatcher = component.Template({
 	]],
 }, arch.RequestDispatcher)
 
+--
+-- TYPES
+--
+
+TypeRepository = component.Template{
+	types = port.Facet--[[
+		type:table register(definition:table)
+		type:table remove(definition:table)
+		type:table resolve(type:string)
+	]],
+}
+
 function assemble(components)
 	setfenv(1, components)
 	--
@@ -53,14 +65,9 @@ function assemble(components)
 	--
 	if ObjectProxies then
 		ObjectProxies.indexer = ProxyIndexer.indexer
-		if TypeRepository then
-			TypeRepository.observers:__bind(ObjectProxies.caches)
-		end
 	end
-	if ClientBroker then
-		ClientBroker.types = TypeRepository and
-		                   ( TypeRepository.importer or
-		                     TypeRepository.types )
+	if ClientBroker and TypeRepository then
+		ClientBroker.types = TypeRepository.types
 	end
 	--
 	-- Server side
@@ -70,8 +77,8 @@ function assemble(components)
 	end
 	if ServerBroker then
 		ServerBroker.mapper = ServantIndexer.mapper
-		ServerBroker.types = TypeRepository and
-		                   ( TypeRepository.importer or
-		                     TypeRepository.types )
+		if TypeRepository then
+			ServerBroker.types = TypeRepository.types
+		end
 	end
 end

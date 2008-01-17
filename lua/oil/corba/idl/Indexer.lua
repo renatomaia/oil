@@ -16,7 +16,7 @@
 -- 	[interface:table] typeof(name:string)
 -- 	member:table valueof(interface:table, name:string)
 -- 
--- interfaces:Receptacle
+-- registry:Receptacle
 -- 	[interface:table] lookup_id(repid:string)
 -- 	[interface:table] lookup(name:string)
 --------------------------------------------------------------------------------
@@ -69,7 +69,7 @@ end
 -- Interface Operations --------------------------------------------------------
 
 function typeof(self, name)
-	return self.context.types:resolve(name)
+	return self.context.registry:resolve(name)
 end
 
 function valueof(self, interface, name)

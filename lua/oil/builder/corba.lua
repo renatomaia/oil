@@ -17,10 +17,10 @@ ProxyIndexer       = arch.ProxyIndexer      {require "oil.corba.giop.ProxyOps"  
 RequestListener    = arch.RequestListener   {require "oil.corba.giop.Listener"  }
 ServantIndexer     = arch.ServantIndexer    {require "oil.corba.giop.ServantOps"}
 TypeRepository = arch.TypeRepository{
-	types    = require "oil.corba.idl.Registry",
+	registry = require "oil.corba.idl.Registry",
 	indexer  = require "oil.corba.idl.Indexer",
 	compiler = require "oil.corba.idl.Compiler",
-	importer = require "oil.corba.idl.Importer",
+	types    = require "oil.corba.idl.Importer",
 }
 
 -- Avoid using a typed request dispatcher because the GIOP protocol already
