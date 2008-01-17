@@ -217,7 +217,10 @@ end
 
 function Contents:_remove(contained)
 	contained = UnorderedArraySet.remove(self, contained)
-	if contained then self[contained.name] = nil end
+	if contained then
+		self[contained.name] = nil
+		return contained
+	end
 end
 
 function Contents:_removeat(index)
