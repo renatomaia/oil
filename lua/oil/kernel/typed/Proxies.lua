@@ -1,3 +1,5 @@
+local error = error
+
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -27,6 +29,7 @@
 
 local pairs  = pairs
 local rawget = rawget
+local rawset = rawset
 local type   = type
 
 local table = require "loop.table"
@@ -43,23 +46,21 @@ context = false
 
 --------------------------------------------------------------------------------
 
-local function initcache(self, cache)
-	return oo.rawnew(self, oo.initclass(cache))
-end
 function newcache(methodmaker)
 	return oo.class{
-		__init = initcache,
 		__index = function(self, field)
 			if type(field) == "string" then
 				local context = self.__context
 				local operation, value = context.indexer:valueof(self.__type, field)
 				if value ~= nil then
-					return methodmaker(value, operation)
+					value = methodmaker(value, operation)
 				elseif operation then
-					return methodmaker(function(self, ...)                                --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+					value = methodmaker(function(self, ...)                               --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
 						return context.invoker:invoke(self.__reference, operation, ...)
 					end, operation)
 				end
+				self[field] = value
+				return value
 			end
 		end
 	}
@@ -73,33 +74,37 @@ DeferredClass  = newcache(Proxies.makedeferred)
 
 --------------------------------------------------------------------------------
 
-local Extras = {
+local Classes = {
+	ProxyClass,
 	__deferred =  DeferredClass,
 	__try = ProtectedClass,
 }
 
 function __init(self, object)
 	self = oo.rawnew(self, object)
-	self.classes = ObjectCache{
-		retrieve = function(_, type)
-			return ProxyClass{
-				__context = self.context,
-				__type = type,
-			}
-		end
-	}
-	local extras = {}
-	for label, class in pairs(Extras) do
-		extras[label] = ObjectCache{
+	local prxcls = {}
+	for label, class in pairs(Classes) do
+		prxcls[label] = ObjectCache{
 			retrieve = function(_, type)
-				return class{
-					__context = self.context,
-					__type = type,
-				}
+				local class = class()
+				local updater = {}
+				function updater.notify()
+					table.clear(class)
+					class.__context = self.context
+					class.__type = type
+					oo.initclass(class)
+				end
+				updater:notify()
+				if type.observer then
+					rawset(type.observer, class, updater)
+				end
+				return class
 			end
 		}
 	end
-	self.extras = extras
+	self.classes = prxcls[1]
+	prxcls[1] = nil
+	self.extras = prxcls
 	return self
 end
 
