@@ -896,7 +896,7 @@ function UnionDef:_set_members(members)
 	local selection = {}
 	
 	for index, member in ipairs(members) do
-		member.type_def = self.containing_repository:register(member.type_def.type)
+		member.type_def = self.containing_repository:register(member.type)
 		member.type = member.type_def.type
 		local option = {
 			label = member.label._anyval,

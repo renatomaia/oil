@@ -19,12 +19,11 @@
 -- 	[results:object], [except:table] invoke(reference, operation, args...)
 --------------------------------------------------------------------------------
 
---[[VERBOSE]] local select = select
-
 local assert = assert
 local error  = error
 local pairs  = pairs
 local rawget = rawget
+local select = select
 local unpack = unpack
 
 local table = require "loop.table"
