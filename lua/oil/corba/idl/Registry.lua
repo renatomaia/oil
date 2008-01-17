@@ -22,6 +22,7 @@
 local error        = error
 local getmetatable = getmetatable
 local ipairs       = ipairs
+local next         = next
 local pairs        = pairs
 local rawget       = rawget
 local select       = select
@@ -33,6 +34,7 @@ local string = require "string"
 local table  = require "table"
 
 local OrderedSet = require "loop.collection.OrderedSet"
+local Publisher  = require "loop.object.Publisher"
 
 local oo        = require "oil.oo"
 local assert    = require "oil.assert"
@@ -57,9 +59,11 @@ module "oil.corba.idl.Registry"
 --WstringDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/WstringDef:1.0"              }, IDLType)
 --FixedDef                = oo.class({ __idltype = "IDL:omg.org/CORBA/FixedDef:1.0"                }, IDLType)
   
-  AttributeDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, Contained)
-  OperationDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/OperationDef:1.0"            }, Contained)
---ValueMemberDef          = oo.class({ __idltype = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, Contained)
+  MemberDef               = oo.class(nil                                                            , Contained)
+  
+  AttributeDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, MemberDef)
+  OperationDef            = oo.class({ __idltype = "IDL:omg.org/CORBA/OperationDef:1.0"            }, MemberDef)
+--ValueMemberDef          = oo.class({ __idltype = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, MemberDef)
 --ConstantDef             = oo.class({ __idltype = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
   TypedefDef              = oo.class({ __idltype = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, IDLType, Contained)
   
@@ -85,7 +89,7 @@ module "oil.corba.idl.Registry"
 --ExtAbstractInterfaceDef = oo.class({ __idltype = "IDL:omg.org/CORBA/ExtAbstractInterfaceDef:1.0" }, AbstractInterfaceDef, InterfaceAttrExtension)
 --ExtLocalInterfaceDef    = oo.class({ __idltype = "IDL:omg.org/CORBA/ExtLocalInterfaceDef:1.0"    }, LocalInterfaceDef, InterfaceAttrExtension)
   
-  ObjectRef               = oo.class({}, PrimitiveDef) -- fake class
+  ObjectRef               = oo.class() -- fake class
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -95,128 +99,66 @@ local Empty = setmetatable({}, { __newindex = function(_, field) verbose:debug("
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local function topdown(stack, class)
-	while stack[class] do
-		local ready = true
-		for _, super in oo.supers(stack[class]) do
-			if stack:insert(super, class) then
-				ready = false
-				break
-			end
-		end
-	 	if ready then return stack[class] end
-	end
-end
-local function iconstruct(class)
-	local stack = OrderedSet()
-	stack:push(class)
-	return topdown, stack, OrderedSet.firstkey
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
 --
 -- Implementation
 --
 
-local checkfield
-
-local function checktype(value, name, typespec, registry)
-	if type(typespec) == "string" then
-		assert.type(value, typespec, name)
-	elseif type(typespec) == "table" and getmetatable(typespec) then
-		value = registry[value]
-		assert.results(oo.instanceof(value, typespec), "type mismatch")
-	elseif typespec then
-		local new = {}
-		for name, field in pairs(typespec) do
-			new[name] = checkfield(value[name], name, field, registry, new)
-		end
-		value = new
-	end
-	return value
+function IRObject:__init(...)
+	self = oo.rawnew(self, ...)
+	self.references = self.references or {}
+	self.observer = self.observer or Publisher()
+	return self
 end
 
-function checkfield(value, name, field, registry)
-	if value ~= nil or not field.optional then
-		if field.list then
-			assert.type(value, "table", name)
-			local new = {}
-			for index, value in ipairs(value) do
-				new[index] = checktype(value, name, field.type, registry)
-			end
-			value = new
-		else
-			value = checktype(value, name, field.type, registry)
+function IRObject:watch(object, field)
+	local references = object.references
+	if references then
+		if not references[self] then
+			references[self] = {}
 		end
-	end
-	return value
-end
-
-function IRObject:__init(definition, registry)
-	local repository = registry.repository
-	local object = repository:lookup_id(definition.repID)
-	if object ~= definition then                                                  --[[VERBOSE]] verbose:repository(true, definition._type," ",definition.repID or definition.name)
-		object = oo.rawnew(self, object)
-		object.containing_repository = repository
-		object.dependencies = object.dependencies or {}
-		registry[definition] = object
-		registry[object] = object
-		for class in iconstruct(self) do                                            --[[VERBOSE]] verbose:repository("[",class.__idltype,"]")
-			local update = rawget(class, "update")
-			if update then
-				local fields = rawget(class, "definition_fields")
-				local new = fields and checktype(definition, "object", fields, registry)
-				update(object, new, registry)
-			end
-		end                                                                         --[[VERBOSE]] verbose:repository(false)
-	end
-	if oo.instanceof(object, Container) then
-		for _, contained in ipairs(definition.definitions) do
-			checktype(contained, "contained", Contained, registry)
-		end
+		references[self][field] = true
 	end
 	return object
 end
 
---TODO:[maia] add calls to these function and manage depencies properly
-
-function IRObject:associate(object, field)
-	local dependencies = object.dependencies
-	if dependencies then
-		--if not dependencies[self] then
-		--	dependencies[self] = {}
-		--end
-		--dependencies[self][field] = true
-		if dependencies[self] and dependencies[self] ~= field then
-			assert.error("Êpa! Isso não deveria acontecer:"..dependencies[self].." -> "..field)
+function IRObject:nowatch(object, field)
+	local references = object.references
+	if references then
+		references[self][field] = nil
+		if next(references[self]) == nil then
+			references[self] = nil
 		end
-		dependencies[self] = field
+		references[self] = nil
 	end
-	return object
 end
 
-function IRObject:desassociate(object, field)
-	local dependencies = object.dependencies
-	if dependencies then
-		--dependencies[self][field] = nil
-		--if next(dependencies[self]) == nil then
-		--	dependencies[self] nil
-		--end
-		dependencies[self] = nil
-	end
+function IRObject:notify(...)
+	local queue = OrderedSet()
+	queue:enqueue(self)
+	repeat
+		if self.observer then self.observer:notify(...) end
+		if self.references then
+			for ref in pairs(self.references) do queue:enqueue(ref) end
+		end
+		self = queue[self]
+	until self == nil
 end
 
 --
 -- Operations
 --
 function IRObject:destroy()
-	assert.exception{ "BAD_INV_ORDER", minor_error_code = 1,
-		message = "attempt to destroy IR definition (currently not allowed)",
-		reason = "irdestroy",
-		object = self,
-	}
+	if self.observer == nil or next(self.references) ~= nil then
+		assert.exception{ "BAD_INV_ORDER", minor_error_code = 1,
+			message = "attempt to destroy IR definition in use",
+			reason = "irdestroy",
+			object = self,
+		}
+	end
+	if self.defined_in then
+		self.defined_in.definitions:_remove(self)
+	end
+	self.containing_repository.definition_map[self.repID] = nil
 end
 
 --------------------------------------------------------------------------------
@@ -247,6 +189,7 @@ end
 
 local RepIDFormat = "IDL:%s:%s"
 function Contained:updatename()
+	local old = self.absolute_name
 	self.absolute_name = self.defined_in.absolute_name.."::"..self.name
 	if not self.repID then
 		self:_set_id(RepIDFormat:format(self.absolute_name:gsub("::", "/"):sub(2),
@@ -257,6 +200,7 @@ function Contained:updatename()
 			contained:updatename()
 		end
 	end
+	if self.absolute_name ~= old then self:notify("absolute_name") end
 end
 
 --
@@ -270,9 +214,11 @@ function Contained:_set_id(id)
 	if self.repID then
 		definitions[self.repID] = nil
 	end
+	local old = self.repID
 	self.repID = id
 	self.id = id
 	definitions[id] = self
+	if self.repID ~= old then self:notify("repID") end
 end
 
 function Contained:_set_name(name)
@@ -280,10 +226,12 @@ function Contained:_set_name(name)
 	if contents[name] and contents[name] ~= self then
 		assert.illegal(name, "contained name, name clash", "BAD_PARAM", 1)
 	end
+	local old = self.name
 	contents:_remove(self)
 	self.name = name
 	contents:_add(self)
 	self:updatename()
+	if self.name ~= old then self:notify("name") end
 end
 
 --
@@ -319,9 +267,15 @@ function Contained:move(new_container, new_name, new_version)
 		self.defined_in.definitions:_remove(self)
 	end
 	
+	local old = self.defined_in
 	self.defined_in = new_container
 	self.version = new_version
 	self:_set_name(new_name)
+	if self.defined_in ~= old then
+		if old then old:notify("contents") end
+		self.defined_in:notify("contents")
+		self:notify("defined_in")
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -334,11 +288,11 @@ function Container:update()
 	idl.Container(self)
 end
 
-local single
-local function isingle() return single end
+local function isingle(self, ended)
+	if not ended then return self end
+end
 function Container:hierarchy()
-	single = self
-	return isingle
+	return isingle, self
 end
 
 --
@@ -378,7 +332,6 @@ end
 
 function Container:lookup_name(search_name, levels_to_search,
                                limit_type, exclude_inherited)
-	-- TODO:[maia] should return contents in the order they were created
 	local results = {}
 	for container in self:hierarchy() do
 		for _, contained in ipairs(container.definitions)	do
@@ -415,22 +368,23 @@ end
 --
 
 function Container:create_module(id, name, version)
-	return ModuleDef{
-		containing_repository = self.containing_repository,
+	local created = ModuleDef{ containing_repository=self.containing_repository }
+	created:update{
 		defined_in = self,
 		
 		repID = id,
 		name = name,
 		version = version,
 	}
+	return created
 end
 
 --function Container:create_constant(id, name, version, type, value)
 --end
 
 function Container:create_struct(id, name, version, members)
-	return StructDef{
-		containing_repository = self.containing_repository,
+	local created = StructDef{ containing_repository=self.containing_repository }
+	created:update{
 		defined_in = self,
 		
 		repID = id,
@@ -439,26 +393,27 @@ function Container:create_struct(id, name, version, members)
 		
 		fields = members,
 	}
+	return created
 end
 
 function Container:create_union(id, name, version, discriminator_type, members)
-	return UnionDef{
-		containing_repository = self.containing_repository,
+	local created = UnionDef{ containing_repository=self.containing_repository }
+	created:update{
 		defined_in = self,
 		
 		repID = id,
 		name = name,
 		version = version,
 		
-		discriminator_type_def = discriminator_type,
 		switch = discriminator_type.type,
 		members = members,
 	}
+	return created
 end
 
 function Container:create_enum(id, name, version, members)
-	return EnumDef{
-		containing_repository = self.containing_repository,
+	local created = EnumDef{ containing_repository=self.containing_repository }
+	created:update{
 		defined_in = self,
 		
 		repID = id,
@@ -467,25 +422,26 @@ function Container:create_enum(id, name, version, members)
 		
 		enumvalues = members,
 	}
+	return created
 end
 
 function Container:create_alias(id, name, version, original_type)
-	return AliasDef{
-		containing_repository = self.containing_repository,
+	local created = AliasDef{ containing_repository=self.containing_repository }
+	created:update{
 		defined_in = self,
 		
 		repID = id,
 		name = name,
 		version = version,
 		
-		original_type_def = original_type,
 		type = original_type.type
 	}
+	return created
 end
 
 function Container:create_interface(id, name, version, base_interfaces)
-	return InterfaceDef{
-		containing_repository = self.containing_repository,
+	local created = InterfaceDef{ containing_repository=self.containing_repository }
+	created:update{
 		defined_in = self,
 		
 		repID = id,
@@ -494,6 +450,7 @@ function Container:create_interface(id, name, version, base_interfaces)
 
 		base_interfaces = base_interfaces,
 	}
+	return created
 end
 
 --function Container:create_value(id, name, version,
@@ -510,8 +467,8 @@ end
 --end
 
 function Container:create_exception(id, name, version, members)
-	return ExceptionDef{
-		containing_repository = self.containing_repository,
+	local created = ExceptionDef{ containing_repository=self.containing_repository }
+	created:update{
 		defined_in = self,
 		
 		repID = id,
@@ -520,6 +477,7 @@ function Container:create_exception(id, name, version, members)
 		
 		members = members,
 	}
+	return created
 end
 
 --function Container:create_native(id, name, version)
@@ -602,15 +560,22 @@ ArrayDef.definition_fields = {
 }
 
 function ArrayDef:update(new)
-	self.maxlengh = new.maxlengh
+	self.length = new.length
 	self:_set_element_type_def(new.elementtype)
 end
 
 function ArrayDef:_get_element_type() return self.elementtype end
 
 function ArrayDef:_set_element_type_def(type_def)
+	local old = self.elementtype
+	type_def = self.containing_repository:register(type_def.type)
+	if self.element_type_def then
+		self:nowatch(self.element_type_def, "elementtype")
+	end
 	self.element_type_def = type_def
 	self.elementtype = type_def.type
+	self:watch(self.element_type_def, "elementtype")
+	if self.elementtype ~= old then self:notify("elementtype") end
 end
 
 --------------------------------------------------------------------------------
@@ -623,7 +588,11 @@ SequenceDef.definition_fields = {
 	elementtype = { type = IDLType  },
 }
 
-SequenceDef.update = ArrayDef.update
+function SequenceDef:update(new)
+	self.maxlength = new.maxlength
+	self:_set_element_type_def(new.elementtype)
+end
+
 SequenceDef._get_element_type = ArrayDef._get_element_type
 SequenceDef._set_element_type_def = ArrayDef._set_element_type_def
 function SequenceDef:_set_bound(value) self.maxlength = value end
@@ -640,13 +609,22 @@ StringDef.definition_fields = {
 StringDef._set_bound = SequenceDef._set_bound
 StringDef._get_bound = SequenceDef._get_bound
 
+--------------------------------------------------------------------------------
+
+function MemberDef:move(new_container, new_name, new_version)
+	local name = self.name
+	local container = self.defined_in
+	Contained.move(self, new_container, new_name, new_version)
+	if container then container:nowatch(self, name) end
+	self.defined_in:watch(self, self.name)
+end
 
 --------------------------------------------------------------------------------
 
 AttributeDef._type = "attribute"
 AttributeDef.def_kind = "dk_Attribute"
 AttributeDef.definition_fields = {
-	defined_in = { type = InterfaceDef },
+	defined_in = { type = InterfaceDef, optional = true },
 	readonly   = { type = "boolean", optional = true },
 	type       = { type = IDLType },
 }
@@ -657,13 +635,22 @@ function AttributeDef:update(new)
 end
 
 function AttributeDef:_set_mode(value)
+	local old = self.readonly
 	self.mode = value
 	self.readonly = (value == "ATTR_READONLY")
+	if self.readonly ~= old then self:notify("readonly") end
 end
 
 function AttributeDef:_set_type_def(type_def)
+	local old = self.type
+	type_def = self.containing_repository:register(type_def.type)
+	if self.type_def then
+		self:nowatch(self.type_def, "type")
+	end
 	self.type_def = type_def
 	self.type = type_def.type
+	self:watch(self.type_def, "type")
+	if self.type ~= old then self:notify("type") end
 end
 
 function AttributeDef:get_description()
@@ -685,7 +672,7 @@ OperationDef.exceptions = Empty
 OperationDef.result = idl.void
 OperationDef.result_def = idl.void
 OperationDef.definition_fields = {
-	defined_in = { type = InterfaceDef },
+	defined_in = { type = InterfaceDef, optional = true },
 	oneway     = { type = "boolean"   , optional = true },
 	contexts   = { type = "table"     , optional = true },
 	exceptions = { type = ExceptionDef, optional = true, list = true },
@@ -701,26 +688,28 @@ function OperationDef:update(new)
 	self:_set_mode(new.oneway and "OP_ONEWAY" or "OP_NORMAL")
 	if new.exceptions then self:_set_exceptions(new.exceptions) end
 	if new.result then self:_set_result_def(new.result) end
-	if new.parameters then
-		for _, param in ipairs(new.parameters) do
-			param.type_def = param.type
-		end
-		self:_set_params(new.parameters)
-	end
+	if new.parameters then self:_set_params(new.parameters) end
 	self.contexts = new.contexts
 end
 
 function OperationDef:_set_mode(value)
+	local old = self.oneway
 	self.mode = value
 	self.oneway = (value == "OP_ONEWAY")
+	if self.oneway ~= old then self:notify("oneway") end
 end
 
 function OperationDef:_set_result_def(type_def)
+	type_def = self.containing_repository:register(type_def.type)
 	local current = self.result
 	local newval = type_def.type
 	if current ~= newval then
+		if self.result_def then
+			self:nowatch(self.result_def, "result")
+		end
 		self.result_def = type_def
 		self.result = newval
+		self:watch(self.result_def, "result")
 		if current == idl.void then
 			if self.outputs == Empty then
 				self.outputs = { newval }
@@ -732,6 +721,7 @@ function OperationDef:_set_result_def(type_def)
 		else
 			self.outputs[1] = newval
 		end
+		self:notify("result")
 	end
 end
 
@@ -743,6 +733,8 @@ function OperationDef:_set_params(parameters)
 		outputs[#outputs+1] = self.result
 	end
 	for index, param in ipairs(parameters) do
+		param.type_def = self.containing_repository:register(param.type)
+		param.type = param.type_def.type
 		param.mode = param.mode or "PARAM_IN"
 		if param.mode == "PARAM_IN" then
 			inputs[#inputs+1] = param.type
@@ -755,16 +747,32 @@ function OperationDef:_set_params(parameters)
 			assert.illegal(mode, "operation parameter mode")
 		end
 	end
+	for index, param in ipairs(self.parameters) do
+		self:nowatch(param.type_def, "parameter "..index)
+	end
 	self.parameters = parameters
 	self.inputs = inputs
 	self.outputs = outputs
+	for index, param in ipairs(self.parameters) do
+		self:watch(param.type_def, "parameter "..index)
+	end
+	self:notify("parameters")
 end
 
 function OperationDef:_set_exceptions(exceptions)
-	for _, except in ipairs(exceptions) do
-		exceptions[except.repID] = except:get_description().type
+	for index, except in ipairs(exceptions) do
+		except = self.containing_repository:register(except:get_description().type)
+		exceptions[index] = except
+		exceptions[except.repID] = except
+	end
+	for index, except in ipairs(self.exceptions) do
+		self:nowatch(except, "exception "..index)
 	end
 	self.exceptions = exceptions
+	for index, except in ipairs(self.exceptions) do
+		self:watch(except, "exception "..index)
+	end
+	self:notify("exceptions")
 end
 
 function OperationDef:get_description()
@@ -807,19 +815,23 @@ StructDef.definition_fields = {
 }
 
 function StructDef:update(new)
-	if new.fields then
-		for _, field in ipairs(new.fields) do
-			field.type_def = field.type
-		end
-		self:_set_members(new.fields)
-	end
+	if new.fields then self:_set_members(new.fields) end
 end
-
-StructDef._set_type_def = AttributeDef._set_type_def
 
 function StructDef:_get_members() return self.fields end
 function StructDef:_set_members(members)
+	for index, field in ipairs(members) do
+		field.type_def = self.containing_repository:register(field.type)
+		field.type = field.type_def.type
+	end
+	for index, field in ipairs(self.fields) do
+		self:nowatch(field.type_def, "field "..field.name)
+	end
 	self.fields = members
+	for index, field in ipairs(self.fields) do
+		self:watch(field.type_def, "field "..field.name)
+	end
+	self:notify("fields")
 end
 
 --------------------------------------------------------------------------------
@@ -844,8 +856,7 @@ function UnionDef:update(new)
 	
 	if new.options then
 		for _, option in ipairs(new.options) do
-			option.label    = setmetatable({ _anyval = option.label }, self.switch)
-			option.type_def = option.type
+			option.label = setmetatable({ _anyval = option.label }, self.switch)
 		end
 		self:_set_members(new.options)
 	end
@@ -868,8 +879,15 @@ end
 function UnionDef:_get_discriminator_type() return self.switch end
 
 function UnionDef:_set_discriminator_type_def(type_def)
+	local old = self.switch
+	type_def = self.containing_repository:register(type_def.type)
+	if self.discriminator_type_def then
+		self:nowatch(self.discriminator_type_def, "switch")
+	end
 	self.discriminator_type_def = type_def
 	self.switch = type_def.type
+	self:watch(self.discriminator_type_def, "switch")
+	if self.switch ~= old then self:notify("switch") end
 end
 
 function UnionDef:_set_members(members)
@@ -878,6 +896,8 @@ function UnionDef:_set_members(members)
 	local selection = {}
 	
 	for index, member in ipairs(members) do
+		member.type_def = self.containing_repository:register(member.type_def.type)
+		member.type = member.type_def.type
 		local option = {
 			label = member.label._anyval,
 			name = member.name,
@@ -888,10 +908,17 @@ function UnionDef:_set_members(members)
 		selector[option.name] = option.label
 		selection[option.label] = option
 	end
+	for index, member in ipairs(self.members) do
+		self:nowatch(member.type_def, "option "..index)
+	end
 	self.options = options
 	self.selector = selector
 	self.selection = selection
 	self.members = members
+	for index, member in ipairs(self.members) do
+		self:watch(member.type_def, "option "..index)
+	end
+	self:notify("options")
 end
 
 --------------------------------------------------------------------------------
@@ -914,6 +941,7 @@ function EnumDef:_set_members(members)
 	end
 	self.enumvalues = members
 	self.labelvalue = labelvalue
+	self:notify("enumvalues")
 end
 
 --------------------------------------------------------------------------------
@@ -929,8 +957,11 @@ function AliasDef:update(new)
 end
 
 function AliasDef:_set_original_type_def(type_def)
+	local old = self.type
+	type_def = self.containing_repository:register(type_def.type)
 	self.original_type_def = type_def
 	self.type = type_def.type
+	if self.type ~= old then self:notify("type") end
 end
 
 --------------------------------------------------------------------------------
@@ -973,23 +1004,21 @@ end
 --end
 
 function Repository:create_sequence(bound, element_type)
-	return SequenceDef{
-		containing_repository = self,
-		
-		element_type_def = element_type,
+	local created = SequenceDef{ containing_repository=self.containing_repository }
+	created:update{
 		elementtype = element_type.type,
 		maxlength = bound,
 	}
+	return created
 end
 
 function Repository:create_array(length, element_type)
-	return ArrayDef{
-		containing_repository = self,
-		
-		element_type_def = element_type,
+	local created = ArrayDef{ containing_repository=self.containing_repository }
+	created:update{
 		elementtype = element_type.type,
 		length = length,
 	}
+	return created
 end
 
 --function Repository:create_fixed(digits, scale)
@@ -1024,12 +1053,22 @@ ExceptionDef.definition_fields = {
 
 function ExceptionDef:update(new)
 	self.type = self
-	if new.members then
-		for _, member in ipairs(new.members) do
-			member.type_def = member.type
-		end
-		self.members = new.members
+	if new.members then self:_set_members(new.members) end
+end
+
+function ExceptionDef:_set_members(members)
+	for index, member in ipairs(members) do
+		member.type_def = self.containing_repository:register(member.type)
+		member.type = member.type_def.type
 	end
+	for index, member in ipairs(self.members) do
+		self:nowatch(member.type_def, "member "..member.name)
+	end
+	self.members = members
+	for index, member in ipairs(self.members) do
+		self:watch(member.type_def, "member "..member.name)
+	end
+	self:notify("members")
 end
 
 function ExceptionDef:get_description()
@@ -1047,7 +1086,7 @@ InterfaceDef.definition_fields = {
 
 InterfaceDef.hierarchy = idl.basesof
 
-function InterfaceDef:update(new, registry)
+function InterfaceDef:update(new)
 	if new.base_interfaces then
 		self:_set_base_interfaces(new.base_interfaces)
 	end
@@ -1109,6 +1148,7 @@ end
 
 function InterfaceDef:_set_base_interfaces(bases)
 	for _, interface in ipairs(bases) do
+		assert.type(interface, "idl interface", "BAD_PARAM", 4)
 		for _, contained in ipairs(self.definitions) do
 			if #interface:lookup_name(contained.name, -1, "dk_All", false) > 0 then
 				assert.illegal(bases,
@@ -1119,36 +1159,42 @@ function InterfaceDef:_set_base_interfaces(bases)
 			end
 		end
 	end
+	for index, base in ipairs(self.base_interfaces) do
+		self:nowatch(base, "base "..index)
+	end
 	self.base_interfaces = bases
+	for index, base in ipairs(self.base_interfaces) do
+		self:watch(base, "base "..index)
+	end
+	self:notify("bases")
 end
 
 function InterfaceDef:create_attribute(id, name, version, type, mode)
-	return AttributeDef {
-		containing_repository = self.containing_repository,
+	local created = AttributeDef{ containing_repository=self.containing_repository }
+	created:update{
 		defined_in = self,
 		
 		repID = id,
 		name = name,
 		version = version,
 		
-		type_def = type,
 		type = type.type,
 		readonly = (mode == "ATTR_READONLY"),
 	}
+	return created
 end
 
 function InterfaceDef:create_operation(id, name, version,
                                        result, mode, params,
                                        exceptions, contexts)
-	return OperationDef {
-		containing_repository = self.containing_repository,
+	local created = OperationDef{ containing_repository=self.containing_repository }
+	created:update{
 		defined_in = self,
 		
 		repID = id,
 		name = name,
 		version = version,
 		
-		result_def = result,
 		result = result.type,
 		
 		parameters = params,
@@ -1157,6 +1203,7 @@ function InterfaceDef:create_operation(id, name, version,
 		
 		oneway = (mode == "OP_ONEWAY"),
 	}
+	return created
 end
 
 --------------------------------------------------------------------------------
@@ -1243,6 +1290,56 @@ Classes = {
 
 --------------------------------------------------------------------------------
 
+local function topdown(stack, class)
+	while stack[class] do
+		local ready = true
+		for _, super in oo.supers(stack[class]) do
+			if stack:insert(super, class) then
+				ready = false
+				break
+			end
+		end
+	 	if ready then return stack[class] end
+	end
+end
+local function iconstruct(class)
+	local stack = OrderedSet()
+	stack:push(class)
+	return topdown, stack, OrderedSet.firstkey
+end
+
+local function getupdate(self, value, name, typespec)
+	if type(typespec) == "string" then
+		assert.type(value, typespec, name)
+	elseif type(typespec) == "table" then
+		if oo.isclass(typespec) then
+			value = self[value]
+			if not oo.instanceof(value, typespec) then
+				assert.illegal(value, name)
+			end
+		else
+			local new = {}
+			for name, field in pairs(typespec) do
+				local result = value[name]
+				if result ~= nil or not field.optional then
+					if field.list then
+						local new = {}
+						for index, value in ipairs(result) do
+							new[index] = getupdate(self, value, name, field.type)
+						end
+						result = new
+					else
+						result = getupdate(self, result, name, field.type)
+					end
+				end
+				new[name] = result
+			end
+			value = new
+		end
+	end
+	return value
+end
+
 Registry = oo.class()
 
 function Registry:__init(object)
@@ -1271,13 +1368,36 @@ end
 
 function Registry:__index(definition)
 	if definition then
-		local class = self.repository.Classes[definition._type]
+		local repository = self.repository
+		local class = repository.Classes[definition._type]
+		local result
 		if class then
-			definition = class(definition, self)
+			result = repository:lookup_id(definition.repID)
+			if definition ~= result then                                              --[[VERBOSE]] verbose:repository(true, definition._type," ",definition.repID or definition.name)
+				result = class(result)
+				result.containing_repository = repository
+				self[definition] = result -- to avoid loops in cycles during 'getupdate'
+				self[result] = result
+				for class in iconstruct(class) do                                       --[[VERBOSE]] verbose:repository("[",class.__idltype,"]")
+					local update = oo.memberof(class, "update")
+					if update then
+						local fields = oo.memberof(class, "definition_fields")
+						local new = fields and getupdate(self, definition, "object", fields)
+						update(result, new)
+					end
+				end                                                                     --[[VERBOSE]] verbose:repository(false)
+				if oo.instanceof(result, Container) then
+					for _, contained in ipairs(definition.definitions) do
+						getupdate(self, contained, "contained", Contained)
+					end
+				end
+			end
 		elseif oo.classof(definition) == _M then
-			return self.repository
+			result = self.repository
 		end
-		return definition
+		self[definition] = result
+		self[result] = result
+		return result
 	end
 end
 
