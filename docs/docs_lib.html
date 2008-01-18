@@ -943,14 +943,8 @@ oil.setexcatch(function(_, except) error(tostring(except)) end)
 			The interceptor must provide the following operations:<br>
 			<ul>
 				<li>
-					<code>send_request(request)</code>: <code>request</code> structure is described below.
+					<code>sendrequest(request)</code>: <code>request</code> structure is described below.
 					<table>
-					<tr>
-						<td valign="top"><code>request_id</code></td>
-						<td valign="top"><b>number</b></td>
-						<td valign="top">[read-only]</td>
-						<td>Number that identifies the request in the multiplexed channel.</td>
-					</tr>
 					<tr>
 						<td valign="top"><code>response_expected</code></td>
 						<td valign="top"><b>boolean</b></td>
@@ -984,10 +978,12 @@ oil.setexcatch(function(_, except) error(tostring(except)) end)
 						<code>false</code> cancels the request and indicates to the application that invocation raised an exception.</td>
 					</tr>
 					</table>
-					The integer indexes store the operation's parameter values and should also be used to store the results values if the request is canceled.<br>
+					<a name="#client-params-note">Note:</a> The integer indexes store the operation's parameter values and should also be used to store the results values if the request is canceled (see <a href="#client-return-note">note below</a>).
+					<br>
+					<br>
 				</li>
 				<li>
-					<code>receive_reply(reply)</code>: <code>reply</code> structure is described below.
+					<code>receivereply(reply)</code>: <code>reply</code> structure is described below.
 					<table>
 					<tr>
 						<td valign="top"><code>service_context</code></td>
@@ -1010,8 +1006,9 @@ oil.setexcatch(function(_, except) error(tostring(except)) end)
 						<code>false</code> cancels the reply and indicates to the application that invocation raised an exception.</td>
 					</tr>
 					</table>
-					The integer indexes store the results that will be sent as request result.
-					For successful invocations these values must be the operation's results (return, out and inout parameters) in the same order they appear in the IDL description. For failed invocations, index 1 must be the exception that identifies the failure.<br>
+					<a name="client-return-note">Note:</a> The integer indexes store the results that will be sent as request result.
+					For successful invocations these values must be the operation's results (return, out and inout parameters) in the same order they appear in the IDL description.
+					For failed invocations, index 1 must be the exception that identifies the failure.
 				</li>
 			</ul>
 			<br>
@@ -1036,7 +1033,7 @@ oil.setexcatch(function(_, except) error(tostring(except)) end)
 			The interceptor must provide the following operations:<br>
 			<ul>
 				<li>
-					<code>receive_request(request)</code>: <code>request</code> structure is described below.
+					<code>receiverequest(request)</code>: <code>request</code> structure is described below.
 					<table>
 					<tr>
 						<td valign="top"><code>service_context</code></td>
@@ -1071,13 +1068,13 @@ oil.setexcatch(function(_, except) error(tostring(except)) end)
 					<tr>
 						<td valign="top"><code>servant</code></td>
 						<td valign="top"><b>object</b></td>
-						<td valign="top"></td>
+						<td valign="top">[read-only]</td>
 						<td>Local object the invocation will be dispatched to.</td>
 					</tr>
 					<tr>
 						<td valign="top"><code>method</code></td>
 						<td valign="top"><b>function</b></td>
-						<td valign="top"></td>
+						<td valign="top">[read-only]</td>
 						<td>Function that will be invoked on object <code>servant</code>.</td>
 					</tr>
 					<tr>
@@ -1089,16 +1086,17 @@ oil.setexcatch(function(_, except) error(tostring(except)) end)
 						<code>false</code> cancels the request and indicates to the application that invocation raised an exception.</td>
 					</tr>
 					</table>
+					<a name="#server-params-note">Note:</a> The integer indexes store the operation's parameter values and should also be used to store the results values if the request is canceled (see <a href="#server-return-note">note below</a>).
 					<br>
-					The integer indexes store the operation's parameter values and should also be used to store the results values if the request is canceled.
+					<br>
 				</li>
 				<li>
-					<code>send_reply(reply)</code>: <code>reply</code> structure is described below.
+					<code>sendreply(reply)</code>: <code>reply</code> structure is described below.
 					<table>
 					<tr>
 						<td valign="top"><code>service_context</code></td>
 						<td valign="top"><b>table</b></td>
-						<td valign="top">[read-only]</td>
+						<td valign="top"></td>
 						<td>Set this value to define a service context values. See <code>ServiceContextList</code> in CORBA specs.</td>
 					</tr>
 					<tr>
@@ -1110,7 +1108,7 @@ oil.setexcatch(function(_, except) error(tostring(except)) end)
 						<code>false</code> cancels the reply and indicates to the application that invocation raised an exception.</td>
 					</tr>
 					</table>
-					The integer indexes store the results that will be sent as request result.
+					<a name="server-return-note">Note:</a> The integer indexes store the results that will be sent as request result.
 					For successful invocations these values must be the operation's results (return, out and inout parameters) in the same order they appear in the IDL description.
 					For failed invocations, index 1 must be the exception that identifies the failure.
 				</li>

@@ -50,17 +50,19 @@ function before(self, request, object, ...)
 		if request.method == request.object.dispatch then
 			local interceptor = self.interceptor
 			if interceptor.receiverequest and self.message then
-				local key, operation = ...
+				local key, operation, default = ...
 				local message
 				message, self.message = self.message, nil
-				message.count = select("#", ...) - 2
+				message.servant = request.object:retrieve(key)
+				message.method = message.servant.__newindex[operation] or default
+				message.count = select("#", ...) - 3
 				for i = 1, message.count do
-					message[i] = select(i+2, ...)
+					message[i] = select(i+3, ...)
 				end
 				interceptor:receiverequest(message)
 				request.message = message
 				if message.success == nil then
-					return object, key, operation, unpack(message, 1, message.count)
+					return object, key, operation, default, unpack(message, 1, message.count)
 				else
 					request.cancel = true
 					return message.success, unpack(message, 1, message.count)
