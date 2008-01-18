@@ -508,7 +508,7 @@ tasks = TaskManager and TaskManager.tasks
 -- @param ... any Values returned by the function or an the error raised by the
 -- function.
 --
-pcall = TaskManager and TaskManager.pcall or luapcall
+pcall = tasks and tasks:getpcall() or luapcall
 
 --------------------------------------------------------------------------------
 -- Function executes the main function of the application.
