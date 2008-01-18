@@ -1,5 +1,4 @@
-package.loaded["oil.component"] = require "loop.component.wrapped"
-package.loaded["oil.port"]      = require "loop.component.intercepted"
+OIL_FLAVOR = "intercepted;corba;typed;cooperative;base"
 
 require "oil"
 

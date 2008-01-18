@@ -679,7 +679,6 @@ local ServerSide = require "oil.corba.interceptors.ServerSide"
 -- The interceptor must provide the following operations
 --
 --  send_request(request): 'request' structure is described below.
---    request_id: [number] (read-only)
 --    response_expected: [boolean] (read-only)
 --    object_key: [string] (read-only)
 --    operation: [string] (read-only) Operation name.
@@ -688,8 +687,9 @@ local ServerSide = require "oil.corba.interceptors.ServerSide"
 --    success: [boolean] set this value to cancel invocation:
 --      true ==> invocation successfull
 --      false ==> invocation raised an exception
---    The integer indexes store the operation's parameter values and should also
---    be used to store the results values if the request is canceled.
+--    Note: The integer indexes store the operation's parameter values and
+--    should also be used to store the results values if the request is canceled
+--    (see note below).
 --
 --  receive_reply(reply): 'reply' structure is described below.
 --    service_context: [table] (read-only) See 'ServiceContextList' in CORBA
@@ -698,21 +698,21 @@ local ServerSide = require "oil.corba.interceptors.ServerSide"
 --    success: [boolean] Identifies the kind of result:
 --      true ==> invocation successfull
 --      false ==> invocation raised an exception
---    The integer indexes store the results that will be sent as request result.
---    For successful invocations these values must be the operation's results
---    (return, out and inout parameters) in the same order they appear in the
---    IDL description. For failed invocations, index 1 must be the exception
---    that identifies the failure.
+--    Note: The integer indexes store the results that will be sent as request
+--    result. For successful invocations these values must be the operation's
+--    results (return, out and inout parameters) in the same order they appear
+--    in the IDL description. For failed invocations, index 1 must be the
+--    exception that identifies the failure.
 --
 -- The 'request' and 'reply' are the same table in a single invocation.
 -- Therefore, the fields of 'request' are also available in 'reply' except for
 -- those defined in the description of 'reply'.
 --
 function setclientinterceptor(iceptor)
-	assert.results(port.intercept, "interceptors not supported")
 	if iceptor then
 		iceptor = ClientSide{ interceptor = iceptor }
 	end
+	local port = require "loop.component.intercepted"
 	port.intercept(OperationRequester, "requests", "method", iceptor)
 	port.intercept(OperationRequester, "messenger", "method", iceptor)
 end
@@ -729,13 +729,14 @@ end
 --    response_expected: [boolean] (read-only)
 --    object_key: [string] (read-only)
 --    operation: [string] (read-only) Operation name.
---    servant: [object] Local object the invocation will be dispatched to.
---    method: [function] Function that will be invoked on object 'servant'.
+--    servant: [object] (read-only) Local object the invocation will be dispatched to.
+--    method: [function] (read-only) Function that will be invoked on object 'servant'.
 --    success: [boolean] Set this value to cancel invocation:
 --      true ==> invocation successfull
 --      false ==> invocation raised an exception
---    The integer indexes store the operation's parameter values and should also
---    be used to store the results values if the request is canceled.
+--    Note: The integer indexes store the operation's parameter values and
+--    should also be used to store the results values if the request is canceled
+--    (see note below).
 --
 --  send_reply(reply): 'reply' structure is described below.
 --    service_context: [table] Set this value to define a service context
@@ -743,21 +744,21 @@ end
 --    success: [boolean] identifies the kind of result:
 --      true ==> invocation successfull
 --      false ==> invocation raised an exception
---    The integer indexes store the results that will be sent as request result.
---    For successful invocations these values must be the operation's results
---    (return, out and inout parameters) in the same order they appear in the
---    IDL description. For failed invocations, index 1 must be the exception
---    that identifies the failure.
+--    Note: The integer indexes store the results that will be sent as request
+--    result. For successful invocations these values must be the operation's
+--    results (return, out and inout parameters) in the same order they appear
+--    in the IDL description. For failed invocations, index 1 must be the
+--    exception that identifies the failure.
 --
 -- The 'request' and 'reply' are the same table in a single invocation.
 -- Therefore, the fields of 'request' are also available in 'reply' except for
 -- those defined in the description of 'reply'.
 --
 function setserverinterceptor(iceptor)
-	assert.results(port.intercept, "interceptors not supported")
 	if iceptor then
 		iceptor = ServerSide{ interceptor = iceptor }
 	end
+	local port = require "loop.component.intercepted"
 	port.intercept(RequestListener, "messenger", "method", iceptor)
 	port.intercept(RequestDispatcher, "dispatcher", "method", iceptor)
 end
