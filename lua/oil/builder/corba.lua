@@ -28,8 +28,7 @@ TypeRepository = arch.TypeRepository{
 RequestDispatcher = base.RequestDispatcher{require "oil.kernel.base.Dispatcher"}
 
 function create(comps)
-	comps = comps or {}
-	builder.create(_M, comps)
+	comps = builder.create(_M, comps)
 	comps.ClientChannels     = comps.ClientChannels or { [0] = comps.IIOPClientChannels }
 	comps.ServerChannels     = comps.ServerChannels or { [0] = comps.IIOPServerChannels }
 	comps.ReferenceProfilers = comps.ReferenceProfilers or {
