@@ -134,20 +134,9 @@ end
 --[Client]=====================================================================]
 
 return Suite{
-	CoCORBA = test(),
-	CoServerCORBA = test{
-		Client = { flavor = "corba;typed;base" },
-	},
-	CoClientCORBA = test{
-		Server = { flavor = "corba;typed;base" },
-	},
-	CORBA = test{
-		Server = { flavor = "corba;typed;base" },
-		Client = { flavor = "corba;typed;base" },
-	},
-	CoLuDO = test{
-		Server = { flavor = "ludo;cooperative;base" },
-		Client = { flavor = "ludo;cooperative;base" },
+	LuDO = test{
+		Server = { flavor = "ludo;base" },
+		Client = { flavor = "ludo;base" },
 	},
 	CoServerLuDO = test{
 		Server = { flavor = "ludo;cooperative;base" },
@@ -157,8 +146,76 @@ return Suite{
 		Server = { flavor = "ludo;base"             },
 		Client = { flavor = "ludo;cooperative;base" },
 	},
-	LuDO = test{
-		Server = { flavor = "ludo;base" },
-		Client = { flavor = "ludo;base" },
+	CoLuDO = test{
+		Server = { flavor = "ludo;cooperative;base" },
+		Client = { flavor = "ludo;cooperative;base" },
+	},
+	
+	CoCORBA = test{
+		Server = { flavor = "corba;typed;cooperative;base" },
+		Client = { flavor = "corba;typed;cooperative;base" },
+	},
+	CoServerCORBA = test{
+		Server = { flavor = "corba;typed;cooperative;base" },
+		Client = { flavor = "corba;typed;base" },
+	},
+	CoClientCORBA = test{
+		Server = { flavor = "corba;typed;base" },
+		Client = { flavor = "corba;typed;cooperative;base" },
+	},
+	CORBA = test{
+		Server = { flavor = "corba;typed;base" },
+		Client = { flavor = "corba;typed;base" },
+	},
+	
+	IceptedCORBA = test{
+		Server = { flavor = "intercepted;corba;typed;base" },
+		Client = { flavor = "intercepted;corba;typed;base" },
+	},
+	CoServerIceptedCORBA = test{
+		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
+		Client = { flavor = "intercepted;corba;typed;base" },
+	},
+	CoClientIceptedCORBA = test{
+		Server = { flavor = "intercepted;corba;typed;base" },
+		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
+	},
+	CoIceptedCORBA = test{
+		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
+		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
+	},
+	
+	IceptedClientCORBA = test{
+		Server = { flavor = "corba;typed;base" },
+		Client = { flavor = "intercepted;corba;typed;base" },
+	},
+	CoServerIceptedClientCORBA = test{
+		Server = { flavor = "corba;typed;cooperative;base" },
+		Client = { flavor = "intercepted;corba;typed;base" },
+	},
+	CoIceptedClientCORBA = test{
+		Server = { flavor = "corba;typed;base" },
+		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
+	},
+	IceptedClientCoCORBA = test{
+		Server = { flavor = "corba;typed;cooperative;base" },
+		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
+	},
+	
+	IceptedServerCORBA = test{
+		Server = { flavor = "intercepted;corba;typed;base" },
+		Client = { flavor = "corba;typed;base" },
+	},
+	CoIceptedServerCORBA = test{
+		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
+		Client = { flavor = "corba;typed;base" },
+	},
+	IceptedServerCoClientCORBA = test{
+		Server = { flavor = "intercepted;corba;typed;base" },
+		Client = { flavor = "corba;typed;cooperative;base" },
+	},
+	IceptedServerCoCORBA = test{
+		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
+		Client = { flavor = "corba;typed;cooperative;base" },
 	},
 }
