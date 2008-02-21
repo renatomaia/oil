@@ -121,7 +121,7 @@ function acceptall(self, channelinfo)                                           
 	until not result and except.reason ~= "closed" or self.except                 --[[VERBOSE]] verbose:acceptor(false)
 	self.channelinfo = nil
 	self.thread[channelinfo] = nil
-	return result, self.except or except
+	return nil, self.except or except
 end
 
 function halt(self, channelinfo)                                                --[[VERBOSE]] verbose:acceptor "halt acceptor"
