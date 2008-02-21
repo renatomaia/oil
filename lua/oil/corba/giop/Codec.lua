@@ -112,7 +112,7 @@ context = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local UnionLabelInfo = { name = "label", type = idl.void }
+UnionLabelInfo = { name = "label", type = idl.void }
 
 --------------------------------------------------------------------------------
 -- TypeCode information --------------------------------------------------------
@@ -126,7 +126,7 @@ local UnionLabelInfo = { name = "label", type = idl.void }
 --           structure defined in idl that is stored in a encapsulated octet
 --           sequence (i.e. which endianess may differ).
 
-local TypeCodeInfo = {
+TypeCodeInfo = {
 	[0]  = {name = "null"     , type = "empty", idl = idl.null     }, 
 	[1]  = {name = "void"     , type = "empty", idl = idl.void     }, 
 	[2]  = {name = "short"    , type = "empty", idl = idl.short    },
@@ -278,7 +278,7 @@ local function alignbuffer(self, alignment)
 	if extra > 0 then self:jump(alignment - extra) end
 end
 
-local NativeEndianess = (bit.endianess() == "little")
+NativeEndianess = (bit.endianess() == "little")
 
 --------------------------------------------------------------------------------
 --##  ##  ##  ##  ##   ##   ####   #####    ####  ##  ##   ####   ##     ##   --
@@ -291,7 +291,7 @@ local NativeEndianess = (bit.endianess() == "little")
 --------------------------------------------------------------------------------
 -- Unmarshalling buffer class --------------------------------------------------
 
-local Decoder = oo.class{
+Decoder = oo.class{
 	start = 1,
 	cursor = 1,
 	unpack = bit.unpack, -- use current platform native endianess
@@ -304,10 +304,12 @@ function Decoder:order(value)
 end
 
 function Decoder:jump(shift)
-	self.cursor = self.cursor + shift
+	local cursor = self.cursor
+	self.cursor = cursor + shift
 	if self.cursor - 1 > #self.data then
 		assert.illegal(self.data, "data stream, insufficient data", "MARSHALL")
 	end
+	return cursor
 end
 
 function Decoder:get(idltype)
@@ -568,7 +570,7 @@ end
 --------------------------------------------------------------------------------
 -- Unmarshalling buffer class --------------------------------------------------
 
-local Encoder = oo.class {
+Encoder = oo.class {
 	start = 1,
 	cursor = 1,
 	emptychar = '\255', -- character used in buffer alignment
@@ -740,17 +742,17 @@ function Encoder:Object(value, idltype)                                         
 	self:struct(reference, giop.IOR)                                              --[[VERBOSE]] verbose:marshal(false)
 end
 
+local NilEnabledTypes = {
+	any = true,
+	boolean = true,
+	Object = true,
+	interface = true,
+}
 function Encoder:struct(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype)
 	assert.type(value, "table", "struct value", "MARSHAL")
 	for _, field in ipairs(idltype.fields) do
 		local val = value[field.name]                                               --[[VERBOSE]] verbose:marshal("[field ",field.name,"]")
-		if
-			val == nil and
-			field.type ~= idl.any and
-			field.type ~= idl.boolean and
-			field.type._type ~= "Object" and
-			field.type._type ~= "interface"
-		then
+		if val == nil and NilEnabledTypes[field.type._type] then
 			assert.illegal(value,
 			              "struct value (no value for field "..field.name..")",
 			              "MARSHAL")
@@ -762,7 +764,6 @@ end
 function Encoder:union(value, idltype)                                          --[[VERBOSE]] verbose:marshal(true, self, idltype)
 	assert.type(value, "table", "union value", "MARSHAL")
 	local switch = value._switch
-	local unionvalue = value._value
 
 	-- Marshal discriminator
 	if switch == nil then
@@ -771,7 +772,6 @@ function Encoder:union(value, idltype)                                          
 			for _, option in ipairs(idltype.options) do
 				if value[option.name] ~= nil then
 					switch = option.label
-					unionvalue = value[option.name]
 					break
 				end
 			end
@@ -788,6 +788,7 @@ function Encoder:union(value, idltype)                                          
 	local selection = idltype.selection[switch]
 	if selection then
 		-- Marshal union value
+		local unionvalue = value._value
 		if unionvalue == nil then
 			unionvalue = value[selection.name]
 			if unionvalue == nil then
@@ -864,13 +865,7 @@ function Encoder:except(value, idltype)                                         
 	assert.type(value, "table", "except value", "MARSHAL")
 	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose:marshal("[member ", member.name, "]")
 		local val = value[member.name]
-		if
-			val == nil and
-			member.type ~= idl.any and
-			member.type ~= idl.boolean and
-			member.type._type ~= "Object" and
-			member.type._type ~= "interface"
-		then
+		if val == nil and NilEnabledTypes[member.type._type] then
 			assert.illegal(value,
 			              "except value (no value for member "..member.name..")",
 			              "MARSHAL")
@@ -936,7 +931,7 @@ end
 -- NOTE: second parameter indicates an encasulated octet-stream, therefore
 --       endianess must be read from stream.
 function decoder(self, octets, getorder)
-	local decoder = Decoder{
+	local decoder = self.Decoder{
 		data = octets,
 		context = self.context,
 	}
@@ -946,7 +941,7 @@ end
 
 -- NOTE: Presence of a parameter indicates an encapsulated octet-stream.
 function encoder(self, putorder)
-	local encoder = Encoder{ context = self.context }
+	local encoder = self.Encoder{ context = self.context }
 	if putorder then encoder:boolean(NativeEndianess) end
 	return encoder
 end
@@ -965,7 +960,7 @@ end
 --[[VERBOSE]] 	d = idl.double,
 --[[VERBOSE]] 	D = idl.longdouble,
 --[[VERBOSE]] }
---[[VERBOSE]] local codecop = {
+--[[VERBOSE]] verbose.codecop = {
 --[[VERBOSE]] 	[Encoder] = "marshal",
 --[[VERBOSE]] 	[Decoder] = "unmarshal",
 --[[VERBOSE]] }
@@ -973,7 +968,7 @@ end
 --[[VERBOSE]] function verbose.custom:marshal(codec, type, value)
 --[[VERBOSE]] 	local viewer = self.viewer
 --[[VERBOSE]] 	local output = viewer.output
---[[VERBOSE]] 	local op = codecop[oo.classof(codec)]
+--[[VERBOSE]] 	local op = self.codecop[oo.classof(codec)]
 --[[VERBOSE]] 	if op then
 --[[VERBOSE]] 		type = numtype[type] or type
 --[[VERBOSE]] 		output:write(op," of ",type._type)
