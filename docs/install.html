@@ -40,176 +40,121 @@ table { padding-left: 100px; }
 </div>
 
 <div class="content">
-	<a name="download"><h1>Download</h1></a>
-
-	<p>You can download the OiL package from the following link. See below for instructions about building OiL and its required software packages.</p>
+	<h1>Installation</h1>
+	
+	<a name="rock"><h2>Rock</h2></a>
+	
+	<p>You can install OiL through <a href="http://www.luarocks.org/">LuaRocks</a> using the following command.</p>
+	
+	<pre>   luarocks install oil</pre>
+	
+	<a name="win32bin"><h2>Binaries</h2></a>
+	
+	<p>If you just want to use OiL in a Microsoft Windows platform then use one of the following binary packages below:</p>
 	
 	<ul>
 		<li>
-		OiL 0.4 beta
+			<strong>Executables and Demos</strong>
+			[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta-win32.zip">win32</a>]
+			<br>
+			This package includes the Lua stand-alone interpreter, all C libraries required by OiL already compiled, and all OiL's implementation as Lua scripts so they can be edited and dynamically loaded in the Lua interpreter.
+			This package also includes all OiL demos.
+			Use this package to try OiL out and study its implementation and demos.
+		</li>
+		<br>
+		<li>
+			<strong>Pre-Compiled Libraries</strong>
+			[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta-vc6.zip">vc6</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta-vc7.zip">vc7</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta-vc8.zip">vc8</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta-dll6.zip">dll6</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta-dll7.zip">dll7</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta-dll8.zip">dll8</a>]
+			<br>
+			This package includes pre-compiled libraries of OiL and all its required libraries (LuaIDL, LOOP, and LuaSocket).
+			The DLL version of these libraries can be installed in the Lua path for C libraries (see <a href="http://www.lua.org/manual/5.1/manual.html#pdf-package.loaders">Lua's manual</a>) and dynamically loaded in the Lua's stand-alone interpreter.
+			Use this package to install OiL in a environment that already have Lua installed.
+		</li>
+		<br>
+		<li>
+			<strong>Pre-Loading Library</strong>
+			[<a href="http://luaforge.net/frs/download.php/????/oilall-0.4-beta-vc6.zip">vc6</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oilall-0.4-beta-vc7.zip">vc7</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oilall-0.4-beta-vc8.zip">vc8</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oilall-0.4-beta-dll6.zip">dll6</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oilall-0.4-beta-dll7.zip">dll7</a>]
+			[<a href="http://luaforge.net/frs/download.php/????/oilall-0.4-beta-dll8.zip">dll8</a>]
+			<br>
+			This package includes a library that can be linked into an application to pre-load the full OiL implementation.
+			However, this library does not include the LuaSocket library which is required by OiL.
+			Therefore, it is necessary to link LuaSocket and pre-load it into your application prior to load OiL using this library (see demo <code>run</code> included in the <a href="#source">source package</a>).
+			Use this package to embed OiL in applications.
+		</li>
+	</ul>
+	
+	<a name="source"><h2>Source</h2></a>
+	
+	<p>OiL is provided as free software under the terms of the <a href="http://www.opensource.org/licenses/mit-license.html">MIT license</a>, which are the same terms of the <a href="http://www.lua.org/license.html">Lua's license</a>.
+	You can download the OiL package from the following link. See below for instructions about building OiL and its required software packages.</p>
+	<ul>
+		<li>
+		<strong>OiL 0.4 beta</strong>
 		[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta.tar.gz">tar.gz</a>]
 		[<a href="http://luaforge.net/frs/download.php/????/oil-0.4-beta.zip">zip</a>]
 		</li>
 	</ul>
 	
-	<p><strong>Windows Binaries:</strong> If you just want to give OiL a try in a Windows platform then just download the <a href="http://luaforge.net/frs/download.php/????/oil-0.4b-win32.zip">OiL Win32 Binaries</a> and extract its contents into a folder. After this, you will be able to run all the demos included in the package by executing the batch files included in the folder of each demo.</p>
-</div>
-
-<div class="content">
-	<a name="build"><h1>Building</h1></a>
-	
-	<p>If you want to use OiL in a Unix system or want to make a particular OiL built in order to include it in an application, then you have to build some required software packages, namely the Lua language and the libraries for socket and bit manipulation support in Lua. The required software packages are listed below.</p>
+	<p>If you want to use OiL in a Unix system or want to make a particular OiL built in order to include it in an application, then you have first to build some required software packages, namely the Lua language and its socket library. The required software packages are listed below.</p>
 	
 	<ul>
-		<li>Lua 5.1</li>
-		<li>LuaSocket 2.0</li>
-		<li>OiL's Bit Manipulation Library (included in the OiL package)</li>
+		<li><a href="http://www.lua.org/download.html">Lua 5.1</a></li>
+		<li><a href="http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/home.html#download">LuaSocket 2.1</a></li>
 	</ul>
 	
-	<p><strong>Note:</strong> If you plan to build any of the packages listed here in a Windows platform and you don't have a C compiler, then you can donwload for free the <a href="http://msdn2.microsoft.com/en-us/express/aa979597.aspx">Microsoft Visual Studio C++ Express</a> and <a href="http://www.microsoft.com/downloads/details.aspx?familyid=0baf2b35-c656-4969-ace8-e4c0c0716adb">Microsoft Platform SDK</a>. Follow the instructions defined <a href="http://msdn2.microsoft.com/en-us/express/aa700755.aspx">here</a>.</p>	
-
-	<h2>Required Software Packages</h2>
-
-	<h3>Lua 5.1</h3>
-
-	<p>Download Lua 5.1 package from <a href="http://www.lua.org/">Lua web site</a>, then follow the instructions in INSTALL file included in the package. If you plan to build Lua in a Windows platform, then you can use the <a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua51/lua-5.1.tar.gz">Lua 5.1 package</a> provided by the OiL team. To build the package provided by OiL team you must do the following:</p>
+	<br><h3>Installing from source</h3><br>
 	
-	<dl>
-		<dt>Linux:</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you extracted the package files</li>
-			<li>read and edit file <code>Makefile</code> to suit your needs</li>
-			<li>run command <code>make linux install</code></li>
-			</ol>
-		</dd>
-		<dt>Windows: (dynamic libraries).</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you extracted the package files</li>
-			<li>read and edit file <code>Makefile.win32</code> to suit your needs</li>
-			<li>run command <code>nmake /f Makefile.win32 dll install</code></li>
-			</ol>
-		</dd>
-		<dt>Windows: (static libraries)</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you extracted the package files</li>
-			<li>read and edit file <code>Makefile.win32</code> to suit your needs</li>
-			<li>run command <code>nmake /f Makefile.win32 static install</code></li>
-			</ol>
-		</dd>
-	</dl>
+	<p>OiL is almost entirely written in Lua, however it uses a bit manipulation library written in C to implement its CORBA support.
+	Therefore, to use OiL with CORBA support, you need to build its bit manipulation library.
+	To build and install OiL you must first read and edit the <code>config</code> file included in the source package.
+	After adusting your options, choose one of the options described below.</p>
+	<br>
 	
-	<h3>LuaSocket 2.0</h3>
-
-	<p>Download LuaSocket 2.0 package from <a href="http://www.tecgraf.puc-rio.br/luasocket/">LuaSocket web site</a>, then follow the instructions in INSTALL file included in the package. If you have any problems to use the LuaSocket official package, you can try the <a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua51/luasocket-2.0.tar.gz">LuaSocket 2.0 package</a> provided by the OiL team. To build the package provided by OiL team you must do the following:</p>
-
-	<dl>
-		<dt>Linux:</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you extracted the package files</li>
-			<li>read and edit file <code>config</code> to suit your needs</li>
-			<li>run command <code>make linux install</code></li>
-			</ol>
-		</dd>
-		<dt>Windows: (dynamic libraries that can be loaded from Lua console).</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you extracted the package files</li>
-			<li>read and edit file <code>config.win32</code> to suit your needs</li>
-			<li>run command <code>nmake /f Makefile.win32 dll install</code></li>
-			</ol>
-		</dd>
-		<dt>Windows: (static libraries)</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you extracted the package files</li>
-			<li>read and edit file <code>config.win32</code> to suit your needs</li>
-			<li>run command <code>nmake /f Makefile.win32 static install-lib</code></li>
-			</ol>
-		</dd>
-	</dl>
+	<ul>
+		<li><strong>Standard</strong><br>
+			Installs the Lua files and bit manipuation library for dynamic loading.
+			This option is useful for playing with OiL implementation, because you will be able to modify its implementation by changing the Lua files.
+			<pre>
+$ make install           # run 'make' command
+</pre>
+		</li>
+		
+		<li><strong>Pre-Compiled</strong><br>
+			Installs a set of libraries containing all modules that compose OiL implementation already pre-compiled.
+			This option is useful for users that don't intend to make changes in OiL implementation.
+			<pre>
+$ make install-bundles   # run 'make' command
+</pre>
+		</li>
+		<br>
+		<li><strong>Pre-Loading</strong><br>
+			Installs a single library containing the bit manipuation library and all OiL Lua files already pre-compiled for preloading into embedded Lua applications.
+			This option is useful for developers that intend to include OiL in other applications by linking into a single file.
+			See demo 'run' for more details.
+			<pre>
+$ make install-preload   # run 'make' command
+</pre>
+		</li>
+	</ul>
 	
-	<h2>OiL 0.4</h2>
-	
-	<p>OiL is almost entirely written in Lua, however it uses a bit manipulation library written in C. Therefore, to install OiL, you need to build its bit manipulation support. To build and install OiL you must choose one of the options described below.</p>
-
-	<h3>Standard</h3>
-	<p>Installs the Lua files and bit manipuation library for dynamic loading. This option is useful for playing with OiL implementation, because you will be able to modify its implementation by changing the Lua files.</p>
-	<dl>
-		<dt>Unix:</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you opened the package</li>
-			<li>read and edit file <code>config</code> to suit your needs</li>
-			<li>run command <code>make install</code></li>
-			</ol>
-		</dd>
-		<dt>Windows:</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you opened the package</li>
-			<li>read and edit file <code>config.win32</code> to suit your needs</li>
-			<li>run command <code>nmake /f Makefile.win32 install</code></li>
-			</ol>
-		</dd>
-	</dl>
-
-	<h3>Pre-Compiled</h3>
-	<p>Installs a set of libraries containing all modules that compose OiL implementation already pre-compiled. This option is useful for users that don't intend to make changes in OiL implemenation.</p>
-	<dl>
-		<dt>Unix:</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you opened the package</li>
-			<li>read and edit file <code>config</code> to suit your needs</li>
-			<li>run command <code>make installb</code></li>
-			</ol>
-		</dd>
-		<dt>Windows:</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you opened the package</li>
-			<li>read and edit file <code>config.win32</code> to suit your needs</li>
-			<li>run command <code>nmake /f Makefile.win32 installb</code></li>
-			</ol>
-		</dd>
-	</dl>
-
-	<h3>Preloading</h3>
-	<p>Installs a single library containing the bit manipuation library and all OiL Lua files already pre-compiled for preloading into embedded Lua applications. This option is useful for developers that intend to include OiL in other applications by linking into a single file. See demo 'run' for more details.</p>
-	<dl>
-		<dt>Unix:</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you opened the package</li>
-			<li>read and edit file <code>config</code> to suit your needs</li>
-			<li>run command <code>make installp</code></li>
-			</ol>
-		</dd>
-		<dt>Windows:</dt>
-		<dd>
-			<ol>
-			<li>go to the folder you opened the package</li>
-			<li>read and edit file <code>config.win32</code> to suit your needs</li>
-			<li>run command <code>nmake /f Makefile.win32 installp</code></li>
-			</ol>
-		</dd>
-	</dl>
-</div>
-
-<div class="content">
-	<a name="setup"><h1>Environment Setup</h1></a>
+	<br><h3>Environment setup</h3><br>
 	
 	<p>In order to load OiL package in the Lua stand-alone interpreter, you must add the paths where you installed OiL and LuaSocket to the <code>LUA_PATH</code> and <code>LUA_CPATH</code> environment variables. For example, if you installed Lua files of OiL and LuaSocket (see <code>INSTALL_LMOD</code> macro in file <code>config</code>) into directory <code>/usr/local/share/lua/5.1/</code> then <code>LUA_PATH</code> must be set to:</p>
 
-	<p><code>LUA_PATH="/usr/local/share/lua/5.1/?.lua"</code></p>
+	<p><code>LUA_PATH=";;/usr/local/share/lua/5.1/?.lua"</code></p>
 
 	<p>A similar approach is used for the <code>LUA_CPATH</code> environment variable. Supose you have installed the C libraries of OiL and LuaSocket (see <code>INSTALL_CMOD</code> macro in file <code>config</code>) into directory <code>/usr/local/lib/lua/5.1/</code> then <code>LUA_CPATH</code> must be set to:</p>
 
-	<p><code>LUA_CPATH="/usr/local/lib/lua/5.1/?.so"</code></p>
+	<p><code>LUA_CPATH=";;/usr/local/lib/lua/5.1/?.so"</code></p>
 	
 	<p>For further information on the use of <code>LUA_PATH</code> and  <code>LUA_CPATH</code> environment variable, check the <a href="http://www.lua.org/manual/5.1/manual.html#pdf-package.path">Lua manual</a>.</p>
 </div>
