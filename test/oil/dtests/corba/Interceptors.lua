@@ -1,6 +1,6 @@
 local Suite = require "loop.test.Suite"
 local Template = require"oil.dtests.Template"
-local test = Template{"Client"} -- master process name
+local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
 checks = oil.dtests.checks
@@ -111,21 +111,4 @@ object:concat("first", "second")
 
 --[Client]=====================================================================]
 
-return Suite{
-	IceptedCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;base" },
-		Client = { flavor = "intercepted;corba;typed;base" },
-	},
-	CoServerIceptedCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
-		Client = { flavor = "intercepted;corba;typed;base" },
-	},
-	CoClientIceptedCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;base" },
-		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
-	},
-	CoIceptedCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
-		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
-	},
-}
+return template:newsuite{ corba = true, intercepted = true }

@@ -1,6 +1,6 @@
 local Suite = require "loop.test.Suite"
 local Template = require"oil.dtests.Template"
-local test = Template{"Client"} -- master process name
+local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
 oil.init{ port = 2809 }
@@ -62,72 +62,4 @@ for opname, opdesc in pairs(cases) do
 end
 --[Client]=====================================================================]
 
-return Suite{
-	CoCORBA = test{
-		Server = { flavor = "corba;typed;cooperative;base" },
-		Client = { flavor = "corba;typed;cooperative;base" },
-	},
-	CoServerCORBA = test{
-		Server = { flavor = "corba;typed;cooperative;base" },
-		Client = { flavor = "corba;typed;base" },
-	},
-	CoClientCORBA = test{
-		Server = { flavor = "corba;typed;base" },
-		Client = { flavor = "corba;typed;cooperative;base" },
-	},
-	CORBA = test{
-		Server = { flavor = "corba;typed;base" },
-		Client = { flavor = "corba;typed;base" },
-	},
-	
-	IceptedCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;base" },
-		Client = { flavor = "intercepted;corba;typed;base" },
-	},
-	CoServerIceptedCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
-		Client = { flavor = "intercepted;corba;typed;base" },
-	},
-	CoClientIceptedCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;base" },
-		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
-	},
-	CoIceptedCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
-		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
-	},
-	
-	IceptedClientCORBA = test{
-		Server = { flavor = "corba;typed;base" },
-		Client = { flavor = "intercepted;corba;typed;base" },
-	},
-	CoServerIceptedClientCORBA = test{
-		Server = { flavor = "corba;typed;cooperative;base" },
-		Client = { flavor = "intercepted;corba;typed;base" },
-	},
-	CoIceptedClientCORBA = test{
-		Server = { flavor = "corba;typed;base" },
-		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
-	},
-	IceptedClientCoCORBA = test{
-		Server = { flavor = "corba;typed;cooperative;base" },
-		Client = { flavor = "intercepted;corba;typed;cooperative;base" },
-	},
-	
-	IceptedServerCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;base" },
-		Client = { flavor = "corba;typed;base" },
-	},
-	CoIceptedServerCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
-		Client = { flavor = "corba;typed;base" },
-	},
-	IceptedServerCoClientCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;base" },
-		Client = { flavor = "corba;typed;cooperative;base" },
-	},
-	IceptedServerCoCORBA = test{
-		Server = { flavor = "intercepted;corba;typed;cooperative;base" },
-		Client = { flavor = "corba;typed;cooperative;base" },
-	},
-}
+return template:newsuite{ corba = true }
