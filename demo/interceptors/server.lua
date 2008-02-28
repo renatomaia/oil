@@ -31,7 +31,7 @@ function interceptor:receiverequest(request)
 	io.stderr:write("context 1234 not found! Canceling...\n")
 	request.success = false
 	request.count = 1
-	request[1] = oil.newexcept{ "BAD_OPERATION", minor_code_value = 0 }
+	request[1] = oil.newexcept{ "CORBA::BAD_OPERATION", minor_code_value = 0 }
 end
 
 --------------------------------------------------------------------------------
