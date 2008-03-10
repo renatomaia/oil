@@ -338,9 +338,9 @@ end
 -- different interface, in this case the 'type' parameter must be provided with
 -- the exact servant's interface.
 --
--- @param string|object object Servant's object key, servant's implementation or
+-- @param object string|object Servant's object key, servant's implementation or
 -- servant itself.
--- @param string type Identification of the servant's interface (e.g. repository
+-- @param type string Identification of the servant's interface (e.g. repository
 -- ID or absolute name).
 --
 -- @usage oil.deactivate(oil.newservant(impl, "::MyInterface", "objkey"))      .
