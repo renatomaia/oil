@@ -4,4 +4,5 @@ return Suite{
 	ExceptionCatch   = require "oil.dtests.kernel.ExceptionCatch",
 	ObjectOperations = require "oil.dtests.corba.ObjectOperations",
 	IDLChanges       = require "oil.dtests.corba.IDLChanges",
+	Interceptors     = require "oil.dtests.corba.Interceptors",
 }

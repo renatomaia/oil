@@ -26,8 +26,8 @@ oil.setserverinterceptor{
 			checks:assert(request[1], checks.is("first"))
 			checks:assert(request[2], checks.is("second"))
 		
-			--checks:assert(request.service_context[1].context_id, checks.is(1234))
-			--checks:assert(request.service_context[1].context_data, checks.is("1234"))
+			checks:assert(request.service_context[1].context_id, checks.is(1234))
+			checks:assert(request.service_context[1].context_data, checks.is("1234"))
 			
 			CurrentRequest = request
 		end
