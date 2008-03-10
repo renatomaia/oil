@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2006 Renato F. Maia.
+* Copyright (c) 2006 Tecgraf, PUC-Rio.
 * All rights reserved.
 *
 * Module that exports support for conversion of numbers between different
