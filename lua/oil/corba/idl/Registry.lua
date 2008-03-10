@@ -559,16 +559,16 @@ ArrayDef.definition_fields = {
 	elementtype = { type = IDLType  },
 }
 
-function ArrayDef:update(new)
+function ArrayDef:update(new, registry)
 	self.length = new.length
-	self:_set_element_type_def(new.elementtype)
+	self:_set_element_type_def(new.elementtype, registry)
 end
 
 function ArrayDef:_get_element_type() return self.elementtype end
 
-function ArrayDef:_set_element_type_def(type_def)
+function ArrayDef:_set_element_type_def(type_def, registry)
 	local old = self.elementtype
-	type_def = self.containing_repository:register(type_def.type)
+	type_def = self.containing_repository:put(type_def.type, registry)
 	if self.element_type_def then
 		self:nowatch(self.element_type_def, "elementtype")
 	end
@@ -588,9 +588,9 @@ SequenceDef.definition_fields = {
 	elementtype = { type = IDLType  },
 }
 
-function SequenceDef:update(new)
+function SequenceDef:update(new, registry)
 	self.maxlength = new.maxlength
-	self:_set_element_type_def(new.elementtype)
+	self:_set_element_type_def(new.elementtype, registry)
 end
 
 SequenceDef._get_element_type = ArrayDef._get_element_type
@@ -629,9 +629,9 @@ AttributeDef.definition_fields = {
 	type       = { type = IDLType },
 }
 
-function AttributeDef:update(new)
+function AttributeDef:update(new, registry)
 	self:_set_mode(new.readonly and "ATTR_READONLY" or "ATTR_NORMAL")
-	self:_set_type_def(new.type)
+	self:_set_type_def(new.type, registry)
 end
 
 function AttributeDef:_set_mode(value)
@@ -641,9 +641,9 @@ function AttributeDef:_set_mode(value)
 	if self.readonly ~= old then self:notify("readonly") end
 end
 
-function AttributeDef:_set_type_def(type_def)
+function AttributeDef:_set_type_def(type_def, registry)
 	local old = self.type
-	type_def = self.containing_repository:register(type_def.type)
+	type_def = self.containing_repository:put(type_def.type, registry)
 	if self.type_def then
 		self:nowatch(self.type_def, "type")
 	end
@@ -684,11 +684,11 @@ OperationDef.definition_fields = {
 	}, optional = true, list = true },
 }
 
-function OperationDef:update(new)
+function OperationDef:update(new, registry)
 	self:_set_mode(new.oneway and "OP_ONEWAY" or "OP_NORMAL")
-	if new.exceptions then self:_set_exceptions(new.exceptions) end
-	if new.result then self:_set_result_def(new.result) end
-	if new.parameters then self:_set_params(new.parameters) end
+	if new.exceptions then self:_set_exceptions(new.exceptions, registry) end
+	if new.result then self:_set_result_def(new.result, registry) end
+	if new.parameters then self:_set_params(new.parameters, registry) end
 	self.contexts = new.contexts
 end
 
@@ -699,8 +699,8 @@ function OperationDef:_set_mode(value)
 	if self.oneway ~= old then self:notify("oneway") end
 end
 
-function OperationDef:_set_result_def(type_def)
-	type_def = self.containing_repository:register(type_def.type)
+function OperationDef:_set_result_def(type_def, registry)
+	type_def = self.containing_repository:put(type_def.type, registry)
 	local current = self.result
 	local newval = type_def.type
 	if current ~= newval then
@@ -726,14 +726,14 @@ function OperationDef:_set_result_def(type_def)
 end
 
 function OperationDef:_get_params() return self.parameters end
-function OperationDef:_set_params(parameters)
+function OperationDef:_set_params(parameters, registry)
 	local inputs = {}
 	local outputs = {}
 	if self.result ~= idl.void then
 		outputs[#outputs+1] = self.result
 	end
 	for index, param in ipairs(parameters) do
-		param.type_def = self.containing_repository:register(param.type)
+		param.type_def = self.containing_repository:put(param.type, registry)
 		param.type = param.type_def.type
 		param.mode = param.mode or "PARAM_IN"
 		if param.mode == "PARAM_IN" then
@@ -759,9 +759,9 @@ function OperationDef:_set_params(parameters)
 	self:notify("parameters")
 end
 
-function OperationDef:_set_exceptions(exceptions)
+function OperationDef:_set_exceptions(exceptions, registry)
 	for index, except in ipairs(exceptions) do
-		except = self.containing_repository:register(except:get_description().type)
+		except = self.containing_repository:put(except:get_description().type, registry)
 		exceptions[index] = except
 		exceptions[except.repID] = except
 	end
@@ -819,9 +819,9 @@ function StructDef:update(new)
 end
 
 function StructDef:_get_members() return self.fields end
-function StructDef:_set_members(members)
+function StructDef:_set_members(members, registry)
 	for index, field in ipairs(members) do
-		field.type_def = self.containing_repository:register(field.type)
+		field.type_def = self.containing_repository:put(field.type, registry)
 		field.type = field.type_def.type
 	end
 	for index, field in ipairs(self.fields) do
@@ -851,8 +851,8 @@ UnionDef.definition_fields = {
 	}, optional = true, list = true },
 }
 
-function UnionDef:update(new)
-	self:_set_discriminator_type_def(new.switch)
+function UnionDef:update(new, registry)
+	self:_set_discriminator_type_def(new.switch, registry)
 	
 	if new.options then
 		for _, option in ipairs(new.options) do
@@ -878,9 +878,9 @@ end
 
 function UnionDef:_get_discriminator_type() return self.switch end
 
-function UnionDef:_set_discriminator_type_def(type_def)
+function UnionDef:_set_discriminator_type_def(type_def, registry)
 	local old = self.switch
-	type_def = self.containing_repository:register(type_def.type)
+	type_def = self.containing_repository:put(type_def.type, registry)
 	if self.discriminator_type_def then
 		self:nowatch(self.discriminator_type_def, "switch")
 	end
@@ -890,13 +890,13 @@ function UnionDef:_set_discriminator_type_def(type_def)
 	if self.switch ~= old then self:notify("switch") end
 end
 
-function UnionDef:_set_members(members)
+function UnionDef:_set_members(members, registry)
 	local options = {}
 	local selector = {}
 	local selection = {}
 	
 	for index, member in ipairs(members) do
-		member.type_def = self.containing_repository:register(member.type)
+		member.type_def = self.containing_repository:put(member.type, registry)
 		member.type = member.type_def.type
 		local option = {
 			label = member.label._anyval,
@@ -952,13 +952,13 @@ AliasDef.definition_fields = {
 	type = { type = IDLType },
 }
 
-function AliasDef:update(new)
-	self:_set_original_type_def(new.type)
+function AliasDef:update(new, registry)
+	self:_set_original_type_def(new.type, registry)
 end
 
-function AliasDef:_set_original_type_def(type_def)
+function AliasDef:_set_original_type_def(type_def, registry)
 	local old = self.type
-	type_def = self.containing_repository:register(type_def.type)
+	type_def = self.containing_repository:put(type_def.type, registry)
 	self.original_type_def = type_def
 	self.type = type_def.type
 	if self.type ~= old then self:notify("type") end
@@ -1051,14 +1051,14 @@ ExceptionDef.definition_fields = {
 	}, optional = true, list = true },
 }
 
-function ExceptionDef:update(new)
+function ExceptionDef:update(new, registry)
 	self.type = self
-	if new.members then self:_set_members(new.members) end
+	if new.members then self:_set_members(new.members, registry) end
 end
 
-function ExceptionDef:_set_members(members)
+function ExceptionDef:_set_members(members, registry)
 	for index, member in ipairs(members) do
-		member.type_def = self.containing_repository:register(member.type)
+		member.type_def = self.containing_repository:put(member.type, registry)
 		member.type = member.type_def.type
 	end
 	for index, member in ipairs(self.members) do
@@ -1383,7 +1383,7 @@ function Registry:__index(definition)
 					if update then
 						local fields = oo.memberof(class, "definition_fields")
 						local new = fields and getupdate(self, definition, "object", fields)
-						update(result, new)
+						update(result, new, self)
 					end
 				end                                                                     --[[VERBOSE]] verbose:repository(false)
 				if oo.instanceof(result, Container) then
@@ -1403,8 +1403,12 @@ end
 
 --------------------------------------------------------------------------------
 
+function put(self, definition, registry)
+	registry = registry or self.Registry{ repository = self }
+	return registry[definition]
+end
+
 function register(self, ...)
-	local repository = self
 	local registry = self.Registry{ repository = self }
 	local results = {}
 	local count = select("#", ...)
