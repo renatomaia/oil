@@ -408,7 +408,7 @@ end
 function NamingContextExt:to_url(addr, sn)
   local url = {"corbaname:", addr}
   if not addr or addr == "" then
-    assert.exception{"IDL:omg.org/CosNaming/NamingContextExt/InvalidAddress:1.0" }
+    assert.exception{"IDL:omg.org/CosNaming/NamingContextExt/InvalidAddress:1.0"}
   end
   if sn and string.len(sn) > 0 then
     local esn = to_url_escape(sn)
