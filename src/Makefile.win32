@@ -91,10 +91,14 @@ OIL_PCK= \
 	../lua/oil/corba/interceptors/ClientSide.lua \
 	../lua/oil/corba/interceptors/ServerSide.lua \
 	../lua/oil/corba/services/event.lua \
-	../lua/oil/corba/services/event/Dispatcher.lua \
-	../lua/oil/corba/services/event/Factory.lua \
-	../lua/oil/corba/services/event/Queue.lua \
-	../lua/oil/corba/services/event/Reaper.lua \
+	../lua/oil/corba/services/event/SingleSynchronousDispatcher.lua \
+	../lua/oil/corba/services/event/SingleDeferredDispatcher.lua \
+	../lua/oil/corba/services/event/ConsumerAdmin.lua \
+	../lua/oil/corba/services/event/SupplierAdmin.lua \
+	../lua/oil/corba/services/event/EventFactory.lua \
+	../lua/oil/corba/services/event/EventQueue.lua \
+	../lua/oil/corba/services/event/ProxyPushConsumer.lua \
+	../lua/oil/corba/services/event/ProxyPushSupplier.lua \
 	../lua/oil/corba/services/naming.lua \
 	../lua/oil/kernel/base/Client.lua \
 	../lua/oil/kernel/base/Dispatcher.lua \
