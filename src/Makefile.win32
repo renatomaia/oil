@@ -34,6 +34,7 @@ LOOP_PCK= \
 	../lua/loop/debug/Viewer.lua \
 	../lua/loop/object/Exception.lua \
 	../lua/loop/object/Wrapper.lua \
+	../lua/loop/object/Publisher.lua \
 	../lua/loop/serial/FileStream.lua \
 	../lua/loop/serial/Serializer.lua \
 	../lua/loop/serial/SocketStream.lua \
@@ -68,8 +69,11 @@ OIL_PCK= \
 	../lua/oil/builder/corba.lua \
 	../lua/oil/builder/ludo.lua \
 	../lua/oil/builder/typed.lua \
+	../lua/oil/builder/intercepted.lua \
+	../lua/oil/builder/gencode.lua \
 	../lua/oil/corba/giop.lua \
 	../lua/oil/corba/giop/Codec.lua \
+	../lua/oil/corba/giop/CodecGen.lua \
 	../lua/oil/corba/giop/Exception.lua \
 	../lua/oil/corba/giop/Indexer.lua \
 	../lua/oil/corba/giop/Listener.lua \
