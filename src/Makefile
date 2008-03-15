@@ -34,6 +34,7 @@ LOOP_PCK= $(addprefix ../lua/, \
 	loop/debug/Viewer.lua \
 	loop/object/Exception.lua \
 	loop/object/Wrapper.lua \
+	loop/object/Publisher.lua \
 	loop/serial/FileStream.lua \
 	loop/serial/Serializer.lua \
 	loop/serial/SocketStream.lua \
@@ -70,8 +71,11 @@ OIL_PCK= $(addprefix ../lua/, \
 	oil/builder/corba.lua \
 	oil/builder/ludo.lua \
 	oil/builder/typed.lua \
+	oil/builder/intercepted.lua \
+	oil/builder/gencode.lua \
 	oil/corba/giop.lua \
 	oil/corba/giop/Codec.lua \
+	oil/corba/giop/CodecGen.lua \
 	oil/corba/giop/Exception.lua \
 	oil/corba/giop/Indexer.lua \
 	oil/corba/giop/Listener.lua \
@@ -93,10 +97,14 @@ OIL_PCK= $(addprefix ../lua/, \
 	oil/corba/interceptors/ClientSide.lua \
 	oil/corba/interceptors/ServerSide.lua \
 	oil/corba/services/event.lua \
-	oil/corba/services/event/Dispatcher.lua \
-	oil/corba/services/event/Factory.lua \
-	oil/corba/services/event/Queue.lua \
-	oil/corba/services/event/Reaper.lua \
+	oil/corba/services/event/SingleSynchronousDispatcher.lua \
+	oil/corba/services/event/SingleDeferredDispatcher.lua \
+	oil/corba/services/event/ConsumerAdmin.lua \
+	oil/corba/services/event/SupplierAdmin.lua \
+	oil/corba/services/event/EventFactory.lua \
+	oil/corba/services/event/EventQueue.lua \
+	oil/corba/services/event/ProxyPushConsumer.lua \
+	oil/corba/services/event/ProxyPushSupplier.lua \
 	oil/corba/services/naming.lua \
 	oil/kernel/base/Client.lua \
 	oil/kernel/base/Dispatcher.lua \
