@@ -25,8 +25,9 @@ local luapcall     = pcall
 local setmetatable = setmetatable
 local type         = type                                                       --[[VERBOSE]] local select = select
 
-local oo        = require "oil.oo"
-local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo          = require "oil.oo"
+local Exception   = require "oil.Exception"
+local ObjectCache = require "loop.collection.ObjectCache"                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.kernel.base.Dispatcher", oo.class)
 
@@ -41,24 +42,29 @@ local function deactivate(self)
 	return self._dispatcher:unregister(self._key)
 end
 
-local value, object
-local function method(self, ...) return value(object, ...) end
 local function indexer(self, key)
-	object = self.__newindex
-	value = object[key]
+	local value = self.__newindex[key]
 	if type(value) == "function"
-		then return method
+		then return self.__methods[value]
 		else return value
 	end
 end
 
 function wrap(self, impl, key)
-	local object = {
+	local object
+	object = {
 		_deactivate = deactivate,
 		_key = key,
 		_dispatcher = self,
 		__newindex = impl,
 		__index = indexer,
+		__methods = ObjectCache{
+			retrieve = function(_, method)
+				return function(_, ...)
+					return method(object.__newindex, ...)
+				end
+			end
+		}
 	}
 	return setmetatable(object, object)
 end
@@ -72,7 +78,7 @@ function __init(self, object)
 	return self
 end
 
-function register(self, impl, key)
+function register(self, impl, key, ...)
 	local result, except = self.map[key]
 	if result then
 		if result.__newindex ~= impl then
@@ -83,7 +89,7 @@ function register(self, impl, key)
 			}
 		end
 	else                                                                          --[[VERBOSE]] verbose:dispatcher("object ",impl," registered with key ",key)
-		result = self:wrap(impl, key)
+		result = self:wrap(impl, key, ...)
 		self.map[key] = result
 	end
 	return result, except
