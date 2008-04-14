@@ -2,9 +2,6 @@ local oil               = require "oil"
 local oo                = require "oil.oo"
 local assert            = require "oil.assert"
 
-local io                = io
-local collectgarbage    = collectgarbage
-
 module("oil.corba.services.event.EventQueue", oo.class)
 
 -- filo por enquanto
@@ -23,9 +20,6 @@ function enqueue(self, event)
     local t = self.waiting_thread
     self.waiting_thread = nil
     self.scheduler:resume(t)
-  elseif self.count > 10 then
-    io.write(self.count.."\t"..collectgarbage("count").."\n")
-    io.flush()
   end
 end
 
