@@ -39,7 +39,7 @@ end
 -- invoked by the channel to disconnect all proxies of the admin
 
 function destroy(self)
-  for _, proxy in pairs(self.proxypushconsumers) do
+  for _, proxy in ipairs(self.proxypushconsumers) do
     oil.pcall(proxy.disconnect_push_consumer, proxy)
   end
   self.proxypushconsumers = nil
