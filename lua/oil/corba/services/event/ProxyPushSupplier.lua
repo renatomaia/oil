@@ -54,6 +54,7 @@ function disconnect_push_supplier(self)
     assert.exception{"IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"}
   end
   self.connected = false
+  assert.results(self.push_consumer)
   self.admin:rem_push_consumer(self, self.push_consumer)
   oil.pcall(self.push_consumer.disconnect_push_consumer, self.push_consumer)
   self.push_consumer = nil
