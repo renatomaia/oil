@@ -36,11 +36,13 @@ function rem_push_consumer(self, proxy, push_consumer)
   self.channel:rem_push_consumer(push_consumer)
 end
 
--- invoked by the channel to disconnect all proxies of the admin
-
+-- invoked by the channel to disconnect all proxies of the admin.
+-- must reverse iterate over proxypushsuppliers because the disconnection
+-- removes the consumer from the array.
 function destroy(self)
-  for _, proxy in ipairs(self.proxypushsuppliers) do
-    oil.pcall(proxy.disconnect_push_supplier, proxy)
+  for i=#self.proxypushsuppliers,1,-1 do
+    local proxy = self.proxypushsuppliers[i]
+    proxy:disconnect_push_supplier() 
   end
   self.proxypushsuppliers = nil
   self.channel = nil
