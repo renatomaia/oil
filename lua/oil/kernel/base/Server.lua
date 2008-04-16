@@ -45,12 +45,52 @@ local rawset       = rawset
 local setmetatable = setmetatable
 local luatostring  = tostring
 
-local oo    = require "oil.oo"
-local table = require "loop.table"                                              --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
+local table = require "loop.table"
+local ObjectCache = require "loop.collection.ObjectCache"                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.kernel.base.Server", oo.class)
 
 context = false
+
+--------------------------------------------------------------------------------
+-- Servant object proxy
+
+local function deactivate(self)
+	return self._dispatcher:unregister(self._key)
+end
+
+local function indexer(self, key)
+	local value = self.__newindex[key]
+	if type(value) == "function"
+		then return self.__methods[value]
+		else return value
+	end
+end
+
+function __init(self, ...)
+	self = oo.rawnew(self, ...)
+	self.wrappers = ObjectCache{
+		retrieve = function(_, key)
+			local object
+			object = {
+				_deactivate = deactivate,
+				_dispatcher = self.context.objects,
+				_key = key,
+				__index = indexer,
+				__methods = ObjectCache{
+					retrieve = function(_, method)
+						return function(_, ...)
+							return method(object.__newindex, ...)
+						end
+					end
+				}
+			}
+			return setmetatable(object, object)
+		end
+	}
+	return self
+end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -80,11 +120,12 @@ function object(self, object, key)
 	key = key or "\0"..self:hashof(object)
 	local result, except = context.objects:register(object, key)
 	if result then
-		object = result
 		result, except = context.references:referenceto(key, self.config)
 		if result then
-			rawset(object, "__reference", result)
-			result = object
+			local wrapper = self.wrappers[key]
+			rawset(wrapper, "__newindex", object)
+			rawset(wrapper, "__reference", result)
+			result = wrapper
 		else
 			context.objects:unregister(key)
 		end
@@ -92,10 +133,22 @@ function object(self, object, key)
 	return result, except
 end
 
-function remove(self, key)
-	if type(key) == "table" then key = rawget(key, "_key") or key end
-	if type(key) ~= "string" then key = "\0"..self:hashof(key) end
-	return context.objects:unregister(key)
+function remove(self, object)
+	local key
+	if type(object) == "table" then key = rawget(object, "_key") or object end
+	if type(key) ~= "string" then
+		key = object.__objkey
+		if key == nil then
+			local meta = getmetatable(object)
+			if meta then key = meta.__objkey end
+			if key == nil then
+				key = "\0"..self:hashof(key)
+			end
+		end
+	end
+	local success, errmsg = context.objects:unregister(key)
+	if success then self.wrappers[key] = nil end
+	return success, errmsg
 end
 
 function tostring(self, object)
@@ -103,11 +156,7 @@ function tostring(self, object)
 end
 
 function retrieve(self, key)
-	local object = self.context.objects:retrieve(key)
-	if object and key:sub(1, 1) == "\0" then
-		object = object.__newindex
-	end
-	return object
+	return self.context.objects:retrieve(key)
 end
 
 --------------------------------------------------------------------------------

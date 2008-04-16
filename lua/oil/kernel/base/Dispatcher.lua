@@ -26,48 +26,13 @@ local setmetatable = setmetatable
 local type         = type                                                       --[[VERBOSE]] local select = select
 
 local oo          = require "oil.oo"
-local Exception   = require "oil.Exception"
-local ObjectCache = require "loop.collection.ObjectCache"                       --[[VERBOSE]] local verbose = require "oil.verbose"
+local Exception   = require "oil.Exception"                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.kernel.base.Dispatcher", oo.class)
 
 context = false
 
 pcall = luapcall
-
---------------------------------------------------------------------------------
--- Servant object proxy
-
-local function deactivate(self)
-	return self._dispatcher:unregister(self._key)
-end
-
-local function indexer(self, key)
-	local value = self.__newindex[key]
-	if type(value) == "function"
-		then return self.__methods[value]
-		else return value
-	end
-end
-
-function wrap(self, impl, key)
-	local object
-	object = {
-		_deactivate = deactivate,
-		_key = key,
-		_dispatcher = self,
-		__newindex = impl,
-		__index = indexer,
-		__methods = ObjectCache{
-			retrieve = function(_, method)
-				return function(_, ...)
-					return method(object.__newindex, ...)
-				end
-			end
-		}
-	}
-	return setmetatable(object, object)
-end
 
 --------------------------------------------------------------------------------
 -- Objects facet
@@ -81,7 +46,7 @@ end
 function register(self, impl, key, ...)
 	local result, except = self.map[key]
 	if result then
-		if result.__newindex ~= impl then
+		if result.object ~= impl then
 			result, except = nil, Exception{
 				reason = "usedkey",
 				message = "object key already in use",
@@ -89,8 +54,8 @@ function register(self, impl, key, ...)
 			}
 		end
 	else                                                                          --[[VERBOSE]] verbose:dispatcher("object ",impl," registered with key ",key)
-		result = self:wrap(impl, key, ...)
-		self.map[key] = result
+		self.map[key] = { object = impl, ... }
+		result = true
 	end
 	return result, except
 end
@@ -99,14 +64,14 @@ function unregister(self, key)
 	local map = self.map
 	local impl = map[key]
 	if impl then                                                                  --[[VERBOSE]] verbose:dispatcher("object with key ",key," unregistered")
-		impl = impl.__newindex
+		impl = impl.object
 		map[key] = nil
 	end
 	return impl
 end
 
 function retrieve(self, key)
-	return self.map[key]
+	return self.map[key].object
 end
 
 --------------------------------------------------------------------------------
@@ -115,7 +80,7 @@ end
 function dispatch(self, key, operation, default, ...)
 	local object = self.map[key]
 	if object then
-		object = object.__newindex
+		object = object.object
 		local method = object[operation] or default
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",key,":",operation, ...)
 			return self.pcall(method, object, ...)

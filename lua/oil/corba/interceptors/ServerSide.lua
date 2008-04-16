@@ -54,7 +54,7 @@ function before(self, request, object, ...)
 				local message
 				message, self.message = self.message, nil
 				message.servant = request.object:retrieve(key)
-				message.method = message.servant.__newindex[operation] or default
+				message.method = message.servant[operation] or default
 				message.count = select("#", ...) - 3
 				for i = 1, message.count do
 					message[i] = select(i+3, ...)
