@@ -1,4 +1,7 @@
-oil.loadidl[[
+require "oil"
+
+orb = oil.init()
+orb:loadidl[[
 	typedef sequence<string> StringSequence;
 
 	exception CompileError {
@@ -47,7 +50,7 @@ function Adaptor:apply_change(triggers, state, code, iface)
 		original[operation] = trigger
 	end
 
-	oil.loadidl(iface)
+	orb:loadidl(iface)
 	
 	local updater, errmsg = loadstring(code)
 	if not updater then

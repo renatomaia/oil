@@ -431,6 +431,6 @@ end
 
 function new()
   return NamingContextExt(),
-         "IDL:omg.org/CosNaming/NamingContextExt:1.0",
-         "NamingService"
+         "NamingService",
+         "IDL:omg.org/CosNaming/NamingContextExt:1.0"
 end

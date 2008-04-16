@@ -1,14 +1,15 @@
 require "oil"
 oil.main(function()
+	local orb = oil.init()
 	
-	oil.loadidl[[
+	orb:loadidl[[
 		typedef sequence<string> StringSequence;
-
+		
 		exception CompileError {
 			string message;
 			string code;
 		};
-
+		
 		interface ComponentAdaptor {
 			void apply_change(
 				in StringSequence triggers,
@@ -19,7 +20,7 @@ oil.main(function()
 		};
 	]]
 	
-	Adaptor = oil.newproxy(oil.readfrom("adaptor.ior"))
+	Adaptor = orb:newproxy(oil.readfrom("adaptor.ior"))
 	Adaptor:apply_change({"submit"}, -- triggering operations
 		[[
 			local emailset = {}

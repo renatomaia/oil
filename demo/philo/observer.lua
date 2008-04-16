@@ -42,7 +42,10 @@ end
 
 require "oil"
 oil.main(function()
-	oil.loadidlfile("philo.idl")
-	oil.writeto("observer.ior", oil.tostring(oil.newservant(ObserverHome, "ObserverHome")))
-	oil.run()
+	local orb = oil.init()
+	orb:loadidlfile("philo.idl")
+	oil.writeto("observer.ior",
+		orb:tostring(
+			orb:newservant(ObserverHome, nil, "ObserverHome")))
+	orb:run()
 end)

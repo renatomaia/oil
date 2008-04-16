@@ -3,7 +3,7 @@ local OIL_HOME = assert(os.getenv("OIL_HOME"),
 
 execpath = OIL_HOME.."/test/oil/dtests/concurrency/";
 services = {
-	Server = { command = "lua server.lua" };
+	Server = { command = "lua -l oil.compat server.lua" };
 };
 tasks = {
 	Tester = { dtestscript = "tester.lua" };

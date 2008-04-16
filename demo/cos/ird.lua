@@ -43,11 +43,11 @@ end
 local files = { select(argidx, ...) }
 oil.main(function()
 	oil.verbose:level(verb)
-	if port > 0 then oil.init{ port = port } end
-	local ir = oil.getLIR()
-	if ior ~= "" then oil.writeto(ior, oil.tostring(ir)) end
+	local orb = (port > 0) and oil.init{port=port} or oil.init()
+	local ir = orb:getLIR()
+	if ior ~= "" then oil.writeto(ior, orb:tostring(ir)) end
 	for _, file in ipairs(files) do
-		oil.loadidlfile(file)
+		orb:loadidlfile(file)
 	end
-	oil.run()
+	orb:run()
 end)

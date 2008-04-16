@@ -1,9 +1,10 @@
 require "oil"
 oil.main(function()
+	local orb = oil.init()
 	------------------------------------------------------------------------------
-	local server = oil.newproxy(assert(oil.readfrom("server.ior")))
+	local server = orb:newproxy(assert(oil.readfrom("server.ior")))
 	------------------------------------------------------------------------------
-	oil.loadidl [[
+	orb:loadidl [[
 		module Concurrency {
 			interface Proxy {
 				boolean request_work_for(in double seconds);
@@ -16,10 +17,10 @@ oil.main(function()
 		return server:do_something_for(seconds)
 	end
 	------------------------------------------------------------------------------
-	local proxy = oil.newservant(proxy_impl, "Concurrency::Proxy")
+	local proxy = orb:newservant(proxy_impl, nil, "Concurrency::Proxy")
 	------------------------------------------------------------------------------
-	assert(oil.writeto("proxy.ior", oil.tostring(proxy)))
+	assert(oil.writeto("proxy.ior", orb:tostring(proxy)))
 	------------------------------------------------------------------------------
-	oil.run()
+	orb:run()
 	------------------------------------------------------------------------------
 end)

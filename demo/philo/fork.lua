@@ -35,7 +35,10 @@ end
 
 require "oil"
 oil.main(function()
-	oil.loadidlfile("philo.idl")
-	oil.writeto("fork.ior", oil.tostring(oil.newservant(ForkHome, "ForkHome")))
-	oil.run()
+	local orb = oil.init()
+	orb:loadidlfile("philo.idl")
+	oil.writeto("fork.ior",
+		orb:tostring(
+			orb:newservant(ForkHome, nil, "ForkHome")))
+	orb:run()
 end)

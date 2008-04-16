@@ -44,12 +44,12 @@ end
 
 oil.main(function()
 	oil.verbose:level(verb)
-	if port > 0 then oil.init{ port = port } end
+	local orb = (port > 0) and oil.init{port=port} or oil.init()
 	if ir ~= ""
-		then oil.setIR(oil.narrow(oil.newproxy(ir)))
-		else oil.loadidlfile("CosNaming.idl")
+		then orb:setIR(orb:narrow(orb:newproxy(ir)))
+		else orb:loadidlfile("CosNaming.idl")
 	end
-	ns = oil.newservant(naming.new())
-	if ior ~= "" then oil.writeto(ior, oil.tostring(ns)) end
-	oil.run()
+	ns = orb:newservant(naming.new())
+	if ior ~= "" then oil.writeto(ior, orb:tostring(ns)) end
+	orb:run()
 end)

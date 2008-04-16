@@ -1,9 +1,11 @@
 require "oil"
 
 oil.main(function()
-	oil.loadidlfile("hello.idl")
+	local orb = oil.init()
+	
+	orb:loadidlfile("hello.idl")
 
-	local hello = oil.newproxy("corbaloc::/MyHello", "Hello")
+	local hello = orb:newproxy("corbaloc::/MyHello", "Hello")
 
 	local secs = 1
 	local dots = 3

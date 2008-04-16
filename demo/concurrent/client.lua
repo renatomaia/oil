@@ -6,8 +6,9 @@ local arg = {...}
 --------------------------------------------------------------------------------
 require "oil"
 oil.main(function()
+	local orb = oil.init()
 	------------------------------------------------------------------------------
-	local proxy = oil.newproxy(assert(oil.readfrom("proxy.ior")))
+	local proxy = orb:newproxy(assert(oil.readfrom("proxy.ior")))
 	------------------------------------------------------------------------------
 	local function showprogress(id, time)
 		print(id, "about to request work for "..time.." seconds")

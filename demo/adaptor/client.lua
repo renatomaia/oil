@@ -1,7 +1,7 @@
 require "oil"
 oil.main(function()
-	
-	oil.loadidl[[
+	orb = oil.init()
+	orb:loadidl[[
 		struct Author {
 			string name;
 			string email;
@@ -16,9 +16,9 @@ oil.main(function()
 		};
 	]]
 	
-	local c1 = oil.newproxy(oil.readfrom("c1.ior"))
-	local c2 = oil.newproxy(oil.readfrom("c2.ior"))
-	local c3 = oil.newproxy(oil.readfrom("c3.ior"))
+	local c1 = orb:newproxy(oil.readfrom("c1.ior"))
+	local c2 = orb:newproxy(oil.readfrom("c2.ior"))
+	local c3 = orb:newproxy(oil.readfrom("c3.ior"))
 	
 	Titles = {
 		"Guidelines for Constructing Consumption Aggregates for Welfare Analysis",

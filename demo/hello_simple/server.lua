@@ -1,5 +1,3 @@
-OIL_FLAVOR = "ludo;base"
-
 require "oil"                                    -- Load OiL package
 
 oil.main(function()
@@ -17,12 +15,14 @@ oil.main(function()
 		self.quiet = value
 	end
 
-	hello = oil.newservant(hello)                  -- Create Ludo object
+	local orb = oil.init{ flavor = "ludo;base" }
+	
+	hello = orb:newservant(hello)                  -- Create Ludo object
 
-	local ref = oil.tostring(hello)                -- Get object's reference
+	local ref = orb:tostring(hello)                -- Get object's reference
 	if not oil.writeto("ref.ludo", ref) then
 		print(ref)
 	end
 
-	oil.run()                                      -- Start ORB main loop
+	orb:run()                                      -- Start ORB main loop
 end)

@@ -6,8 +6,9 @@ local arg = {...}
 --------------------------------------------------------------------------------
 require "oil"
 oil.main(function()
+	local orb = oil.init()
 	------------------------------------------------------------------------------
-	oil.loadidl [[
+	orb:loadidl [[
 		module Adaptation {
 			interface Proxy {
 				boolean request_work_for(in long seconds);
@@ -18,9 +19,9 @@ oil.main(function()
 		};
 	]]
 	------------------------------------------------------------------------------
-	local proxy = oil.newproxy(oil.readfrom("proxy.ior"), "IDL:Adaptation/Proxy:1.0")
-	local padpt = oil.newproxy(oil.readfrom("proxyadaptor.ior"), "IDL:Adaptation/Adaptor:1.0")
-	local sadpt = oil.newproxy(oil.readfrom("serveradaptor.ior"), "IDL:Adaptation/Adaptor:1.0")
+	local proxy = orb:newproxy(oil.readfrom("proxy.ior"), "IDL:Adaptation/Proxy:1.0")
+	local padpt = orb:newproxy(oil.readfrom("proxyadaptor.ior"), "IDL:Adaptation/Adaptor:1.0")
+	local sadpt = orb:newproxy(oil.readfrom("serveradaptor.ior"), "IDL:Adaptation/Adaptor:1.0")
 	------------------------------------------------------------------------------
 	local function showprogress(id, time)
 		print(id, "about to request work for "..time.." seconds")
@@ -54,7 +55,7 @@ oil.main(function()
 	]]
 	
 	oil.sleep(maximum + 1)
-	oil.loadidl(NewProxyIDL)
+	orb:loadidl(NewProxyIDL)
 	padpt:update_definition(NewProxyIDL)
 	padpt:update_definition(NewServerIDL)
 	sadpt:update_definition(NewServerIDL)

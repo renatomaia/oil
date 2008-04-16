@@ -120,7 +120,7 @@ end
 
 function new()
   return EventChannel(),
-         "IDL:omg.org/CosEventChannelAdmin/EventChannel:1.0",
-         "DefaultEventChannel"
+         "DefaultEventChannel",
+         "IDL:omg.org/CosEventChannelAdmin/EventChannel:1.0"
 end
 

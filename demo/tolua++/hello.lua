@@ -1,11 +1,11 @@
 require "oil"
 
-oil.loadidlfile "../hello/hello.idl"
+local orb = oil.init()
+orb:loadidlfile "../hello/hello.idl"
 
-local hello_impl = Hello.HelloWorld:new(true)
-local hello = oil.newservant(hello_impl, "IDL:Hello:1.0")
+local impl = Hello.HelloWorld:new(true)
+local hello = orb:newservant(impl, nil, "IDL:Hello:1.0")
 
-oil.writeIOR(hello, "../hello/hello.ior")
+oil.writeto("../hello/hello.ior", orb:tostring(hello))
 
-oil.run()
-
+orb:run()

@@ -51,23 +51,23 @@ end
 
 oil.main(function()
 	oil.verbose:level(verb)
-	if port > 0 then oil.init{ port = port } end
+	local orb = (port > 0) and oil.init{port=port} or oil.init()
 	
 	if ir ~= ""
-		then oil.setIR(oil.narrow(oil.newproxy(ir)))
-		else oil.loadidlfile("CosEvent.idl")
+		then orb:setIR(orb:narrow(orb:newproxy(ir)))
+		else orb:loadidlfile("CosEvent.idl")
 	end
 	
-	local channel = oil.newservant(event.new(_M))
-	if ior ~= "" then oil.writeto(ior, oil.tostring(channel)) end
+	local channel = orb:newservant(event.new(_M))
+	if ior ~= "" then oil.writeto(ior, orb:tostring(channel)) end
 	
 	if name ~= "" then
 		if ns ~= ""
-			then ns = oil.narrow(oil.newproxy(ns))
-			else ns = oil.narrow(oil.newproxy("corbaloc::/NameService"))
+			then ns = orb:narrow(orb:newproxy(ns))
+			else ns = orb:narrow(orb:newproxy("corbaloc::/NameService"))
 		end
 		if ns then ns:rebind({{id=name,kind="EventChannel"}}, channel) end
 	end
 	
-	oil.run()
+	orb:run()
 end)

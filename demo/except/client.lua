@@ -11,10 +11,11 @@ local function returnexception(proxy, exception, operation)
 end
 
 oil.main(function()
+	local orb = oil.init()
 	local Server
 	
 	local success, exception = oil.pcall(function()
-		Server = oil.newproxy(oil.readfrom("ref.ior"))
+		Server = orb:newproxy(oil.readfrom("ref.ior"))
 		print("Value of 'a_number' is ", Server:read("a_number")._anyval)
 		Server:write("a_number", "bad value")
 	end)
@@ -25,7 +26,7 @@ oil.main(function()
 		end
 	end
 	
-	oil.setexcatch(returnexception, "Control::Server")
+	orb:setexcatch(returnexception, "Control::Server")
 	
 	local success, exception = oil.pcall(function()
 		local value, errmsg = Server:read("unknown")

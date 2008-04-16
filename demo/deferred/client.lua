@@ -6,12 +6,11 @@ local arg = {...}
 
 --------------------------------------------------------------------------------
 
-OIL_FLAVOR = "corba;typed;base" -- no concurrency support
-
 require "oil"
 
 oil.main(function()
-	local proxy = oil.newproxy(assert(oil.readfrom("server.ior")))
+	local orb = oil.init{ flavor = "corba;typed;base" } -- no concurrency support
+	local proxy = orb:newproxy(assert(oil.readfrom("server.ior")))
 	
 	-- make deferred calls
 	local calls = {}

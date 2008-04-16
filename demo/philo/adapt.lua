@@ -1,7 +1,8 @@
 require "oil"
 oil.main(function()
-	oil.loadidlfile("philo.idl")
-	Adaptor = oil.newproxy(oil.readfrom("philo.ior"))
+	local orb = oil.init()
+	orb:loadidlfile("philo.idl")
+	Adaptor = orb:newproxy(oil.readfrom("philo.ior"))
 
 	print(Adaptor:execute("\n\n\n\n\n\n\n"..[[
 		function Philosopher:avoid_deadlock()

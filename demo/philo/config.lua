@@ -1,10 +1,11 @@
 require "oil"
 oil.main(function()
-	oil.loadidlfile("philo.idl")
+	local orb = oil.init()
+	orb:loadidlfile("philo.idl")
 	
-	ForkHome        = oil.newproxy(oil.readfrom("fork.ior"))
-	PhilosopherHome = oil.newproxy(oil.readfrom("philo.ior"))
-	ObserverHome    = oil.newproxy(oil.readfrom("observer.ior"))
+	ForkHome        = orb:newproxy(oil.readfrom("fork.ior"))
+	PhilosopherHome = orb:newproxy(oil.readfrom("philo.ior"))
+	ObserverHome    = orb:newproxy(oil.readfrom("observer.ior"))
 	
 	Observer = ObserverHome:create()
 	

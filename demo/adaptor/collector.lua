@@ -38,7 +38,7 @@ require "oil"
 oil.main(function()
 	require "adaptor"
 	
-	oil.loadidl[[
+	orb:loadidl[[
 		struct Author {
 			string name;
 			string email;
@@ -53,15 +53,15 @@ oil.main(function()
 		};
 	]]
 	
-	local c1      = oil.newservant(Collector(), "Collector")
-	local c2      = oil.newservant(Collector(), "Collector")
-	local c3      = oil.newservant(Collector(), "Collector")
-	local adaptor = oil.newservant(Adaptor("Collector"), "ComponentAdaptor")
+	local c1      = orb:newservant(Collector(), nil, "Collector")
+	local c2      = orb:newservant(Collector(), nil, "Collector")
+	local c3      = orb:newservant(Collector(), nil, "Collector")
+	local adaptor = orb:newservant(Adaptor("Collector"), nil, "ComponentAdaptor")
 	
-	oil.writeto("c1.ior"     , oil.tostring(c1))
-	oil.writeto("c2.ior"     , oil.tostring(c2))
-	oil.writeto("c3.ior"     , oil.tostring(c3))
-	oil.writeto("adaptor.ior", oil.tostring(adaptor))
+	oil.writeto("c1.ior"     , orb:tostring(c1))
+	oil.writeto("c2.ior"     , orb:tostring(c2))
+	oil.writeto("c3.ior"     , orb:tostring(c3))
+	oil.writeto("adaptor.ior", orb:tostring(adaptor))
 	
-	oil.run()
+	orb:run()
 end)

@@ -17,5 +17,5 @@ $LUA client.lua
 
 echo "Demo finished."
 rm -f hello.ref
-cd ../c++
+cd ../tolua++
 make clean
