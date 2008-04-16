@@ -33,9 +33,6 @@ function build(customization, built)
 		if success then
 			module.assemble(built)
 		elseif not module:match("module '.-' not found:") then                      --[[VERBOSE]] verbose:built(false)
-
-verbose:debug("Oops!")
-
 			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load architecture definition for ",name)
 		end                                                                         --[[VERBOSE]] verbose:built(false)
 	end
