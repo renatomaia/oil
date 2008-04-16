@@ -720,19 +720,18 @@ function Encoder:Object(value, idltype)                                         
 		if not reference then
 			local objects = self.context.objects
 			if objects then                                                           --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
-				local objtype = value.__idltype
-				if objtype then
-					idltype = objtype
-				else
-					local metatable = getmetatable(value)
-					if metatable then
-						idltype = metatable.__idltype or idltype
-					end
+				local metatable = getmetatable(value)
+				if metatable then
+					objtype = value.__idltype or metatable.__idltype or idltype
+					objkey  = value.__objkey  or metatable.__objkey  or nil
+				elseif objtype == nil then
+					objtype = value.__idltype or idltype
+					objkey  = value.__objkey  or nil
 				end
-				if idltype._type == "Object" then
-					idltype = idltype.repID
+				if objtype._type == "Object" then
+					objtype = objtype.repID
 				end
-				value = assert.results(objects:object(value, nil, idltype))             --[[VERBOSE]] verbose:marshal(false)
+				value = assert.results(objects:object(value, objkey, objtype))             --[[VERBOSE]] verbose:marshal(false)
 				reference = value.__reference
 			else
 				assert.illegal(value, "Object, unable to create from value", "MARHSALL")
