@@ -77,10 +77,10 @@ function assemble(components)
 	setfenv(1, components)
 	-- COMMUNICATION
 	if ClientChannels then
-		ClientChannels.sockets = OperatingSystem.sockets
+		ClientChannels.sockets = BasicSystem.sockets
 	end
 	if ServerChannels then
-		ServerChannels.sockets = OperatingSystem.sockets
+		ServerChannels.sockets = BasicSystem.sockets
 	end
 	-- REQUESTER
 	if OperationRequester then

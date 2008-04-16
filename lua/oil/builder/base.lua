@@ -10,7 +10,7 @@ OperationInvoker  = arch.OperationInvoker {require "oil.kernel.base.Invoker"   }
 ServerBroker      = arch.ServerBroker     {require "oil.kernel.base.Server"    }
 RequestDispatcher = arch.RequestDispatcher{require "oil.kernel.base.Dispatcher"}
 RequestReceiver   = arch.RequestReceiver  {require "oil.kernel.base.Receiver"  }
-OperatingSystem   = arch.OperatingSystem  {require "oil.kernel.base.Sockets"   }
+BasicSystem       = arch.BasicSystem      {require "oil.kernel.base.Sockets"   }
 
 function create(comps)
 	return builder.create(_M, comps)

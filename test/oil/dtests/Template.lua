@@ -24,7 +24,7 @@ local Suite = require "loop.test.Suite"
 
 module("oil.dtests.Template", oo.class)
 
-local sockets = oil.OperatingSystem.sockets
+local sockets = oil.BasicSystem.sockets
 local helper = utils.helper
 
 local OIL_HOME = assert(os.getenv("OIL_HOME"), "OIL_HOME environment variable not defined")

@@ -5,7 +5,7 @@ local component = require "oil.component"
 
 module "oil.arch.base"
 
-OperatingSystem = component.Template{
+BasicSystem = component.Template{
 	sockets = port.Facet--[[
 	]],
 }

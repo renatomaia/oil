@@ -6,12 +6,12 @@ local arch      = require "oil.arch.base"                                       
 
 module "oil.arch.cooperative"
 
-TaskManager = component.Template({
+BasicSystem = component.Template({
 	control = port.Facet--[[
 	]],
 	tasks = port.Facet--[[
 	]],
-}, arch.OperatingSystem)
+}, arch.BasicSystem)
 
 OperationInvoker = component.Template({
 	mutex = port.Facet--[[
@@ -48,17 +48,15 @@ function assemble(components)
 	-- Client side
 	--
 	if OperationInvoker then
-		OperationInvoker.tasks = TaskManager.tasks
+		OperationInvoker.tasks = BasicSystem.tasks
 	end
 	if RequestReceiver then
-		RequestReceiver.tasks = TaskManager.tasks
+		RequestReceiver.tasks = BasicSystem.tasks
 	end
 	if RequestDispatcher then
 		-- define 'pcall' used in invocation dispatching.
-		-- operation is done over segments because contained components cannot
-		-- index functions that are not executed as methods.
-		local dispather = component.segmentof(RequestDispatcher, "dispatcher")
-		local tasks     = component.segmentof(TaskManager, "tasks")
-		dispather.pcall = tasks.pcall
+		-- the function is retrieved by a method call because contained
+		-- components cannot index functions that are not executed as methods.
+		RequestDispatcher.dispatcher.pcall = BasicSystem.tasks:getpcall()
 	end
 end

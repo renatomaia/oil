@@ -214,12 +214,12 @@ function assemble(components)
 	-- COMMUNICATION
 	if ClientChannels then
 		for tag, channels in pairs(ClientChannels) do
-			channels.sockets = OperatingSystem.sockets
+			channels.sockets = BasicSystem.sockets
 		end
 	end
 	if ServerChannels then
 		for tag, channels in pairs(ServerChannels) do
-			channels.sockets = OperatingSystem.sockets
+			channels.sockets = BasicSystem.sockets
 		end
 	end
 	if ValueEncoder then
