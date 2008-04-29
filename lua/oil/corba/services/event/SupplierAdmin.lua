@@ -39,7 +39,7 @@ end
 -- invoked by the channel to disconnect all proxies of the admin
 -- must reverse iterate over proxypushconsumers because the disconnection
 -- removes the supplier from the array.
-f
+
 function destroy(self)
   for i=#self.proxypushconsumers,1,-1 do
     local proxy = self.proxypushconsumers[i]
