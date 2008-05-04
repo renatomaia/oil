@@ -814,8 +814,8 @@ StructDef.definition_fields = {
 	},
 }
 
-function StructDef:update(new)
-	if new.fields then self:_set_members(new.fields) end
+function StructDef:update(new, registry)
+	if new.fields then self:_set_members(new.fields, registry) end
 end
 
 function StructDef:_get_members() return self.fields end
