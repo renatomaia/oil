@@ -92,4 +92,8 @@ function assemble(components)
 		RequestListener.codec = ValueEncoder.codec
 		RequestListener.channels = ServerChannels.channels
 	end
+	-- CODEC
+	if ValueEncoder then
+		ValueEncoder.codec:localresources(components)
+	end
 end
