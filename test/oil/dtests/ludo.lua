@@ -16,7 +16,7 @@ function resolve(proc, port, objkey, nowait)
 	for i = 1, timeout/querytime do
 		local success, errmsg = oil.pcall(proxy._non_existent, proxy)
 		if success or (type(errmsg) == "table" and errmsg.reason == "noimplement")
-		then -- '_non_existent' may not provided by such object exists ;-)
+		then -- '_non_existent' may not provided but such object exists ;-)
 			return proxy
 		end
 		oil.sleep(querytime)
