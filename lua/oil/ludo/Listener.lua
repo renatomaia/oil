@@ -46,6 +46,19 @@ end
 
 --------------------------------------------------------------------------------
 
+function disposechannels(self, configs)                                         --[[VERBOSE]] verbose:listen("closing all channels with configs ",configs)
+	local channels = self.context.channels
+	return channels:dispose(configs)
+end
+
+--------------------------------------------------------------------------------
+
+function disposechannel(self, channel)                                          --[[VERBOSE]] verbose:listen "close channel"
+	return channel:close()
+end
+
+--------------------------------------------------------------------------------
+
 local Request = oo.class()
 
 function Request:__init(requestid, objectkey, operation, ...)                   --[[VERBOSE]] verbose:listen("got request for request ",requestid," to object ",objectkey,":",operation)
