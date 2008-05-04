@@ -44,6 +44,7 @@ local rawget       = rawget
 local rawset       = rawset
 local setmetatable = setmetatable
 local luatostring  = tostring
+local type         = type
 
 local oo = require "oil.oo"
 local table = require "loop.table"
