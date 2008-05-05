@@ -720,6 +720,7 @@ function Encoder:Object(value, idltype)                                         
 		if not reference then
 			local objects = self.context.objects
 			if objects then                                                           --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
+				local objtype
 				local metatable = getmetatable(value)
 				if metatable then
 					objtype = value.__idltype or metatable.__idltype or idltype
