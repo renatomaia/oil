@@ -251,7 +251,10 @@ end
 function ORB:narrow(object, type)
 	assert.type(object, "table", "object proxy")
 	if type then assert.type(type, "string", "interface definition") end
-	return object and object:_narrow(type)
+	if object and object._narrow then
+		return object:_narrow(type)
+	end
+	return object
 end
 
 --------------------------------------------------------------------------------
