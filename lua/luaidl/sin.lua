@@ -846,6 +846,7 @@ local TAB_BASICTYPE = {
                [ 'LONG' ]      = { _type = TAB_TYPEID[ 'LONG' ] },
                [ 'FIXED' ]     = { _type = TAB_TYPEID[ 'FIXED' ] },
                [ 'VOID' ]      = { _type = TAB_TYPEID[ 'VOID' ] },
+               [ 'STRING' ]    = { _type = TAB_TYPEID[ 'STRING' ] },
 }
 
 local TAB_IMPLICITTYPE = {
@@ -1968,9 +1969,7 @@ end
 function string_type()
   reconhecer( lex.tab_tokens.TK_STRING )
 --maxlength??
-  return { _type = TAB_TYPEID.STRING, maxlength = 0
-  --size = string_type_tail()
-  }
+  return TAB_BASICTYPE.STRING
 end
 
 --ok2
