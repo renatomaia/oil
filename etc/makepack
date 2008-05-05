@@ -1,0 +1,50 @@
+#!/bin/sh
+
+SVNBASE=https://subversion.tecgraf.puc-rio.br/engsoftware/
+VERSION=0.4
+RELEASE=beta
+PACKAGE=oil-$VERSION-$RELEASE
+
+wget http://luaforge.net/frs/download.php/2664/luasocket-2.0.2.tar.gz
+tar -xzvf luasocket-2.0.2.tar.gz
+
+if [ ! -d $PACKAGE ]; then mkdir $PACKAGE; fi
+mv luasocket-2.0.2/src $PACKAGE/src
+rm -fR luasocket-2.0.2 luasocket-2.0.2.tar.gz
+
+cd $PACKAGE
+mkdir -p lua/socket
+rm -f src/ltn12.lua
+rm -f src/mime.*
+mv src/socket.lua lua/
+mv src/*.lua lua/socket/
+rm -f src/makefile
+cd ..
+
+svn export --force $SVNBASE/oil/trunk $PACKAGE
+svn export --force $SVNBASE/loop/trunk/lua $PACKAGE/lua
+
+cd $PACKAGE
+# remove this script
+rm -f etc/makepack
+# remove MS-NMake support for Windows
+rm -f config.win32
+rm -f Makefile.win32
+rm -f src/Makefile.win32
+# remove demos not updated to lastest version
+rm -fR demo/hello_ssl
+rm -fR demo/minimal
+rm -fR demo/proxy
+# remove test suite
+rm -fR test
+# remote LOOP classes that are still draft
+rm -f lua/loop/test/Assert.lua
+rm -f lua/loop/test/checks.lua
+rm -f lua/loop/test/Fixture.lua
+rm -f lua/loop/test/Reporter.lua
+rm -f lua/loop/test/Results.lua
+rm -f lua/loop/test/Suite.lua
+cd ..
+
+tar -czvf $PACKAGE.tar.gz $PACKAGE/
+rm -fR $PACKAGE/
