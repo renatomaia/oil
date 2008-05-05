@@ -7,13 +7,24 @@ include ../config
 PRECMP_LUA=	../lua/precompiler.lua
 PRELDR_LUA=	../lua/preloader.lua
 
-LOOP_PCK= $(addprefix ../lua/, \
+LUASOCKET_OBJ= \
+	luasocket.o \
+	timeout.o \
+	buffer.o \
+	io.o \
+	auxiliar.o \
+	options.o \
+	inet.o \
+	tcp.o \
+	udp.o \
+	except.o \
+	select.o \
+	usocket.o
+OILBIT_OBJ= oilbit.o
+
+LOOP_LUA= $(addprefix ../lua/, \
 	loop/base.lua \
 	loop/cached.lua \
-	loop/multiple.lua \
-	loop/scoped.lua \
-	loop/simple.lua \
-	loop/table.lua \
 	loop/collection/MapWithArrayOfKeys.lua \
 	loop/collection/ObjectCache.lua \
 	loop/collection/OrderedSet.lua \
@@ -32,47 +43,55 @@ LOOP_PCK= $(addprefix ../lua/, \
 	loop/debug/Matcher.lua \
 	loop/debug/Verbose.lua \
 	loop/debug/Viewer.lua \
+	loop/multiple.lua \
 	loop/object/Exception.lua \
-	loop/object/Wrapper.lua \
 	loop/object/Publisher.lua \
+	loop/object/Wrapper.lua \
+	loop/scoped.lua \
 	loop/serial/FileStream.lua \
 	loop/serial/Serializer.lua \
 	loop/serial/SocketStream.lua \
 	loop/serial/StringStream.lua \
+	loop/simple.lua \
+	loop/table.lua \
 	loop/thread/CoSocket.lua \
 	loop/thread/IOScheduler.lua \
 	loop/thread/Scheduler.lua \
 	loop/thread/SocketScheduler.lua \
 	loop/thread/Timer.lua \
 )
-LUAIDL_PCK= $(addprefix ../lua/, \
+LUAIDL_LUA= $(addprefix ../lua/, \
 	luaidl.lua \
 	luaidl/lex.lua \
 	luaidl/pre.lua \
 	luaidl/sin.lua \
 )
-OIL_PCK= $(addprefix ../lua/, \
+SOCKET_LUA= $(addprefix ../lua/, \
+	socket.lua \
+	socket/ftp.lua \
+	socket/http.lua \
+	socket/smtp.lua \
+	socket/tp.lua \
+	socket/url.lua \
+)
+OIL_LUA= $(addprefix ../lua/, \
 	oil.lua \
-	oil/assert.lua \
-	oil/component.lua \
-	oil/Exception.lua \
-	oil/oo.lua \
-	oil/port.lua \
-	oil/properties.lua \
-	oil/verbose.lua \
 	oil/arch/base.lua \
 	oil/arch/cooperative.lua \
 	oil/arch/corba.lua \
 	oil/arch/ludo.lua \
 	oil/arch/typed.lua \
+	oil/assert.lua \
 	oil/builder.lua \
 	oil/builder/base.lua \
 	oil/builder/cooperative.lua \
 	oil/builder/corba.lua \
+	oil/builder/gencode.lua \
+	oil/builder/intercepted.lua \
 	oil/builder/ludo.lua \
 	oil/builder/typed.lua \
-	oil/builder/intercepted.lua \
-	oil/builder/gencode.lua \
+	oil/compat.lua \
+	oil/component.lua \
 	oil/corba/giop.lua \
 	oil/corba/giop/Codec.lua \
 	oil/corba/giop/CodecGen.lua \
@@ -97,15 +116,16 @@ OIL_PCK= $(addprefix ../lua/, \
 	oil/corba/interceptors/ClientSide.lua \
 	oil/corba/interceptors/ServerSide.lua \
 	oil/corba/services/event.lua \
-	oil/corba/services/event/SingleSynchronousDispatcher.lua \
-	oil/corba/services/event/SingleDeferredDispatcher.lua \
 	oil/corba/services/event/ConsumerAdmin.lua \
-	oil/corba/services/event/SupplierAdmin.lua \
 	oil/corba/services/event/EventFactory.lua \
 	oil/corba/services/event/EventQueue.lua \
 	oil/corba/services/event/ProxyPushConsumer.lua \
 	oil/corba/services/event/ProxyPushSupplier.lua \
+	oil/corba/services/event/SingleDeferredDispatcher.lua \
+	oil/corba/services/event/SingleSynchronousDispatcher.lua \
+	oil/corba/services/event/SupplierAdmin.lua \
 	oil/corba/services/naming.lua \
+	oil/Exception.lua \
 	oil/kernel/base/Client.lua \
 	oil/kernel/base/Dispatcher.lua \
 	oil/kernel/base/Invoker.lua \
@@ -124,39 +144,28 @@ OIL_PCK= $(addprefix ../lua/, \
 	oil/ludo/Listener.lua \
 	oil/ludo/Referrer.lua \
 	oil/ludo/Requester.lua \
+	oil/oo.lua \
+	oil/port.lua \
+	oil/properties.lua \
+	oil/verbose.lua \
 )
 
-OILBIT_INC=	oilbit.h
-OILBIT_OBJ=	oilbit.o
-OILBIT_LIB=	liboilbit.a
-OILBIT_SOL=	liboilbit.$V.so
+PCSRC= $(PCINC:.h=.c)
+PCOBJ= $(PCINC:.h=.o)
+PLSRC= $(PLINC:.h=.c)
+PLOBJ= $(PLINC:.h=.o)
 
-PRECMP_INC=	loop.h luaidl.h oil.h
-PRECMP_SRC=	loop.c luaidl.c oil.c
-PRECMP_OBJ=	loop.o luaidl.o oil.o
-PRECMP_LIB=	libloop.a     libluaidl.a     liboil.a
-PRECMP_SOL=	libloop.$V.so libluaidl.$V.so liboil.$V.so
+ALL_PRE=	$(PCINC) $(PCSRC) \
+        	$(PLINC) $(PLSRC)
+ALL_OBJ=	$(LUASOCKET_OBJ) $(OILBIT_OBJ) \
+        	$(PCOBJ) $(PLOBJ) $(OILBIN_OBJ)
+ALL_LIB=	$(TOLIB) $(PCLIB) $(PLLIB)
+ALL_SOL=	$(TOSOL) $(PCSOL) $(PLSOL)
+ALL_TRG=	$(ALL_LIB) $(ALL_SOL)
 
-PRELDR_INC=	oilall.h
-PRELDR_SRC=	oilall.c
-PRELDR_OBJ=	oilall.o
-PRELDR_LIB=	liboilall.a
-PRELDR_SOL=	liboilall.$V.so
-                   
-OILBIN_OBJ=	console.o
-OILBIN_TRG=	console
+default: $(PLAT)
 
-ALL_PRE=	$(PRECMP_INC) $(PRECMP_SRC) $(PRECMP_LIB) $(PRECMP_SOL) \
-        	$(PRELDR_INC) $(PRELDR_SRC) $(PRELDR_LIB) $(PRELDR_SOL) \
-        	$(OILBIN_TRG)
-ALL_OBJ=	$(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ) $(OILBIN_OBJ)
-ALL_TRG=	$(OILBIT_LIB) $(OILBIT_SOL)
-ALL_LIB=	$(OILBIT_LIB)
-ALL_SOL=	$(OILBIT_SOL)
-
-madefault: $(PLAT)
-
-all:	$(ALL_TRG) bundle preload
+all:	$(ALL_TRG)
 
 o:	$(ALL_OBJ)
 
@@ -164,53 +173,78 @@ a:	$(ALL_LIB)
 
 so:	$(ALL_SOL)
 
-loop.c loop.h: $(PRECMP_LUA) $(LOOP_PCK)
-	$(LUA) $(PRECMP_LUA) $(PC_FLAGS) -o loop $(LOOP_PCK)
+# Script Compilation
 
-luaidl.c luaidl.h: $(PRECMP_LUA) $(LUAIDL_PCK)
-	$(LUA) $(PRECMP_LUA) $(PC_FLAGS) -o luaidl $(LUAIDL_PCK)
+$(LIBPFX)loop.c: $(PRECMP_LUA) $(LOOP_LUA)
+	$(LUA) $< $(PC_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
 
-oil.c oil.h: $(PRECMP_LUA) $(OIL_PCK)
-	$(LUA) $(PRECMP_LUA) $(PC_FLAGS) -o oil $(OIL_PCK)
+$(LIBPFX)luaidl.c: $(PRECMP_LUA) $(LUAIDL_LUA)
+	$(LUA) $< $(PC_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
 
-oilall.c oilall.h: $(PRELDR_LUA) $(PRECMP_INC) $(OILBIT_INC)
-	$(LUA) $(PRELDR_LUA) $(PLD_FLAGS) -o oilall $(PRECMP_INC) $(OILBIT_INC)
+$(LIBPFX)socket.c: $(PRECMP_LUA) $(SOCKET_LUA)
+	$(LUA) $< $(PC_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
 
-# OIL BIT LIBRARY
+$(LIBPFX)oil.c: $(PRECMP_LUA) $(OIL_LUA)
+	$(LUA) $< $(PC_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
 
-$(OILBIT_LIB): $(OILBIT_OBJ)
+# Static Libraies
+
+lib$(LUASOCKET).a: $(LUASOCKET_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
 
-$(OILBIT_SOL): $(OILBIT_OBJ)
-	$(LD) $(LDFLAGS) -o $@ $?
-
-# BUNDLED LIBRARIES
-
-bundlelib: $(PRECMP_OBJ)
-	$(AR) libloop.a loop.o            ; $(RANLIB) libloop.a
-	$(AR) libluaidl.a luaidl.o        ; $(RANLIB) libluaidl.a
-	$(AR) liboil.a oil.o $(OILBIT_OBJ); $(RANLIB) liboil.a
-
-bundleso: $(OILBIT_OBJ) $(PRECMP_OBJ)
-	$(LD) $(LDFLAGS) -o libloop.$V.so      loop.o
-	$(LD) $(LDFLAGS) -o libluaidl.$V.so    luaidl.o
-	$(LD) $(LDFLAGS) -o liboil.$V.so       oil.o $(OILBIT_OBJ)
-
-bundle: bundlelib bundleso
-
-# PRELOAD LIBRARY
-
-$(PRELDR_LIB): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ)
+lib$(OILBIT).a: $(OILBIT_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
 
-$(PRELDR_SOL): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ)
+# Dynamic Libraies
+
+lib$(LUASOCKET).$(vSOCK).so: $(LUASOCKET_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $?
 
-preload: $(PRELDR_LIB) $(PRELDR_SOL)
+lib$(OILBIT).$(vOIL).so: $(OILBIT_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $?
+
+# Precompiled Static Libraries
+
+lib$(LIBPFX)loop.a: $(LIBPFX)loop.o
+	$(AR) $@ $?; $(RANLIB) $@
+
+lib$(LIBPFX)luaidl.a: $(LIBPFX)luaidl.o
+	$(AR) $@ $?; $(RANLIB) $@
+
+lib$(LIBPFX)socket.a: $(LIBPFX)socket.o $(LUASOCKET_OBJ)
+	$(AR) $@ $?; $(RANLIB) $@
+
+lib$(LIBPFX)oil.a: $(LIBPFX)oil.o $(OILBIT_OBJ)
+	$(AR) $@ $?; $(RANLIB) $@
+
+# Precompiled Dynamic Libraries
+
+lib$(LIBPFX)loop.$(vLOOP).so: $(LIBPFX)loop.o
+	$(LD) $(LDFLAGS) -o $@ $^
+
+lib$(LIBPFX)luaidl.$(vLIDL).so: $(LIBPFX)luaidl.o
+	$(LD) $(LDFLAGS) -o $@ $^
+
+lib$(LIBPFX)socket.$(vSOCK).so: $(LIBPFX)socket.o $(LUASOCKET_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+lib$(LIBPFX)oil.$(vOIL).so: $(LIBPFX)oil.o $(OILBIT_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+# Preload Libraries
+
+$(PLSRC): $(PRELDR_LUA) $(TOINC) $(PCINC)
+	$(LUA) $< $(PL_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
+
+$(PLLIB): $(PCOBJ) $(PLOBJ) $(LUASOCKET_OBJ) $(OILBIT_OBJ)
+	$(AR) $@ $?; $(RANLIB) $@
+
+$(PLSOL): $(PCOBJ) $(PLOBJ) $(LUASOCKET_OBJ) $(OILBIT_OBJ)
+	$(LD) $(LDFLAGS) -o $@ $^
 
 # STAND-ALONE CONSOLE
 
-$(OILBIN_TRG): $(OILBIT_OBJ) $(PRECMP_OBJ) $(PRELDR_OBJ) $(OILBIN_OBJ)
+$(OILBIN_TRG): $(OILBIT_OBJ) $(PCOBJ) $(PLOBJ) $(OILBIN_OBJ)
 	$(CC) $(LDFLAGS) -o $@ $? $(LIBS)
 
 clean:
@@ -237,8 +271,8 @@ none:
 linux:
 	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
 	            MYLDFLAGS="-Wl,-E -O -shared $(MYLDFLAGS)"
-	$(MAKE) console LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
-	            MYLDFLAGS="-Wl,-E -O $(MYLDFLAGS)"
+#	$(MAKE) console LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
+#	            MYLDFLAGS="-Wl,-E -O $(MYLDFLAGS)"
 
 solaris:
 	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
@@ -251,11 +285,30 @@ macosx:
 
 # DO NOT DELETE
 
-loop.o: loop.c loop.h
-luaidl.o: luaidl.c luaidl.h
-oilbit.o: oilbit.c oilbit.h
-oil.o: oil.c oil.h
-oilall.o: $(PRECMP_INC) $(PRELDR_INC)
-console.o: $(PRELDR_INC) console.c
+$(LIBPFX)loop.o: $(LIBPFX)loop.h $(LIBPFX)loop.c
+$(LIBPFX)luaidl.o: $(LIBPFX)luaidl.h $(LIBPFX)luaidl.c
+$(LIBPFX)socket.o: $(LIBPFX)socket.h $(LIBPFX)socket.c
+$(LIBPFX)oil.o: $(LIBPFX)oil.h $(LIBPFX)oil.c
+$(PLOBJ): $(PCINC) $(PLINC)
+console.o: $(PLINC) console.c
+oilbit.o: oilbit.h oilbit.c
+auxiliar.o: auxiliar.c auxiliar.h
+buffer.o: buffer.c buffer.h io.h timeout.h
+except.o: except.c except.h
+inet.o: inet.c inet.h socket.h io.h timeout.h usocket.h
+io.o: io.c io.h timeout.h
+luasocket.o: luasocket.c luasocket.h auxiliar.h except.h timeout.h \
+  buffer.h io.h inet.h socket.h usocket.h tcp.h udp.h select.h
+options.o: options.c auxiliar.h options.h socket.h io.h timeout.h \
+  usocket.h inet.h
+select.o: select.c socket.h io.h timeout.h usocket.h select.h
+tcp.o: tcp.c auxiliar.h socket.h io.h timeout.h usocket.h inet.h \
+  options.h tcp.h buffer.h
+timeout.o: timeout.c auxiliar.h timeout.h
+udp.o: udp.c auxiliar.h socket.h io.h timeout.h usocket.h inet.h \
+  options.h udp.h
+unix.o: unix.c auxiliar.h socket.h io.h timeout.h usocket.h options.h \
+  unix.h buffer.h
+usocket.o: usocket.c socket.h io.h timeout.h usocket.h
 
 # (end of Makefile)

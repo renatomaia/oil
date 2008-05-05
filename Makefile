@@ -4,67 +4,48 @@
 
 include config
 
-# What to install.
-TO_INC= oilbit.h
-TO_LIB= liboilbit.a
-SO_LIB= liboilbit
-
-TO_LUA=	loop luaidl.lua luaidl oil.lua oil
-
-BND_INC=	loop.h luaidl.h oil.h
-BND_LIB=	libloop.a libluaidl.a liboil.a
-BND_SOL=	loop luaidl oil
-
-PLD_INC=	oilall.h
-PLD_LIB=	liboilall.a
-PLD_SOL=	liboilall
-
 # Installation directories
 INSTALL_DIR= $(INSTALL_INC) $(INSTALL_LIB) \
-             $(INSTALL_LMOD) $(INSTALL_CMOD)/oil
+             $(INSTALL_LMOD) $(INSTALL_CMOD) \
+             $(INSTALL_CMOD)/socket $(INSTALL_CMOD)/oil
 
 all: $(PLAT)
 
-$(PLATS) bundles preload console a so clean:
+$(PLATS) clean:
 	cd src; $(MAKE) $@
 
-test:	all
-	src/lua test/hello.lua
+install: $(INSTALL_DIR)
+	cd lua; $(INSTALL_DATA) $(TOLUA) $(INSTALL_LMOD)
+	cd src; $(INSTALL_DATA) $(TOINC) $(INSTALL_INC)
+	cd src; $(INSTALL_DATA) $(TOLIB) $(INSTALL_LIB)
+	cd src; $(INSTALL_EXEC) $(TOSOL) $(INSTALL_LIB)
+	cd $(INSTALL_LIB); for n in $(TOSOL); do $(INSTALL_COPY) $$n $${n%%.*}.so; done
+	cd $(INSTALL_CMOD)/socket; $(INSTALL_COPY) $(INSTALL_LIB)/libluasocket.$(vSOCK).so core.so;
+	cd $(INSTALL_CMOD)/oil   ; $(INSTALL_COPY) $(INSTALL_LIB)/liboilbit.$(vOIL).so     bit.so;
 
-install: all $(INSTALL_DIR) $(INSTALL_CMOD)/oil
-	cd src; $(INSTALL_EXEC) $(SO_LIB).$V.so $(INSTALL_LIB)
-	cd src; $(INSTALL_DATA) $(TO_INC) $(INSTALL_INC)
-	cd src; $(INSTALL_DATA) $(TO_LIB) $(INSTALL_LIB)
-	cd lua; $(INSTALL_DATA) $(TO_LUA) $(INSTALL_LMOD)
-	cd $(INSTALL_LIB); ln -fs $(SO_LIB).$V.so $(SO_LIB).so;
-	cd $(INSTALL_CMOD)/oil; ln -fs $(INSTALL_LIB)/$(SO_LIB).$V.so bit.so;
+install-precomp: $(INSTALL_INC) $(INSTALL_LIB) $(INSTALL_CMOD)
+	cd src; $(INSTALL_DATA) $(PCINC) $(TOINC) $(INSTALL_INC)
+	cd src; $(INSTALL_DATA) $(PCLIB) $(INSTALL_LIB)
+	cd src; $(INSTALL_EXEC) $(PCSOL) $(INSTALL_LIB)
+	cd $(INSTALL_LIB); for n in $(PCSOL); do $(INSTALL_COPY) $$n $${n%%.*}.so; done
+	cd $(INSTALL_CMOD); for n in $(LLIBS); do $(INSTALL_COPY) $(INSTALL_LIB)/lib$(LIBPFX)$$n.so $${n%%.*}.so; done
 
-installb: bundles $(INSTALL_DIR)
-	cd src; $(INSTALL_DATA) $(BND_INC) $(INSTALL_INC)
-	cd src; $(INSTALL_DATA) $(BND_LIB) $(INSTALL_LIB)
-	cd src; for n in $(BND_SOL); do $(INSTALL_EXEC) lib$$n.$V.so $(INSTALL_LIB); done
-	cd $(INSTALL_LIB); for n in $(BND_SOL); do ln -fs lib$$n.$V.so lib$$n.so; done
-	cd $(INSTALL_CMOD); for n in $(BND_SOL); do ln -fs $(INSTALL_LIB)/lib$$n.$V.so $$n.so; done
-
-installp: preload $(INSTALL_DIR)
-	cd src; $(INSTALL_EXEC) $(PLD_SOL).$V.so $(INSTALL_LIB)
-	cd src; $(INSTALL_DATA) $(PLD_INC) $(INSTALL_INC)
-	cd src; $(INSTALL_DATA) $(PLD_LIB) $(INSTALL_LIB)
-	cd $(INSTALL_LIB); ln -fs $(PLD_SOL).$V.so $(PLD_SOL).so;
-
-installc: console $(INSTALL_BIN)
-	$(INSTALL_EXEC) src/console $(INSTALL_BIN)/oil
+install-preload: $(INSTALL_INC) $(INSTALL_LIB)
+	cd src; $(INSTALL_DATA) $(PLINC) $(INSTALL_INC)
+	cd src; $(INSTALL_DATA) $(PLLIB) $(INSTALL_LIB)
+	cd src; $(INSTALL_EXEC) $(PLSOL) $(INSTALL_LIB)
+	cd $(INSTALL_LIB); $(INSTALL_COPY) $(PLSOL) $(call modname,$(PLSOL)).so
 
 local:
 	$(MAKE) install INSTALL_TOP=.. INSTALL_EXEC="cp -p" INSTALL_DATA="cp -p"
 
 no-verbose:
-	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\-\[\[VERBOSE\]\]/-- [[VERBOSE]]/g" $$f; done
-	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\-\[\[DEBUG\]\]/-- [[DEBUG]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i -e "s/\-\-\[\[VERBOSE\]\]/-- [[VERBOSE]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i -e "s/\-\-\[\[DEBUG\]\]/-- [[DEBUG]]/g" $$f; done
 
 verbose:
-	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\- \[\[VERBOSE\]\]/--[[VERBOSE]]/g" $$f; done
-	for f in `find lua/ -iname "*.lua"`; do sed -i "" -e "s/\-\- \[\[DEBUG\]\]/--[[DEBUG]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i -e "s/\-\- \[\[VERBOSE\]\]/--[[VERBOSE]]/g" $$f; done
+	for f in `find lua/ -iname "*.lua"`; do sed -i -e "s/\-\- \[\[DEBUG\]\]/--[[DEBUG]]/g" $$f; done
 
 none:
 	@echo "Please do"
@@ -79,7 +60,7 @@ $(INSTALL_DIR):
 
 env:
 	@echo ""
-	@echo "Add the following paths to the proper enviroment variables to set up OiL $V:"
+	@echo "Add the following paths to the proper enviroment variables to set up OiL $(vOIL):"
 	@echo ""
 	@echo "LUA_PATH  += ';$(INSTALL_LMOD)/?.lua'"
 	@echo "LUA_CPATH += ';$(INSTALL_CMOD)/?.so'"
@@ -88,11 +69,11 @@ env:
 # echo config parameters
 echo:
 	@echo ""
-	@echo "These are the parameters currently set in src/Makefile to build OiL $V:"
+	@echo "These are the parameters currently set in src/Makefile to build OiL $(vOIL):"
 	@echo ""
 	@cd src; $(MAKE) -s echo
 	@echo ""
-	@echo "These are the parameters currently set in Makefile to install OiL $V:"
+	@echo "These are the parameters currently set in Makefile to install OiL $(vOIL):"
 	@echo ""
 	@echo "INSTALL_TOP = $(INSTALL_TOP)"
 	@echo "INSTALL_BIN = $(INSTALL_BIN)"
@@ -102,23 +83,27 @@ echo:
 	@echo "INSTALL_CMOD = $(INSTALL_CMOD)"
 	@echo "INSTALL_EXEC = $(INSTALL_EXEC)"
 	@echo "INSTALL_DATA = $(INSTALL_DATA)"
-	@echo ""
-	@echo "See also src/oilconf.h ."
+	@echo "INSTALL_COPY = $(INSTALL_COPY)"
 	@echo ""
 
 # echo private config parameters
 pecho:
-	@echo "V = $(V)"
-	@echo "TO_BIN = $(TO_BIN)"
-	@echo "TO_INC = $(TO_INC)"
-	@echo "TO_LIB = $(TO_LIB)"
-	@echo "TO_LUA = $(TO_LUA)"
+	@echo "TOLUA = $(TOLUA)"
+	@echo "TOINC = $(TOINC)"
+	@echo "TOLIB = $(TOLIB)"
+	@echo "TOSOL = $(TOSOL)"
+	@echo "PCINC = $(PCINC)"
+	@echo "PCLIB = $(PCLIB)"
+	@echo "PCSOL = $(PCSOL)"
+	@echo "PLINC = $(PCINC)"
+	@echo "PLLIB = $(PCLIB)"
+	@echo "PLSOL = $(PCSOL)"
 
 # echo config parameters as OiL code
 # uncomment the last sed expression if you want nil instead of empty strings
 lecho:
-	@echo "-- installation parameters for OiL $V"
-	@echo "VERSION = '$V'"
+	@echo "-- installation parameters for OiL $(vOIL)"
+	@echo "VERSION = '$(vOIL)'"
 	@$(MAKE) echo | grep = | sed -e 's/= /= "/' -e 's/$$/"/' #-e 's/""/nil/'
 	@echo "-- EOF"
 
