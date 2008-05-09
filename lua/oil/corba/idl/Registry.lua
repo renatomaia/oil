@@ -128,7 +128,6 @@ function IRObject:nowatch(object, field)
 		if next(references[self]) == nil then
 			references[self] = nil
 		end
-		references[self] = nil
 	end
 end
 
