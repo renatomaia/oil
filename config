@@ -40,7 +40,7 @@ MYLDFLAGS=
 PLAT= none
 
 # Convenience platforms targets.
-PLATS= linux macosx
+PLATS= linux solaris macosx
 
 CC= gcc
 CFLAGS= -O2 -Wall -I$(LUA_INC) $(MYCFLAGS)
