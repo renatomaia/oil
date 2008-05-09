@@ -152,6 +152,7 @@ OIL_LUA= $(addprefix ../lua/, \
 
 PCSRC= $(PCINC:.h=.c)
 PCOBJ= $(PCINC:.h=.o)
+
 PLSRC= $(PLINC:.h=.c)
 PLOBJ= $(PLINC:.h=.o)
 
@@ -172,6 +173,12 @@ o:	$(ALL_OBJ)
 a:	$(ALL_LIB)
 
 so:	$(ALL_SOL)
+
+clibs: $(TOLIB) $(TOSOL)
+
+precomp: $(PCLIB) $(PCSOL)
+
+preload: $(PLLIB) $(PLSOL)
 
 # Script Compilation
 

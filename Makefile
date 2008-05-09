@@ -11,10 +11,10 @@ INSTALL_DIR= $(INSTALL_INC) $(INSTALL_LIB) \
 
 all: $(PLAT)
 
-$(PLATS) clean:
+$(PLATS) all o a so clibs precomp preload clean:
 	cd src; $(MAKE) $@
 
-install: $(INSTALL_DIR)
+install: clibs $(INSTALL_DIR)
 	cd lua; $(INSTALL_DATA) $(TOLUA) $(INSTALL_LMOD)
 	cd src; $(INSTALL_DATA) $(TOINC) $(INSTALL_INC)
 	cd src; $(INSTALL_DATA) $(TOLIB) $(INSTALL_LIB)
@@ -23,14 +23,14 @@ install: $(INSTALL_DIR)
 	cd $(INSTALL_CMOD)/socket; $(INSTALL_COPY) $(INSTALL_LIB)/libluasocket.$(vSOCK).so core.so;
 	cd $(INSTALL_CMOD)/oil   ; $(INSTALL_COPY) $(INSTALL_LIB)/liboilbit.$(vOIL).so     bit.so;
 
-install-precomp: $(INSTALL_INC) $(INSTALL_LIB) $(INSTALL_CMOD)
+install-precomp: precomp $(INSTALL_INC) $(INSTALL_LIB) $(INSTALL_CMOD)
 	cd src; $(INSTALL_DATA) $(PCINC) $(TOINC) $(INSTALL_INC)
 	cd src; $(INSTALL_DATA) $(PCLIB) $(INSTALL_LIB)
 	cd src; $(INSTALL_EXEC) $(PCSOL) $(INSTALL_LIB)
 	cd $(INSTALL_LIB); for n in $(PCSOL); do $(INSTALL_COPY) $$n $${n%%.*}.so; done
 	cd $(INSTALL_CMOD); for n in $(LLIBS); do $(INSTALL_COPY) $(INSTALL_LIB)/lib$(LIBPFX)$$n.so $${n%%.*}.so; done
 
-install-preload: $(INSTALL_INC) $(INSTALL_LIB)
+install-preload: preload $(INSTALL_INC) $(INSTALL_LIB)
 	cd src; $(INSTALL_DATA) $(PLINC) $(INSTALL_INC)
 	cd src; $(INSTALL_DATA) $(PLLIB) $(INSTALL_LIB)
 	cd src; $(INSTALL_EXEC) $(PLSOL) $(INSTALL_LIB)
