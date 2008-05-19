@@ -4,6 +4,7 @@ local assert          = require "oil.assert"
 local pairs           = pairs
 local next            = next
 local io              = io
+local coroutine       = coroutine
 
 module("oil.corba.services.event.SingleDeferredDispatcher", oo.class)
 
@@ -25,6 +26,7 @@ local function waitforresults()
         calls[call] = nil
       end
     end
+    coroutine.yield()
   until next(calls) == nil
 end
 
