@@ -1,1 +1,1 @@
-tasks = { OILSUITE = { dtest = "oil.dtests.Suite > ~/Work/proj/oil/trunk/test/oil/dtests/dtests.log" } }
+tasks = { OILSUITE = { dtest = "oil.dtests.Suite" } }
