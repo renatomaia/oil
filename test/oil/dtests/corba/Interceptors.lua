@@ -18,8 +18,7 @@ oil.setserverinterceptor{
 			checks:assert(request.service_context, checks.typeis("table"))
 			checks:assert(request.request_id, checks.typeis("number"))
 			checks:assert(request.response_expected, checks.is(true))
-			checks:assert(request.servant, checks.typeis("table"))
-			checks:assert(request.servant.__newindex, checks.is(Object))
+			checks:assert(request.servant, checks.is(Object))
 			checks:assert(request.method, checks.is(Object.concat))
 			checks:assert(request.success, checks.is(nil))
 			checks:assert(request.count, checks.is(2))
@@ -39,7 +38,7 @@ oil.setserverinterceptor{
 			checks:assert(reply.response_expected, checks.is(true))
 			checks:assert(reply.object_key, checks.is("object"))
 			checks:assert(reply.operation, checks.is("concat"))
-			checks:assert(reply.servant.__newindex, checks.is(Object))
+			checks:assert(reply.servant, checks.is(Object))
 			checks:assert(reply.method, checks.is(Object.concat))
 			checks:assert(reply.success, checks.is(true))
 			checks:assert(reply.count, checks.is(1))
@@ -60,6 +59,9 @@ oil.loadidl[[
 	};
 ]]
 oil.newservant(Object, "::MyInterface", "object")
+
+oil.verbose:level(5)
+
 oil.run()
 --[Server]=====================================================================]
 
@@ -106,6 +108,8 @@ oil.setclientinterceptor{
 		end
 	end,
 }
+
+oil.verbose:level(5)
 
 object:concat("first", "second")
 
