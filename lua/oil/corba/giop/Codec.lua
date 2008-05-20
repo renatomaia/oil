@@ -345,8 +345,7 @@ function Decoder:indirection(unmarshall, ...)
 			assert.illegal(nil, "indirection offset", "MARSHALL")
 		end
 	else
-		value = unmarshall(self, tag, ...)
-		history[pos] = value
+		value = unmarshall(self, history, pos, tag, ...)
 	end
 	return value
 end
@@ -521,16 +520,18 @@ end
 
 Decoder.interface = Decoder.Object
 
-local function gettype(decoder, kind)
+local function gettype(decoder, storage, key, kind)
 	local tcinfo = TypeCodeInfo[kind]
 	
 	if tcinfo == nil then assert.illegal(kind, "type code", "MARSHALL") end       --[[VERBOSE]] verbose:unmarshal("TypeCode defines a ",tcinfo.name)
 	if tcinfo.unhandled then
 		assert.illegal(tcinfo.name, "supported type code", "MARSHALL")
 	end
+	local value = tcinfo.idl
 	
 	if tcinfo.type == "simple" then
 		
+		storage[key] = value
 		-- NOTE: The string type is the only simple type being handled,
 		--       therefore parameters are ignored.
 		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose:unmarshal("[parameter ",param.name,"]")
@@ -542,17 +543,21 @@ local function gettype(decoder, kind)
 		local params = decoder:sequence(idl.OctetSeq)
 		local temp = decoder.context.__component:decoder(params, true)              --[[VERBOSE]] verbose:unmarshal "[parameters values]"
 		temp:pointto(decoder)
-		params = temp:struct(tcinfo.parameters)
+		value = { _type = tcinfo.name }
+		storage[key] = value
+		for _, field in ipairs(tcinfo.parameters.fields) do                                     --[[VERBOSE]] verbose:unmarshal("[field ",field.name,"]")
+			value[field.name] = temp:get(field.type)
+		end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose:unmarshal "[mutable parameters values]"
-			for _, param in ipairs(tcinfo.mutable:setup(params)) do
-				params[param.name] = temp:get(param.type)
+			for _, param in ipairs(tcinfo.mutable:setup(value)) do
+				value[param.name] = temp:get(param.type)
 			end
 		end                                                                         --[[VERBOSE]] verbose:unmarshal(false)
-		return idl[tcinfo.name](params)
+		return idl[tcinfo.name](value)
 		
 	end
 	
-	return tcinfo.idl
+	return value
 end
 
 function Decoder:TypeCode()                                                     --[[VERBOSE]] verbose:unmarshal(true, self, idl.TypeCode)

@@ -283,16 +283,18 @@ end
 
 function struct(self)
 	self = Container(Contained(self))
+	self._type = "struct"
 	if self.fields == nil then self.fields = self end
 	checkfields(self.fields)
-	self._type = "struct"
 	return self
 end
 
 function union(self)
 	self = Container(Contained(self))
+	self._type = "union"
 	if self.options == nil then self.options = self end
 	if self.default == nil then self.default = -1 end -- indicates no default in CDR
+	
 	assert.type(self.switch, "idl type", "union type discriminant")
 	assert.type(self.options, "table", "union options definition")
 	assert.type(self.default, "number", "union default option definition")
@@ -307,7 +309,7 @@ function union(self)
 			self.selection[option.label] = option
 		end
 	end
-
+	
 	function self.__index(union, field)
 		if rawget(union, "_switch") == self.selector[field] then
 			return rawget(union, "_value")
@@ -321,56 +323,55 @@ function union(self)
 			rawset(union, "_field", field)
 		end
 	end
-
-	self._type = "union"
+	
 	return self
 end
 
 function enum(self)
 	self = Contained(self)
+	self._type = "enum"
 	if self.enumvalues == nil then self.enumvalues = self end
 	assert.type(self.enumvalues, "table", "enumeration values definition")
-
+	
 	self.labelvalue = {}
 	for index, label in ipairs(self.enumvalues) do
 		assert.type(label, "string", "enumeration value label")
 		self.labelvalue[label] = index - 1
 	end
-
-	self._type = "enum"
+	
 	return self
 end
 
 function sequence(self)
+	self._type = "sequence"
 	if self.maxlength   == nil then self.maxlength = 0 end
 	if self.elementtype == nil then self.elementtype = self[1] end
 	assert.type(self.maxlength, "number", "sequence type maximum length ")
 	assert.type(self.elementtype, "idl type", "sequence element type")
-	self._type = "sequence"
 	return self
 end
 
 function array(self)
+	self._type = "array"
 	assert.type(self.length, "number", "array type length")
 	if self.elementtype == nil then self.elementtype = self[1] end
 	assert.type(self.elementtype, "idl type", "array element type")
-	self._type = "array"
 	return self
 end
 
 function typedef(self)
 	self = Contained(self)
-	if self.type  == nil then self.type  = self[1] end
-	assert.type(self.type, "idl type", "type in typedef definition")
 	self._type = "typedef"
+	if self.type == nil then self.type = self[1] end
+	assert.type(self.type, "idl type", "type in typedef definition")
 	return self
 end
 
 function except(self)
 	self = Container(Contained(self))
+	self._type = "except"
 	if self.members == nil then self.members = self end
 	checkfields(self.members)
-	self._type = "except"
 	return self
 end
 
@@ -381,6 +382,7 @@ end
 
 function attribute(self)
 	self = Contained(self)
+	self._type = "attribute"
 	if self.type  == nil then self.type = self[1] end
 	assert.type(self.type, "idl type", "attribute type")
 
@@ -391,12 +393,12 @@ function attribute(self)
 		assert.illegal(self.mode, "attribute mode")
 	end
 	
-	self._type = "attribute"
 	return self
 end
 
 function operation(self)
 	self = Contained(self)
+	self._type = "operation"
 	
 	local mode = self.mode
 	if mode == "OP_ONEWAY" then
@@ -444,7 +446,6 @@ function operation(self)
 		self.exceptions = {}
 	end
 
-	self._type = "operation"
 	return self
 end
 
@@ -473,9 +474,9 @@ end
 
 function interface(self)
 	self = Container(Contained(self))
+	self._type = "interface"
 	if self.base_interfaces == nil then self.base_interfaces = self end
 	assert.type(self.base_interfaces, "table", "base interface list")
-	self._type = "interface"
 	self.hierarchy = basesof
 	return self
 end
