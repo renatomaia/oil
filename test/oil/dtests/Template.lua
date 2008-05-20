@@ -121,13 +121,12 @@ function newtest(self, infos)
 				info.code
 			)
 			assert(info.connection:send(Message:format(name, #code, code)))
-			if name == self[1]
-				then Master = info.connection
-				else info.connection:close()
+			if name == self[1] then
+				Master = info.connection
 			end
 		end
 		
-		-- get results
+		-- get master results
 		local success = assert(Master:receive())
 		local size = assert(tonumber(assert(Master:receive())))
 		local result = assert(Master:receive(size))
@@ -140,6 +139,45 @@ function newtest(self, infos)
 		
 		-- wait processes to be killed
 		oil.sleep(1)
+		
+		-- get results from other processes
+		result = { result }
+		local function remains(conn, size)
+			local result, error, partial = conn:receive(size)
+			if result == nil and error == "timeout" then
+				result = partial
+			end
+			if result and #result > 0 then
+				return result
+			end
+		end
+		for name, info in pairs(Processes) do
+			if name ~= self[1] then
+				local conn = info.connection
+				conn:settimeout(0)
+				local received = remains(conn)
+				if received then
+					result[#result+1] = "\n"
+					result[#result+1] = name
+					result[#result+1] = " ("
+					result[#result+1] = received
+					result[#result+1] = "): "
+					received = remains(conn)
+					if received then
+						received = tonumber(received)
+						if received then
+							received = remains(conn, received)
+							if received then
+								result[#result+1] = received
+							end
+						end
+					end
+				end
+				conn:close()
+			end
+		end
+		result[#result+1] = "\n\n"
+		result = table.concat(result)
 		
 		-- report results
 		if success == "protocol" then
