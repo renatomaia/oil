@@ -136,7 +136,6 @@ function __init(self, object)
 			function cache.retrieve(_, port)
 				local socket, errmsg = self.context.sockets:tcp()
 				if socket then
-					socket:setoption("reuseaddr", true)
 					_, errmsg = socket:bind(host, port)
 					if _ then
 						_, errmsg = socket:listen()
