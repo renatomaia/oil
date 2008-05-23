@@ -6,8 +6,8 @@ local sysex   = require "oil.corba.idl.sysex"
 
 module "oil.builder.corba"
 
-IIOPClientChannels = arch.SocketChannels    {require "oil.corba.iiop.Connector" }
-IIOPServerChannels = arch.SocketChannels    {require "oil.corba.iiop.Acceptor"  }
+IIOPClientChannels = arch.SocketChannels    {require "oil.kernel.base.Connector"}
+IIOPServerChannels = arch.SocketChannels    {require "oil.kernel.base.Acceptor" }
 ValueEncoder       = arch.ValueEncoder      {require "oil.corba.giop.Codec"     }
 ObjectReferrer     = arch.ObjectReferrer    {require "oil.corba.giop.Referrer"  }
 IIOPProfiler       = arch.ReferenceProfiler {require "oil.corba.iiop.Profiler"  }

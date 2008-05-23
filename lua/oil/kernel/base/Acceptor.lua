@@ -43,7 +43,7 @@ local Wrapper           = require "loop.object.Wrapper"
 local oo        = require "oil.oo"
 local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.corba.iiop.Acceptor", oo.class)
+module("oil.kernel.base.Acceptor", oo.class)
 
 context = false
 
@@ -136,6 +136,7 @@ function __init(self, object)
 			function cache.retrieve(_, port)
 				local socket, errmsg = self.context.sockets:tcp()
 				if socket then
+					socket:setoption("reuseaddr", true)
 					_, errmsg = socket:bind(host, port)
 					if _ then
 						_, errmsg = socket:listen()

@@ -17,9 +17,7 @@
 --   See section 13.6.10.3 of CORBA 3.0 specification for IIOP corbaloc.      --
 --------------------------------------------------------------------------------
 -- channels:Facet
--- 	channel:object retieve(configs:table)
--- 	channel:object select(channel|configs...)
--- 	configs:table default([configs:table])
+-- 	channel:object retieve(configs:table, [probe:boolean])
 -- 
 -- sockets:Receptacle
 -- 	socket:object tcp()
@@ -35,7 +33,7 @@ local Wrapper     = require "loop.object.Wrapper"
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.corba.iiop.Connector", oo.class)
+module("oil.kernel.base.Connector", oo.class)
 
 context = false
 

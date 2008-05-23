@@ -4,8 +4,8 @@ local arch    = require "oil.arch.ludo"
 
 module "oil.builder.ludo"
 
-ClientChannels     = arch.SocketChannels    {require "oil.corba.iiop.Connector"}
-ServerChannels     = arch.SocketChannels    {require "oil.corba.iiop.Acceptor" }
+ClientChannels     = arch.SocketChannels    {require "oil.kernel.base.Connector"}
+ServerChannels     = arch.SocketChannels    {require "oil.kernel.base.Acceptor" }
 ValueEncoder       = arch.ValueEncoder      {require "oil.ludo.Codec"    }
 ObjectReferrer     = arch.ObjectReferrer    {require "oil.ludo.Referrer" }
 OperationRequester = arch.OperationRequester{require "oil.ludo.Requester"}
