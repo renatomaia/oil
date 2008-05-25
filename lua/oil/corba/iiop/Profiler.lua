@@ -27,6 +27,7 @@
 -- 	decoder:object decoder(stream:string, [encapsulated:boolean])
 --------------------------------------------------------------------------------
 
+local ipairs   = ipairs
 local tonumber = tonumber
 
 local string = require "string"
@@ -75,11 +76,40 @@ ProfileBody_v1_[3] = ProfileBody_v1_[1] -- same as IIOP 1.1
 --------------------------------------------------------------------------------
 -- IIOP profile encode/decode
 
-function encode(self, object_key, config, minor)
+function encode(self, profiles, object_key, config, minor)
 	if not minor then minor = 0 end
 	local profileidl = ProfileBody_v1_[minor]
-
-	if not profileidl then
+	if profileidl then
+		local host = config.refhost or config.host
+		local port = config.refport or config.port
+		if host == "*" then host = socket.dns.gethostname() end
+		local hosts, address = socket.dns.toip(host)
+		if hosts then
+			hosts = address.ip
+			hosts[#hosts+1] = address.name
+			for _, alias in ipairs(address.alias) do
+				hosts[#hosts+1] = alias
+			end
+		else
+			hosts = {host}
+		end
+		for _, host in ipairs(hosts) do
+			local profile = {
+				components = Empty,
+				host = host,
+				port = port,
+				object_key = object_key
+			}
+			local encoder = self.context.codec:encoder(true)
+			encoder:struct({major=1, minor=minor}, idl.Version)
+			encoder:struct(profile, profileidl)
+			profiles[#profiles+1] = {
+				tag          = Tag,
+				profile_data = encoder:getdata(),
+			}
+		end
+		return true
+	else
 		return nil, Exception{ "INTERNAL", minor_code_value = 0,
 			message = "IIOP minor version not supported",
 			reason = "version",
@@ -87,20 +117,6 @@ function encode(self, object_key, config, minor)
 			version = minor,
 		}
 	end
-	
-	local host = config.refhost or config.host
-	local port = config.refport or config.port
-	if host == "*" then host = socket.dns.gethostname() end
-	local profile = {
-		components = Empty,
-		host = host,
-		port = port,
-		object_key = object_key
-	}
-	local encoder = self.context.codec:encoder(true)
-	encoder:struct({major=1, minor=minor}, idl.Version)
-	encoder:struct(profile, profileidl)
-	return encoder:getdata()
 end
 
 function decode(self, profile)
@@ -159,7 +175,9 @@ function decodeurl(self, data)
 	end
 	local major, minor
 	major, minor, temp = string.match(data, "^(%d+).(%d+)@(.+)$")
-	if major and major ~= "1" then
+	if not minor then minor = 0 end
+	local profileidl = ProfileBody_v1_[minor]
+	if (major and major ~= "1") or (not profileidl) then
 		return nil, Exception{ "INTERNAL", minor_code_value = 0,
 			message = "IIOP version not supported",
 			reason = "version",
@@ -180,8 +198,17 @@ function decodeurl(self, data)
 			else host = data
 		end
 	end
+	
+	temp = self.context.codec:encoder(true)
+	temp:struct({major=1,minor=minor}, idl.Version)
+	temp:struct({
+		components = Empty,
+		host = host,
+		port = port,
+		object_key = objectkey
+	}, profileidl)
 	return {
 		tag = Tag,
-		profile_data = self:encode(objectkey,{host=host,port=port},tonumber(minor)),
+		profile_data = temp:getdata(),
 	}
 end

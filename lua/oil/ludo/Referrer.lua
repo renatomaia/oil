@@ -30,8 +30,13 @@ context = false
 --------------------------------------------------------------------------------
 
 function referenceto(self, objectkey, accessinfo)
+	local host = accessinfo.host
+	if host == "*" then
+		host = socket.dns.gethostname()
+		host = socket.dns.toip(host) or host
+	end
 	return {
-		host = accessinfo.host == "*" and socket.dns.gethostname() or accessinfo.host,
+		host = host,
 		port = accessinfo.port,
 		object = objectkey,
 	}

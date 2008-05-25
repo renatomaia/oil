@@ -98,19 +98,14 @@ end
 -- Coding ----------------------------------------------------------------------
 
 function referenceto(self, objectkey, ...)
-	local ior = {
-		type_id = self.context.types:typeof(objectkey).repID,
-		profiles = {},
-	}
+	local profiles = {}
 	for i = 1, select("#", ...) do
-		local acceptorinfo = select(i, ...)
-		local tag = acceptorinfo.tag or 0
+		local acceptor = select(i, ...)
+		local tag = acceptor.tag or 0
 		local profiler = self.context.profiler[tag]
 		if profiler then
-			ior.profiles[#ior.profiles + 1] = {
-				tag          = tag,
-				profile_data = profiler:encode(objectkey, acceptorinfo),
-			}
+			local ok, except = profiler:encode(profiles, objectkey, acceptor)
+			if not ok then return nil, except end
 		else
 			return nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
 				message = "GIOP profile tag not supported",
@@ -119,7 +114,10 @@ function referenceto(self, objectkey, ...)
 			}
 		end
 	end
-	return ior
+	return {
+		type_id = self.context.types:typeof(objectkey).repID,
+		profiles = profiles,
+	}
 end
 
 function encode(self, ior)
