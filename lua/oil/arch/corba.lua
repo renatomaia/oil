@@ -5,6 +5,7 @@ local type    = type
 local port      = require "oil.port"
 local component = require "oil.component"
 local arch      = require "oil.arch.typed"                                      --[[VERBOSE]] local verbose = require "oil.verbose"
+local sysex     = require "oil.corba.idl.sysex"
 
 module "oil.arch.corba"
 
@@ -200,6 +201,16 @@ TypeRepository = component.Template({
 
 function assemble(components)
 	setfenv(1, components)
+	
+	local IOPClientChannels  = { [0] = ClientChannels }
+	local IOPServerChannels  = { [0] = ServerChannels }
+	local ReferenceProfilers = {
+		[0]  = IIOPProfiler,
+		[""] = IIOPProfiler,
+		iiop = IIOPProfiler,
+	}
+	TypeRepository.types:register(sysex)
+	
 	-- COMMUNICATION
 	if IOPClientChannels then
 		for tag, channels in pairs(IOPClientChannels) do

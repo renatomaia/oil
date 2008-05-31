@@ -2,7 +2,6 @@ local require = require
 local builder = require "oil.builder"
 local base    = require "oil.arch.base"
 local arch    = require "oil.arch.corba"
-local sysex   = require "oil.corba.idl.sysex"
 
 module "oil.builder.corba"
 
@@ -26,14 +25,5 @@ TypeRepository = arch.TypeRepository{
 RequestDispatcher = base.RequestDispatcher{require "oil.kernel.base.Dispatcher"}
 
 function create(comps)
-	comps = builder.create(_M, comps)
-	comps.IOPClientChannels  = comps.IOPClientChannels or { [0] = comps.ClientChannels }
-	comps.IOPServerChannels  = comps.IOPServerChannels or { [0] = comps.ServerChannels }
-	comps.ReferenceProfilers = comps.ReferenceProfilers or {
-		[0]  = comps.IIOPProfiler,
-		[""] = comps.IIOPProfiler,
-		iiop = comps.IIOPProfiler,
-	}
-	comps.TypeRepository.types:register(sysex)
-	return comps
+	return builder.create(_M, comps)
 end
