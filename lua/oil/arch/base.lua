@@ -5,6 +5,21 @@ local component = require "oil.component"
 
 module "oil.arch.base"
 
+--
+-- UNDERPINNINGS
+--
+
+SocketChannels = component.Template{
+	channels = port.Facet--[[
+		channel:object retieve(configs:table)
+		configs:table default(configs:table)
+	]],
+	sockets = port.Receptacle--[[
+		socket:object tcp()
+		input:table, output:table select([input:table], [output:table], [timeout:number])
+	]],
+}
+
 BasicSystem = component.Template{
 	sockets = port.Facet--[[
 	]],

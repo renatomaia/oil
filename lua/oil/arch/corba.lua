@@ -11,17 +11,6 @@ module "oil.arch.corba"
 --
 -- COMMUNICATION
 --
-SocketChannels = component.Template{
-	channels = port.Facet--[[
-		channel:object retieve(configs:table)
-		configs:table default(configs:table)
-	]],
-	sockets = port.Receptacle--[[
-		socket:object tcp()
-		input:table, output:table select([input:table], [output:table], [timeout:number])
-	]],
-}
-
 ValueEncoder = component.Template{
 	codec = port.Facet--[[
 		encoder:object encoder()
@@ -212,13 +201,13 @@ TypeRepository = component.Template({
 function assemble(components)
 	setfenv(1, components)
 	-- COMMUNICATION
-	if ClientChannels then
-		for tag, channels in pairs(ClientChannels) do
+	if IOPClientChannels then
+		for tag, channels in pairs(IOPClientChannels) do
 			channels.sockets = BasicSystem.sockets
 		end
 	end
-	if ServerChannels then
-		for tag, channels in pairs(ServerChannels) do
+	if IOPServerChannels then
+		for tag, channels in pairs(IOPServerChannels) do
 			channels.sockets = BasicSystem.sockets
 		end
 	end
@@ -262,8 +251,8 @@ function assemble(components)
 				end
 			end
 		end
-		if ClientChannels then
-			for tag, channels in pairs(ClientChannels) do
+		if IOPClientChannels then
+			for tag, channels in pairs(IOPClientChannels) do
 				OperationRequester.channels[tag] = channels.channels
 			end
 		end
@@ -286,8 +275,8 @@ function assemble(components)
 		RequestListener.indexer = ServantIndexer.indexer
 		RequestListener.mutex = RequestReceiver and
 		                        RequestReceiver.mutex
-		if ServerChannels then
-			for tag, channels in pairs(ServerChannels) do
+		if IOPServerChannels then
+			for tag, channels in pairs(IOPServerChannels) do
 				RequestListener.channels[tag] = channels.channels
 			end
 		end

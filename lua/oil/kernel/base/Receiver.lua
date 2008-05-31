@@ -77,7 +77,6 @@ end
 function acceptall(self, channelinfo)                                           --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",channelinfo)
 	local context = self.context
 	local listener = context.listener
-	local dispatcher = context.dispatcher
 	local result, except
 	self[channelinfo] = true
 	repeat
@@ -87,6 +86,7 @@ function acceptall(self, channelinfo)                                           
 			result, except = listener:getrequest(channel)
 			channel:release()
 			if result then                                                            --[[VERBOSE]] verbose:acceptor "dispatching request from accepted channel"
+				local dispatcher = context.dispatcher
 				result, except = listener:sendreply(channel, result,
 					dispatcher:dispatch(result.object_key,
 					                    result.operation,

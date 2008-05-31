@@ -6,8 +6,6 @@ local sysex   = require "oil.corba.idl.sysex"
 
 module "oil.builder.corba"
 
-IIOPClientChannels = arch.SocketChannels    {require "oil.kernel.base.Connector"}
-IIOPServerChannels = arch.SocketChannels    {require "oil.kernel.base.Acceptor" }
 ValueEncoder       = arch.ValueEncoder      {require "oil.corba.giop.Codec"     }
 ObjectReferrer     = arch.ObjectReferrer    {require "oil.corba.giop.Referrer"  }
 IIOPProfiler       = arch.ReferenceProfiler {require "oil.corba.iiop.Profiler"  }
@@ -29,8 +27,8 @@ RequestDispatcher = base.RequestDispatcher{require "oil.kernel.base.Dispatcher"}
 
 function create(comps)
 	comps = builder.create(_M, comps)
-	comps.ClientChannels     = comps.ClientChannels or { [0] = comps.IIOPClientChannels }
-	comps.ServerChannels     = comps.ServerChannels or { [0] = comps.IIOPServerChannels }
+	comps.IOPClientChannels  = comps.IOPClientChannels or { [0] = comps.ClientChannels }
+	comps.IOPServerChannels  = comps.IOPServerChannels or { [0] = comps.ServerChannels }
 	comps.ReferenceProfilers = comps.ReferenceProfilers or {
 		[0]  = comps.IIOPProfiler,
 		[""] = comps.IIOPProfiler,

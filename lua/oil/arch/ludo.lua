@@ -5,19 +5,6 @@ local component = require "oil.component"
 
 module "oil.arch.ludo"
 
---
--- COMMUNICATION
---
-SocketChannels = component.Template{
-	channels = port.Facet--[[
-		channel:object retieve(configs:table)
-		configs:table default(configs:table)
-	]],
-	sockets = port.Receptacle--[[
-		socket:object tcp()
-	]],
-}
-
 ValueEncoder = component.Template{
 	codec = port.Facet--[[
 		encoder:object encoder()

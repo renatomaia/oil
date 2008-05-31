@@ -219,23 +219,25 @@ function default(self, profile)
 	profile = profile or {}
 	profile.host = profile.host or "*"
 	if not profile.port then
+		local ports = self.cache[profile.host]
 		local start = PortLowerBound + math.random(PortUpperBound - PortLowerBound)
 		local count = start
 		local port
 		repeat
-			port = self.cache[profile.host][count]
-			if port then
-				profile.port = count
-			else
-				local except = self.except
-				if except.reason == "listen" or except.reason == "bind" then
-					if count >= PortUpperBound
-						then count = PortLowerBound
-						else count = count + 1
-					end
+			if rawget(ports, count) == nil then
+				port = ports[count]
+				if port then
+					profile.port = count
 				else
-					return nil, except
+					local except = self.except
+					if except.reason ~= "listen" and except.reason ~= "bind" then
+						return nil, except
+					end
 				end
+			end
+			if count >= PortUpperBound
+				then count = PortLowerBound
+				else count = count + 1
 			end
 		until port or count == start
 	end

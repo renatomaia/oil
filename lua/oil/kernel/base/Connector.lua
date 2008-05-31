@@ -79,7 +79,7 @@ local function probe_plain_socket(self)
 	return self.factory.context.sockets:select(list, nil, 0)[1] == list[1]
 end
 
-local function release_socket(self)
+local function close_socket(self)
 	local ports = self.factory.cache[self.host]
 	ports[self.port] = nil
 	if next(ports) == nil then
@@ -121,7 +121,7 @@ function __init(self, object)
 					socket.factory = self
 					socket.host    = host
 					socket.port    = port
-					socket.close   = release_socket
+					socket.close   = close_socket
 					socket:setoption("tcp-nodelay", true)
 					return socket
 				else
