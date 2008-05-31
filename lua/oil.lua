@@ -99,6 +99,8 @@ function ORB:__init(config)
 	-- @usage oil.types:lookup_id("IDL:omg.org/CORBA/InterfaceDef:1.0")          .
 	--
 	if self.TypeRepository ~= nil then self.types = self.TypeRepository.types end
+	if self.ClientChannels ~= nil then self.ClientChannels.options = config.tcpoptions end
+	if self.ServerChannels ~= nil then self.ServerChannels.options = config.tcpoptions end
 	assert.results(self.ServerBroker.broker:initialize(self))
 	
 	return self

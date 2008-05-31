@@ -75,7 +75,7 @@ Port = oo.class()
 
 function Port:__init(object)
 	self = oo.rawnew(self, object)
-	
+	local context = self.context
 	self.wrapped = ObjectCache()
 	function self.wrapped.retrieve(_, socket)
 		if type(socket) ~= "table" then
@@ -88,10 +88,9 @@ function Port:__init(object)
 			socket.probe   = probe_wrapped_socket
 			socket.release = release_wrapped_socket
 		end
-		socket.context = self.context
+		socket.context = context
 		socket.port    = self
-		socket:setoption("tcp-nodelay", true)
-		return socket
+		return context.__component:setupsocket(socket)
 	end
 	
 	UnorderedArraySet.add(self, self.__object)
@@ -122,6 +121,19 @@ function Port:accept(probe)                                                     
 end
 
 --------------------------------------------------------------------------------
+-- setup of TCP socket options
+
+function setupsocket(self, socket)
+	local options = self.options
+	if options then
+		for name, value in pairs(options) do
+			socket:setoption(name, value)
+		end
+	end
+	return socket
+end
+
+--------------------------------------------------------------------------------
 -- channel cache for reuse
 
 function __init(self, object)
@@ -136,11 +148,11 @@ function __init(self, object)
 			function cache.retrieve(_, port)
 				local socket, errmsg = self.context.sockets:tcp()
 				if socket then
+					self:setupsocket(socket)
 					_, errmsg = socket:bind(host, port)
 					if _ then
 						_, errmsg = socket:listen()
 						if _ then                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
-							socket:setoption("tcp-nodelay", true)
 							return Port{
 								context = self.context,
 								__object = socket,

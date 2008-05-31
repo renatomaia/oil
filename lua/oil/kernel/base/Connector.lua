@@ -89,6 +89,19 @@ local function close_socket(self)
 end
 
 --------------------------------------------------------------------------------
+-- setup of TCP socket options
+
+function setupsocket(self, socket)
+	local options = self.options
+	if options then
+		for name, value in pairs(options) do
+			socket:setoption(name, value)
+		end
+	end
+	return socket
+end
+
+--------------------------------------------------------------------------------
 -- channel cache for reuse
 
 SocketCache = oo.class{ __index = ObjectCache.__index, __mode = "v" }
@@ -122,8 +135,7 @@ function __init(self, object)
 					socket.host    = host
 					socket.port    = port
 					socket.close   = close_socket
-					socket:setoption("tcp-nodelay", true)
-					return socket
+					return self:setupsocket(socket)
 				else
 					self.except = "connection refused"
 				end
