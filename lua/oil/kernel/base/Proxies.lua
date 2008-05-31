@@ -19,12 +19,13 @@
 -- 	[results:object], [except:table] invoke(reference, operation, args...)
 --------------------------------------------------------------------------------
 
-local assert = assert
-local error  = error
-local pairs  = pairs
-local rawget = rawget
-local select = select
-local unpack = unpack
+local assert       = assert
+local error        = error
+local pairs        = pairs
+local rawget       = rawget
+local select       = select
+local setmetatable = setmetatable
+local unpack       = unpack
 
 local table = require "loop.table"
 
@@ -48,7 +49,7 @@ local DefaultHandler
 
 function callhandler(self, ...)
 	local handler = rawget(self, "__exceptions") or
-	                oo.classof(self).__exceptions or
+	                rawget(oo.classof(self), "__exceptions") or
 	                DefaultHandler or
 	                error((...))
 	return handler(self, ...)
@@ -73,15 +74,22 @@ end
 
 --------------------------------------------------------------------------------
 
-local CurrentOp -- current operation that is being invoked
-
-local function invokecurrent(self, ...)                                         --[[VERBOSE]] verbose:proxies("call to ",CurrentOp, ...)
-	return self.__context.invoker:invoke(self.__reference, CurrentOp, ...)
+function newcache(methodmaker)
+	return setmetatable(oo.initclass(), {
+		__mode = "v",
+		__call = oo.rawnew,
+		__index = function(cache, operation)
+			local function invoker(self, ...)                                         --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+				return self.__context.invoker:invoke(self.__reference, operation, ...)
+			end
+			invoker = methodmaker(invoker, operation)
+			cache[operation] = invoker
+			return invoker
+		end,
+	})
 end
 
 --------------------------------------------------------------------------------
-
-Proxy = oo.class()
 
 function makemethod(invoker, operation)
 	return function(self, ...)
@@ -91,15 +99,10 @@ function makemethod(invoker, operation)
 	end
 end
 
-local proxymethod = makemethod(invokecurrent)
-function Proxy:__index(operation)       
-	CurrentOp = operation
-	return proxymethod
-end
+Proxy = newcache(makemethod)
 
 --------------------------------------------------------------------------------
 
-Protected = oo.class()
 
 function makeprotected(invoker)
 	return function(self, ...)
@@ -111,15 +114,9 @@ function makeprotected(invoker)
 	end
 end
 
-local protectedmethod = makeprotected(invokecurrent)
-function Protected:__index(operation)
-	CurrentOp = operation
-	return protectedmethod
-end
+Protected = newcache(makeprotected)
 
 --------------------------------------------------------------------------------
-
-Deferred = oo.class()
 
 FailedFuture = oo.class()
 function FailedFuture:ready() return true end
@@ -143,11 +140,7 @@ function makedeferred(invoker, operation)
 	end
 end
 
-local deferredmethod = makedeferred(invokecurrent)
-function Deferred:__index(operation)
-	CurrentOp = operation
-	return deferredmethod
-end
+Deferred = newcache(makedeferred)
 
 --------------------------------------------------------------------------------
 
