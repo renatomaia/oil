@@ -28,6 +28,7 @@
 
 local ipairs       = ipairs
 local next         = next
+local pairs        = pairs
 local rawget       = rawget
 local rawset       = rawset
 local setmetatable = setmetatable
