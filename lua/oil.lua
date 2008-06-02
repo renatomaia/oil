@@ -578,16 +578,6 @@ end
 
 VERSION = "OiL 0.4 beta"
 
-if ClientChannels == nil then
-	local factories = require "oil.builder.base"
-	ClientChannels = factories.ClientChannels()
-end
-
-if ServerChannels == nil then
-	local factories = require "oil.builder.base"
-	ServerChannels = factories.ServerChannels()
-end
-
 if BasicSystem == nil then
 	local factories = require "oil.builder.cooperative"
 	BasicSystem = factories.BasicSystem()
@@ -642,12 +632,6 @@ function init(config)
 	end
 	if BasicSystem and config.BasicSystem == nil then
 		config.BasicSystem = BasicSystem
-	end
-	if ClientChannels and config.ClientChannels == nil then
-		config.ClientChannels = ClientChannels
-	end
-	if ServerChannels and config.ServerChannels == nil then
-		config.ServerChannels = ServerChannels
 	end
 	assert.type(config.flavor, "string", "ORB flavor")
 	return ORB(config)
