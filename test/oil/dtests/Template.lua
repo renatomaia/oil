@@ -38,6 +38,7 @@ local CodeBody = table.concat({
 	"local flavor = {}",
 	"for name in OIL_FLAVOR:gmatch('[^;]+') do flavor[name] = true end",
 	"require 'oil'",
+	"oil.ServerChannels.options = {reuseaddr=true}",
 	"require 'oil.dtests.%s'",
 	"oil.dtests.flavor = flavor",
 	"oil.dtests.hosts = {%s}",
