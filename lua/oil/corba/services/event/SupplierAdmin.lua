@@ -3,7 +3,6 @@ local oo                = require "oil.oo"
 local assert            = require "oil.assert"
 local UnorderedArraySet = require "loop.collection.UnorderedArraySet"
 local ProxyPushConsumer = require "oil.corba.services.event.ProxyPushConsumer"
-local pairs             = pairs
 
 module("oil.corba.services.event.SupplierAdmin", oo.class)
 
@@ -43,7 +42,7 @@ end
 function destroy(self)
   for i=#self.proxypushconsumers,1,-1 do
     local proxy = self.proxypushconsumers[i]
-    proxy:disconnect_push_consumer()
+    oil.pcall(proxy.disconnect_push_consumer, proxy)
   end
   self.proxypushconsumers = nil
   self.channel = nil

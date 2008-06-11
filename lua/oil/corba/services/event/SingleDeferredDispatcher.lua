@@ -18,9 +18,9 @@ local function waitforresults()
   repeat
     for call, id in pairs(calls) do
       if call:ready() then
-        io.write("ready, ")
+        --io.write("ready, ")
         if call:results()
-          then io.write("success\n"); io.flush()
+          then --io.write("success\n"); io.flush()
           else io.write("failure\n"); io.flush() -- TODO retry
         end
         calls[call] = nil
