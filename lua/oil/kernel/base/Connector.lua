@@ -25,6 +25,7 @@
 --------------------------------------------------------------------------------
 
 local next         = next
+local pairs        = pairs
 local setmetatable = setmetatable
 local type         = type
 
