@@ -71,7 +71,8 @@ function unregister(self, key)
 end
 
 function retrieve(self, key)
-	return self.map[key].object
+	local servant = self.map[key]
+	return servant and servant.object
 end
 
 --------------------------------------------------------------------------------
