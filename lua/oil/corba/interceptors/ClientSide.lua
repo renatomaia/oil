@@ -46,6 +46,7 @@ function before(self, request, object, ...)
 				local channel, reference, operation = ...
 				request.service_context      = nil
 				request.object_key           = reference._object
+				request.interface            = operation.defined_in
 				request.operation            = operation.name
 				request.response_expected    = not operation.oneway
 				request.requesting_principal = nil
@@ -62,7 +63,7 @@ function before(self, request, object, ...)
 					self.message = nil
 					request.cancel = true
 					request.resultcount = request.count
-					return CancelledRequest(request)
+					return CanceledRequest(request)
 				end
 			else
 				self.message = nil

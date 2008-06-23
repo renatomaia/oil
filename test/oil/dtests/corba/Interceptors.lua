@@ -96,6 +96,7 @@ oil.setclientinterceptor{
 			checks:assert(reply.request_id, checks.typeis("number"))
 			checks:assert(reply.response_expected, checks.is(true))
 			checks:assert(reply.object_key, checks.is("object"))
+			checks:assert(reply.interface, checks.is(oil.types:lookup("MyInterface")))
 			checks:assert(reply.operation, checks.is("concat"))
 			checks:assert(reply.service_context, checks.typeis("table"))
 			checks:assert(reply.reply_status, checks.is("NO_EXCEPTION"))
