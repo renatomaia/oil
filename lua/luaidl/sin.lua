@@ -1226,35 +1226,38 @@ local function getDefinition( name, scope )
   local tab_scope = tab_curr_scope
   if scope then
     tabDef = getTabDefinition(scope..'::'..name)
-    return tabDef
-  end
-  while true do
-    local absolutename = getAbsolutename(tab_scope, name)
-    local tabDef = getTabDefinition(absolutename)
-    if tabDef then
+    if (tabDef) then
       return tabDef
     end
-    if (tab_scope._type == TAB_TYPEID.INTERFACE) then
-      for _, v in ipairs(tab_scope) do
-        local tab_scope = tab_namespaces[v.absolute_name].tab_namespace
-        absolutename = getAbsolutename(tab_scope, name)
-        local tabDef = getTabDefinition(absolutename)
-        if tabDef then
-          return tabDef
-        end
+  else
+    while true do
+      local absolutename = getAbsolutename(tab_scope, name)
+      local tabDef = getTabDefinition(absolutename)
+      if tabDef then
+        return tabDef
       end
-    end
-    if tab_scope ~= tab_output then
-      tab_scope = tab_namespaces[tab_scope.absolute_name].father_scope
-    else
-      if (tab_curr_scope._type == TAB_TYPEID.UNION) then
-        if (tab_curr_scope.switch) then
-          if (tab_curr_scope.switch._type == TAB_TYPEID.ENUM) then
-            return tab_namespaces[getAbsolutename(tab_curr_scope.switch, namespace)].tab_namespace
+      if (tab_scope._type == TAB_TYPEID.INTERFACE) then
+        for _, v in ipairs(tab_scope) do
+          local tab_scope = tab_namespaces[v.absolute_name].tab_namespace
+          absolutename = getAbsolutename(tab_scope, name)
+          local tabDef = getTabDefinition(absolutename)
+          if tabDef then
+            return tabDef
           end
         end
       end
-      break
+      if tab_scope ~= tab_output then
+        tab_scope = tab_namespaces[tab_scope.absolute_name].father_scope
+      else
+        if (tab_curr_scope._type == TAB_TYPEID.UNION) then
+          if (tab_curr_scope.switch) then
+            if (tab_curr_scope.switch._type == TAB_TYPEID.ENUM) then
+              return tab_namespaces[getAbsolutename(tab_curr_scope.switch, namespace)].tab_namespace
+            end
+          end
+        end
+        break
+      end
     end
   end
   semanticError(string.format(ERRMSG_UNDECLARED, name))
