@@ -1,0 +1,6 @@
+module Module1 {
+	typedef string SomeTypedef;
+};
+interface MyInterface {
+	void aMethod() raises (Module1::MissingException);
+};

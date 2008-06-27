@@ -74,6 +74,7 @@ local files = {
   "scs",
 	"server",
 	"echo",
+	"UndeclaredException",
 }
 
 local Suite = Suite()
@@ -83,7 +84,7 @@ for _, name in ipairs(files) do
 	local luafile = path..".lua"
 	Suite[name] = function(checks)
 		checks.viewer.maxdepth = -1
-		local new = assert(luaidl.parsefile(idlfile))
+		local new = {luaidl.parsefile(idlfile)}
 		local file = io.open(luafile)
 		if file then
 			local old = FileStream{file=file}:get()
