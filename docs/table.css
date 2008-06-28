@@ -1,6 +1,4 @@
-UL, OL, DL { margin-top: 0px; }
-
-DT { font-style: italic; }
+TABLE UL { margin-top: 0px; }
 
 TABLE {
 	border: 1pt solid #039;
