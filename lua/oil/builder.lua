@@ -19,20 +19,23 @@ end
 local NamePat    = "[^;]+"
 local FactoryFrm = "oil.builder.%s"
 local ArchFrm    = "oil.arch.%s"
+local ErrorFrm   = "module '%s' not found:"
 function build(customization, built)
 	for name in customization:gmatch(NamePat) do                                  --[[VERBOSE]] verbose:built(true, "creating ",name," components")
-		local success, module = pcall(require, FactoryFrm:format(name))
+		local package = FactoryFrm:format(name)
+		local success, module = pcall(require, package)
 		if success then
 			built = module.create(built)
-		elseif not module:match("module '.-' not found:") then                      --[[VERBOSE]] verbose:built(false)
-			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load builder for architecture ",name)
+		elseif not module:find(ErrorFrm:format(package), nil, true) then            --[[VERBOSE]] verbose:built(false)
+			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load builder for architecture ",name,": ",module)
 		end                                                                         --[[VERBOSE]] verbose:built(false)
 	end
 	for name in customization:gmatch(NamePat) do                                  --[[VERBOSE]] verbose:built(true, "assembling ",name," components")
-		local success, module = pcall(require, ArchFrm:format(name))
+		local package = ArchFrm:format(name)
+		local success, module = pcall(require, package)
 		if success then
 			module.assemble(built)
-		elseif not module:match("module '.-' not found:") then                      --[[VERBOSE]] verbose:built(false)
+		elseif not module:find(ErrorFrm:format(package), nil, true) then            --[[VERBOSE]] verbose:built(false)
 			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load architecture definition for ",name)
 		end                                                                         --[[VERBOSE]] verbose:built(false)
 	end
