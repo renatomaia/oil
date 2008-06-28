@@ -110,8 +110,6 @@ OIL_LUA= $(addprefix ../lua/, \
 	oil/corba/idl/ir.lua \
 	oil/corba/idl/Registry.lua \
 	oil/corba/idl/sysex.lua \
-	oil/corba/iiop/Acceptor.lua \
-	oil/corba/iiop/Connector.lua \
 	oil/corba/iiop/Profiler.lua \
 	oil/corba/interceptors/ClientSide.lua \
 	oil/corba/interceptors/ServerSide.lua \
@@ -126,7 +124,9 @@ OIL_LUA= $(addprefix ../lua/, \
 	oil/corba/services/event/SupplierAdmin.lua \
 	oil/corba/services/naming.lua \
 	oil/Exception.lua \
+	oil/kernel/base/Acceptor.lua \
 	oil/kernel/base/Client.lua \
+	oil/kernel/base/Connector.lua \
 	oil/kernel/base/Dispatcher.lua \
 	oil/kernel/base/Invoker.lua \
 	oil/kernel/base/Proxies.lua \
