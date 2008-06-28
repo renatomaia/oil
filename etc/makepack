@@ -1,6 +1,7 @@
 #!/bin/sh
 
-SVNBASE=https://subversion.tecgraf.puc-rio.br/engsoftware/
+#SVNBASE=https://subversion.tecgraf.puc-rio.br/engsoftware/
+SVNBASE=/Users/maia/Work/proj
 VERSION=0.4
 RELEASE=beta
 PACKAGE=oil-$VERSION-$RELEASE
@@ -23,10 +24,17 @@ cd ..
 
 svn export --force $SVNBASE/oil/trunk $PACKAGE
 svn export --force $SVNBASE/loop/trunk/lua $PACKAGE/lua
+svn export --force $SVNBASE/loop/trunk/docs/build.lua $PACKAGE/docs/build.lua
 
 cd $PACKAGE
+# build docs and remove unecessary files
+cd docs; lua build.lua sitemap.lua .; cd ..
+rm -f docs/build.lua
+rm -f docs/sitemap.lua
 # remove this script
-rm -f etc/makepack
+rm -fR etc
+# remove file with history of the project
+rm -f HISTORY
 # remove MS-NMake support for Windows
 rm -f config.win32
 rm -f Makefile.win32
@@ -38,12 +46,7 @@ rm -fR demo/proxy
 # remove test suite
 rm -fR test
 # remote LOOP classes that are still draft
-rm -f lua/loop/test/Assert.lua
-rm -f lua/loop/test/checks.lua
-rm -f lua/loop/test/Fixture.lua
-rm -f lua/loop/test/Reporter.lua
-rm -f lua/loop/test/Results.lua
-rm -f lua/loop/test/Suite.lua
+rm -fR lua/loop/test
 cd ..
 
 tar -czvf $PACKAGE.tar.gz $PACKAGE/
