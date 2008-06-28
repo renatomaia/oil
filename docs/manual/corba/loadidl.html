@@ -1,0 +1,89 @@
+<p>All the CORBA support provided by OiL is based on interface and typing information.
+OiL stores all this information in a internal type repository, which implements a CORBA Interface Repository.
+Once an IDL interface definition is stored in this repository, OiL is able to create servants and proxies with that interface.
+OiL provides three ways to load an interface or type, as described below.</p>
+
+<h2>IDL Specifications</h2>
+
+<p>The most common way to load interface definitions is to load an IDL specification using method <%=link("Brokers","<code>loadidl</code>","#loadidl")%><code>(idlspec)</code> e <%=link("Brokers","<code>loadidlfile</code>","#loadidlfile")%><code>(filepath)</code> of CORBA brokers.
+In this case, the IDL specification is parsed to produce descriptions that are stored in the internal type repository, as illustrated in the example below.</p>
+
+<pre>
+require "oil"
+
+oil.main(function()
+	local broker = oil.init()
+	
+	broker:loadidl[[
+		interface Hello {
+			void say();
+		};
+	]]
+	
+	broker:writeto("hello.ior",
+		broker:tostring(
+			broker:newservant(hello, nil, "Hello")))
+	broker:run()
+end)
+</pre>
+
+<h2>Remote Interface Repository</h2>
+
+<p>An alternative to the use of IDL specifications is to acquire the interface definition from a remote CORBA Interface Repository (IR) that already contains them.
+This can be done by method <%=link("Brokers","<code>setIR</code>","#setIR")%><code>(ir_proxy)</code> of CORBA brokers.
+This method receives as argument an OiL proxy to the remote IR.
+Whenever OiL finds the name of a interface or type that it does not known, it then checks this remote IR and reads the definition.
+However, this is only done for the first time.
+Once OiL learns about an interface, it does not read its definition again, even if the original definition changes in the remote IR.
+The code below shows how to setup the remote IR.</p>
+
+<pre>
+require "oil"
+
+oil.main(function()
+	local broker = oil.init()
+	
+	-- create proxy for a CORBA IR
+	-- and set it as the remote IR
+	broker:setIR(       
+		broker:newproxy(  
+			oil.readfrom("ir.ior")))
+	
+	broker:writeto("hello.ior",
+		broker:tostring(
+			broker:newservant(hello, nil, "Hello")))
+	broker:run()
+end)</pre>
+
+<p>CORBA brokers also provide the method <%=link("Brokers","<code>getIR</code>","#getIR")%><code>()</code> to get the current remote IR being used.
+Furthermore, the OiL's internal type repository also implements the CORBA IR interface, therefore, all interface and type definitions can be accessed remotely by CORBA IR clients.
+In particular, another CORBA broker can be configured to retrieve definition from the internal type repository of another CORBA broker.
+To get the servant of the internal IR, use method <%=link("Brokers","<code>getLIR</code>","#getLIR")%><code>()</code> of CORBA brokers.</p>
+
+<h2>Lua Constructors</h2>
+
+<p>Finally, another way to provide interface and type descriptions is to create them using the constructors provided by module <code>oil.corba.idl</code> and register them in the internal IR.
+For a description of these constructors, check section <%=link"Mapping"%>.
+The code below shows how to create and register descriptions of the <code>Hello</code> interface in the internal type repository.</p>
+
+<pre>
+require "oil"
+
+oil.main(function()
+	local idl = require "oil.corba.idl"
+	local broker = oil.init()
+	
+	broker.types:put(
+		idl.interface{
+			defintions = {
+				say = idl.operation(),
+			}
+		}
+	)
+	
+	broker:writeto("hello.ior",
+		broker:tostring(
+			broker:newservant(hello, nil, "Hello")))
+	broker:run()
+end)
+</pre>
