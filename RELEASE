@@ -6,32 +6,15 @@ OiL 0.4 alpha
 - ORB shutdown operation [demo selfcall];
 - CORBA request interception [demo interceptors];
 - CORBA's _is_equivalent operation;
-- Customizable component-based architecture [see 'oil.assemble' function];
+- Customizable component-based architecture;
 - IDL large numbers: long long, unsigned long long, long double [see config];
 	NOTE: Lua must be changed so lua_Number is 'long double'.
 
 [Improved Features]
 
 Application façade:
-	oil.VERSION
-	oil.types                    -- improved alternative to oil.getLIR()
-	oil.tasks                    -- instead of scheduler
-	oil.tostring(object)         -- instead of obj:_ior()
-	oil.deactivate(obj|key|impl) -- improved alternative to obj:_deactivate()
-	oil.sleep(time)              -- instead of scheduler.sleep(time)
-	oil.pcall(func, ...)         -- instead of scheduler.pcall(func, ...)
-	oil.time()                   -- alternative to socket.gettime()
-	oil.main(func)               -- instead of scheduler.new(func, ...); scheduler.run()
-	oil.newthread(func, ...)     -- instead of scheduler.start(func, ...)
-	oil.newencoder()
-	oil.newdecoder(string)
-	oil.newexcept(body)          -- alternative to oil.Exception(body)
-	oil.setexcatch(func, type)
-	oil.shutdown()
-	oil.writeto(file, text)      -- similar to oil.writeIOR(obj, file)
-	oil.readfrom(file)           -- instead of oil.readIOR(file)
-	oil.setclientinterceptor(iceptor)
-	oil.setserverinterceptor(iceptor)
+	- Entirely new API that allows instantiation of multiple brokers with
+	  alternative implementations.
 Integrated CORBA IR:
 	- Ability to change IR definitions;
 	- Ability to load module parts using different 'oil.loadidl*' calls;
