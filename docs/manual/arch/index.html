@@ -1,0 +1,34 @@
+<p>OiL is a component-based framework for implementation of ORBs in Lua.
+It is entirely implemented using <a href="http://loop.luaforge.net/docs_component.html">LOOP's component models</a>.
+The OiL framework defines both an abstract component architecture and a set of standard classes that implement the components of this architecture.
+Such classes are implemented using <a href="http://loop.luaforge.net/manual/models.html">LOOP's class models</a>.
+Typically, OiL is extended or customized by changes to this architecture or by the use of new classes in component implementations.</p>
+
+<h2><a name="layers">Architectural Layers</a></h2>
+
+<p>OiL's internal architecture is defined in layers.
+A layer defines a set of components and their connections.
+A <em>complementary layer</em> is a layer that defines connections to components from another layer.
+An <em>extension layer</em> is a layer that redefines components of other layer with new ports, new connections, or new implementations.</p>
+
+<p>In the most basic level, OiL's standard architecture defines two complementary layers: the <%=link("Core","core layer","#base")%> and a <%=link("RMI","RMI layer")%>.
+The core layer defines components that implement the programming model provided by OiL, such as the support for brokers, proxies, servants, etc.
+Yet, the RMI layer defines components that implement the support for some RMI technology, such as CORBA or LuDO.
+Over these base layers some extensions layers are defined to add new features or provide alternative implementations.</p>
+
+<p>OiL's standard distribution provides one core layer (<%=link("Core","base","#base")%>) and two extension layers over it that add support for <%=link"Threads"%> (<%=link("Core","cooperative","#cooperative")%>) and typed invocations (<%=link("Core","typed","#typed")%>).
+Additionally, this distribution also provides two alternative RMI layers (<%=link("RMI","corba","#corba")%> and <%=link("RMI","ludo","#ludo")%>).
+Finally, two extensions layers over the CORBA's RMI layer are provided to add support for invocation interception (<%=link("RMI","intercepted","#intercepted")%>) and marshaling code generation (<%=link("RMI","gencode","#gencode")%>).</p>
+
+<h2>Broker Façade</h2>
+
+<p>Usually, OiL's components are not directly accessed by the application.
+Instead, the services provided by these components are accessed through <em>brokers</em>.
+<%=link("Brokers","Brokers")%> are objects that encapsulate an entire assembly of components that compose an ORB instance and provide a simple and integrated interface for the services provided.
+Nevertheless, the components encapsulated by brokers are accessible as fields of the broker object, where the name of the field is the name of the component in OiL's architecture.
+See sections <%=link"Core"%> and <%=link"RMI"%> for an overview of OiL's architecture.
+The component instances used by a broker are provided at its initialization or are created accordingly to the defined flavor.
+For more information about broker initialization and flavors see sections <%=link"Brokers"%> and <%=link"Flavors"%>, respectively.</p>
+
+<p>OiL also provides module <code>oil.compat</code>, which is an alternative façade that provides features similar to those provided by brokers.
+In fact, this module implements the interface of previous versions of OiL.</p>
