@@ -41,8 +41,7 @@ rm -f docs/sitemap.lua
 rm -f HISTORY
 # remove MS-NMake support for Windows
 rm -f config.win32
-rm -f Makefile.win32
-rm -f src/Makefile.win32
+find . -type f -name Makefile.win32 | xargs rm -f
 # remove demos not updated to lastest version
 rm -fR demo/hello_ssl
 rm -fR demo/minimal
