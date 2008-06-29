@@ -1,7 +1,6 @@
 #!/bin/sh
 
-#SVNBASE=https://subversion.tecgraf.puc-rio.br/engsoftware/
-SVNBASE=/Users/maia/Work/proj
+SVNBASE=https://subversion.tecgraf.puc-rio.br/engsoftware/
 VERSION=0.4
 RELEASE=beta
 PACKAGE=oil-$VERSION-$RELEASE
