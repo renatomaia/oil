@@ -552,7 +552,7 @@ These default mapping is illustrated in the table below.</p>
 
 <p>To marshal values of these types as <code>any</code>s with a CORBA type different from the default one, you must create a table that contains a field <code>_anyval</code> with the actual value of the <code>any</code> and then set the metatable of this wrapping table to the proper CORBA type.
 Alternatively, the application may create values with custom metatables.
-In that case, the actual CORBA type is defined by the field <code>__idltype</code> of the custom metatable.
+In that case, the actual CORBA type is defined by the field <code>__type</code> of the custom metatable.
 For illustrative purpose, the code below can be used to create <code>any</code>s with values of different types.</p>
 
 <pre>
@@ -566,7 +566,7 @@ local structany1 = setmetatable(mystruct, oil.corba.idl.struct{ ... })
 -- any value containing a struct with a custom metatable
 local mystruct = setmetatable({ ... }, {
        __index = function(tab, key) ... end,
-       __idltype =  oil.corba.idl.struct{ ... },
+       __type  = oil.corba.idl.struct{ ... },
 })
 local structany2 = mystruct
 

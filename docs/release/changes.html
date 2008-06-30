@@ -88,9 +88,9 @@
 			<li>Automatically generated object keys start with <code>'\0'</code> to provide a way for the application to avoid collisions with defined keys;</li>
 			<li>A single Lua object can be used as implementation of different CORBA objects created with automatic keys as long as they implement different interfaces because object keys now contains the interface descriptor hash-code.<br>
 				<strong>WARN:</strong> Each time a Lua object is used as an object with a different interface a new CORBA object is created for each interface, which will be the actual (i.e. most specific) interface of the new CORBA object.
-				To avoid implicit creation of different CORBA objects with different interfaces for a simgle Lua object, set the <code>__idltype</code> field of the objet meta-table (i.e. its class) to the interface (repID, absolute name, IDL descriptor, or remote IR object) that should be used;<br>
+				To avoid implicit creation of different CORBA objects with different interfaces for a single Lua object, set the <code>__type</code> field of the objet meta-table (i.e. its class) to the interface (repID, absolute name, IDL descriptor, or remote IR object) that should be used;<br>
 			</li>
-			<li>The interface of an implicitly created CORBA object can also be defined by field <code>__idltype</code> of the object implementation itself (in older versions, only the <code>__idltype</code> field of the metatable could be used);</li>
+			<li>The interface of an implicitly created CORBA object can also be defined by field <code>__type</code> of the object implementation itself (in older versions, only the <code>__type</code> field of the metatable could be used);</li>
 		</ul>
 	</dd>
 	<dt>Verbose Support</dt>

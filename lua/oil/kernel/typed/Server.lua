@@ -41,8 +41,9 @@
 -- 	type:table resolve(type:string)
 --------------------------------------------------------------------------------
 
-local rawget = rawget
-local type   = type
+local getmetatable = getmetatable
+local rawget       = rawget
+local type         = type
 
 local table = require "loop.table"
 
@@ -62,6 +63,14 @@ local KeyFmt = "\0%s%s"
 
 function object(self, object, key, type)
 	local context = self.context
+	local metatable = getmetatable(object)
+	if metatable then
+		type = object.__type   or metatable.__type   or type
+		key  = object.__objkey or metatable.__objkey or key
+	else
+		type = object.__type   or type
+		key  = object.__objkey or key
+	end
 	local result, except = context.types:resolve(type)
 	if result then
 		key = key or KeyFmt:format(self:hashof(object), self:hashof(result))

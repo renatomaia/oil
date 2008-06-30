@@ -67,7 +67,7 @@ However, there are some drawback that must be observed.
 First, implicitly created servants are registered with automatic keys and the interface they implement is the type of the formal parameter they are being coerced to.
 In the example above, this means that the object returned by method <code>open</code> will be registered with interface <code>File</code> regardless whether the object implements a more specific interface.</p>
 
-<p>To solve this problem, each object that may be used in the implicit creation of a servant may provide either field <code>__objkey</code> or <code>__idltype</code> to informs the object key and the interface name or ID of the servant, respectively.
+<p>To solve this problem, each object that may be used in the implicit creation of a servant may provide either field <code>__objkey</code> or <code>__type</code> to informs the object key and the interface name or ID of the servant, respectively.
 Alternatively, the field may also be provided by the object's metatable.
 The example below, illustrates this.</p>
 
@@ -115,12 +115,12 @@ oil.main(function()
 		if kind == "file" then
 			return File{ -- implicitly created servant
 				path = path,
-				__idltype = "File",
+				__type = "File",
 			}
 		elseif kind == "directory" then
 			return Directory{ -- implicitly created servant
 				path = path,
-				__idltype = "Directory",
+				__type = "Directory",
 			}
 		end
 	end
@@ -134,7 +134,7 @@ end)
 
 <p>In the example above, method <code>FileSystem::search</code> return an object reference of "abstract" interface <code>Element</code>.
 However, the actual objects referenced supports either interface <code>File</code> or <code>Directory</code>.
-Therefore, they define field <code>__idltype</code> to tell OiL which interface they should be registered with.</p>
+Therefore, they define field <code>__type</code> to tell OiL which interface they should be registered with.</p>
 
 <p>A second observation with implicitly created servants is that if the same object is used twice implicitly create a servant, only one servant is created.
 This is because, whenever the same object is registered with the same key (automatic or nor) and interface, OiL reuses the previous servant.</p>

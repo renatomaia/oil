@@ -694,8 +694,8 @@ function Encoder:any(value)                                                     
 		if metatable then
 			if idl.istype(metatable) then
 				idltype = metatable
-			elseif idl.istype(metatable.__idltype) then
-				idltype = metatable.__idltype
+			elseif idl.istype(metatable.__type) then
+				idltype = metatable.__type
 			end
 		end
 		if luatype == "table" then
@@ -725,19 +725,7 @@ function Encoder:Object(value, idltype)                                         
 		if not reference then
 			local objects = self.context.objects
 			if objects then                                                           --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
-				local objtype
-				local metatable = getmetatable(value)
-				if metatable then
-					objtype = value.__idltype or metatable.__idltype or idltype
-					objkey  = value.__objkey  or metatable.__objkey  or nil
-				elseif objtype == nil then
-					objtype = value.__idltype or idltype
-					objkey  = value.__objkey  or nil
-				end
-				if objtype._type == "Object" then
-					objtype = objtype.repID
-				end
-				value = assert.results(objects:object(value, objkey, objtype))             --[[VERBOSE]] verbose:marshal(false)
+				value = assert.results(objects:object(value, nil, idltype))             --[[VERBOSE]] verbose:marshal(false)
 				reference = value.__reference
 			else
 				assert.illegal(value, "Object, unable to create from value", "MARHSALL")
