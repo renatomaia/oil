@@ -91,6 +91,7 @@ SOCKET_LUA= $(addprefix $(LUASRC_DIR)/, \
 )
 OIL_LUA= $(addprefix $(LUASRC_DIR)/, \
 	oil.lua \
+	oil/arch.lua \
 	oil/arch/base.lua \
 	oil/arch/cooperative.lua \
 	oil/arch/corba.lua \
