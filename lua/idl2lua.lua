@@ -1,4 +1,4 @@
-#!/usr/local/bin/lua
+#!/usr/bin/env lua
 --------------------------------------------------------------------------------
 -- @script  IDL Descriptor Pre-Loader
 -- @version 1.0
@@ -19,7 +19,7 @@ local Serializer = require "loop.serial.Serializer"
 module("idl2lua", require "loop.compiler.Arguments")
 
 output   = "idl.lua"
-instance = "require('oil')"
+instance = "require('oil').init()"
 
 _alias = {}
 for name in pairs(_M) do
@@ -31,7 +31,7 @@ local finish = select("#", ...)
 if not start or start ~= finish then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
 	io.stderr:write([[
-IDL Descriptor Pre-Loader 1.0  Copyright (C) 2006-2007 Tecgraf, PUC-Rio
+IDL Descriptor Pre-Loader 1.0  Copyright (C) 2006-2008 Tecgraf, PUC-Rio
 Usage: ]].._NAME..[[.lua [options] <idlfile>
 Options:
 	

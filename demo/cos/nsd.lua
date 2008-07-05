@@ -1,10 +1,10 @@
-#!/usr/local/bin/lua
+#!/usr/bin/env lua
 --------------------------------------------------------------------------------
 -- @script  OiL Naming Service Daemon
 -- @version 1.1
 -- @author  Renato Maia <maia@tecgraf.puc-rio.br>
 --
-print("OiL Naming Service 1.1  Copyright (C) 2006-2007 Tecgraf, PUC-Rio")
+print("OiL Naming Service 1.1  Copyright (C) 2006-2008 Tecgraf, PUC-Rio")
 
 local select = select
 local io     = require "io"
