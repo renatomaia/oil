@@ -23,7 +23,7 @@ cd ..
 
 svn export --force $SVNBASE/oil/trunk $PACKAGE
 svn export --force $SVNBASE/loop/trunk/lua $PACKAGE/lua
-svn export --force $SVNBASE/loop/trunk/docs/build.lua $PACKAGE/docs/build.lua
+svn export --force $SVNBASE/loop/trunk/doc/build.lua $PACKAGE/doc/build.lua
 
 cd $PACKAGE
 # pack files to build Windows binaries
@@ -33,9 +33,9 @@ cd ../../
 mv etc/tecmake/README.TXT ../
 rm -fR etc
 # build docs and remove unecessary files
-cd docs; lua build.lua sitemap.lua .; cd ..
-rm -f docs/build.lua
-rm -f docs/sitemap.lua
+cd doc; lua build.lua sitemap.lua .; cd ..
+rm -f doc/build.lua
+rm -f doc/sitemap.lua
 # remove file with history of the project
 rm -f HISTORY
 # remove MS-NMake support for Windows
