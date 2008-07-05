@@ -1,5 +1,6 @@
 EXPORTS
 	luaopen_oil
+	luaopen_oil_arch
 	luaopen_oil_arch_base
 	luaopen_oil_arch_cooperative
 	luaopen_oil_arch_corba
