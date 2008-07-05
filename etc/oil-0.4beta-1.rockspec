@@ -1,7 +1,7 @@
 package = "OiL"
 version = "0.4beta-1"
 source = {
-	url = "http://luaforge.net/frs/download.php/????/oil-0.4-beta.tar.gz",
+	url = "http://luaforge.net/frs/download.php/3527/oil-0.4-beta.tar.gz",
 }
 description = {
 	summary = "An Object Request Broker in Lua",
@@ -29,6 +29,7 @@ build = {
 		["oil.arch.corba"] = "lua/oil/arch/corba.lua",
 		["oil.arch.ludo"] = "lua/oil/arch/ludo.lua",
 		["oil.arch.typed"] = "lua/oil/arch/typed.lua",
+		["oil.arch"] = "lua/oil/arch.lua",
 		["oil.assert"] = "lua/oil/assert.lua",
 		["oil.bit"] = "src/oilbit.c",
 		["oil.builder.base"] = "lua/oil/builder/base.lua",

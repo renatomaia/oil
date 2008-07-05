@@ -1,7 +1,7 @@
 package = "LuaIDL"
 version = "0.8.9beta-1"
 source = {
-	url = "http://luaforge.net/frs/download.php/????/luaidl-0.8.9b.tar.gz",
+	url = "http://luaforge.net/frs/download.php/3543/luaidl-0.8.9-beta.tar.gz",
 }
 description = {
 	summary = "A OMG IDL Compiler Front End",

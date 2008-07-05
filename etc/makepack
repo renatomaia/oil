@@ -1,18 +1,32 @@
 #!/bin/sh
 
 SVNBASE=https://subversion.tecgraf.puc-rio.br/engsoftware/
-VERSION=0.4
-RELEASE=beta
-PACKAGE=oil-$VERSION-$RELEASE
+
+LUAIDL_VERSION=0.8.9
+LUAIDL_RELEASE=beta
+LUAIDL_PACKAGE=luaidl-$LUAIDL_VERSION-$LUAIDL_RELEASE
+
+mkdir $LUAIDL_PACKAGE
+cd $LUAIDL_PACKAGE
+svn export --force $SVNBASE/oil/trunk/lua/luaidl
+svn export --force $SVNBASE/oil/trunk/lua/luaidl.lua
+cd ..
+tar -czvf $LUAIDL_PACKAGE.tar.gz $LUAIDL_PACKAGE/
+zip -r $LUAIDL_PACKAGE.zip $LUAIDL_PACKAGE/
+rm -fR $LUAIDL_PACKAGE/
+
+OIL_VERSION=0.4
+OIL_RELEASE=beta
+OIL_PACKAGE=oil-$OIL_VERSION-$OIL_RELEASE
 
 wget http://luaforge.net/frs/download.php/2664/luasocket-2.0.2.tar.gz
 tar -xzvf luasocket-2.0.2.tar.gz
 
-if [ ! -d $PACKAGE ]; then mkdir $PACKAGE; fi
-mv luasocket-2.0.2/src $PACKAGE/src
+if [ ! -d $OIL_PACKAGE ]; then mkdir $OIL_PACKAGE; fi
+mv luasocket-2.0.2/src $OIL_PACKAGE/src
 rm -fR luasocket-2.0.2 luasocket-2.0.2.tar.gz
 
-cd $PACKAGE
+cd $OIL_PACKAGE
 mkdir -p lua/socket
 rm -f src/ltn12.lua
 rm -f src/mime.*
@@ -21,11 +35,11 @@ mv src/*.lua lua/socket/
 rm -f src/makefile
 cd ..
 
-svn export --force $SVNBASE/oil/trunk $PACKAGE
-svn export --force $SVNBASE/loop/trunk/lua $PACKAGE/lua
-svn export --force $SVNBASE/loop/trunk/doc/build.lua $PACKAGE/doc/build.lua
+svn export --force $SVNBASE/oil/trunk $OIL_PACKAGE
+svn export --force $SVNBASE/loop/trunk/lua $OIL_PACKAGE/lua
+svn export --force $SVNBASE/loop/trunk/doc/build.lua $OIL_PACKAGE/doc/build.lua
 
-cd $PACKAGE
+cd $OIL_PACKAGE
 # pack files to build Windows binaries
 cd etc/tecmake
 tar -czvf ../../../oil-tecmake.tar.gz *
@@ -51,6 +65,6 @@ rm -fR test
 rm -fR lua/loop/test
 cd ..
 
-tar -czvf $PACKAGE.tar.gz $PACKAGE/
-zip -r $PACKAGE.zip $PACKAGE/
-rm -fR $PACKAGE/
+tar -czvf $OIL_PACKAGE.tar.gz $OIL_PACKAGE/
+zip -r $OIL_PACKAGE.zip $OIL_PACKAGE/
+rm -fR $OIL_PACKAGE/

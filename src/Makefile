@@ -76,6 +76,7 @@ SOCKET_LUA= $(addprefix ../lua/, \
 )
 OIL_LUA= $(addprefix ../lua/, \
 	oil.lua \
+	oil/arch.lua \
 	oil/arch/base.lua \
 	oil/arch/cooperative.lua \
 	oil/arch/corba.lua \
