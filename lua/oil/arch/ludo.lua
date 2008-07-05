@@ -1,86 +1,50 @@
-local setfenv = setfenv
-
 local port      = require "oil.port"
 local component = require "oil.component"
+local arch      = require "oil.arch"
 
 module "oil.arch.ludo"
 
+-- MARSHALING
 ValueEncoder = component.Template{
-	codec = port.Facet--[[
-		encoder:object encoder()
-		decoder:object decoder(stream:string)
-	]],
+	codec = port.Facet,
 }
 
---
 -- REFERENCES
---
 ObjectReferrer = component.Template{
-	references = port.Facet--[[
-		reference:table referenceto(objectkey:string, accesspointinfo:table...)
-		reference:string encode(reference:table)
-		reference:table decode(reference:string)
-	]],
+	references = port.Facet,
 }
 
---
 -- REQUESTER
---
-
 OperationRequester = component.Template{
-	requests = port.Facet--[[
-		channel:object getchannel(reference:table)
-		reply:object, [except:table], [requests:table] newrequest(channel:object, reference:table, operation:table, args...)
-		reply:object, [except:table], [requests:table] getreply(channel:object, [probe:boolean])
-	]],
-	channels = port.Receptacle--[[
-		channel:object retieve(configs:table)
-	]],
-	codec = port.Receptacle--[[
-		encoder:object encoder()
-		decoder:object decoder(stream:string)
-	]],
+	requests = port.Facet,
+	channels = port.Receptacle,
+	codec    = port.Receptacle,
 }
 
---
 -- LISTENER
---
 RequestListener = component.Template{
-	listener = port.Facet--[[
-		configs:table default([configs:table])
-		channel:object, [except:table] getchannel(configs:table)
-		request:object, [except:table], [requests:table] = getrequest(channel:object, [probe:boolean])
-	]],
-	channels = port.Receptacle--[[
-		channel:object retieve(configs:table)
-	]],
-	codec = port.Receptacle--[[
-		encoder:object encoder()
-		decoder:object decoder(stream:string)
-	]],
+	listener = port.Facet,
+	channels = port.Receptacle,
+	codec = port.Receptacle,
 }
 
 function assemble(components)
-	setfenv(1, components)
+	arch.start(components)
+	
 	-- COMMUNICATION
-	if ClientChannels then
-		ClientChannels.sockets = BasicSystem.sockets
-	end
-	if ServerChannels then
-		ServerChannels.sockets = BasicSystem.sockets
-	end
+	ClientChannels.sockets = BasicSystem.sockets
+	ServerChannels.sockets = BasicSystem.sockets
+	
 	-- REQUESTER
-	if OperationRequester then
-		OperationRequester.codec = ValueEncoder.codec
-		OperationRequester.channels = ClientChannels.channels
-	end
+	OperationRequester.codec    = ValueEncoder.codec
+	OperationRequester.channels = ClientChannels.channels
+	
 	-- LISTENER
-	if RequestListener then
-		RequestListener.codec = ValueEncoder.codec
-		RequestListener.channels = ServerChannels.channels
-	end
-	-- CODEC
-	if ValueEncoder then
-		ValueEncoder.codec:localresources(components)
-	end
+	RequestListener.codec    = ValueEncoder.codec
+	RequestListener.channels = ServerChannels.channels
+	
+	-- MARSHALING
+	ValueEncoder.codec:localresources(components)
+	
+	arch.finish(components)
 end

@@ -1,149 +1,65 @@
-local setfenv = setfenv
-
 local port      = require "oil.port"
 local component = require "oil.component"
+local arch      = require "oil.arch"
 
 module "oil.arch.base"
 
---
 -- UNDERPINNINGS
---
-
 SocketChannels = component.Template{
-	channels = port.Facet--[[
-		channel:object retieve(configs:table)
-		configs:table default(configs:table)
-	]],
-	sockets = port.Receptacle--[[
-		socket:object tcp()
-		input:table, output:table select([input:table], [output:table], [timeout:number])
-	]],
+	channels = port.Facet,
+	sockets = port.Receptacle,
 }
-
 BasicSystem = component.Template{
-	sockets = port.Facet--[[
-	]],
+	sockets = port.Facet,
 }
 
---
 -- CLIENT SIDE
---
-
 ClientBroker = component.Template{
-	broker = port.Facet--[[
-		proxy:object fromstring(reference:string, [interface:string])
-		proxy:object proxyto(reference:table, [interface:string])
-	]],
-	proxies = port.Receptacle--[[
-		proxy:object proxyto(reference:table, [interface:table])
-	]],
-	references = port.Receptacle--[[
-		reference:table decode(reference:string)
-	]],
+	broker     = port.Facet,
+	proxies    = port.Receptacle,
+	references = port.Receptacle,
 }
-
 ObjectProxies = component.Template{
-	proxies = port.Facet--[[
-		proxy:object proxyto(reference:table, [interface:table])
-	]],
-	invoker = port.Receptacle--[[
-		[results:object], [except:table] invoke(reference:table, operation, args...)
-	]],
+	proxies = port.Facet,
+	invoker = port.Receptacle,
 }
-
 OperationInvoker = component.Template{
-	invoker = port.Facet--[[
-		[results:object], [except:table] invoke(reference:table, operation, args...)
-	]],
-	requester = port.Receptacle--[[
-		channel:object getchannel(reference:table)
-		[request:table], [except:table], [requests:table] request(channel:object, reference:table, operation, args...)
-		[request:table], [except:table], [requests:table] getreply(channel:object, [probe:boolean])
-	]],
+	invoker   = port.Facet,
+	requester = port.Receptacle,
 }
 
---
 -- SERVER SIDE
---
-
 ServerBroker = component.Template{
-	broker = port.Facet--[[
-		[configs:table], [except:table] initialize([configs:table])
-		servant:object object(impl:object, [objectkey:string], [interface:string])
-		reference:string tostring(servant:object)
-		success:boolean, [except:table] pending()
-		success:boolean, [except:table] step()
-		success:boolean, [except:table] run()
-		success:boolean, [except:table] shutdown()
-	]],
-	objects = port.Receptacle--[[
-		servant:object register(impl:object, objectkey:string)
-		impl:object unregister(servant:object)
-	]],
-	acceptor = port.Receptacle--[[
-		configs:table, [except:table] setup([configs:table])
-		success:boolean, [except:table] hasrequest(configs:table)
-		success:boolean, [except:table] acceptone(configs:table)
-		success:boolean, [except:table] acceptall(configs:table)
-		success:boolean, [except:table] halt()
-	]],
-	references = port.Receptacle--[[
-		reference:table referenceto(objectkey:string, accesspointinfo:table...)
-		reference:string encode(reference:table)
-		reference:table decode(reference:string)
-	]],
+	broker     = port.Facet,
+	objects    = port.Receptacle,
+	acceptor   = port.Receptacle,
+	references = port.Receptacle,
 }
-
 RequestDispatcher = component.Template{
-	objects = port.Facet--[[
-		servant:object register(impl:object, objectkey:string)
-		impl:object unregister(servant:object)
-	]],
-	dispatcher = port.Facet--[[
-		dispatch(request)
-	]],
+	objects    = port.Facet,
+	dispatcher = port.Facet,
 }
-
 RequestReceiver = component.Template{
-	acceptor = port.Facet--[[
-		success:boolean, [except:table] hasrequest()
-		success:boolean, [except:table] acceptone()
-		success:boolean, [except:table] acceptall()
-	]],
-	dispatcher = port.Receptacle--[[
-		dispatch(request)
-	]],
-	listener = port.Receptacle--[[
-		channel:object, [except:table] getchannel(configs:table)
-		request:object, [except:table], [requests:table] = getrequest(channel:object, [probe:boolean])
-	]],
+	acceptor   = port.Facet,
+	dispatcher = port.Receptacle,
+	listener   = port.Receptacle,
 }
 
 function assemble(components)
-	setfenv(1, components)
-	--
-	-- Client side
-	--
-	if OperationInvoker then
-		OperationInvoker.requester = OperationRequester.requests
-	end
-	if ObjectProxies then
-		ObjectProxies.invoker = OperationInvoker.invoker
-	end
-	if ClientBroker then
-		ClientBroker.proxies = ObjectProxies.proxies
-		ClientBroker.references = ObjectReferrer.references
-	end
-	--
-	-- Server side
-	--
-	if RequestReceiver then
-		RequestReceiver.listener = RequestListener.listener
-		RequestReceiver.dispatcher = RequestDispatcher.dispatcher
-	end
-	if ServerBroker then
-		ServerBroker.objects = RequestDispatcher.objects
-		ServerBroker.acceptor = RequestReceiver.acceptor
-		ServerBroker.references = ObjectReferrer.references
-	end
+	arch.start(components)
+	
+	-- CLIENT SIDE
+	OperationInvoker.requester = OperationRequester.requests
+	ObjectProxies.invoker      = OperationInvoker.invoker
+	ClientBroker.proxies       = ObjectProxies.proxies
+	ClientBroker.references    = ObjectReferrer.references
+
+	-- SERVER SIDE
+	RequestReceiver.listener   = RequestListener.listener
+	RequestReceiver.dispatcher = RequestDispatcher.dispatcher
+	ServerBroker.objects       = RequestDispatcher.objects
+	ServerBroker.acceptor      = RequestReceiver.acceptor
+	ServerBroker.references    = ObjectReferrer.references
+	
+	arch.finish(components)
 end
