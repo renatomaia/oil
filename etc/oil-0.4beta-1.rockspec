@@ -1,7 +1,7 @@
 package = "OiL"
 version = "0.4beta-1"
 source = {
-	url = "http://luaforge.net/frs/download.php/3527/oil-0.4-beta.tar.gz",
+	url = "http://luaforge.net/frs/download.php/3558/oil-0.4-beta.tar.gz",
 }
 description = {
 	summary = "An Object Request Broker in Lua",

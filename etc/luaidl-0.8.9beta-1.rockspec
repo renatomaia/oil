@@ -25,10 +25,10 @@ build = {
 	type = "none",
 	install = {
 		lua = {
-			["luaidl"] = "lua/luaidl.lua",
-			["luaidl.pre"] = "lua/luaidl/pre.lua",
-			["luaidl.lex"] = "lua/luaidl/lex.lua",
-			["luaidl.sin"] = "lua/luaidl/sin.lua",
+			["luaidl"] = "luaidl.lua",
+			["luaidl.pre"] = "luaidl/pre.lua",
+			["luaidl.lex"] = "luaidl/lex.lua",
+			["luaidl.sin"] = "luaidl/sin.lua",
 		},
 	},
 }
