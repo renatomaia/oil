@@ -1,5 +1,1 @@
-EXPORTS
-	luaopen_luaidl
-	luaopen_luaidl_lex
-	luaopen_luaidl_pre
-	luaopen_luaidl_sin
+VERSION 0.8

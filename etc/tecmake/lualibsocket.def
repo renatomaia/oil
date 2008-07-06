@@ -1,7 +1,1 @@
-EXPORTS
-	luaopen_socket
-	luaopen_socket_ftp
-	luaopen_socket_http
-	luaopen_socket_smtp
-	luaopen_socket_tp
-	luaopen_socket_url
+VERSION 2.1

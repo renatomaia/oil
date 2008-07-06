@@ -1,2 +1,1 @@
-EXPORTS
-	luaopen_oil_bit
+VERSION 0.4

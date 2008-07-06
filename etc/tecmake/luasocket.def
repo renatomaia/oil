@@ -1,2 +1,1 @@
-EXPORTS
-	luaopen_socket_core
+VERSION 2.1

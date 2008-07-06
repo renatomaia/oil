@@ -13,7 +13,8 @@ SRC= $(PC_SRC) oilall.c oilbit.c $(LUASOCKET_SRC)
 EXPINC= oilall.h
 
 ifeq "$(TEC_SYSNAME)" "Win32"
-	LIBS += wsock32
+	LIBS    += wsock32
+	DEFINES += OILALL_API="__declspec(dllexport)"
 endif
 
 oilall.c oilall.h: $(PL_LUA) $(INC)

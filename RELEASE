@@ -1,4 +1,4 @@
-OiL 0.4 alpha
+OiL 0.4 beta
 
 [New Features]
 
@@ -15,6 +15,43 @@ OiL 0.4 alpha
 Application façade:
 	- Entirely new API that allows instantiation of multiple brokers with
 	  alternative implementations.
+	  NOTE: To use the old API, require 'oil.compat' instead of 'oil'.
+	- New auxiliary funtions in module 'oil'.
+		- 'oil.VERSION' to check OiL's version.
+		- 'oil.tasks' instead of 'scheduler'.
+		- 'oil.sleep(time)' instead of 'scheduler.sleep(time)'.
+		- 'oil.pcall(func, ...)' instead of 'scheduler.pcall(func, ...)'.
+		- 'oil.time()' as an alternative to 'socket.gettime()'.
+		- 'oil.main(func)' instead of 'scheduler.new(func, ...); scheduler.run()'.
+		- 'oil.newthread(func, ...)' instead of 'scheduler.start(func, ...)'.
+		- 'oil.writeto(file, text)' replaces the similar to
+		  'oil.writeIOR(obj, file)'.
+		- 'oil.readfrom(file)' instead of 'oil.readIOR(file)'.
+	- Operations related to the ORB are provided by the 'broker' object, such as:
+		- 'broker.types' as an improved alternative to 'oil.getLIR()'.
+		- 'broker:loadidl(idlspec)' instead of 'oil.loadidl(idlspec)'.
+		- 'broker:loadidlfile(idlfile)' instead of 'oil.loadidlfile(idlfile)'.
+		- 'broker:setIR(irprx)' instead of 'oil.getIR(irprx)'.
+		- 'broker:getIR()' instead of 'oil.getIR()'.
+		- 'broker:getLIR()' instead of 'oil.getLIR()'.
+		- 'broker:narrow(proxy [, interface])' instead of
+		  'oil.narrow(proxy [, interface])'.
+		- 'broker:newproxy(strref [, interface])' instead of
+		  'oil.newproxy(impl [, interface])'.
+		- 'broker:newservant(impl [, key, interface])' instead of
+		  'oil.newservant(impl [, interface, key])'.
+		- 'broker:tostring(object)' instead of 'obj:_ior()'.
+		- 'broker:deactivate(obj|key|impl)' improved alternative to
+		  'obj:_deactivate()'.
+		- 'broker:newencoder()' to create a CDR encoder.
+		- 'broker:newdecoder(string)' to create a CDR decoder.
+		- 'broker:newexcept(body)' as an alternative to 'oil.Exception(body)'.
+		- 'broker:setexcatch(func, type)' to set exception handlers.
+		- 'broker:run()' instead of 'oil.run()'.
+		- 'broker:pending()' instead of 'oil.pending()'.
+		- 'broker:step()' instead of 'oil.step()'.
+		- 'broker:shutdown()' to shutdown the ORB.
+		- 'broker:setinterceptor(iceptor, side)' to set interceptors.
 Integrated CORBA IR:
 	- Ability to change IR definitions;
 	- Ability to load module parts using different 'oil.loadidl*' calls;

@@ -7,7 +7,7 @@ LIBPFX= lualib
 
 PC_DIR= ../obj/$(LIBNAME)/$(TEC_UNAME)
 PC_LUA= $(LUASRC_DIR)/precompiler.lua
-PC_FLAGS= -p OIL_API -l "$(LUASRC_DIR)/?.lua" -d $(PC_DIR)
+PC_FLAGS= -l "$(LUASRC_DIR)/?.lua" -d $(PC_DIR)
 
 # Precompiled Files
 
@@ -169,16 +169,16 @@ OIL_LUA= $(addprefix $(LUASRC_DIR)/, \
 # Script Compilation
 
 $(PC_DIR)/$(LIBPFX)loop.c: $(PC_LUA) $(LOOP_LUA)
-	$(LUABIN) $(LUABIN_FLAGS) $< $(PC_FLAGS) -o $(LIBPFX)loop $(filter-out $<,$^)
+	$(LUABIN) $(LUABIN_FLAGS) $< $(PC_FLAGS) -p LOOP_API      -o $(LIBPFX)loop   $(filter-out $<,$^)
 
 $(PC_DIR)/$(LIBPFX)luaidl.c: $(PC_LUA) $(LUAIDL_LUA)
-	$(LUABIN) $(LUABIN_FLAGS) $< $(PC_FLAGS) -o $(LIBPFX)luaidl $(filter-out $<,$^)
+	$(LUABIN) $(LUABIN_FLAGS) $< $(PC_FLAGS) -p LUAIDL_API    -o $(LIBPFX)luaidl $(filter-out $<,$^)
 
 $(PC_DIR)/$(LIBPFX)socket.c: $(PC_LUA) $(SOCKET_LUA)
-	$(LUABIN) $(LUABIN_FLAGS) $< $(PC_FLAGS) -o $(LIBPFX)socket $(filter-out $<,$^)
+	$(LUABIN) $(LUABIN_FLAGS) $< $(PC_FLAGS) -p LUASOCKET_API -o $(LIBPFX)socket $(filter-out $<,$^)
 
 $(PC_DIR)/$(LIBPFX)oil.c: $(PC_LUA) $(OIL_LUA)
-	$(LUABIN) $(LUABIN_FLAGS) $< $(PC_FLAGS) -o $(LIBPFX)oil $(filter-out $<,$^)
+	$(LUABIN) $(LUABIN_FLAGS) $< $(PC_FLAGS) -p OIL_API       -o $(LIBPFX)oil    $(filter-out $<,$^)
 
 # Compiled Script Headers
 

@@ -53,9 +53,9 @@ LIBS= -lm -ldl -llua $(MYLIBS)
 LUA= $(LUA_BIN)/lua -epackage.path=[[../lua/?.lua]]
 
 # Flags for pre-compilation of Lua scripts
-PC_FLAGS= -p OIL_API -l "../lua/?.lua"
+PC_FLAGS= -l "../lua/?.lua"
 # Flags for generation of pre-loader of Lua scripts
-PL_FLAGS= -p OIL_API
+PL_FLAGS= -p OILALL_API
 
 LIBPFX= lualib
 

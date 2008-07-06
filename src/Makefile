@@ -184,16 +184,16 @@ preload: $(PLLIB) $(PLSOL)
 # Script Compilation
 
 $(LIBPFX)loop.c: $(PRECMP_LUA) $(LOOP_LUA)
-	$(LUA) $< $(PC_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
+	$(LUA) $< $(PC_FLAGS) -p LOOP_API      -o $(@:.c=) $(filter-out $<,$^)
 
 $(LIBPFX)luaidl.c: $(PRECMP_LUA) $(LUAIDL_LUA)
-	$(LUA) $< $(PC_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
+	$(LUA) $< $(PC_FLAGS) -p LUAIDL_API    -o $(@:.c=) $(filter-out $<,$^)
 
 $(LIBPFX)socket.c: $(PRECMP_LUA) $(SOCKET_LUA)
-	$(LUA) $< $(PC_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
+	$(LUA) $< $(PC_FLAGS) -p LUASOCKET_API -o $(@:.c=) $(filter-out $<,$^)
 
 $(LIBPFX)oil.c: $(PRECMP_LUA) $(OIL_LUA)
-	$(LUA) $< $(PC_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
+	$(LUA) $< $(PC_FLAGS) -p OIL_API       -o $(@:.c=) $(filter-out $<,$^)
 
 # Static Libraies
 
