@@ -16,7 +16,7 @@ description = {
 	]],
 	license = "MIT/X11",
 	homepage = "http://oil.luaforge.net/luaidl",
-	maintainer = "Ricardo Calheiros <rcosme@tecgraf.puc-rio.br>",
+	maintainer = "Ricardo Cosme <rcosme@tecgraf.puc-rio.br>",
 }
 dependencies = {
 	"lua >= 5.1",

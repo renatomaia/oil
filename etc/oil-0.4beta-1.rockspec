@@ -6,10 +6,13 @@ source = {
 description = {
 	summary = "An Object Request Broker in Lua",
 	detailed = [[
-		OiL stands for ORB in Lua and is an implementation of an extremely portable
-		and lightweight object request broker (ORB) almost entirely in the Lua
-		language. Currently, it supports a subset of CORBA, but it is inteded to
-		support different protocols.
+		OiL stands for ORB in Lua and it is a very portable and lightweight
+		implementation of easy-to-use object request brokers (ORB) written in Lua.
+		OiL ORBs are made of assembled components that can be selectively chosen or
+		replaced to create ORBs with different features. Currently, it provides
+		components that support cooperative multithreading (with coroutines),
+		interoperability with CORBA (through IIOP), interception of CORBA
+		invocations, etc.
 	]],
 	license = "MIT/X11",
 	homepage = "http://oil.luaforge.net/",
