@@ -1,9 +1,9 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.9b
+-- Version:  0.9b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: init.lua
---
+-- 
 
 local assert  = assert
 local error   = error
@@ -13,68 +13,78 @@ local type    = type
 local unpack  = unpack
 
 local io      = require "io"
+local os      = require "os"
 local string  = require "string"
 
 module 'luaidl'
 
-local _pre    = require 'luaidl.pre'
-local sin     = require 'luaidl.sin'
+local preprocessor  = require 'luaidl.pre'
+local parser        = require 'luaidl.sin'
 
-VERSION = '0.8.9b'
+VERSION = '0.9b'
 
---- Preprocesses an IDL code.
---
+---
+-- Auxiliar functions
+--------------------------------------------------------------------------
+
+local function parseAux(idl, options)
+  local status, output = pcall(parser.parse, idl, options)
+  if status then
+    return unpack(output)
+  else
+    return nil, output
+  end
+end
+--------------------------------------------------------------------------
+
+
+---
+-- API
+--------------------------------------------------------------------------
+
+--- Preprocesses an IDL code. 
+-- 
 -- @param idl String with IDL code.
 -- @param options (optional)Table with preprocessor options, the available keys are:
 -- 'incpath', a table with include paths;
 -- 'filename', the IDL filename.
 -- @return String with the given IDL preprocessed.
-function pre( idl, options )
-  return _pre.run( idl, options )
+function pre(idl, options)
+  return preprocessor.run(idl, options)
 end
 
 --- Preprocesses an IDL file.
---
+-- 
 -- @param filename The IDL filename.
 -- @param options (optional)Table with preprocessor options, the available keys are:
 -- 'incpath', a table with include paths.
 -- @return String with the given IDL preprocessed.
 -- @see pre
-function prefile( filename, options )
-  local t = type( filename )
-  if t ~= 'string' then
-    error( string.format( "bad argument #1 to 'prefile' (filename expected, got %s)", t ), 2 )
+function prefile(filename, options)
+  local _type = type(filename)
+  if (_type ~= "string") then
+    error(string.format("bad argument #1 to 'prefile' (filename expected, got %s)", _type), 2)
   end --if
-  local fh, msg = io.open( filename )
+  local fh, msg = io.open(filename)
   if not fh then
-    error( msg, 2 )
+    error(msg, 2)
   end --if
   if not options then
     options = { }
-  end --if
+  end
   options.filename = filename
-  local str = pre( fh:read( '*a' ), options )
+  local str = pre(fh:read('*a'), options)
   fh:close()
   return str
 end
 
-local function parseAux( idl, options )
-  local status, tab_output = pcall( sin.parse, idl, options )
-  if status then
-    return unpack( tab_output )
-  else
-    return nil, tab_output
-  end --if
-end
-
 --- Parses an IDL code.
---
+-- 
 -- @param idl String with IDL code.
--- @param options (optional)Table with parser and preprocessor options, the available keys are:<br>
--- 'callbacks', a table of callback methods.<br>
--- 'incpath', a table with include paths.<br>
--- 'filename',the IDL filename.<br>
--- 'notypecode', a flag that deactivates the implicit definition of a CORBA::TypeCode.<br>
+-- @param options (optional)Table with parser and preprocessor options, the available keys are:
+-- 'callbacks', a table of callback methods;
+-- 'incpath', a table with include paths;
+-- 'filename',the IDL filename.
 -- @return A graph(lua table),
 -- that represents an IDL definition in Lua, for each IDL definition found.
 function parse(idl, options)
@@ -83,23 +93,23 @@ function parse(idl, options)
 end
 
 --- Parses an IDL file.
--- Calls the method 'prefile' with
+-- Calls the method 'prefile' with 
 -- the given arguments, and so it parses the output of 'prefile'
 -- calling the method 'parse'.
 -- @param filename The IDL filename.
--- @param options (optional)Table with parser and preprocessor options, the available keys are:<br>
--- 'callbacks', a table of callback methods.<br>
--- 'incpath', a table with include paths.<br>
--- 'notypecode', a flag that deactivates the implicit definition of a CORBA::TypeCode.<br>
+-- @param options (optional)Table with parser and preprocessor options, the available keys are:
+-- 'callbacks', a table of callback methods;
+-- 'incpath', a table with include paths.
 -- @return A graph(lua table),
 -- that represents an IDL definition in Lua, for each IDL definition found.
--- @see prefile
+-- @see prefile 
 -- @see parse
-function parsefile( filename, options )
-  local t = type( filename )
-  if t ~= 'string' then
-    error( string.format( "bad argument #1 to 'parsefile' (filename expected, got %s)", t ), 2 )
-  end --if
-  local stridl = prefile( filename, options )
-  return parseAux( stridl, options )
+function parsefile(filename, options)
+  local _type = type(filename)
+  if (_type ~= "string") then
+    error(string.format("bad argument #1 to 'parsefile' (filename expected, got %s)", _type), 2)
+  end
+  local stridl = prefile(filename, options)
+  return parseAux(stridl, options)
 end
+--------------------------------------------------------------------------

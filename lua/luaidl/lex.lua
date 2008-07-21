@@ -1,6 +1,6 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.9b
+-- Version:  0.9b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: lex.lua
 --
@@ -15,100 +15,101 @@ local string   = require "string"
 
 module 'luaidl.lex'
 
-tab_tokens = { TK_ID = 257, TK_ABSTRACT = 258, TK_ANY = 259, TK_ATTRIBUTE = 260,
-              TK_BOOLEAN = 261, TK_CASE = 262, TK_CHAR = 263, TK_COMPONENT = 264,
-              TK_CONST = 265, TK_CONSUMES = 266, TK_CONTEXT = 267, TK_CUSTOM = 268,
-              TK_DEFAULT = 269, TK_DOUBLE = 270, TK_EXCEPTION = 271, TK_EMITS = 272,
-              TK_ENUM = 273, TK_EVENTTYPE = 274, TK_FACTORY = 275, TK_FALSE = 276,
-              TK_FINDER = 277, TK_FIXED = 278, TK_FLOAT = 279, TK_GETRAISES = 280,
-              TK_HOME = 281, TK_IMPORT = 282, TK_IN = 283, TK_INOUT = 284,
-              TK_INTERFACE = 285, TK_LOCAL = 286, TK_LONG = 287, TK_MODULE = 288,
-              TK_MULTIPLE = 289, TK_NATIVE = 290, TK_OBJECT = 291, TK_OCTET = 292,
-              TK_ONEWAY = 293, TK_OUT = 294, TK_PRIMARYKEY = 295, TK_PRIVATE = 296,
-              TK_PROVIDES = 297, TK_PUBLIC = 298, TK_PUBLISHES = 299, TK_RAISES = 300,
-              TK_READONLY = 301, TK_SETRAISES = 302, TK_SEQUENCE = 303, TK_SHORT = 304,
-              TK_STRING = 305, TK_STRUCT = 306, TK_SUPPORTS = 307, TK_SWITCH = 308,
-              TK_TRUE = 309, TK_TRUNCATABLE = 310, TK_TYPEDEF = 311, TK_TYPEID = 312,
-              TK_TYPEPREFIX = 313, TK_UNSIGNED = 314, TK_UNION = 315, TK_USES = 316,
-              TK_VALUEBASE = 317, TK_VALUETYPE = 318, TK_VOID = 319, TK_WCHAR = 320,
-              TK_WSTRING = 321, TK_INTEGER_LITERAL = 322, TK_FLOAT_LITERAL = 323,
-              TK_CHAR_LITERAL = 324, TK_WCHAR_LITERAL = 325, TK_STRING_LITERAL = 326,
-              TK_WSTRING_LITERAL = 327, TK_FIXED_LITERAL = 328, TK_PRAGMA_PREFIX = 329,
-              TK_PRAGMA_ID = 330, TK_MANAGES = 332,
-             }
+tab_tokens = {
+  TK_ID = 257, TK_ABSTRACT = 258, TK_ANY = 259, TK_ATTRIBUTE = 260,
+  TK_BOOLEAN = 261, TK_CASE = 262, TK_CHAR = 263, TK_COMPONENT = 264,
+  TK_CONST = 265, TK_CONSUMES = 266, TK_CONTEXT = 267, TK_CUSTOM = 268,
+  TK_DEFAULT = 269, TK_DOUBLE = 270, TK_EXCEPTION = 271, TK_EMITS = 272,
+  TK_ENUM = 273, TK_EVENTTYPE = 274, TK_FACTORY = 275, TK_FALSE = 276,
+  TK_FINDER = 277, TK_FIXED = 278, TK_FLOAT = 279, TK_GETRAISES = 280,
+  TK_HOME = 281, TK_IMPORT = 282, TK_IN = 283, TK_INOUT = 284,
+  TK_INTERFACE = 285, TK_LOCAL = 286, TK_LONG = 287, TK_MODULE = 288,
+  TK_MULTIPLE = 289, TK_NATIVE = 290, TK_OBJECT = 291, TK_OCTET = 292,
+  TK_ONEWAY = 293, TK_OUT = 294, TK_PRIMARYKEY = 295, TK_PRIVATE = 296,
+  TK_PROVIDES = 297, TK_PUBLIC = 298, TK_PUBLISHES = 299, TK_RAISES = 300,
+  TK_READONLY = 301, TK_SETRAISES = 302, TK_SEQUENCE = 303, TK_SHORT = 304,
+  TK_STRING = 305, TK_STRUCT = 306, TK_SUPPORTS = 307, TK_SWITCH = 308,
+  TK_TRUE = 309, TK_TRUNCATABLE = 310, TK_TYPEDEF = 311, TK_TYPEID = 312,
+  TK_TYPEPREFIX = 313, TK_UNSIGNED = 314, TK_UNION = 315, TK_USES = 316,
+  TK_VALUEBASE = 317, TK_VALUETYPE = 318, TK_VOID = 319, TK_WCHAR = 320,
+  TK_WSTRING = 321, TK_INTEGER_LITERAL = 322, TK_FLOAT_LITERAL = 323,
+  TK_CHAR_LITERAL = 324, TK_WCHAR_LITERAL = 325, TK_STRING_LITERAL = 326,
+  TK_WSTRING_LITERAL = 327, TK_FIXED_LITERAL = 328, TK_PRAGMA_PREFIX = 329,
+  TK_PRAGMA_ID = 330, TK_MANAGES = 332,
+}
 
 local tab_keywords = {
-                ['abstract']      = { token = tab_tokens.TK_ABSTRACT },
-                ['any']           = { token = tab_tokens.TK_ANY },
-                ['attribute']     = { token = tab_tokens.TK_ATTRIBUTE },
-                ['boolean']       = { token = tab_tokens.TK_BOOLEAN },
-                ['case']          = { token = tab_tokens.TK_CASE },
-                ['char']          = { token = tab_tokens.TK_CHAR },
-                ['component']     = { token = tab_tokens.TK_COMPONENT },
-                ['const']         = { token = tab_tokens.TK_CONST },
-                ['consumes']      = { token = tab_tokens.TK_CONSUMES },
-                ['context']       = { token = tab_tokens.TK_CONTEXT },
-                ['custom']        = { token = tab_tokens.TK_CUSTOM },
-                ['default']       = { token = tab_tokens.TK_DEFAULT },
-                ['double']        = { token = tab_tokens.TK_DOUBLE },
-                ['exception']     = { token = tab_tokens.TK_EXCEPTION },
-                ['emits']         = { token = tab_tokens.TK_EMITS },
-                ['enum']          = { token = tab_tokens.TK_ENUM },
-                ['eventtype']     = { token = tab_tokens.TK_EVENTTYPE },
-                ['factory']       = { token = tab_tokens.TK_FACTORY },
-                ['FALSE']         = { token = tab_tokens.TK_FALSE },
-                ['finder']        = { token = tab_tokens.TK_FINDER },
-                ['fixed']         = { token = tab_tokens.TK_FIXED },
-                ['float']         = { token = tab_tokens.TK_FLOAT },
-                ['getraises']     = { token = tab_tokens.TK_GETRAISES },
-                ['home']          = { token = tab_tokens.TK_HOME },
-                ['import']        = { token = tab_tokens.TK_IMPORT },
-                ['in']            = { token = tab_tokens.TK_IN },
-                ['inout']         = { token = tab_tokens.TK_INOUT },
-                ['interface']     = { token = tab_tokens.TK_INTERFACE },
-                ['local']         = { token = tab_tokens.TK_LOCAL },
-                ['long']          = { token = tab_tokens.TK_LONG },
-                ['manages']       = { token = tab_tokens.TK_MANAGES },
-                ['module']        = { token = tab_tokens.TK_MODULE },
-                ['multiple']      = { token = tab_tokens.TK_MULTIPLE },
-                ['native']        = { token = tab_tokens.TK_NATIVE },
-                ['Object']        = { token = tab_tokens.TK_OBJECT },
-                ['octet']         = { token = tab_tokens.TK_OCTET },
-                ['oneway']        = { token = tab_tokens.TK_ONEWAY },
-                ['out']           = { token = tab_tokens.TK_OUT },
-                ['primarykey']    = { token = tab_tokens.TK_PRIMARYKEY },
-                ['private']       = { token = tab_tokens.TK_PRIVATE },
-                ['provides']      = { token = tab_tokens.TK_PROVIDES },
-                ['public']        = { token = tab_tokens.TK_PUBLIC },
-                ['publishes']     = { token = tab_tokens.TK_PUBLISHES },
-                ['raises']        = { token = tab_tokens.TK_RAISES },
-                ['readonly']      = { token = tab_tokens.TK_READONLY },
-                ['setraises']     = { token = tab_tokens.TK_SETRAISES },
-                ['sequence']      = { token = tab_tokens.TK_SEQUENCE },
-                ['short']         = { token = tab_tokens.TK_SHORT },
-                ['string']        = { token = tab_tokens.TK_STRING },
-                ['struct']        = { token = tab_tokens.TK_STRUCT },
-                ['supports']      = { token = tab_tokens.TK_SUPPORTS },
-                ['switch']        = { token = tab_tokens.TK_SWITCH },
-                ['TRUE']          = { token = tab_tokens.TK_TRUE },
-                ['truncatable']   = { token = tab_tokens.TK_TRUNCATABLE },
-                ['typedef']       = { token = tab_tokens.TK_TYPEDEF },
-                ['typeid']        = { token = tab_tokens.TK_TYPEID },
-                ['typeprefix']    = { token = tab_tokens.TK_TYPEPREFIX },
-                ['unsigned']      = { token = tab_tokens.TK_UNSIGNED },
-                ['union']         = { token = tab_tokens.TK_UNION },
-                ['uses']          = { token = tab_tokens.TK_USES },
-                ['ValueBase']     = { token = tab_tokens.TK_VALUEBASE },
-                ['valuetype']     = { token = tab_tokens.TK_VALUETYPE },
-                ['void']          = { token = tab_tokens.TK_VOID },
-                ['wchar']         = { token = tab_tokens.TK_WCHAR },
-                ['wstring']       = { token = tab_tokens.TK_WSTRING },
-              }
+  ['abstract']      = { token = tab_tokens.TK_ABSTRACT },
+  ['any']           = { token = tab_tokens.TK_ANY },
+  ['attribute']     = { token = tab_tokens.TK_ATTRIBUTE },
+  ['boolean']       = { token = tab_tokens.TK_BOOLEAN },
+  ['case']          = { token = tab_tokens.TK_CASE },
+  ['char']          = { token = tab_tokens.TK_CHAR },
+  ['component']     = { token = tab_tokens.TK_COMPONENT },
+  ['const']         = { token = tab_tokens.TK_CONST },
+  ['consumes']      = { token = tab_tokens.TK_CONSUMES },
+  ['context']       = { token = tab_tokens.TK_CONTEXT },
+  ['custom']        = { token = tab_tokens.TK_CUSTOM },
+  ['default']       = { token = tab_tokens.TK_DEFAULT },
+  ['double']        = { token = tab_tokens.TK_DOUBLE },
+  ['exception']     = { token = tab_tokens.TK_EXCEPTION },
+  ['emits']         = { token = tab_tokens.TK_EMITS },
+  ['enum']          = { token = tab_tokens.TK_ENUM },
+  ['eventtype']     = { token = tab_tokens.TK_EVENTTYPE },
+  ['factory']       = { token = tab_tokens.TK_FACTORY },
+  ['FALSE']         = { token = tab_tokens.TK_FALSE },
+  ['finder']        = { token = tab_tokens.TK_FINDER },
+  ['fixed']         = { token = tab_tokens.TK_FIXED },
+  ['float']         = { token = tab_tokens.TK_FLOAT },
+  ['getraises']     = { token = tab_tokens.TK_GETRAISES },
+  ['home']          = { token = tab_tokens.TK_HOME },
+  ['import']        = { token = tab_tokens.TK_IMPORT },
+  ['in']            = { token = tab_tokens.TK_IN },
+  ['inout']         = { token = tab_tokens.TK_INOUT },
+  ['interface']     = { token = tab_tokens.TK_INTERFACE },
+  ['local']         = { token = tab_tokens.TK_LOCAL },
+  ['long']          = { token = tab_tokens.TK_LONG },
+  ['manages']       = { token = tab_tokens.TK_MANAGES },
+  ['module']        = { token = tab_tokens.TK_MODULE },
+  ['multiple']      = { token = tab_tokens.TK_MULTIPLE },
+  ['native']        = { token = tab_tokens.TK_NATIVE },
+  ['Object']        = { token = tab_tokens.TK_OBJECT },
+  ['octet']         = { token = tab_tokens.TK_OCTET },
+  ['oneway']        = { token = tab_tokens.TK_ONEWAY },
+  ['out']           = { token = tab_tokens.TK_OUT },
+  ['primarykey']    = { token = tab_tokens.TK_PRIMARYKEY },
+  ['private']       = { token = tab_tokens.TK_PRIVATE },
+  ['provides']      = { token = tab_tokens.TK_PROVIDES },
+  ['public']        = { token = tab_tokens.TK_PUBLIC },
+  ['publishes']     = { token = tab_tokens.TK_PUBLISHES },
+  ['raises']        = { token = tab_tokens.TK_RAISES },
+  ['readonly']      = { token = tab_tokens.TK_READONLY },
+  ['setraises']     = { token = tab_tokens.TK_SETRAISES },
+  ['sequence']      = { token = tab_tokens.TK_SEQUENCE },
+  ['short']         = { token = tab_tokens.TK_SHORT },
+  ['string']        = { token = tab_tokens.TK_STRING },
+  ['struct']        = { token = tab_tokens.TK_STRUCT },
+  ['supports']      = { token = tab_tokens.TK_SUPPORTS },
+  ['switch']        = { token = tab_tokens.TK_SWITCH },
+  ['TRUE']          = { token = tab_tokens.TK_TRUE },
+  ['truncatable']   = { token = tab_tokens.TK_TRUNCATABLE },
+  ['typedef']       = { token = tab_tokens.TK_TYPEDEF },
+  ['typeid']        = { token = tab_tokens.TK_TYPEID },
+  ['typeprefix']    = { token = tab_tokens.TK_TYPEPREFIX },
+  ['unsigned']      = { token = tab_tokens.TK_UNSIGNED },
+  ['union']         = { token = tab_tokens.TK_UNION },
+  ['uses']          = { token = tab_tokens.TK_USES },
+  ['ValueBase']     = { token = tab_tokens.TK_VALUEBASE },
+  ['valuetype']     = { token = tab_tokens.TK_VALUETYPE },
+  ['void']          = { token = tab_tokens.TK_VOID },
+  ['wchar']         = { token = tab_tokens.TK_WCHAR },
+  ['wstring']       = { token = tab_tokens.TK_WSTRING },
+}
 
 local tab_symbols
 
-PRAGMA_VERSION    = '1.0'
-ERROR_MSG_TYPE    = '[lexical error]:_LINE:_ERRORMSG.'
+PRAGMA_VERSION          = '1.0'
+local ERROR_MSG_TYPE    = '[lexical error]:_LINE:_ERRORMSG.'
 
 local token
 local lookahead
@@ -116,80 +117,74 @@ local i
 local stridllen
 local linemarkDeclared
 
-local function is_blank( char )
-  if ( lookahead == ' ' or lookahead == '\f' or lookahead == '\r' or
-       lookahead == '\t' or lookahead == '\v' ) then
+local function is_blank(char)
+  if (lookahead == ' ' or lookahead == '\f' or lookahead == '\r' or
+       lookahead == '\t' or lookahead == '\v') then
     return true
   else
     return false
   end
 end
 
-local function is_digit( char )
-  return string.find(char , '%d')
+local function is_digit(char)
+  return string.find(char, '%d')
 end
 
-local function is_hex_digit( char )
-  return string.find(char , '%x')
+local function is_hex_digit(char)
+  return string.find(char, '%x')
 end
 
-local function is_octal_digit( char )
-  return string.find(char , '[0-7]')
+local function is_octal_digit(char)
+  return string.find(char, '[0-7]')
 end
 
-local function is_alpha( char )
-  return string.find(char , '%w')
+local function is_alpha(char)
+  return string.find(char, '%w')
 end
 
-local function is_near_value( lookahead )
-  if string.find(lookahead , '%w') then
+local function is_near_value(lookahead)
+  if string.find(lookahead, '%w') then
     return ' near \''..lookahead..'\''
   else
     return ''
   end
 end
 
-local function insert_symbols( lexeme )
-  tab_symbols[lexeme] = {token = tab_tokens.TK_ID ,descriptions = {}}
+local function insert_symbols(lexeme)
+  tab_symbols[lexeme] = {token = tab_tokens.TK_ID, descriptions = {}}
 end
 
-local function search_symbols( lexeme , tab_symbols )
+local function search_symbols(lexeme, tab_symbols)
   if tab_symbols[lexeme] then
-    return lexeme ,tab_symbols[lexeme].token
+    return lexeme, tab_symbols[lexeme].token
   else
     for key, value in pairs(tab_symbols) do
       if string.upper(lexeme) == string.upper(key) then
-        return key ,'collide'
+        return key, 'collide'
       end
     end
   end
-  return nil ,nil
+  return nil, nil
 end
 
-local function search_symbols_wocollide( lexeme , tab_symbols )
+local function search_symbols_wocollide(lexeme, tab_symbols)
   if tab_symbols[lexeme] then
-    return lexeme ,tab_symbols[lexeme].token
-  else
-    for key, value in pairs(tab_symbols) do
---      if string.upper( lexeme ) == string.upper( key ) then
---        return key , 'collide'
---      end
-    end
+    return lexeme, tab_symbols[lexeme].token
   end
-  return nil ,nil
+  return nil, nil
 end
 
-local function error_lex( error_msg )
+local function error_lex(error_msg)
   if (type(ERROR_MSG_TYPE) ~= 'string') then
-    error('bad value to \'error_msg_type\' variable (string expected)' ,2)
+    error('bad value to \'error_msg_type\' variable (string expected)', 2)
   end
   init()
   local _LINE =  line
-  error( string.gsub( string.gsub( ERROR_MSG_TYPE , '_LINE' , _LINE) ,
-         '_ERRORMSG' , error_msg ) , 3 )
+  error(string.gsub(string.gsub(ERROR_MSG_TYPE,  '_LINE',  _LINE), 
+         '_ERRORMSG',  error_msg),  3)
 end
 
-function get_constructor ( symbol_name )
+local function get_constructor (symbol_name)
   if tab_symbols[symbol_name] then
     return tab_symbols[symbol_name].descriptions
   else
@@ -197,8 +192,8 @@ function get_constructor ( symbol_name )
   end
 end
 
-function set_constructor ( symbol_name , field_name , value )
-  for k , v in ipairs(tab_symbols) do
+local function set_constructor (symbol_name, field_name, value)
+  for k,  v in ipairs(tab_symbols) do
     if (v.lexeme == symbol_name) then
       v.descriptions[field_name] = value
     end
@@ -214,9 +209,8 @@ local function getchar(stridl)
   if (i > stridllen) then
     return nil
   else
-    local c =  string.sub(stridl, i, i)
+    local c = string.sub(stridl, i, i)
     i = i + 1
-    prevtokenvalue = tokenvalue_previous
     return c
   end
 end
@@ -245,7 +239,6 @@ function lexer(stridl)
 
     if not lookahead then
       init()
-      token = nil
       return token
     elseif (lookahead == '#') then
       lookahead = getchar(stridl)
@@ -418,16 +411,16 @@ function lexer(stridl)
           else
             error_lex('malformed number'..is_near_value(tokenvalue))
           end
-          tokenvalue = tonumber(tokenvalue ,10)
+          tokenvalue = tonumber(tokenvalue, 10)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         elseif (lookahead == 'd' or lookahead == 'D') then
-          tokenvalue = tonumber(tokenvalue ,10)
+          tokenvalue = tonumber(tokenvalue, 10)
           lookahead = getchar(stridl)
           token = tab_tokens.TK_FIXED_LITERAL
           return token
         else
-          tokenvalue = tonumber(tokenvalue ,10)
+          tokenvalue = tonumber(tokenvalue, 10)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         end
@@ -451,7 +444,7 @@ function lexer(stridl)
           tokenvalue = tokenvalue..lookahead
           lookahead = getchar(stridl)
         end
-        tokenvalue = tonumber(tokenvalue ,10)
+        tokenvalue = tonumber(tokenvalue, 10)
         token = tab_tokens.TK_INTEGER_LITERAL
         return token
       end
@@ -500,22 +493,22 @@ function lexer(stridl)
           else
             error_lex('malformed number near'..is_near_value(tokenvalue))
           end
-          tokenvalue = tonumber(tokenvalue ,10)
+          tokenvalue = tonumber(tokenvalue, 10)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         elseif (lookahead == 'd' or lookahead == 'D') then
-          tokenvalue = tonumber(tokenvalue ,10)
+          tokenvalue = tonumber(tokenvalue, 10)
           lookahead = getchar(stridl)
           token = tab_tokens.TK_FIXED_LITERAL
           return token
         else
-          tokenvalue = tonumber(tokenvalue ,10)
+          tokenvalue = tonumber(tokenvalue, 10)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         end
       else
-        if not (string.find(tokenvalue ,'8') or string.find(tokenvalue ,'9')) then
-          tokenvalue = tonumber(tokenvalue ,8)
+        if not (string.find(tokenvalue, '8') or string.find(tokenvalue, '9')) then
+          tokenvalue = tonumber(tokenvalue, 8)
         end
         token = tab_tokens.TK_INTEGER_LITERAL
         return token
@@ -547,7 +540,7 @@ function lexer(stridl)
         end
         if (lookahead == 'e' or lookahead == 'E') then
           tokenvalue = tokenvalue..lookahead
-          lookahead = getchar( stridl )
+          lookahead = getchar(stridl)
           if (lookahead == '-') then
             tokenvalue = tokenvalue..lookahead
             lookahead = getchar(stridl)
@@ -571,16 +564,16 @@ function lexer(stridl)
           else
             error_lex('malformed number near'..is_near_value(tokenvalue))
           end
-          tokenvalue = tonumber(tokenvalue ,10)
+          tokenvalue = tonumber(tokenvalue, 10)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         elseif (lookahead == 'd' or lookahead == 'D') then
-          tokenvalue = tonumber(tokenvalue ,10)
+          tokenvalue = tonumber(tokenvalue, 10)
           lookahead = getchar(stridl)
           token = tab_tokens.TK_FIXED_LITERAL
           return token
         else
-          tokenvalue = tonumber(tokenvalue ,10)
+          tokenvalue = tonumber(tokenvalue, 10)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         end
@@ -641,7 +634,7 @@ function lexer(stridl)
               break
             end
           end
-          tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp ,8))
+          tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp, 8))
         elseif (lookahead == 'x') then
           local tokenvalue_tmp = '0x'
           lookahead = getchar(stridl)
@@ -653,7 +646,7 @@ function lexer(stridl)
               lookahead = getchar(stridl)
             end
           end
-          tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp ,10))
+          tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp, 10))
         elseif (lookahead == 'u') then
           error_lex('it doest not permited unicode characters in char type')
         else
@@ -709,7 +702,7 @@ function lexer(stridl)
             lookahead = getchar(stridl)
           elseif (lookahead == '?') then
             tokenvalue = tokenvalue..'?'
-            lookahead = getchar( stridl )
+            lookahead = getchar(stridl)
           elseif (lookahead == '\'') then
             tokenvalue = tokenvalue..'\''
             lookahead = getchar(stridl)
@@ -729,7 +722,7 @@ function lexer(stridl)
                 break
               end
             end
-            tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp ,8))
+            tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp, 8))
           elseif (lookahead == 'x') then
             local tokenvalue_tmp = '0x'
             lookahead = getchar(stridl)
@@ -741,7 +734,7 @@ function lexer(stridl)
                 lookahead = getchar(stridl)
               end
             end
-            tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp , 10))
+            tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp,  10))
           elseif (lookahead == 'u') then
             error_lex('it doest not permited unicode characters in char type')
           else
@@ -764,27 +757,25 @@ function lexer(stridl)
       return token
   -- identifiers
   -- keywords
-    elseif is_alpha(lookahead) or (lookahead == '_') then
+    elseif (is_alpha(lookahead) or (lookahead == '_')) then
       local lexbuf = lookahead
       lookahead = getchar(stridl)
       while is_alpha(lookahead) or (lookahead == '_') or is_digit(lookahead) do
         lexbuf = lexbuf..lookahead
         lookahead = getchar(stridl)
       end
-      if (string.sub(lexbuf ,1 ,1) ~= '_') then
-        tokenvalue, tk = search_symbols(lexbuf , tab_keywords)
-        if tk == "collide" then
+      if (string.sub(lexbuf, 1, 1) ~= '_') then
+        tokenvalue, tk = search_symbols(lexbuf, tab_keywords)
+        if (tk == "collide") then
           error_lex("'"..lexbuf.."' collides with keyword '"..tokenvalue.."'")
         elseif tk then
           token = tk
           return token
         end
       else
-        lexbuf = string.sub(lexbuf ,2)
+        lexbuf = string.sub(lexbuf, 2)
       end
-      tokenvalue, token = search_symbols_wocollide(lexbuf ,tab_symbols)
---      if token == "collide" then
---        error_lex( "'"..lexbuf.."' and '"..tokenvalue.."' collide" )
+      tokenvalue, token = search_symbols_wocollide(lexbuf, tab_symbols)
       if not token then
         insert_symbols(lexbuf)
         tokenvalue = lexbuf
