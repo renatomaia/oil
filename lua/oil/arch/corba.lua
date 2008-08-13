@@ -63,6 +63,7 @@ RequestListener = component.Template{
 	listener  = port.Facet,
 	messenger = port.Receptacle,
 	channels  = port.HashReceptacle,
+	mapper    = port.Receptacle,
 	indexer   = port.Receptacle,
 	mutex     = port.Receptacle,
 }
@@ -101,6 +102,7 @@ function assemble(components)
 
 	-- LISTENER
 	RequestListener.messenger = MessageMarshaler.messenger
+	RequestListener.mapper    = RequestDispatcher.objects
 	RequestListener.indexer   = ServantIndexer.indexer
 	RequestListener.mutex     = RequestReceiver.mutex
 	ServantIndexer.members    = TypeRepository.indexer
@@ -117,7 +119,7 @@ function assemble(components)
 	
 	-- REFERENCES
 	ObjectReferrer.codec = ValueEncoder.codec
-	ObjectReferrer.types = ServantIndexer.indexer
+	ObjectReferrer.types = RequestDispatcher.objects
 	for tag, ReferenceProfiler in pairs(ReferenceProfilers) do
 		ReferenceProfiler.codec          = ValueEncoder.codec
 		ValueEncoder.profiler[tag]       = ReferenceProfiler.profiler

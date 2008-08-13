@@ -25,6 +25,7 @@ local luapcall     = pcall
 local setmetatable = setmetatable
 local type         = type                                                       --[[VERBOSE]] local select = select
 
+local table       = require "loop.table"
 local oo          = require "oil.oo"
 local Exception   = require "oil.Exception"                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
@@ -43,7 +44,7 @@ function __init(self, object)
 	return self
 end
 
-function register(self, impl, key, ...)
+function register(self, impl, key, info)
 	local result, except = self.map[key]
 	if result then
 		if result.object ~= impl then
@@ -54,7 +55,7 @@ function register(self, impl, key, ...)
 			}
 		end
 	else                                                                          --[[VERBOSE]] verbose:dispatcher("object ",impl," registered with key ",key)
-		self.map[key] = { object = impl, ... }
+		self.map[key] = table.copy(info, { object = impl })
 		result = true
 	end
 	return result, except

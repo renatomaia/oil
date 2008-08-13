@@ -26,7 +26,6 @@ arch = {
 
 OperationRequester = arch.OperationRequester{require "oil.corba.giop.Requester" }
 RequestListener    = arch.RequestListener   {require "oil.corba.giop.Listener"  }
-RequestDispatcher  = arch.RequestDispatcher {require "oil.kernel.base.Dispatcher"} -- use implementation from base kernel
 
 function create(comps)
 	return builder.create(_M, comps)

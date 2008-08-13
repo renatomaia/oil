@@ -31,29 +31,6 @@ oo.class(_M, Indexer)
 
 --------------------------------------------------------------------------------
 
-function __init(self, object)
-	self = oo.rawnew(self, object)
-	self.interfaces = self.interfaces or {}
-	return self
-end
-
-function register(self, type, key)
-	self.interfaces[key] = type
-	return type
-end
-
-function unregister(self, key)
-	local type = self.interfaces[key]
-	self.interfaces[key] = nil
-	return type
-end
-
-function typeof(self, key)
-	return self.interfaces[key]
-end
-
---------------------------------------------------------------------------------
-
 localops = {}
 
 function localops:_non_existent()

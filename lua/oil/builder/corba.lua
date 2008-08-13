@@ -20,10 +20,6 @@ TypeRepository = arch.TypeRepository{
 	types    = require "oil.corba.idl.Importer",
 }
 
--- Avoid using a typed request dispatcher because the GIOP protocol already
--- does type checks prior to decode marshaled values in invocation requests.
-RequestDispatcher = base.RequestDispatcher{require "oil.kernel.base.Dispatcher"}
-
 function create(comps)
 	return builder.create(_M, comps)
 end

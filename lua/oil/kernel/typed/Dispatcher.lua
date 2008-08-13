@@ -34,12 +34,19 @@ oo.class(_M, Dispatcher)
 
 context = false
 
+function typeof(self, key)
+	local object = self.map[key]
+	if object then
+		return object.type
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Dispatcher facet
 
 function dispatch(self, key, operation, default, ...)
 	local indexer = self.context.indexer
-	local member, implement = indexer:valueof(indexer:typeof(key), operation)
+	local member, implement = indexer:valueof(self:typeof(key), operation)
 	if member then
 		return Dispatcher.dispatch(self, key, operation, default or implement, ...)
 	else

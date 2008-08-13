@@ -74,13 +74,7 @@ function object(self, object, key, type)
 	local result, except = context.types:resolve(type)
 	if result then
 		key = key or KeyFmt:format(self:hashof(object), self:hashof(result))
-		result, except = context.mapper:register(result, key)
-		if result then
-			result, except = Server.object(self, object, key)
-			if not result then
-				context.mapper:unregister(key)
-			end
-		end
+		result, except = Server.object(self, object, key, {type = result})
 	end
 	return result, except
 end

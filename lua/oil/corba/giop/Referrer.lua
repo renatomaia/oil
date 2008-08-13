@@ -114,10 +114,20 @@ function referenceto(self, objectkey, ...)
 			}
 		end
 	end
-	return {
-		type_id = self.context.types:typeof(objectkey).repID,
-		profiles = profiles,
-	}
+	local type = self.context.types:typeof(objectkey)
+	if type then
+		return {
+			type_id = type.repID,
+			profiles = profiles,
+		}
+	else
+		-- TODO:[maia] Is this the right exception?
+		return nil, Exception{ "OBJECT_NOT_EXIST",
+			reason = "objectkey",
+			message = "illegal object key",
+			objectkey = objectkey,
+		}
+	end
 end
 
 function encode(self, ior)

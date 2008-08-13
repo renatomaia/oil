@@ -31,8 +31,10 @@
 -- 	success:boolean, [except:table] sendmsg(channel:object, type:number, header:table, idltypes:table, values...)
 -- 	type:number, [header:table|except:table], [decoder:object] receivemsg(channel:object)
 -- 
--- indexer:Receptacle
+-- mapper:Receptacle
 -- 	interface:table typeof(objectkey:string)
+-- 
+-- indexer:Receptacle
 -- 	member:table valueof(interface:table, name:string)
 -- 
 -- mutex:Receptacle
@@ -193,10 +195,9 @@ function getrequest(self, channel, probe)                                       
 	if result == RequestID then
 		local requestid = header.request_id
 		if not channel[requestid] then
-			local indexer = context.indexer
-			local iface = indexer:typeof(header.object_key)
+			local iface = context.mapper:typeof(header.object_key)
 			if iface then
-				local member, opimpl = indexer:valueof(iface, header.operation)
+				local member, opimpl = context.indexer:valueof(iface, header.operation)
 				if member then                                                          --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
 					for index, input in ipairs(member.inputs) do
 						header[index] = decoder:get(input)
@@ -237,7 +238,7 @@ function getrequest(self, channel, probe)                                       
 		header.bypassed = true
 	elseif result == LocateRequestID then                                          --[[VERBOSE]] verbose:listen("got locate request ",header.request_id)
 		local reply = { request_id = header.request_id }
-		if context.indexer:typeof(header.object_key)
+		if context.mapper:typeof(header.object_key)
 			then reply.locate_status = "OBJECT_HERE"
 			else reply.locate_status = "UNKNOWN_OBJECT"
 		end
