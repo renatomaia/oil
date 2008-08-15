@@ -42,6 +42,7 @@ local function addString (stack, s)
 end
 
 local function processDirective(...)
+  local arg = {...}
   local directive = arg[ 1 ]
   if ( directive == 'endif' ) then
     READ = true
