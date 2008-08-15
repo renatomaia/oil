@@ -1,6 +1,6 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.9b
+-- Version:  0.8.10b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: lex.lua
 --

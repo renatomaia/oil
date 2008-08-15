@@ -1,6 +1,6 @@
 --
 -- Project:  LuaIDL
--- Version:  0.8.9b
+-- Version:  0.8.10b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: init.lua
 --
@@ -20,7 +20,7 @@ module 'luaidl'
 local _pre    = require 'luaidl.pre'
 local sin     = require 'luaidl.sin'
 
-VERSION = '0.8.9b'
+VERSION = '0.8.10b'
 
 --- Preprocesses an IDL code.
 --
