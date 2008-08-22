@@ -57,9 +57,10 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local module   = module
-local luapcall = pcall
-local require  = require
+local module		= module
+local luapcall		= pcall
+local require		= require
+local setmetatable	= setmetatable
 
 local io        = require "io"
 local coroutine = require "coroutine"
@@ -524,6 +525,21 @@ function ORB:setclientinterceptor(iceptor)
 	local port = require "loop.component.intercepted"
 	port.intercept(self.OperationRequester, "requests", "method", iceptor)
 	port.intercept(self.OperationRequester, "messenger", "method", iceptor)
+end
+
+--------------------------------------------------------------------------------
+-- Sets the __index function of the Active Object Map's metatable
+--
+-- This way, the user can define a way to index unregistered servants.
+-- This is particularly useful for the CORBA PoA policies ServantLocator and
+-- ServantActivator, for example.
+--
+-- @param function function to be called whenever an unregistered servant is accessed
+--
+-- @usage orb:setobjectmapindexer(function(self, objkey) return { object = ..., type = orb.types:resolve(...), } end)
+--
+function ORB:setobjectmapindexer(indexfunction)
+	setmetatable(self.RequestDispatcher.map, { __index = indexfunction })
 end
 
 --------------------------------------------------------------------------------
