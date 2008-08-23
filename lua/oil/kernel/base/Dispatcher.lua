@@ -44,18 +44,20 @@ function __init(self, object)
 	return self
 end
 
-function register(self, impl, key, info)
+function register(self, key, entry)
 	local result, except = self.map[key]
 	if result then
-		if result.object ~= impl then
+		if result == entry then
+			result = true
+		else
 			result, except = nil, Exception{
 				reason = "usedkey",
 				message = "object key already in use",
 				key = key,
 			}
 		end
-	else                                                                          --[[VERBOSE]] verbose:dispatcher("object ",impl," registered with key ",key)
-		self.map[key] = table.copy(info, { object = impl })
+	else                                                                          --[[VERBOSE]] verbose:dispatcher("object ",entry," registered with key ",key)
+		self.map[key] = entry
 		result = true
 	end
 	return result, except
@@ -63,37 +65,36 @@ end
 
 function unregister(self, key)
 	local map = self.map
-	local impl = map[key]
-	if impl then                                                                  --[[VERBOSE]] verbose:dispatcher("object with key ",key," unregistered")
-		impl = impl.object
-		map[key] = nil
-	end
-	return impl
+	local entry = map[key]
+	map[key] = nil
+	return entry
 end
 
 function retrieve(self, key)
-	local servant = self.map[key]
-	return servant and servant.object
+	return self.map[key]
 end
 
 --------------------------------------------------------------------------------
 -- Dispatcher facet
 
+function execute(self, object, operation, default, ...)
+	local method = object[operation] or default
+	if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",operation, ...)
+		return self.pcall(method, object, ...)
+	else
+		return false, Exception{
+			reason = "noimplement",
+			message = "no implementation for operation of object with key",
+			operation = operation,
+			object = object,
+		}
+	end
+end
+
 function dispatch(self, key, operation, default, ...)
-	local object = self.map[key]
-	if object then
-		object = object.object
-		local method = object[operation] or default
-		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",key,":",operation, ...)
-			return self.pcall(method, object, ...)
-		else
-			return false, Exception{
-				reason = "noimplement",
-				message = "no implementation for operation of object with key",
-				operation = operation,
-				key = key,
-			}
-		end
+	local entry = self.map[key]
+	if entry then
+		return self:execute(entry, operation, default, ...)
 	else
 		return false, Exception{
 			reason = "badkey",

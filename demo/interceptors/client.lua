@@ -52,7 +52,9 @@ function interceptor:receivereply(reply)
 	io.stderr:write("context 4321 not found! Canceling ...\n")
 	reply.success = false
 	reply.count = 1
-	reply[1] = orb:newexcept{ "ACCESS_DENIED" }
+	reply[1] = orb:newexcept{ "NoProfiling", -- local exception, unknown to CORBA
+		operation = operation
+	}
 end
 
 --------------------------------------------------------------------------------

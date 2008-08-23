@@ -119,7 +119,7 @@ end
 function object(self, object, key, ...)
 	local context = self.context
 	key = key or "\0"..self:hashof(object)
-	local result, except = context.objects:register(object, key, ...)
+	local result, except = context.objects:register(key, object, ...)
 	if result then
 		result, except = context.references:referenceto(key, self.config)
 		if result then

@@ -74,7 +74,7 @@ function object(self, object, key, type)
 	local result, except = context.types:resolve(type)
 	if result then
 		key = key or KeyFmt:format(self:hashof(object), self:hashof(result))
-		result, except = Server.object(self, object, key, {type = result})
+		result, except = Server.object(self, object, key, result)
 	end
 	return result, except
 end
