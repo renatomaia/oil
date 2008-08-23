@@ -86,22 +86,31 @@ ORB = oo.class()
 function ORB:__init(config)
 	self = oo.rawnew(self, builder.build(config.flavor, config))
 	
-	------------------------------------------------------------------------------
-	-- Internal interface repository used by the ORB.
-	--
-	-- This is a alias for a facet of the Type Respository component of the
-	-- internal architecture.
-	-- If the current assembly does not provide this component, this field is
-	-- 'nil'.
-	--
-	-- @usage oil.types:register(oil.corba.idl.sequence{oil.corba.idl.string})   .
-	-- @usage oil.types:lookup("CORBA::StructDescription")                       .
-	-- @usage oil.types:lookup_id("IDL:omg.org/CORBA/InterfaceDef:1.0")          .
-	--
-	if self.TypeRepository    ~= nil then self.types = self.TypeRepository.types end
-	if self.ClientChannels    ~= nil then self.ClientChannels.options = config.tcpoptions end
-	if self.ServerChannels    ~= nil then self.ServerChannels.options = config.tcpoptions end
-	if self.RequestDispatcher ~= nil then self.RequestDispatcher.map = config.objectmap end
+	if self.TypeRepository ~= nil then
+		----------------------------------------------------------------------------
+		-- Internal interface repository used by the ORB.
+		--
+		-- This is a alias for a facet of the Type Respository component of the
+		-- internal architecture.
+		-- If the current assembly does not provide this component, this field is
+		-- 'nil'.
+		--
+		-- @usage oil.types:register(oil.corba.idl.sequence{oil.corba.idl.string}) .
+		-- @usage oil.types:lookup("CORBA::StructDescription")                     .
+		-- @usage oil.types:lookup_id("IDL:omg.org/CORBA/InterfaceDef:1.0")        .
+		--
+		self.types = self.TypeRepository.types
+	end
+	if self.ClientChannels ~= nil and config.tcpoptions then
+		self.ClientChannels.options = config.tcpoptions
+	end
+	if self.ServerChannels ~= nil and config.tcpoptions then
+		self.ServerChannels.options = config.tcpoptions
+	end
+	--if self.RequestDispatcher ~= nil and config.objectmap then
+	if self.RequestDispatcher ~= nil and config.objectmap then
+		self.RequestDispatcher.map = config.objectmap
+	end
 	assert.results(self.ServerBroker.broker:initialize(self))
 	
 	return self
@@ -450,9 +459,8 @@ end
 --
 function ORB:newexcept(body)
 	assert.type(body, "table", "exception body")
-	local except = assert.results(self.TypeRepository.types:resolve(body[1]))
-	assert.type(except, "idl except", "referenced exception type")
-	body[1] = except.repID
+	local except = self.types and self.types:resolve(body[1])
+	if except then body[1] = except.repID end
 	return assert.Exception(body)
 end
 
