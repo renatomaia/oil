@@ -11,12 +11,12 @@ __tostring = Exception.__tostring
 minor_code_value = 0
 completion_status = 2
 
-function __init(_, except, ...)
+function __init(self, except, ...)
 	if except then
 		local name = except[1]
 		except[1] = giop.SystemExceptionIDs[name] or name
 	end
-	return Exception.__init(_, except, ...)
+	return Exception.__init(self, except, ...)
 end
 
 assert.Exception = _M -- use GIOP exception as the default exception

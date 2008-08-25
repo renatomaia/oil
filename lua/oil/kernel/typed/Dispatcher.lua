@@ -34,10 +34,36 @@ oo.class(_M, Dispatcher)
 
 context = false
 
+--------------------------------------------------------------------------------
+-- Objects facet
+
+function register(self, key, impl, type)
+	local entry = self.map[key]
+	if entry == nil
+	or entry.object ~= impl
+	or entry.type ~= type
+	then
+		return Dispatcher.register(self, key, { object = impl, type = type })
+	end
+	return true
+end
+
+function unregister(self, key)
+	local result, except = Dispatcher.unregister(self, key)
+	if result then result, except = result.object, result.type end
+	return result, except
+end
+
+function retrieve(self, key)
+	local result, except = Dispatcher.retrieve(self, key)
+	if result then result, except = result.object, result.type end
+	return result, except
+end
+
 function typeof(self, key)
-	local object = self.map[key]
-	if object then
-		return object.type
+	local entry = self.map[key]
+	if entry then
+		return entry.type
 	end
 end
 
@@ -45,17 +71,24 @@ end
 -- Dispatcher facet
 
 function dispatch(self, key, operation, default, ...)
-	local indexer = self.context.indexer
-	local member, implement = indexer:valueof(self:typeof(key), operation)
-	if member then
-		return Dispatcher.dispatch(self, key, operation, default or implement, ...)
+	local entry = self.map[key]
+	if entry then
+		local member, impl = self.context.indexer:valueof(entry.type, operation)
+		if member then
+			return self:execute(entry.object, operation, default or impl, ...)
+		else
+			return false, Exception{
+				reason = "badoperation",
+				message = "operation is illegal for object with key",
+				operation = operation,
+				key = key,
+			}
+		end
 	else
 		return false, Exception{
-			reason = "badoperation",
-			message = "operation is illegal for object with key",
-			operation = operation,
+			reason = "badkey",
+			message = "no object with key",
 			key = key,
 		}
 	end
 end
-

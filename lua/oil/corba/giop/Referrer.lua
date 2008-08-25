@@ -33,12 +33,14 @@
 -- 	interface:table typeof(objectkey:string)
 --------------------------------------------------------------------------------
 
-local select = select
-local tonumber  = tonumber
+local select       = select
+local setmetatable = setmetatable
+local tonumber     = tonumber
 
 local string = require "string"
 
 local oo        = require "oil.oo"
+local idl       = require "oil.corba.idl"
 local giop      = require "oil.corba.giop"
 local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
@@ -81,10 +83,10 @@ function corbaloc(self, encoded)
 	for token, data in string.gmatch(encoded, "(%w*):([^,]*)") do
 		local profiler = self.context.profiler[token]
 		if profiler then
-			return {
-				type_id = "",
+			return setmetatable({
+				type_id = idl.object.repID,
 				profiles = { profiler:decodeurl(data) },
-			}
+			}, giop.IOR)
 		end
 	end
 	return nil, Exception{ "INV_OBJREF",
@@ -116,10 +118,10 @@ function referenceto(self, objectkey, ...)
 	end
 	local type = self.context.types:typeof(objectkey)
 	if type then
-		return {
+		return setmetatable({
 			type_id = type.repID,
 			profiles = profiles,
-		}
+		}, giop.IOR)
 	else
 		-- TODO:[maia] Is this the right exception?
 		return nil, Exception{ "OBJECT_NOT_EXIST",

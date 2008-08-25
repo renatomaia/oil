@@ -1320,8 +1320,9 @@ end
 -- Define uma declaração forward.
 local function dclForward(name, type)
   local absolute_name = getAbsolutename(currentScope, name)
-  local definition
-  if not (namespaces[absolute_name] or forwardDeclarations[absolute_name]) then
+  local definition = namespaces[absolute_name] or
+                     forwardDeclarations[absolute_name]
+  if not definition then
     definition = {name = name, _type = type, absolute_name = absolute_name}
     forwardDeclarations[absolute_name] = definition
   end

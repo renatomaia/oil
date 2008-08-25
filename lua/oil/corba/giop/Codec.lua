@@ -719,6 +719,8 @@ function Encoder:Object(value, idltype)                                         
 	local reference
 	if value == nil then
 		reference = NullReference
+	elseif getmetatable(value) == giop.IOR then
+		reference = value
 	else
 		assert.type(value, "table", "object reference", "MARSHAL")
 		reference = value.__reference
