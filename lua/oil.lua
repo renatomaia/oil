@@ -57,9 +57,10 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local module   = module
-local luapcall = pcall
-local require  = require
+local module		= module
+local luapcall		= pcall
+local require		= require
+local setmetatable	= setmetatable
 
 local io        = require "io"
 local coroutine = require "coroutine"
