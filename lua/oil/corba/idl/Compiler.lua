@@ -25,6 +25,7 @@ local pairs  = pairs
 local select = select
 local unpack = unpack
 
+local table  = require "loop.table"
 local luaidl = require "luaidl"
 
 local oo  = require "oil.oo"
@@ -35,7 +36,7 @@ module("oil.corba.idl.Compiler", oo.class)
 context = false
 
 --------------------------------------------------------------------------------
-Options = {
+local DefaultOptions = {
 	callbacks = {
 		VOID      = idl.void,
 		SHORT     = idl.short,
@@ -65,7 +66,7 @@ Options = {
 		sequence  = idl.sequence,
 	},
 }
-function Options.callbacks.interface(def)
+function DefaultOptions.callbacks.interface(def)
 	if def.definitions then -- not forward declarations
 		return idl.interface(def)
 	end
@@ -73,20 +74,26 @@ function Options.callbacks.interface(def)
 end
 
 local Modules
-function Options.callbacks.module(def)
+function DefaultOptions.callbacks.module(def)
 	Modules[def] = true
 	return def
 end
 
-function Options.callbacks.start()
+function DefaultOptions.callbacks.start()
 	Modules = {}
 end
 
-function Options.callbacks.finish()
+function DefaultOptions.callbacks.finish()
 	for module in pairs(Modules) do idl.module(module) end
 end
 
 --------------------------------------------------------------------------------
+
+function __init(self, ...)
+	self = oo.rawnew(self, ...)
+	self.defaults = table.copy(DefaultOptions)
+	return self
+end
 
 function doresults(self, ...)
 	if ... then
@@ -95,10 +102,23 @@ function doresults(self, ...)
 	return ...
 end
 
-function loadfile(self, filepath)
-	return self:doresults(luaidl.parsefile(filepath, self.Options))
+function options(self, idlpaths)
+	local options = self.defaults
+	if idlpaths then
+		options = table.copy(options)
+		local incpath = table.copy(options.incpath)
+		for index, incpath in ipairs(idlpaths) do
+			incpath[#incpath+1] = incpath
+		end
+		options.incpath = incpath
+	end
+	return options
 end
 
-function load(self, idlspec)
-	return self:doresults(luaidl.parse(idlspec, self.Options))
+function loadfile(self, filepath, idlpaths)
+	return self:doresults(luaidl.parsefile(filepath, self:options(idlpaths)))
+end
+
+function load(self, idlspec, idlpaths)
+	return self:doresults(luaidl.parse(idlspec, self:options(idlpaths)))
 end
