@@ -18,6 +18,8 @@
 -- 	reference:table decode(reference:string)
 --------------------------------------------------------------------------------
 
+local tonumber = tonumber
+
 local socket = require "socket.core"
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
@@ -44,15 +46,23 @@ end
 
 local ReferenceFrm = "@%s:%d"
 function encode(self, reference)
-	return reference.object..ReferenceFrm:format(reference.host, reference.port)
+	local object, host, port = reference.object, reference.host, reference.port
+	if object ~= nil and host ~= nil and port ~= nil then
+		return object..ReferenceFrm:format(host, port)
+	end
+	return nil, "bad LuDO reference"
 end
 
-local ReferencePat = "^([^@]*)@([^:]*):(%d*)$"
+local ReferencePat = "^([^@]+)@([^:]+):(%d+)$"
 function decode(self, reference)
 	local object, host, port = reference:match(ReferencePat)
-	return {
-		host = host,
-		port = port,
-		object = object,
-	}
+	port = tonumber(port)
+	if object ~= nil and host ~= nil and port ~= nil then
+		return {
+			host = host,
+			port = port,
+			object = object,
+		}
+	end
+	return nil, "invalid LuDO reference"
 end
