@@ -22,14 +22,7 @@ RequestReceiver = component.Template({
 
 function assemble(components)
 	arch.start(components)
-	
 	OperationInvoker.tasks = BasicSystem.tasks
 	RequestReceiver.tasks  = BasicSystem.tasks
-	
-	-- define 'pcall' used in invocation dispatching.
-	-- the function is retrieved by a method call because contained
-	-- components cannot index functions that are not executed as methods.
-	RequestDispatcher.dispatcher.pcall = BasicSystem.tasks:getpcall()
-	
 	arch.finish(components)
 end

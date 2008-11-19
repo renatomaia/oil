@@ -61,5 +61,10 @@ function assemble(components)
 	ServerBroker.acceptor      = RequestReceiver.acceptor
 	ServerBroker.references    = ObjectReferrer.references
 	
+	-- define 'pcall' used in invocation dispatching.
+	-- the function is retrieved by a method call because contained
+	-- components cannot index functions that are not executed as methods.
+	RequestDispatcher.pcall = BasicSystem.pcall
+	
 	arch.finish(components)
 end
