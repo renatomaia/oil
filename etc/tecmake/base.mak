@@ -115,10 +115,8 @@ OIL_LUA= $(addprefix $(LUASRC_DIR)/, \
 	oil/corba/giop/Indexer.lua \
 	oil/corba/giop/Listener.lua \
 	oil/corba/giop/Messenger.lua \
-	oil/corba/giop/ProxyOps.lua \
 	oil/corba/giop/Referrer.lua \
 	oil/corba/giop/Requester.lua \
-	oil/corba/giop/ServantOps.lua \
 	oil/corba/idl.lua \
 	oil/corba/idl/Compiler.lua \
 	oil/corba/idl/Importer.lua \
@@ -141,7 +139,6 @@ OIL_LUA= $(addprefix $(LUASRC_DIR)/, \
 	oil/corba/services/naming.lua \
 	oil/Exception.lua \
 	oil/kernel/base/Acceptor.lua \
-	oil/kernel/base/Client.lua \
 	oil/kernel/base/Connector.lua \
 	oil/kernel/base/Dispatcher.lua \
 	oil/kernel/base/Proxies.lua \
@@ -149,7 +146,6 @@ OIL_LUA= $(addprefix $(LUASRC_DIR)/, \
 	oil/kernel/base/Server.lua \
 	oil/kernel/base/Sockets.lua \
 	oil/kernel/cooperative/Receiver.lua \
-	oil/kernel/typed/Client.lua \
 	oil/kernel/typed/Dispatcher.lua \
 	oil/kernel/typed/Proxies.lua \
 	oil/kernel/typed/Server.lua \

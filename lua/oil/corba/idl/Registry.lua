@@ -1431,7 +1431,7 @@ function resolve(self, typeref)
 			}
 		end
 	elseif result == "table" and typeref._type == "interface" then
-		return self:register(typeref)
+		result, errmsg = self:register(typeref)
 	else
 		result, errmsg = nil, Exception{ "INTERNAL", minor_code_value = 0,
 			reason = "interface",

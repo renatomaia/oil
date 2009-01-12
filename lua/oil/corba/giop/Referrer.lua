@@ -102,7 +102,7 @@ function corbaloc(self, encoded)
 end
 
 --------------------------------------------------------------------------------
--- Coding ----------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 function newreference(self, objectkey, ...)
 	local profiles = {}
@@ -121,7 +121,7 @@ function newreference(self, objectkey, ...)
 			}
 		end
 	end
-	local type = self.context.types:typeof(objectkey)
+	local type = select(2, self.context.servants:retrieve(objectkey))
 	if type then
 		return setmetatable({
 			type_id = type.repID,
@@ -136,6 +136,27 @@ function newreference(self, objectkey, ...)
 		}
 	end
 end
+
+local _interface = giop.ObjectOperations._interface
+function typeof(self, reference)
+	local context = self.context
+	local requester = context.requester
+	local result, except = requester:newrequest(reference, _interface)
+	if result then
+		local request = result
+		result, except = requester:getreply(request)
+		if result then
+			result, except = request:contents()
+			if result then
+				result = except
+			end
+		end
+	end
+	return result, except
+end
+
+--------------------------------------------------------------------------------
+-- Coding ----------------------------------------------------------------------
 
 function encode(self, ior)
 	local encoder = self.context.codec:encoder(true)

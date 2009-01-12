@@ -77,24 +77,20 @@ end
 --------------------------------------------------------------------------------
 -- Dispatcher facet
 
-function execute(self, object, operation, default, ...)
-	local method = object[operation] or default
-	if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",operation, ...)
-		return self.pcall(method, object, ...)
-	else
-		return false, Exception{
-			reason = "noimplement",
-			message = "no implementation for operation of object with key",
-			operation = operation,
-			object = object,
-		}
-	end
-end
-
 function dispatch(self, key, operation, default, ...)
 	local entry = self.map[key]
 	if entry then
-		return self:execute(entry, operation, default, ...)
+		local method = entry[operation] or default
+		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",operation, ...)
+			return self.pcall(method, object, ...)
+		else
+			return false, Exception{
+				reason = "noimplement",
+				message = "no implementation for operation of object with key",
+				operation = operation,
+				object = object,
+			}
+		end
 	else
 		return false, Exception{
 			reason = "badkey",

@@ -50,27 +50,31 @@ patterns = { "^_([gs]et)_(.+)$" }
 builders = {}
 function builders:get(attribute, opname, attribop)
 	if attribute._type == "attribute" then
+		local attribname = attribute.name
 		return idl.operation{ attribute = attribute, attribop = attribop,
 			name = opname,
 			result = attribute.type,
+			implementation = function(entry)
+				return entry.object[attribname]
+			end,
 		}
 	end
 end
 function builders:set(attribute, opname, attribop)
 	if attribute._type == "attribute" then
+		local attribname = attribute.name
 		return idl.operation{ attribute = attribute, attribop = attribop,
 			name = opname,
 			parameters = { {type = attribute.type, name = "value"} },
+			implementation = function(entry, value)
+				entry.object[attribname] = value
+			end,
 		}
 	end
 end
 
 --------------------------------------------------------------------------------
 -- Interface Operations --------------------------------------------------------
-
-function typeof(self, name)
-	return self.context.registry:resolve(name)
-end
 
 function valueof(self, interface, name)
 	local member = self:findmember(interface, name)

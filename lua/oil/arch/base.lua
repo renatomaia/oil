@@ -7,33 +7,24 @@ module "oil.arch.base"
 -- UNDERPINNINGS
 SocketChannels = component.Template{
 	channels = port.Facet,
-	sockets = port.Receptacle,
+	sockets  = port.Receptacle,
 }
 BasicSystem = component.Template{
 	sockets = port.Facet,
 }
 
 -- CLIENT SIDE
-ClientBroker = component.Template{
-	broker     = port.Facet,
-	proxies    = port.Receptacle,
+ProxyManager = component.Template{
+	proxies    = port.Facet,
+	requester  = port.Receptacle,
 	references = port.Receptacle,
-}
-ObjectProxies = component.Template{
-	proxies = port.Facet,
-	requester = port.Receptacle,
 }
 
 -- SERVER SIDE
-ServerBroker = component.Template{
-	broker     = port.Facet,
-	objects    = port.Receptacle,
-	acceptor   = port.Receptacle,
-	references = port.Receptacle,
-}
-RequestDispatcher = component.Template{
-	objects    = port.Facet,
+ServantManager = component.Template{
+	servants   = port.Facet,
 	dispatcher = port.Facet,
+	references = port.Receptacle,
 }
 RequestReceiver = component.Template{
 	acceptor   = port.Facet,
@@ -45,16 +36,13 @@ function assemble(components)
 	arch.start(components)
 	
 	-- CLIENT SIDE
-	ObjectProxies.requester = OperationRequester.requests
-	ClientBroker.proxies    = ObjectProxies.proxies
-	ClientBroker.references = ObjectReferrer.references
+	ProxyManager.requester  = OperationRequester.requests
+	ProxyManager.references = ObjectReferrer.references
 
 	-- SERVER SIDE
 	RequestReceiver.listener   = RequestListener.listener
-	RequestReceiver.dispatcher = RequestDispatcher.dispatcher
-	ServerBroker.objects       = RequestDispatcher.objects
-	ServerBroker.acceptor      = RequestReceiver.acceptor
-	ServerBroker.references    = ObjectReferrer.references
+	RequestReceiver.dispatcher = ServantManager.dispatcher
+	ServantManager.references  = ObjectReferrer.references
 	
 	arch.finish(components)
 end

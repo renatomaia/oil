@@ -73,14 +73,32 @@ end
 function dispatch(self, key, operation, default, ...)
 	local entry = self.map[key]
 	if entry then
-		local member, impl = self.context.indexer:valueof(entry.type, operation)
+		local member = self.context.indexer:valueof(entry.type, operation)
 		if member then
-			return self:execute(entry.object, operation, default or impl, ...)
+			local object = entry.object
+			local method = object[operation]
+			if method == nil then
+				object = entry
+				method = default
+			end
+			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",operation, ...)
+				return self.pcall(method, object, ...)
+			else
+				return false, Exception{
+					reason = "noimplement",
+					message = "no implementation for operation of object with key",
+					operation = operation,
+					object = object,
+					type = entry.type,
+					key = key,
+				}
+			end
 		else
 			return false, Exception{
 				reason = "badoperation",
 				message = "operation is illegal for object with key",
 				operation = operation,
+				type = entry.type,
 				key = key,
 			}
 		end

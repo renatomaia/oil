@@ -32,7 +32,8 @@ ReferenceProfiler = component.Template{
 ObjectReferrer = component.Template{
 	references = port.Facet,
 	codec      = port.Receptacle,
-	types      = port.Receptacle,
+	servants   = port.Receptacle,
+	requester  = port.Receptacle,
 	profiler   = port.HashReceptacle,
 }
 
@@ -50,28 +51,15 @@ OperationRequester = component.Template{
 	profiler  = port.HashReceptacle,
 	mutex     = port.Receptacle,
 }
-ProxyIndexer = component.Template{
-	indexer   = port.Facet,
-	members   = port.Receptacle,
-	requester = port.Receptacle,
-	profiler  = port.HashReceptacle,
-	types     = port.Receptacle,
-	proxies   = port.Receptacle,
-}
 
 -- LISTENER
 RequestListener = component.Template{
-	listener  = port.Facet,
-	messenger = port.Receptacle,
-	channels  = port.HashReceptacle,
-	mapper    = port.Receptacle,
-	indexer   = port.Receptacle,
-	mutex     = port.Receptacle,
-}
-ServantIndexer = component.Template{
-	indexer = port.Facet,
-	mapper  = port.Facet,
-	members = port.Receptacle,
+	listener   = port.Facet,
+	messenger  = port.Receptacle,
+	channels   = port.HashReceptacle,
+	dispatcher = port.Receptacle,
+	indexer    = port.Receptacle,
+	mutex      = port.Receptacle,
 }
 
 function assemble(components)
@@ -90,24 +78,17 @@ function assemble(components)
 	TypeRepository.types:register(sysex)
 	
 	-- MARSHALING
-	ValueEncoder.proxies   = ClientBroker.broker
-	ValueEncoder.objects   = ServerBroker.broker
+	ValueEncoder.proxies   = ProxyManager.proxies
+	ValueEncoder.servants  = ServantManager.servants
 	MessageMarshaler.codec = ValueEncoder.codec
 
 	-- REQUESTER
 	OperationRequester.messenger = MessageMarshaler.messenger
-	OperationRequester.mutex     = BasicSystem.mutex
-	ProxyIndexer.members         = TypeRepository.indexer
-	ProxyIndexer.requester       = OperationRequester.requests
-	ProxyIndexer.types           = TypeRepository.types
-	ProxyIndexer.proxies         = ObjectProxies.proxies
 
 	-- LISTENER
-	RequestListener.messenger = MessageMarshaler.messenger
-	RequestListener.mapper    = RequestDispatcher.objects
-	RequestListener.indexer   = ServantIndexer.indexer
-	RequestListener.mutex     = BasicSystem.mutex
-	ServantIndexer.members    = TypeRepository.indexer
+	RequestListener.messenger  = MessageMarshaler.messenger
+	RequestListener.dispatcher = ServantManager.dispatcher
+	RequestListener.indexer    = TypeRepository.indexer
 	
 	-- COMMUNICATION
 	for tag, ClientChannels in pairs(IOPClientChannels) do
@@ -120,14 +101,14 @@ function assemble(components)
 	end
 	
 	-- REFERENCES
-	ObjectReferrer.codec = ValueEncoder.codec
-	ObjectReferrer.types = RequestDispatcher.objects
+	ObjectReferrer.codec      = ValueEncoder.codec
+	ObjectReferrer.servants   = ServantManager.dispatcher
+	ObjectReferrer.requester  = OperationRequester.requests
 	for tag, ReferenceProfiler in pairs(ReferenceProfilers) do
 		ReferenceProfiler.codec          = ValueEncoder.codec
 		ValueEncoder.profiler[tag]       = ReferenceProfiler.profiler
 		ObjectReferrer.profiler[tag]     = ReferenceProfiler.profiler
 		OperationRequester.profiler[tag] = ReferenceProfiler.profiler
-		ProxyIndexer.profiler[tag]       = ReferenceProfiler.profiler
 	end
 	
 	arch.finish(components)

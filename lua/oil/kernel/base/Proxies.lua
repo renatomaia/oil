@@ -58,14 +58,16 @@ end
 
 function newcache(methodmaker)
 	return setmetatable(oo.initclass(), {
-		__mode = "v",
+		__mode = "v", -- TODO:[maia] can method creation/collection be worse than
+		              --             memory leak due to invocation of constantly
+		              --             changing methods ?
 		__call = oo.rawnew,
-		__index = function(cache, operation)
+		__index = function(cache, field)
 			local function invoker(self, ...)                                         --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-				return self.__context.requester:newrequest(self.__reference, operation, ...)
+				return self.__context.requester:newrequest(self.__reference, field, ...)
 			end
-			invoker = methodmaker(invoker, operation)
-			cache[operation] = invoker
+			invoker = methodmaker(invoker, field)
+			cache[field] = invoker
 			return invoker
 		end,
 	})
@@ -112,20 +114,20 @@ Protected = newcache(makeprotected)
 --------------------------------------------------------------------------------
 
 Request = oo.class()
-function Request:ready()                                                        --[[VERBOSE]] verbose:invoke(true, "check reply")
+function Request:ready()                                                        --[[VERBOSE]] verbose:proxies(true, "check reply availability")
 	local proxy = self.proxy
 	assertresults(proxy, self.operation,
-	              proxy.__context.requester:getreply(request, true))              --[[VERBOSE]] verbose:invoke(false)
+	              proxy.__context.requester:getreply(request, true))              --[[VERBOSE]] verbose:proxies(false)
 	return self.contents ~= nil
 end
-function Request:results()                                                      --[[VERBOSE]] verbose:invoke(true, "get reply")
+function Request:results()                                                      --[[VERBOSE]] verbose:proxies(true, "get reply results")
 	local success, except = self.proxy.__context.requester:getreply(self)
 	if success then
 		return self:contents()
-	end                                                                           --[[VERBOSE]] verbose:invoke(false)
+	end                                                                           --[[VERBOSE]] verbose:proxies(false)
 	return success, except
 end
-function Request:evaluate()                                                     --[[VERBOSE]] verbose:proxies("getting deferred results of ",self.operation)
+function Request:evaluate()                                                     --[[VERBOSE]] verbose:proxies("get deferred results of ",self.operation)
 	return assertresults(
 		self.proxy,
 		self.operation,
@@ -164,7 +166,15 @@ Extras = {
 	__try = Protected,
 }
 
-function proxyto(self, reference)
+function fromstring(self, reference, ...)
+	local result, except = self.context.references:decode(reference)
+	if result then
+		result, except = self:newproxy(result, ...)
+	end
+	return result, except
+end
+
+function newproxy(self, reference)                                              --[[VERBOSE]] verbose:proxies("new proxy to ",reference)
 	local proxy = Proxy{
 		__context = self.context,
 		__reference = reference,
@@ -178,7 +188,7 @@ function proxyto(self, reference)
 	return proxy
 end
 
-function excepthandler(self, handler)
+function excepthandler(self, handler)                                           --[[VERBOSE]] verbose:proxies("setting exception handler for proxies")
 	DefaultHandler = handler
 	return true
 end

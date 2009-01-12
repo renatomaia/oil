@@ -40,7 +40,9 @@ local oo        = require "oil.oo"
 local Exception = require "oil.Exception"
 local Proxies   = require "oil.kernel.base.Proxies"                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.kernel.typed.Proxies", oo.class)
+module "oil.kernel.typed.Proxies"
+
+oo.class(_M, Proxies)
 
 context = false
 
@@ -48,19 +50,16 @@ context = false
 
 function newcache(methodmaker)
 	return oo.class{
-		__index = function(self, field)
-			if type(field) == "string" then
-				local context = self.__context
-				local operation, value = context.indexer:valueof(self.__type, field)
-				if value ~= nil then
-					value = methodmaker(value, operation)
-				elseif operation then
-					value = methodmaker(function(self, ...)                               --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-						return context.requester:newrequest(self.__reference, operation, ...)
-					end, operation)
+		__index = function(cache, field)                                            --[[VERBOSE]] verbose:proxies(true, "attempt to invoke operation named ",field)
+			local context = cache.__context
+			local operation = context.indexer:valueof(cache.__type, field)
+			if operation then
+				local function invoker(self, ...)                                       --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+					return context.requester:newrequest(self.__reference, operation, ...)
 				end
-				self[field] = value
-				return value
+				invoker = methodmaker(invoker, operation)                               --[[VERBOSE]] verbose:proxies(false, "operation named ",field," was created")
+				cache[field] = invoker                                                  --[[VERBOSE]]
+				return invoker                                                          --[[VERBOSE]] else verbose:proxies(false, "operation named ",field," not found")
 			end
 		end
 	}
@@ -82,6 +81,9 @@ local Classes = {
 
 function __init(self, object)
 	self = oo.rawnew(self, object)
+	local function narrow(proxy, type)
+		return self:newproxy(proxy.__reference, type)
+	end
 	local prxcls = {}
 	for label, class in pairs(Classes) do
 		prxcls[label] = ObjectCache{
@@ -92,6 +94,8 @@ function __init(self, object)
 					table.clear(class)
 					class.__context = self.context
 					class.__type = type
+					class.__narrow = narrow
+					class._narrow = narrow -- TODO:[maia] should be deprecated
 					oo.initclass(class)
 				end
 				updater:notify()
@@ -110,43 +114,51 @@ end
 
 --------------------------------------------------------------------------------
 
-function proxyto(self, reference, type)                                         --[[VERBOSE]] verbose:proxies("new proxy to ",reference)
+function newproxy(self, reference, type)                                        --[[VERBOSE]] verbose:proxies("new proxy to ",reference," with type ",type)
+	local result, except
 	local context = self.context
-	type = type or context.indexer:typeof(reference)
+	if not type then
+		type, except = context.references:typeof(reference)
+	end
 	if type then
-		local class = self.classes[type]
-		local proxy = oo.rawnew(class, { __reference = reference })
-		for label, classes in pairs(self.extras) do
-			class = classes[type]
-			if class then
-				proxy[label] = oo.rawnew(class, { __reference = reference })
+		type, except = context.types:resolve(type)
+		if type then
+			local class = self.classes[type]
+			result = oo.rawnew(class, { __reference = reference })
+			for label, classes in pairs(self.extras) do
+				class = classes[type]
+				if class then
+					result[label] = oo.rawnew(class, { __reference = reference })
+				end
 			end
 		end
-		return proxy
-	else
-		return nil, Exception{
-			reason = "type",
-			message = "unable to get type for reference",
-			reference = reference,
-			type = type,
-		}
 	end
+	return result, except
 end
 
-function excepthandler(self, handler, type)
+function excepthandler(self, handler, type)                                     --[[VERBOSE]] verbose:proxies("setting exception handler for proxies of ",type)
+	local result, except = true
+	local context = self.context
 	if type then
-		local class = self.classes[type]
-		class.__exceptions = handler
-		for label, classes in pairs(self.extras) do
-			local class = classes[type]
-			if class then
-				class.__exceptions = handler
-			end
-		end
-		return class
-	else
-		return Proxies.excepthandler(self, handler)
+		result, except = context.types:resolve(type)
+		if result then type = result end
 	end
+	if result then
+		if type then
+			local class = self.classes[type]
+			class.__exceptions = handler
+			for label, classes in pairs(self.extras) do
+				local class = classes[type]
+				if class then
+					class.__exceptions = handler
+				end
+			end
+			return class
+		else
+			return Proxies.excepthandler(self, handler)
+		end
+	end
+	return result, except
 end
 
 function resetcache(self, interface)

@@ -41,19 +41,23 @@ context = false
 
 --------------------------------------------------------------------------------
 
-function setupaccess(self, channelinfo)
-	return self.context.listener:default(channelinfo)
+function initialize(self, config)
+	local result, except = self.context.listener:setupaccess(config)
+	if result then
+		self.accesspoint = result
+	end
+	return result, except
 end
 
-function hasrequest(self, channelinfo)
-	return self.context.listener:getchannel(channelinfo, true)
+function hasrequest(self)
+	return self.context.listener:getchannel(self.accesspoint, true)
 end
 
-function acceptone(self, channelinfo)                                           --[[VERBOSE]] verbose:acceptor(true, "accept one request from channel ",channelinfo)
+function acceptone(self)                                                        --[[VERBOSE]] verbose:acceptor(true, "accept one request from channel ",self.accesspoint)
 	local context = self.context
 	local listener = context.listener
 	local result, except
-	result, except = listener:getchannel(channelinfo)
+	result, except = listener:getchannel(self.accesspoint)
 	if result then
 		local channel = result
 		result, except = listener:getrequest(channel)
@@ -71,13 +75,14 @@ function acceptone(self, channelinfo)                                           
 	return result, except
 end
 
-function acceptall(self, channelinfo)                                           --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",channelinfo)
+function acceptall(self)
 	local context = self.context
 	local listener = context.listener
+	local accesspoint = self.accesspoint                                          --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",accesspoint)
 	local result, except
-	self[channelinfo] = true
+	self[accesspoint] = true
 	repeat
-		result, except = listener:getchannel(channelinfo)
+		result, except = listener:getchannel(accesspoint)
 		if result then
 			local channel = result
 			result, except = listener:getrequest(channel)
@@ -92,19 +97,20 @@ function acceptall(self, channelinfo)                                           
 				)
 			end
 		end
-	until not result or not self[channelinfo]                                     --[[VERBOSE]] verbose:acceptor(false)
+	until not result or not self[accesspoint]                                     --[[VERBOSE]] verbose:acceptor(false)
 	return result, except
 end
 
-function halt(self, channelinfo)                                                --[[VERBOSE]] verbose:acceptor "halt acceptor"
-	if self[channelinfo] then
-		self[channelinfo] = nil
-		return self.context.listener:freeaccess(channelinfo)
+function halt(self)                                                             --[[VERBOSE]] verbose:acceptor "halt acceptor"
+	local accesspoint = self.accesspoint
+	if self[accesspoint] then
+		self[accesspoint] = nil
+		return self.context.listener:freeaccess(accesspoint)
 	else
 		return nil, Exception{
 			reason = "halt",
 			message = "channels not being accepted",
-			channels = channelinfo,
+			channels = accesspoint,
 		}
 	end
 end

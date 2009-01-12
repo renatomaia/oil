@@ -84,7 +84,7 @@
 -- proxies:Receptacle
 -- 	proxy:object proxyto(ior:table, iface:table|string)
 -- 
--- objects:Receptacle
+-- servants:Receptacle
 -- 	proxy:object register(implementation:object, iface:table|string)
 --------------------------------------------------------------------------------
 
@@ -412,17 +412,17 @@ function Decoder:Object(idltype)                                                
 		ior = nil
 	else
 		local context = self.context
-		local objects = context.objects
+		local servants = context.servants
 		local profilers = context.profiler
-		if objects and profilers then
+		if servants and profilers then
 			for _, profile in ipairs(ior.profiles) do
 				local profiler = profilers[profile.tag]
 				if profiler then
-					local object = profiler:belongsto(profile.profile_data, objects.config)
-					if object then
-						object = objects:retrieve(object)
-						if object then                                                      --[[VERBOSE]] verbose:unmarshal "local object implementation restored"
-							return object
+					local servant = profiler:belongsto(profile.profile_data, servants.accesspoint)
+					if servant then
+						servant = servants:retrieve(servant)
+						if servant then                                                      --[[VERBOSE]] verbose:unmarshal "local object implementation restored"
+							return servant
 						end
 					end
 				end
@@ -431,7 +431,7 @@ function Decoder:Object(idltype)                                                
 		local proxies = context.proxies
 		if proxies then                                                             --[[VERBOSE]] verbose:unmarshal(true, "retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
-			ior = assert.results(proxies:proxy(ior, idltype), "MARSHAL")              --[[VERBOSE]] verbose:unmarshal(false)
+			ior = assert.results(proxies:newproxy(ior, idltype), "MARSHAL")           --[[VERBOSE]] verbose:unmarshal(false)
 		end
 	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return ior
@@ -725,9 +725,9 @@ function Encoder:Object(value, idltype)                                         
 		assert.type(value, "table", "object reference", "MARSHAL")
 		reference = value.__reference
 		if not reference then
-			local objects = self.context.objects
-			if objects then                                                           --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
-				value = assert.results(objects:object(value, nil, idltype))             --[[VERBOSE]] verbose:marshal(false)
+			local servants = self.context.servants
+			if servants then                                                          --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
+				value = assert.results(servants:register(value, nil, idltype))          --[[VERBOSE]] verbose:marshal(false)
 				reference = value.__reference
 			else
 				assert.illegal(value, "Object, unable to create from value", "MARHSALL")

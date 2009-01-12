@@ -107,11 +107,11 @@ function ORB:__init(config)
 	if self.ServerChannels ~= nil and config.tcpoptions then
 		self.ServerChannels.options = config.tcpoptions
 	end
-	--if self.RequestDispatcher ~= nil and config.objectmap then
-	if self.RequestDispatcher ~= nil and config.objectmap then
-		self.RequestDispatcher.map = config.objectmap
+	if self.ServantManager ~= nil and config.objectmap then
+		self.ServantManager.map = config.objectmap
 	end
-	assert.results(self.ServerBroker.broker:initialize(self))
+	local accesspoint = assert.results(self.RequestReceiver.acceptor:initialize(self))
+	self.ServantManager.servants.accesspoint = accesspoint
 	
 	return self
 end
@@ -227,7 +227,7 @@ end
 --
 function ORB:newproxy(object, type)
 	assert.type(object, "string", "object reference")
-	return assert.results(self.ClientBroker.broker:fromstring(object, type))
+	return assert.results(self.ProxyManager.proxies:fromstring(object, type))
 end
 
 --------------------------------------------------------------------------------
@@ -263,10 +263,9 @@ end
 function ORB:narrow(object, type)
 	assert.type(object, "table", "object proxy")
 	if type then assert.type(type, "string", "interface definition") end
-	if object and object._narrow then
-		return object:_narrow(type)
+	if object then
+		return assert.results(self.ProxyManager.proxies:newproxy(object.__reference, type))
 	end
-	return object
 end
 
 --------------------------------------------------------------------------------
@@ -302,7 +301,7 @@ end
 function ORB:newservant(impl, key, type)
 	if not impl then assert.illegal(impl, "servant's implementation") end
 	if key then assert.type(key, "string", "servant's key") end
-	return assert.results(self.ServerBroker.broker:object(impl, key, type))
+	return assert.results(self.ServantManager.servants:register(impl, key, type))
 end
 
 --------------------------------------------------------------------------------
@@ -331,7 +330,7 @@ function ORB:deactivate(object, type)
 		assert.illegal(object,
 			"object reference (servant, implementation or object key expected)")
 	end
-	return self.ServerBroker.broker:remove(object, type)
+	return self.ServantManager.servants:remove(object, type)
 end
 
 --------------------------------------------------------------------------------
@@ -348,7 +347,7 @@ end
 --
 function ORB:tostring(object)
 	assert.type(object, "table", "servant object")
-	return assert.results(self.ServerBroker.broker:tostring(object))
+	return assert.results(self.ServantManager.servants:tostring(object))
 end
 
 --------------------------------------------------------------------------------
@@ -364,7 +363,7 @@ end
 -- @usage while oil.pending() do oil.step() end                                .
 --
 function ORB:pending()
-	return assert.results(self.ServerBroker.broker:pending())
+	return assert.results(self.RequestReceiver.acceptor:hasrequest())
 end
 
 --------------------------------------------------------------------------------
@@ -378,7 +377,7 @@ end
 -- @usage while oil.pending() do oil.step() end                                .
 --
 function ORB:step()
-	return assert.results(self.ServerBroker.broker:step())
+	return assert.results(self.RequestReceiver.acceptor:acceptone())
 end
 
 --------------------------------------------------------------------------------
@@ -393,7 +392,7 @@ end
 -- @see init
 --
 function ORB:run()
-	return assert.results(self.ServerBroker.broker:run())
+	return assert.results(self.RequestReceiver.acceptor:acceptall())
 end
 
 --------------------------------------------------------------------------------
@@ -405,7 +404,7 @@ end
 -- @usage oil.shutdown()
 --
 function ORB:shutdown()
-	return assert.results(self.ServerBroker.broker:shutdown())
+	return assert.results(self.RequestReceiver.acceptor:halt())
 end
 
 --------------------------------------------------------------------------------
@@ -486,7 +485,7 @@ end
 -- @usage oil.setexcatch(function(_, except) error(tostring(except)) end)
 --
 function ORB:setexcatch(handler, type)
-	assert.results(self.ClientBroker.broker:excepthandler(handler, type))
+	assert.results(self.ProxyManager.proxies:excepthandler(handler, type))
 end
 
 --------------------------------------------------------------------------------
@@ -578,7 +577,7 @@ function ORB:setserverinterceptor(iceptor)
 	end
 	local port = require "loop.component.intercepted"
 	port.intercept(self.RequestListener, "messenger", "method", iceptor)
-	port.intercept(self.RequestDispatcher, "dispatcher", "method", iceptor)
+	port.intercept(self.ServantManager, "dispatcher", "method", iceptor)
 end
 
 --------------------------------------------------------------------------------

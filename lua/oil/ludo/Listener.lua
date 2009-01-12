@@ -41,15 +41,20 @@ context = false
 
 --------------------------------------------------------------------------------
 
-function getchannel(self, configs, probe)
-	return self.context.channels:retrieve(configs, probe)
+function setupaccess(self, configs)
+	return self.context.channels:default(configs)
 end
 
 --------------------------------------------------------------------------------
 
-function freeaccess(self, configs)                                         --[[VERBOSE]] verbose:listen("closing all channels with configs ",configs)
-	local channels = self.context.channels
-	return channels:dispose(configs)
+function freeaccess(self, accesspoint)                                          --[[VERBOSE]] verbose:listen("closing all channels with configs ",accesspoint)
+	return self.context.channels:dispose(accesspoint)
+end
+
+--------------------------------------------------------------------------------
+
+function getchannel(self, accesspoint, probe)
+	return self.context.channels:retrieve(accesspoint, probe)
 end
 
 --------------------------------------------------------------------------------
@@ -127,10 +132,4 @@ function sendreply(self, request, ...)                                          
 		end
 	end
 	return result, except
-end
-
---------------------------------------------------------------------------------
-
-function default(self, configs)
-	return self.context.channels:default(configs)
 end

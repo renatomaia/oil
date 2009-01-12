@@ -48,19 +48,30 @@ ObjectOperations = {
 	_interface = idl.operation{
 		name = "_interface",
 		result = idl.Object("IDL:omg.org/CORBA/InterfaceDef:1.0"),
+		implementation = function(entry) return entry.type end,
 	},
 	_component = idl.operation{
 		name = "_component",
 		result = idl.object,
+		implementation = function() return nil end,
 	},
 	_is_a = idl.operation{
 		name = "_is_a",
 		result = idl.boolean,
 		parameters = {{ type = idl.string, name = "interface" }},
+		implementation = function(entry, repid)
+			for base in entry.type:hierarchy() do
+				if base.repID == repid then
+					return true
+				end
+			end
+			return false
+		end,
 	},
 	_non_existent = idl.operation{
 		name = "_non_existent",
 		result = idl.boolean,
+		implementation = function() return false end,
 	},
 	-- TODO:[maia] add other basic operations
 }

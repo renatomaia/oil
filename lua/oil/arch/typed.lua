@@ -11,34 +11,28 @@ TypeRepository = component.Template{
 }
 
 -- CLIENT SIDE
-ClientBroker = component.Template({
-	types = port.Receptacle,
-}, base.ClientBroker)
-ObjectProxies = component.Template({
-	caches  = port.Facet,
+ProxyManager = component.Template({
+	types   = port.Receptacle,
 	indexer = port.Receptacle,
-}, base.ObjectProxies)
+	caches  = port.Facet, -- TODO:[maia] use it to reset method cache when type
+}, base.ProxyManager)   --             definition changes.
 
 -- SERVER SIDE
-ServerBroker = component.Template({
-	types  = port.Receptacle,
-	mapper = port.Receptacle,
-}, base.ServerBroker)
-RequestDispatcher = component.Template({
+ServantManager = component.Template({
+	types   = port.Receptacle,
 	indexer = port.Receptacle,
-}, base.RequestDispatcher)
+}, base.ServantManager)
 
 function assemble(components)
 	arch.start(components)
 	
 	-- CLIENT SIDE
-	ObjectProxies.indexer = ProxyIndexer.indexer
-	ClientBroker.types    = TypeRepository.types
+	ProxyManager.indexer = TypeRepository.indexer
+	ProxyManager.types   = TypeRepository.types
 	
 	-- SERVER SIDE
-	RequestDispatcher.indexer = ServantIndexer.indexer
-	ServerBroker.mapper       = ServantIndexer.mapper
-	ServerBroker.types        = TypeRepository.types
+	ServantManager.indexer = TypeRepository.indexer
+	ServantManager.types   = TypeRepository.types
 	
 	arch.finish(components)
 end

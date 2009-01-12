@@ -79,10 +79,10 @@ function dispatchrequest(self, channel, request)
 	))
 end
 
-function getallrequests(self, channelinfo, channel)
+function getallrequests(self, accesspoint, channel)
 	local context = self.context
 	local thread = context.tasks.current
-	local threads = self.threads[channelinfo]
+	local threads = self.threads[accesspoint]
 	threads[thread] = channel
 	local result, except
 	repeat
@@ -105,43 +105,43 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function acceptall(self, channelinfo)                                           --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",channelinfo)
+function acceptall(self)
+	local accesspoint = self.accesspoint                                          --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",accesspoint)
 	local context = self.context
-	self.thread[channelinfo] = context.tasks.current
-	self.threads[channelinfo] = {}
+	self.thread[accesspoint] = context.tasks.current
+	self.threads[accesspoint] = {}
 	local result, except
 	repeat
-		result, except = context.listener:getchannel(channelinfo)
+		result, except = context.listener:getchannel(accesspoint)
 		if result then
-			context.tasks:start(self.getallrequests, self, channelinfo, result)
+			context.tasks:start(self.getallrequests, self, accesspoint, result)
 		end
 	until not result or self.except
-	self.channelinfo = nil
-	self.threads[channelinfo] = nil
-	self.thread[channelinfo] = nil                                                --[[VERBOSE]] verbose:acceptor(false)
+	self.threads[accesspoint] = nil
+	self.thread[accesspoint] = nil                                                --[[VERBOSE]] verbose:acceptor(false)
 	return nil, self.except or except
 end
 
-function halt(self, channelinfo)                                                --[[VERBOSE]] verbose:acceptor "halt acceptor"
+function halt(self)                                                             --[[VERBOSE]] verbose:acceptor "halt acceptor"
 	local tasks = self.context.tasks
 	local listener = self.context.listener
 	local result, except = nil, Exception{
 		reason = "halted",
 		message = "orb already halted",
 	}
-	local thread = self.thread[channelinfo]
+	local thread = self.thread[accesspoint]
 	if thread then
 		tasks:remove(thread)
-		result, except = listener:freeaccess(channelinfo)
-		self.thread[channelinfo] = nil
+		result, except = listener:freeaccess(accesspoint)
+		self.thread[accesspoint] = nil
 	end
-	local threads = self.threads[channelinfo]
+	local threads = self.threads[accesspoint]
 	if threads then
 		for thread, channel in pairs(threads) do
 			tasks:remove(thread)
 			result, except = listener:freeachannel(channel)
 		end
-		self.threads[channelinfo] = nil
+		self.threads[accesspoint] = nil
 	end
 	return result, except
 end

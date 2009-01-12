@@ -13,8 +13,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- broker:Facet
--- 	[configs:table], [except:table] initialize([configs:table])
--- 	servant:object object(impl:object, [objectkey:string])
+-- 	servant:object register(impl:object, [objectkey:string])
 -- 	reference:string tostring(servant:object)
 -- 	success:boolean, [except:table] pending()
 -- 	success:boolean, [except:table] step()
@@ -57,7 +56,7 @@ context = false
 
 local KeyFmt = "\0%s%s"
 
-function object(self, object, key, type)
+function register(self, object, key, type)
 	local context = self.context
 	local metatable = getmetatable(object)
 	if metatable then
@@ -70,7 +69,7 @@ function object(self, object, key, type)
 	local result, except = context.types:resolve(type)
 	if result then
 		key = key or KeyFmt:format(self:hashof(object), self:hashof(result))
-		result, except = Server.object(self, object, key, result)
+		result, except = Server.register(self, object, key, result)
 	end
 	return result, except
 end
@@ -87,10 +86,7 @@ function remove(self, key, objtype)
 		end
 	end
 	if key then
-		result, except = context.mapper:unregister(key)
-		if result then
-			result, except = context.objects:unregister(key)
-		end
+		result, except = context.dispatcher:unregister(key)
 	end
 	return result, except
 end

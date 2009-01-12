@@ -82,7 +82,7 @@ end
 
 --------------------------------------------------------------------------------
 
-function default(self, configs)
+function setupaccess(self, configs)
 	local channels = self.context.channels[configs and configs.tag or 0]
 	if channels then
 		return channels:default(configs)
@@ -97,25 +97,9 @@ end
 
 --------------------------------------------------------------------------------
 
-function getchannel(self, configs, probe)                                       --[[VERBOSE]] verbose:listen(true, "get channel with config ",configs)
-	local result, except = self.context.channels[configs.tag or 0]
-	if result then
-		result, except = result:retrieve(configs, probe)
-	else
-		except = Exception{ "IMP_LIMIT", minor_code_value = 1,
-			message = "no supported GIOP profile found for configuration",
-			reason = "protocol",
-			configuration = configs,
-		}
-	end                                                                           --[[VERBOSE]] verbose:listen(false)
-	return result, except
-end
-
---------------------------------------------------------------------------------
-
-function freeaccess(self, configs)                                         --[[VERBOSE]] verbose:listen(true, "closing all channels with configs ",configs)
-	local channels = self.context.channels[configs.tag or 0]
-	local result, except = channels:dispose(configs)
+function freeaccess(self, accesspoint)                                         --[[VERBOSE]] verbose:listen(true, "closing all channels with accesspoint ",accesspoint)
+	local channels = self.context.channels[accesspoint.tag or 0]
+	local result, except = channels:dispose(accesspoint)
 	if result then
 		local messenger = self.context.messenger
 		for _, channel in ipairs(result) do
@@ -124,6 +108,22 @@ function freeaccess(self, configs)                                         --[[V
 				break
 			end
 		end
+	end                                                                           --[[VERBOSE]] verbose:listen(false)
+	return result, except
+end
+
+--------------------------------------------------------------------------------
+
+function getchannel(self, accesspoint, probe)                                   --[[VERBOSE]] verbose:listen(true, "get channel from accesspoint ",accesspoint)
+	local result, except = self.context.channels[accesspoint.tag or 0]
+	if result then
+		result, except = result:retrieve(accesspoint, probe)
+	else
+		except = Exception{ "IMP_LIMIT", minor_code_value = 1,
+			message = "no supported GIOP profile found for accesspoint",
+			reason = "protocol",
+			accesspoint = accesspoint,
+		}
 	end                                                                           --[[VERBOSE]] verbose:listen(false)
 	return result, except
 end
@@ -185,21 +185,22 @@ function getrequest(self, channel, probe)                                       
 			if msgid == RequestID then
 				local requestid = header.request_id
 				if not channel[requestid] then
-					local iface = context.mapper:typeof(header.object_key)
-					if iface then
-						local member, opimpl = context.indexer:valueof(iface, header.operation)
-						if member then                                                          --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
+					local _, iface = context.dispatcher:retrieve(header.object_key)
+					if _ then
+						local operation = header.operation
+						local member = context.indexer:valueof(iface, operation)
+						if member then                                                          --[[VERBOSE]] verbose:listen("got request ",requestid," for ",operation)
 							for index, input in ipairs(member.inputs) do
 								header[index] = decoder:get(input)
 							end
 							header.member = member
-							header.opimpl = opimpl
+							header.opimpl = member.implementation
 							if header.response_expected then
 								channel[requestid] = header                                         --[[VERBOSE]] else verbose:listen "no response expected"
 							end
 							header.channel = channel
 							result = Request(header)
-						else                                                                    --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
+						else                                                                    --[[VERBOSE]] verbose:listen("got illegal operation ",operation)
 							result, except = self:bypass(channel, header,
 								self:sysexreply(requestid, {
 									exception_id = "IDL:omg.org/CORBA/BAD_OPERATION:1.0",
@@ -229,7 +230,7 @@ function getrequest(self, channel, probe)                                       
 				result = true
 			elseif msgid == LocateRequestID then                                          --[[VERBOSE]] verbose:listen("got locate request ",header.request_id)
 				local reply = { request_id = header.request_id }
-				if context.mapper:typeof(header.object_key)
+				if context.dispatcher:retrieve(header.object_key)
 					then reply.locate_status = "OBJECT_HERE"
 					else reply.locate_status = "UNKNOWN_OBJECT"
 				end

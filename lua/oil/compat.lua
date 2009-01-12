@@ -256,7 +256,7 @@ end
 function newproxy(object, type)
 	if Config then init(Config) end
 	assert.type(object, "string", "object reference")
-	return assert.results(ClientBroker.broker:fromstring(object, type))
+	return assert.results(ProxyManager.proxies:fromstring(object, type))
 end
 
 --------------------------------------------------------------------------------
@@ -330,7 +330,7 @@ function newservant(impl, type, key)
 	if not impl then assert.illegal(impl, "servant's implementation") end
 	if type then assert.type(type, "string", "interface definition") end
 	if key then assert.type(key, "string", "servant's key") end
-	return assert.results(ServerBroker.broker:object(impl, key, type))
+	return assert.results(ServantManager.servants:register(impl, key, type))
 end
 
 --------------------------------------------------------------------------------
@@ -359,7 +359,7 @@ function deactivate(object, type)
 		assert.illegal(object,
 			"object reference (servant, implementation or object key expected)")
 	end
-	return ServerBroker.broker:remove(object, type)
+	return ServantManager.servants:remove(object, type)
 end
 
 --------------------------------------------------------------------------------
@@ -376,7 +376,7 @@ end
 --
 function tostring(object)
 	assert.type(object, "table", "servant object")
-	return assert.results(ServerBroker.broker:tostring(object))
+	return assert.results(ServantManager.servants:tostring(object))
 end
 
 --------------------------------------------------------------------------------
@@ -426,7 +426,7 @@ Config = {}
 function init(config)
 	config, Config = config or Config, nil
 	assert.type(config, "table", "ORB configuration")
-	return assert.results(ServerBroker.broker:initialize(config))
+	return assert.results(self.RequestReceiver.acceptor:initialize(config))
 end
 
 --------------------------------------------------------------------------------
@@ -442,7 +442,7 @@ end
 -- @usage while oil.pending() do oil.step() end                                .
 --
 function pending()
-	return assert.results(ServerBroker.broker:pending())
+	return assert.results(RequestReceiver.acceptor:hasrequest())
 end
 
 --------------------------------------------------------------------------------
@@ -456,7 +456,7 @@ end
 -- @usage while oil.pending() do oil.step() end                                .
 --
 function step()
-	return assert.results(ServerBroker.broker:step())
+	return assert.results(RequestReceiver.acceptor:acceptone())
 end
 
 --------------------------------------------------------------------------------
@@ -472,7 +472,7 @@ end
 --
 function run()
 	if Config then init(Config) end
-	return assert.results(ServerBroker.broker:run())
+	return assert.results(RequestReceiver.acceptor:acceptall())
 end
 
 --------------------------------------------------------------------------------
@@ -484,7 +484,7 @@ end
 -- @usage oil.shutdown()
 --
 function shutdown()
-	return assert.results(ServerBroker.broker:shutdown())
+	return assert.results(RequestReceiver.acceptor:halt())
 end
 
 --------------------------------------------------------------------------------
@@ -664,7 +664,7 @@ end
 -- @usage oil.setexcatch(function(_, except) error(tostring(except)) end)
 --
 function setexcatch(handler, type)
-	assert.results(ClientBroker.broker:excepthandler(handler, type))
+	assert.results(ProxyManager.proxies:excepthandler(handler, type))
 end
 
 --------------------------------------------------------------------------------

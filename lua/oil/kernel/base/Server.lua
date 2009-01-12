@@ -13,8 +13,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- broker:Facet
--- 	[configs:table], [except:table] initialize([configs:table])
--- 	servant:object object(impl:object, [objectkey:string])
+-- 	servant:object register(impl:object, [objectkey:string])
 -- 	reference:string tostring(servant:object)
 -- 	success:boolean, [except:table] pending()
 -- 	success:boolean, [except:table] step()
@@ -96,12 +95,6 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function initialize(self, config)
-	local except
-	self.config, except = self.context.acceptor:setupaccess(config)
-	return self.config, except
-end
-
 function hashof(self, object)
 	local meta = getmetatable(object)
 	local backup
@@ -116,19 +109,19 @@ function hashof(self, object)
 	return hash:match("%l+: (%w+)") or hash
 end
 
-function object(self, object, key, ...)
+function register(self, object, key, ...)
 	local context = self.context
 	key = key or "\0"..self:hashof(object)
-	local result, except = context.objects:register(key, object, ...)
+	local result, except = context.dispatcher:register(key, object, ...)
 	if result then
-		result, except = context.references:newreference(key, self.config)
+		result, except = context.references:newreference(key, self.accesspoint)
 		if result then
 			local wrapper = self.wrappers[key]
 			rawset(wrapper, "__newindex", object)
 			rawset(wrapper, "__reference", result)
 			result = wrapper
 		else
-			context.objects:unregister(key)
+			context.dispatcher:unregister(key)
 		end
 	end
 	return result, except
@@ -136,7 +129,9 @@ end
 
 function remove(self, object)
 	local key
-	if type(object) == "table" then key = rawget(object, "_key") or object end
+	if type(object) == "table" then
+		key = rawget(object, "_key") or object
+	end
 	if type(key) ~= "string" then
 		key = object.__objkey
 		if key == nil then
@@ -147,7 +142,7 @@ function remove(self, object)
 			end
 		end
 	end
-	local success, errmsg = context.objects:unregister(key)
+	local success, errmsg = context.dispatcher:unregister(key)
 	if success then self.wrappers[key] = nil end
 	return success, errmsg
 end
@@ -157,24 +152,5 @@ function tostring(self, object)
 end
 
 function retrieve(self, key)
-	return self.context.objects:retrieve(key)
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function pending(self)
-	return self.context.acceptor:hasrequest(self.config)
-end
-
-function step(self)
-	return self.context.acceptor:acceptone(self.config)
-end
-
-function run(self)
-	return self.context.acceptor:acceptall(self.config)
-end
-
-function shutdown(self)
-	return self.context.acceptor:halt(self.config)
+	return self.context.dispatcher:retrieve(key)
 end

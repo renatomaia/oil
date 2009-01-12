@@ -85,7 +85,7 @@ local function unregister(channel, id)
 	end
 end
 
-local function results(self)
+local function contents(self)
 	return self.success, unpack(self, 1, self.resultcount)
 end
 
@@ -145,10 +145,10 @@ local OneWayRequest = {
 	requesting_principal = Empty,
 	resultcount          = 0,
 	success              = true,
-	contents             = results,
+	contents             = contents,
 }
 
-function newrequest(self, reference, operation, ...)
+function sendrequest(self, reference, operation, ...)
 	local result, except = self:getchannel(reference)
 	if result then
 		local channel = result
@@ -163,7 +163,7 @@ function newrequest(self, reference, operation, ...)
 				...,
 			}
 			result.request_id = register(channel, result)
-		end                                                                          --[[VERBOSE]] verbose:invoke(true, "request ",result.request_id," for operation '",operation.name,"'")
+		end                                                                         --[[VERBOSE]] verbose:invoke(true, "request ",result.request_id," for operation '",operation.name,"'")
 		result.object_key = reference._object
 		result.operation  = operation.name
 		result.opidl      = operation
@@ -177,6 +177,11 @@ function newrequest(self, reference, operation, ...)
 		end
 	end                                                                           --[[VERBOSE]] verbose:invoke(false)
 	return result, except
+end
+
+function newrequest(self, reference, operation, ...)
+	local requester = self.OperationRequester[operation.name] or self.sendrequest
+	return requester(self, reference, operation, ...)
 end
 
 --------------------------------------------------------------------------------
@@ -212,7 +217,7 @@ function getreply(self, request, probe)                                         
 							if success then
 								replied = nil
 							else
-								replied.contents = results
+								replied.contents = contents
 								replied.success = false
 								replied.resultcount = 1
 								replied[1] = except
@@ -220,7 +225,7 @@ function getreply(self, request, probe)                                         
 							end
 						else -- status ~= LOCATION_FORWARD
 							local operation = replied.opidl
-							replied.contents = results
+							replied.contents = contents
 							if status == "NO_EXCEPTION" then                                  --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
 								replied.success = true
 								replied.resultcount = #operation.outputs
@@ -259,6 +264,10 @@ function getreply(self, request, probe)                                         
 							end -- of if status == "NO_EXCEPTION"
 						end -- of if status == "LOCATION_FORWARD"
 						if replied then
+							local replier = self.OperationReplier[replied.operation]
+							if replier then
+								success, except = replier(self, replied)
+							end
 							channel:signal(replied)
 						end
 					else -- replied == nil
@@ -278,7 +287,7 @@ function getreply(self, request, probe)                                         
 								success, except = self:reissue(channel, pending)
 								if not success then
 									unregister(channel, id)
-									pending.contents = results
+									pending.contents = contents
 									pending.success = false
 									pending.resultcount = 1
 									pending[1] = except
@@ -327,3 +336,107 @@ function getreply(self, request, probe)                                         
 	end --[[of if request.contents == nil]]                                        --[[VERBOSE]] verbose:invoke(false)
 	return success, except
 end
+
+--------------------------------------------------------------------------------
+
+OperationRequester = {}
+OperationReplier = {}
+
+local ReplyTrue  = {
+	contents = contents,
+	success = true,
+	resultcount = 1,
+	[1] = true,
+}
+local ReplyFalse = {
+	contents = contents,
+	success = true,
+	resultcount = 1,
+	[1] = false,
+}
+
+function OperationRequester:_is_equivalent(reference, _, otherref)
+	otherref = otherref.__reference
+	if otherref then
+		local tags = {}
+		for _, profile in ipairs(otherref.profiles) do
+			tags[profile.tag] = profile
+		end
+		local context = self.context
+		for _, profile in ipairs(reference.profiles) do
+			local tag = profile.tag
+			local other = tags[tag]
+			if other then
+				local profiler = context.profiler[tag]
+				if
+					profiler and
+					profiler:equivalent(profile.profile_data, other.profile_data)
+				then
+					return ReplyTrue
+				end
+			end
+		end
+	end
+	return ReplyFalse
+end
+
+local _non_existent = giop.ObjectOperations._non_existent
+function OperationRequester:_non_existent(reference)
+	local result, except = self:sendrequest(reference, _non_existent)
+	if not result and (except.reason=="connect" or except.reason=="closed") then
+		result = ReplyFalse
+	end
+	return result, except
+end
+function OperationReplier:_non_existent(request)
+	local success, except = request.success, request[1]
+	if not success
+	and ( except.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" or
+		    except.reason == "closed" )
+	then
+		request.success = true
+		request.resultcount = 1
+		request[1] = true
+	end
+	return true
+end
+
+--local _interface = giop.ObjectOperations._interface
+--function OperationRequester:_narrow(reference, _, interface)
+--	local result, except
+--	if interface == nil then
+--		result, except = self:sendrequest(reference, _interface)
+--	else
+--		result, except = context.types:resolve(iface)
+--		if result then
+--			result, except = context.proxies:proxyto(reference, result)
+--			if result then
+--				result = {
+--					contents = contents,
+--					success = true,
+--					resultcount = 1,
+--					[1] = result,
+--				}
+--			end
+--		end
+--	end
+--	return result, except
+--end
+--function OperationReplier:_narrow(request)
+--	if request.success then
+--		local result, except = context.types:lookup_id(request[1]:_get_id())
+--		if not result then
+--			result, except = context.types:register(result)
+--		end
+--		result, except = context.proxies:proxyto(request.reference, result)
+--		if result then
+--			request.resultcount = 1
+--			request[1] = result
+--		else
+--			request.success = false
+--			request.resultcount = 1
+--			request[1] = except
+--		end
+--	end
+--	return true
+--end

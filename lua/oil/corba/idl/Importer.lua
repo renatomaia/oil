@@ -32,6 +32,7 @@
 local error  = error
 local ipairs = ipairs
 local pairs  = pairs
+local type   = type
 
 local oo       = require "oil.oo"
 local idl      = require "oil.corba.idl"
@@ -39,8 +40,6 @@ local iridl    = require "oil.corba.idl.ir"
 local Registry = require "oil.corba.idl.Registry"                               --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.corba.idl.Importer", oo.class)
-
-resolve = Registry.resolve
 
 function context(self, context)
 	self.context = context
@@ -194,4 +193,12 @@ function register(self, object, history)
 		result = registry:register(object)
 	end
 	return result
+end
+
+function resolve(self, typeref)
+	if type(typeref) == "table" and typeref.__reference then
+		return self:register(typeref)
+	else
+		return self.context.registry:resolve(typeref)
+	end
 end
