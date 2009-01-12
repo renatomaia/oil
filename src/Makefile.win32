@@ -106,13 +106,10 @@ OIL_PCK= \
 	../lua/oil/corba/services/naming.lua \
 	../lua/oil/kernel/base/Client.lua \
 	../lua/oil/kernel/base/Dispatcher.lua \
-	../lua/oil/kernel/base/Invoker.lua \
 	../lua/oil/kernel/base/Proxies.lua \
 	../lua/oil/kernel/base/Receiver.lua \
 	../lua/oil/kernel/base/Server.lua \
 	../lua/oil/kernel/base/Sockets.lua \
-	../lua/oil/kernel/cooperative/Invoker.lua \
-	../lua/oil/kernel/cooperative/Mutex.lua \
 	../lua/oil/kernel/cooperative/Receiver.lua \
 	../lua/oil/kernel/typed/Client.lua \
 	../lua/oil/kernel/typed/Dispatcher.lua \

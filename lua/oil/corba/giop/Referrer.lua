@@ -17,7 +17,7 @@
 --   See section 13.6.10 of CORBA 3.0 specification for corbaloc.             --
 --------------------------------------------------------------------------------
 -- references:Facet
--- 	reference:table referenceto(objectkey:string, accesspointinfo:table...)
+-- 	reference:table newreference(objectkey:string, accesspointinfo:table...)
 -- 	reference:string encode(reference:table)
 -- 	reference:table decode(reference:string)
 -- 
@@ -83,10 +83,15 @@ function corbaloc(self, encoded)
 	for token, data in string.gmatch(encoded, "(%w*):([^,]*)") do
 		local profiler = self.context.profiler[token]
 		if profiler then
-			return setmetatable({
-				type_id = idl.object.repID,
-				profiles = { profiler:decodeurl(data) },
-			}, giop.IOR)
+			local profile, except = profiler:decodeurl(data)
+			if profile then
+				return setmetatable({
+					type_id = idl.object.repID,
+					profiles = { profile },
+				}, giop.IOR)
+			else
+				return nil, except
+			end
 		end
 	end
 	return nil, Exception{ "INV_OBJREF",
@@ -99,7 +104,7 @@ end
 --------------------------------------------------------------------------------
 -- Coding ----------------------------------------------------------------------
 
-function referenceto(self, objectkey, ...)
+function newreference(self, objectkey, ...)
 	local profiles = {}
 	for i = 1, select("#", ...) do
 		local acceptor = select(i, ...)

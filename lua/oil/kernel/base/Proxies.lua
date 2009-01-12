@@ -37,14 +37,6 @@ context = false
 
 --------------------------------------------------------------------------------
 
-Results = oo.class{}
-
-function Results:results()
-	return self.success, unpack(self, 1, self.resultcount)
-end
-
---------------------------------------------------------------------------------
-
 local DefaultHandler
 
 function callhandler(self, ...)
@@ -53,16 +45,6 @@ function callhandler(self, ...)
 	                DefaultHandler or
 	                error((...))
 	return handler(self, ...)
-end
-
-function packresults(...)
-	return Results{ success = true, resultcount = select("#", ...), ... }
-end
-
---------------------------------------------------------------------------------
-
-function assertcall(self, operation, reply, except)
-	return reply or packresults(callhandler(self, except, operation))
 end
 
 function assertresults(self, operation, success, except, ...)
@@ -80,7 +62,7 @@ function newcache(methodmaker)
 		__call = oo.rawnew,
 		__index = function(cache, operation)
 			local function invoker(self, ...)                                         --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-				return self.__context.invoker:invoke(self.__reference, operation, ...)
+				return self.__context.requester:newrequest(self.__reference, operation, ...)
 			end
 			invoker = methodmaker(invoker, operation)
 			cache[operation] = invoker
@@ -93,9 +75,17 @@ end
 
 function makemethod(invoker, operation)
 	return function(self, ...)
-		return assertresults(self, operation,
-			assertcall(self, operation, invoker(self, ...)):results()
-		)
+		local success, except = invoker(self, ...)
+		if success then
+			local request = success
+			success, except = self.__context.requester:getreply(request)
+			if success then
+				return assertresults(self, operation, request:contents())
+			end
+		end
+		if not success then
+			return callhandler(self, except, operation)
+		end
 	end
 end
 
@@ -103,14 +93,17 @@ Proxy = newcache(makemethod)
 
 --------------------------------------------------------------------------------
 
-
 function makeprotected(invoker)
 	return function(self, ...)
-		local reply, except = invoker(self, ...)
-		if reply
-			then return reply:results()
-			else return false, except
+		local success, except = invoker(self, ...)
+		if success then
+			local request = success
+			success, except = self.__context.requester:getreply(request)
+			if success then
+				return request:contents()
+			end
 		end
+		return success, except
 	end
 end
 
@@ -118,10 +111,21 @@ Protected = newcache(makeprotected)
 
 --------------------------------------------------------------------------------
 
-FailedFuture = oo.class()
-function FailedFuture:ready() return true end
-function FailedFuture:results() return false, self[1] end
-function evaluatefuture(self)                                                   --[[VERBOSE]] verbose:proxies("getting deferred results of ",self.operation)
+Request = oo.class()
+function Request:ready()                                                        --[[VERBOSE]] verbose:invoke(true, "check reply")
+	local proxy = self.proxy
+	assertresults(proxy, self.operation,
+	              proxy.__context.requester:getreply(request, true))              --[[VERBOSE]] verbose:invoke(false)
+	return self.contents ~= nil
+end
+function Request:results()                                                      --[[VERBOSE]] verbose:invoke(true, "get reply")
+	local success, except = self.proxy.__context.requester:getreply(self)
+	if success then
+		return self:contents()
+	end                                                                           --[[VERBOSE]] verbose:invoke(false)
+	return success, except
+end
+function Request:evaluate()                                                     --[[VERBOSE]] verbose:proxies("getting deferred results of ",self.operation)
 	return assertresults(
 		self.proxy,
 		self.operation,
@@ -129,14 +133,25 @@ function evaluatefuture(self)                                                   
 	)
 end
 
+Failed = oo.class({}, Request)
+function Failed:ready()
+	return true
+end
+function Failed:results()
+	return false, self[1]
+end
+
 function makedeferred(invoker, operation)
 	return function(self, ...)
-		local reply, except = invoker(self, ...)
-		if reply == nil then reply = FailedFuture{ except } end
-		reply.proxy = self
-		reply.operation = operation
-		reply.evaluate = evaluatefuture
-		return reply
+		local request, except = invoker(self, ...)
+		if request then
+			request = Request(request)
+		else
+			request = Failed{ except }
+		end
+		request.proxy = self
+		request.operation = operation
+		return request
 	end
 end
 

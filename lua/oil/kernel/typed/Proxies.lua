@@ -56,7 +56,7 @@ function newcache(methodmaker)
 					value = methodmaker(value, operation)
 				elseif operation then
 					value = methodmaker(function(self, ...)                               --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-						return context.invoker:invoke(self.__reference, operation, ...)
+						return context.requester:newrequest(self.__reference, operation, ...)
 					end, operation)
 				end
 				self[field] = value
@@ -110,48 +110,40 @@ end
 
 --------------------------------------------------------------------------------
 
-function proxyto(self, reference, type)                                         --[[VERBOSE]] verbose:proxies(true, "new proxy to ",reference)
+function proxyto(self, reference, type)                                         --[[VERBOSE]] verbose:proxies("new proxy to ",reference)
 	local context = self.context
 	type = type or context.indexer:typeof(reference)
-	local result, except = self.classes[type]
-	if result then
-		result = oo.rawnew(result, { __reference = reference })
+	if type then
+		local class = self.classes[type]
+		local proxy = oo.rawnew(class, { __reference = reference })
 		for label, classes in pairs(self.extras) do
-			local class = classes[type]
+			class = classes[type]
 			if class then
-				result[label] = oo.rawnew(class, { __reference = reference })
+				proxy[label] = oo.rawnew(class, { __reference = reference })
 			end
 		end
+		return proxy
 	else
-		except = Exception{
+		return nil, Exception{
 			reason = "type",
 			message = "unable to get type for reference",
 			reference = reference,
 			type = type,
 		}
-	end                                                                           --[[VERBOSE]] verbose:proxies(false)
-	return result, except
+	end
 end
 
 function excepthandler(self, handler, type)
 	if type then
-		local result, except = self.classes[type]
-		if result then
-			result.__exceptions = handler
-			for label, classes in pairs(self.extras) do
-				local class = classes[type]
-				if class then
-					class.__exceptions = handler
-				end
+		local class = self.classes[type]
+		class.__exceptions = handler
+		for label, classes in pairs(self.extras) do
+			local class = classes[type]
+			if class then
+				class.__exceptions = handler
 			end
-		else
-			except = Exception{
-				reason = "type",
-				message = "unknown type",
-				type = type,
-			}
 		end
-		return result, except
+		return class
 	else
 		return Proxies.excepthandler(self, handler)
 	end

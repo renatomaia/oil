@@ -36,37 +36,44 @@ local type         = type
 
 local math = require "math"
 
+local tabop             = require "loop.table"
 local ObjectCache       = require "loop.collection.ObjectCache"
 local UnorderedArraySet = require "loop.collection.UnorderedArraySet"
 local OrderedSet        = require "loop.collection.OrderedSet"
 local Wrapper           = require "loop.object.Wrapper"
 
 local oo        = require "oil.oo"
-local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local Exception = require "oil.corba.giop.Exception"
+local Channels  = require "oil.kernel.base.Channels"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.kernel.base.Acceptor", oo.class)
+module "oil.kernel.base.Acceptor"
+
+oo.class(_M, Channels)
 
 context = false
 
 --------------------------------------------------------------------------------
 -- connection management
 
-local function release_wrapped_socket(self)
-	UnorderedArraySet.add(self.port, self)
-end
+LuaSocketOps = tabop.copy(Channels.LuaSocketOps)
+CoSocketOps = tabop.copy(Channels.CoSocketOps)
 
-local function release_plain_socket(self)
+function LuaSocketOps:release()
 	UnorderedArraySet.add(self.port, self.__object)
 end
 
-local function probe_wrapped_socket(self)
-	local list = { self }
-	return self.context.sockets:select(list, nil, 0)[1] == list[1]
+function CoSocketOps:release()
+	UnorderedArraySet.add(self.port, self)
 end
 
 local list = {}
-local function probe_plain_socket(self)
+function LuaSocketOps:probe()
 	list[1] = self.__object
+	return self.context.sockets:select(list, nil, 0)[1] == list[1]
+end
+
+function CoSocketOps:probe()
+	local list = { self }
 	return self.context.sockets:select(list, nil, 0)[1] == list[1]
 end
 
@@ -76,22 +83,13 @@ Port = oo.class()
 
 function Port:__init(object)
 	self = oo.rawnew(self, object)
-	local context = self.context
+	local component = self.context.__component
 	self.wrapped = ObjectCache()
 	function self.wrapped.retrieve(_, socket)
-		if type(socket) ~= "table" then
-			socket = Wrapper{
-				__object = socket,
-				probe   = probe_plain_socket,
-				release = release_plain_socket,
-			}
-		else
-			socket.probe   = probe_wrapped_socket
-			socket.release = release_wrapped_socket
-		end
+		socket = component:setupsocket(socket)
 		socket.context = context
-		socket.port    = self
-		return context.__component:setupsocket(socket)
+		socket.port = self
+		return socket
 	end
 	
 	UnorderedArraySet.add(self, self.__object)
@@ -119,19 +117,6 @@ function Port:accept(probe)                                                     
 	else
 		return nil, except
 	end
-end
-
---------------------------------------------------------------------------------
--- setup of TCP socket options
-
-function setupsocket(self, socket)
-	local options = self.options
-	if options then
-		for name, value in pairs(options) do
-			socket:setoption(name, value)
-		end
-	end
-	return socket
 end
 
 --------------------------------------------------------------------------------

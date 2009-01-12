@@ -29,19 +29,51 @@ local pairs        = pairs
 local setmetatable = setmetatable
 local type         = type
 
+local tabop = require "loop.table"
+
 local ObjectCache = require "loop.collection.ObjectCache"
 local Wrapper     = require "loop.object.Wrapper"
+local Channels    = require "oil.kernel.base.Channels"
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.kernel.base.Connector", oo.class)
+module "oil.kernel.base.Connector"
+
+oo.class(_M, Channels)
 
 context = false
 
 --------------------------------------------------------------------------------
 -- connection management
 
-local function reset_wrapped_socket(self)                                       --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
+LuaSocketOps = tabop.copy(Channels.LuaSocketOps)
+CoSocketOps = tabop.copy(Channels.CoSocketOps)
+
+function LuaSocketOps:close()
+	local ports = self.factory.cache[self.host]
+	ports[self.port] = nil
+	if next(ports) == nil then
+		self.cache[self.host] = nil
+	end
+	return self.__object:close()
+end
+
+CoSocketOps.close = LuaSocketOps.close
+
+function LuaSocketOps:reset()                                                   --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
+	self.__object:close()
+	local sockets = self.factory.context.sockets
+	local result, errmsg = sockets:tcp()
+	if result then
+		local socket = result
+		result, errmsg = socket:connect(self.host, self.port)
+		if result then
+			self.__object = socket
+		end
+	end
+	return result, errmsg
+end
+function CoSocketOps:reset()                                                    --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
 	local sockets = self.factory.context.sockets
 	local result, errmsg = sockets:tcp()
@@ -55,51 +87,14 @@ local function reset_wrapped_socket(self)                                       
 	return result, errmsg
 end
 
-local function reset_plain_socket(self)                                         --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
-	self.__object:close()
-	local sockets = self.factory.context.sockets
-	local result, errmsg = sockets:tcp()
-	if result then
-		local socket = result
-		result, errmsg = socket:connect(self.host, self.port)
-		if result then
-			self.__object = socket
-		end
-	end
-	return result, errmsg
-end
-
-local function probe_wrapped_socket(self)
-	local list = { self }
-	return self.factory.context.sockets:select(list, nil, 0)[1] == list[1]
-end
-
 local list = {}
-local function probe_plain_socket(self)
+function LuaSocketOps:probe()
 	list[1] = self.__object
 	return self.factory.context.sockets:select(list, nil, 0)[1] == list[1]
 end
-
-local function close_socket(self)
-	local ports = self.factory.cache[self.host]
-	ports[self.port] = nil
-	if next(ports) == nil then
-		self.cache[self.host] = nil
-	end
-	return self.__object:close()
-end
-
---------------------------------------------------------------------------------
--- setup of TCP socket options
-
-function setupsocket(self, socket)
-	local options = self.options
-	if options then
-		for name, value in pairs(options) do
-			socket:setoption(name, value)
-		end
-	end
-	return socket
+function CoSocketOps:probe()
+	local list = { self }
+	return self.factory.context.sockets:select(list, nil, 0)[1] == list[1]
 end
 
 --------------------------------------------------------------------------------
@@ -122,21 +117,11 @@ function __init(self, object)
 				local success
 				success, errmsg = socket:connect(host, port)
 				if success then
-					if type(socket) ~= "table" then
-						socket = Wrapper{
-							__object = socket,
-							probe = probe_plain_socket,
-							reset = reset_plain_socket,
-						}
-					else
-						socket.probe = probe_wrapped_socket
-						socket.reset = reset_wrapped_socket
-					end
+					socket = self:setupsocket(socket)
 					socket.factory = self
-					socket.host    = host
-					socket.port    = port
-					socket.close   = close_socket
-					return self:setupsocket(socket)
+					socket.host = host
+					socket.port = port
+					return socket
 				else
 					self.except = "connection refused"
 				end

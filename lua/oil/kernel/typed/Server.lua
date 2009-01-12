@@ -27,15 +27,11 @@
 -- 	impl:object retrieve(key:string)
 -- 
 -- acceptor:Receptacle
--- 	configs:table, [except:table] setup([configs:table])
+-- 	configs:table, [except:table] setupaccess([configs:table])
 -- 	success:boolean, [except:table] hasrequest(configs:table)
 -- 	success:boolean, [except:table] acceptone(configs:table)
 -- 	success:boolean, [except:table] acceptall(configs:table)
 -- 	success:boolean, [except:table] halt(configs:table)
--- 
--- references:Receptacle
--- 	reference:table referenceto(objectkey:string, accesspointinfo:table...)
--- 	stringfiedref:string encode(reference:table)
 -- 
 -- types:Receptacle
 -- 	type:table resolve(type:string)

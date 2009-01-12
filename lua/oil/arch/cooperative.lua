@@ -10,20 +10,13 @@ BasicSystem = component.Template({
 	tasks   = port.Facet,
 }, base.BasicSystem)
 
-OperationInvoker = component.Template({
-	mutex = port.Facet,
-	tasks = port.Receptacle,
-}, base.OperationInvoker)
-
 RequestReceiver = component.Template({
-	mutex = port.Facet,
 	tasks = port.Receptacle,
 }, base.RequestReceiver)
 
 function assemble(components)
 	arch.start(components)
 	
-	OperationInvoker.tasks = BasicSystem.tasks
 	RequestReceiver.tasks  = BasicSystem.tasks
 	
 	-- define 'pcall' used in invocation dispatching.

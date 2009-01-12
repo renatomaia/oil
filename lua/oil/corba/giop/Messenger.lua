@@ -84,7 +84,9 @@ function sendmsg(self, channel, type, message, types, ...)                      
 	--
 	local success, except, reset
 	repeat
+		channel:trylock("write", true)
 		success, except = channel:send(stream)
+		channel:freelock("write")
 		if not success then
 			if except == "closed" then
 				if reset == nil and channel.reset and channel:reset() then

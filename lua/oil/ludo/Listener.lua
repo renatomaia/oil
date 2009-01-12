@@ -27,6 +27,7 @@
 --------------------------------------------------------------------------------
 
 local select = select
+local tonumber = tonumber
 local unpack = unpack
 
 local oo        = require "oil.oo"
@@ -46,14 +47,14 @@ end
 
 --------------------------------------------------------------------------------
 
-function disposechannels(self, configs)                                         --[[VERBOSE]] verbose:listen("closing all channels with configs ",configs)
+function freeaccess(self, configs)                                         --[[VERBOSE]] verbose:listen("closing all channels with configs ",configs)
 	local channels = self.context.channels
 	return channels:dispose(configs)
 end
 
 --------------------------------------------------------------------------------
 
-function disposechannel(self, channel)                                          --[[VERBOSE]] verbose:listen "close channel"
+function freeachannel(self, channel)                                          --[[VERBOSE]] verbose:listen "close channel"
 	return channel:close()
 end
 
@@ -75,39 +76,55 @@ function Request:params()
 end
 
 function getrequest(self, channel, probe)
-	local result, except = false
-	if not probe or channel:probe() then
-		result, except = channel:receive()
-		if result then
-			local decoder = self.context.codec:decoder(result:gsub("%z", "\n"))
-			result = Request(decoder:get())
-			channel[result.requestid] = result
-		else
-			if except == "closed" then channel:close() end
-			except = Exception{
-				reason = except,
-				message = "channel closed",
-				channel = channel,
-			}
+	local result, except = true
+	if channel:trylock("read", not probe) then
+		if not probe or channel:probe() then
+			result, except = channel:receive()
+			if result then
+				result = tonumber(result)
+				if result then
+					result, except = channel:receive(result)
+					if result then
+						local decoder = self.context.codec:decoder(result)
+						result = Request(decoder:get())
+						result.channel = channel
+						channel[result.requestid] = result
+					end
+				else
+					except = "LuDO protocol: invalid message size"
+				end
+			else
+				if except == "closed" then                                              --[[VERBOSE]] verbose:listen("client closed the connection")
+					channel:close()
+					result, except = true, nil
+				else
+					except = "LuDO protocol: socket error "..except
+				end
+			end
 		end
+		channel:freelock("read")
 	end
 	return result, except
 end
 
 --------------------------------------------------------------------------------
 
-function sendreply(self, channel, request, ...)                                 --[[VERBOSE]] verbose:listen("got reply for request ",request.requestid," to object ",request.object_key,":",request.operation)
+local MessageFmt = "%d\n%s"
+
+function sendreply(self, request, ...)                                          --[[VERBOSE]] verbose:listen("got reply for request ",request.requestid," to object ",request.object_key,":",request.operation)
+	local channel = request.channel
 	local encoder = self.context.codec:encoder()
 	encoder:put(request.requestid, ...)
 	channel[request.requestid] = nil
-	local result, except = channel:send(encoder:__tostring():gsub("\n", "\0").."\n")
+	local data = encoder:__tostring()
+	local result, except = channel:send(MessageFmt:format(#data, data))
 	if not result then
-		if except == "closed" then channel:close() end
-		except = Exception{
-			reason = except,
-			message = "channel closed",
-			channel = channel,
-		}
+		if except == "closed" then                                                  --[[VERBOSE]] verbose:listen("client closed the connection")
+			channel:close()
+			result, except = true, nil
+		else
+			except = "LuDO protocol: socket error "..except
+		end
 	end
 	return result, except
 end

@@ -129,13 +129,10 @@ OIL_LUA= $(addprefix ../lua/, \
 	oil/kernel/base/Client.lua \
 	oil/kernel/base/Connector.lua \
 	oil/kernel/base/Dispatcher.lua \
-	oil/kernel/base/Invoker.lua \
 	oil/kernel/base/Proxies.lua \
 	oil/kernel/base/Receiver.lua \
 	oil/kernel/base/Server.lua \
 	oil/kernel/base/Sockets.lua \
-	oil/kernel/cooperative/Invoker.lua \
-	oil/kernel/cooperative/Mutex.lua \
 	oil/kernel/cooperative/Receiver.lua \
 	oil/kernel/typed/Client.lua \
 	oil/kernel/typed/Dispatcher.lua \

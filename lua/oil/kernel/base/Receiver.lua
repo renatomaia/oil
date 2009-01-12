@@ -13,7 +13,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- acceptor:Facet
--- 	configs:table, [except:table] setup([configs:table])
+-- 	configs:table, [except:table] setupaccess([configs:table])
 -- 	success:boolean, [except:table] hasrequest(configs:table)
 -- 	success:boolean, [except:table] acceptone(configs:table)
 -- 	success:boolean, [except:table] acceptall(configs:table)
@@ -22,10 +22,10 @@
 -- listener:Receptacle
 -- 	configs:table default([configs:table])
 -- 	channel:object, [except:table] getchannel(configs:table)
--- 	success:boolean, [except:table] disposechannels(configs:table)
--- 	success:boolean, [except:table] disposechannel(channel:object)
+-- 	success:boolean, [except:table] freeaccess(configs:table)
+-- 	success:boolean, [except:table] freeachannel(channel:object)
 -- 	request:table, [except:table] = getrequest(channel:object, [probe:boolean])
--- 	success:booelan, [except:table] = sendreply(channel:object, request:table, success:booelan, results...)
+-- 	success:booelan, [except:table] = sendreply(request:table, success:booelan, results...)
 -- 
 -- dispatcher:Receptacle
 -- 	success:boolean, [except:table]|results... dispatch(objectkey:string, operation:string|function, params...)
@@ -41,7 +41,7 @@ context = false
 
 --------------------------------------------------------------------------------
 
-function setup(self, channelinfo)
+function setupaccess(self, channelinfo)
 	return self.context.listener:default(channelinfo)
 end
 
@@ -56,20 +56,17 @@ function acceptone(self, channelinfo)                                           
 	result, except = listener:getchannel(channelinfo)
 	if result then
 		local channel = result
-		result, except = listener:getrequest(channel, true)
+		result, except = listener:getrequest(channel)
 		channel:release()
-		if result then                                                              --[[VERBOSE]] verbose:acceptor(true, "dispatching request from accepted channel")
+		if result and result ~= true then                                           --[[VERBOSE]] verbose:acceptor(true, "dispatching request from accepted channel")
 			local dispatcher = context.dispatcher
-			result, except = listener:sendreply(channel, result,
+			result, except = listener:sendreply(result,
 				dispatcher:dispatch(result.object_key,
 				                    result.operation,
 				                    result.opimpl,
 				                    result:params())
 			)                                                                         --[[VERBOSE]] verbose:acceptor(false)
 		end
-	end
-	if except and except.reason == "closed" then
-		result, except = false, nil
 	end                                                                           --[[VERBOSE]] verbose:acceptor(false)
 	return result, except
 end
@@ -85,9 +82,9 @@ function acceptall(self, channelinfo)                                           
 			local channel = result
 			result, except = listener:getrequest(channel)
 			channel:release()
-			if result then                                                            --[[VERBOSE]] verbose:acceptor "dispatching request from accepted channel"
+			if result and result ~= true then                                         --[[VERBOSE]] verbose:acceptor "dispatching request from accepted channel"
 				local dispatcher = context.dispatcher
-				result, except = listener:sendreply(channel, result,
+				result, except = listener:sendreply(result,
 					dispatcher:dispatch(result.object_key,
 					                    result.operation,
 					                    result.opimpl,
@@ -95,20 +92,14 @@ function acceptall(self, channelinfo)                                           
 				)
 			end
 		end
-		if not self[channelinfo] then
-			if not result and except.reason == "closed" then
-				result, except = true, nil
-			end
-			break
-		end
-	until not result and except.reason ~= "closed"                                --[[VERBOSE]] verbose:acceptor(false)
+	until not result or not self[channelinfo]                                     --[[VERBOSE]] verbose:acceptor(false)
 	return result, except
 end
 
 function halt(self, channelinfo)                                                --[[VERBOSE]] verbose:acceptor "halt acceptor"
 	if self[channelinfo] then
 		self[channelinfo] = nil
-		return self.context.listener:disposechannels(channelinfo)
+		return self.context.listener:freeaccess(channelinfo)
 	else
 		return nil, Exception{
 			reason = "halt",

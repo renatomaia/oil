@@ -70,8 +70,9 @@ function valueof(self, interface, name)
 	local member, value = Indexer.valueof(self, interface, name)
 	if member and member._type == "operation" then
 		value = self.localops[name]
-		if value == nil then
-			attribute = member.attribute and member.attribute.name
+		attribute = member.attribute
+		if value == nil and attribute then
+			attribute = attribute.name
 			value = self.attribops[member.attribop]
 		else
 			curriface = interface

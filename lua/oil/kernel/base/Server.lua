@@ -28,14 +28,14 @@
 -- 	impl:object retrieve(key:string)
 -- 
 -- acceptor:Receptacle
--- 	configs:table, [except:table] setup([configs:table])
+-- 	configs:table, [except:table] setupaccess([configs:table])
 -- 	success:boolean, [except:table] hasrequest(configs:table)
 -- 	success:boolean, [except:table] acceptone(configs:table)
 -- 	success:boolean, [except:table] acceptall(configs:table)
 -- 	success:boolean, [except:table] halt(configs:table)
 -- 
 -- references:Receptacle
--- 	reference:table referenceto(objectkey:string, accesspointinfo:table...)
+-- 	reference:table newreference(objectkey:string, accesspointinfo:table...)
 -- 	stringfiedref:string encode(reference:table)
 --------------------------------------------------------------------------------
 
@@ -98,7 +98,7 @@ end
 
 function initialize(self, config)
 	local except
-	self.config, except = self.context.acceptor:setup(config)
+	self.config, except = self.context.acceptor:setupaccess(config)
 	return self.config, except
 end
 
@@ -121,7 +121,7 @@ function object(self, object, key, ...)
 	key = key or "\0"..self:hashof(object)
 	local result, except = context.objects:register(key, object, ...)
 	if result then
-		result, except = context.references:referenceto(key, self.config)
+		result, except = context.references:newreference(key, self.config)
 		if result then
 			local wrapper = self.wrappers[key]
 			rawset(wrapper, "__newindex", object)

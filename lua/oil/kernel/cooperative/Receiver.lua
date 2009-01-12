@@ -13,7 +13,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- acceptor:Facet
--- 	configs:table, [except:table] setup([configs:table])
+-- 	configs:table, [except:table] setupaccess([configs:table])
 -- 	success:boolean, [except:table] hasrequest(configs:table)
 -- 	success:boolean, [except:table] acceptone(configs:table)
 -- 	success:boolean, [except:table] acceptall(configs:table)
@@ -22,10 +22,10 @@
 -- listener:Receptacle
 -- 	configs:table default([configs:table])
 -- 	channel:object, [except:table] getchannel(configs:table)
--- 	success:boolean, [except:table] disposechannels(configs:table)
--- 	success:boolean, [except:table] disposechannel(channel:object)
+-- 	success:boolean, [except:table] freeaccess(configs:table)
+-- 	success:boolean, [except:table] freeachannel(channel:object)
 -- 	request:table, [except:table] = getrequest(channel:object, [probe:boolean])
--- 	success:booelan, [except:table] = sendreply(channel:object, request:table, success:booelan, results...)
+-- 	success:booelan, [except:table] = sendreply(request:table, success:booelan, results...)
 -- 
 -- dispatcher:Receptacle
 -- 	success:boolean, [except:table]|results... dispatch(objectkey:string, operation:string|function, params...)
@@ -62,27 +62,22 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function sendreply(self, channel, request, ...)
+function sendreply(self, request, ...)
 	local context = self.context
-	context.mutex:locksend(channel)
-	local result, except = context.listener:sendreply(channel, request, ...)
-	context.mutex:freesend(channel)
-	if not result and except.reason ~= "closed" and not self.except then
+	local result, except = context.listener:sendreply(request, ...)
+	if not result and not self.except then
 		self.except = except
 	end
 end
 
 function dispatchrequest(self, channel, request)
-	self:sendreply(channel, request, self.context.dispatcher:dispatch(
+	self:sendreply(request, self.context.dispatcher:dispatch(
 		request.object_key,
 		request.operation,
 		request.opimpl,
 		request:params()
 	))
 end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
 
 function getallrequests(self, channelinfo, channel)
 	local context = self.context
@@ -93,16 +88,18 @@ function getallrequests(self, channelinfo, channel)
 	repeat
 		result, except = context.listener:getrequest(channel)
 		if result then
-			context.tasks:start(self.dispatchrequest, self, channel, result)
+			if result == true then
+				break
+			else
+				context.tasks:start(self.dispatchrequest, self, channel, result)
+			end
+		elseif not self.except then
+			self.except = except
+			break
 		end
-	until except or self.except
-	if not result and except.reason ~= "closed" and not self.except then
-		self.except = except
-	end
+	until self.except
+	channel:release()
 	threads[thread] = nil
-	if next(threads) == nil then
-		threads[thread] = nil
-	end
 end
 
 --------------------------------------------------------------------------------
@@ -118,9 +115,10 @@ function acceptall(self, channelinfo)                                           
 		if result then
 			context.tasks:start(self.getallrequests, self, channelinfo, result)
 		end
-	until not result and except.reason ~= "closed" or self.except                 --[[VERBOSE]] verbose:acceptor(false)
+	until not result or self.except
 	self.channelinfo = nil
-	self.thread[channelinfo] = nil
+	self.threads[channelinfo] = nil
+	self.thread[channelinfo] = nil                                                --[[VERBOSE]] verbose:acceptor(false)
 	return nil, self.except or except
 end
 
@@ -134,14 +132,14 @@ function halt(self, channelinfo)                                                
 	local thread = self.thread[channelinfo]
 	if thread then
 		tasks:remove(thread)
-		result, except = listener:disposechannels(channelinfo)
+		result, except = listener:freeaccess(channelinfo)
 		self.thread[channelinfo] = nil
 	end
 	local threads = self.threads[channelinfo]
 	if threads then
 		for thread, channel in pairs(threads) do
 			tasks:remove(thread)
-			result, except = listener:disposechannel(channel)
+			result, except = listener:freeachannel(channel)
 		end
 		self.threads[channelinfo] = nil
 	end

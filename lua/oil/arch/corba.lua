@@ -51,11 +51,12 @@ OperationRequester = component.Template{
 	mutex     = port.Receptacle,
 }
 ProxyIndexer = component.Template{
-	indexer  = port.Facet,
-	members  = port.Receptacle,
-	invoker  = port.Receptacle,
-	profiler = port.HashReceptacle,
-	types    = port.Receptacle,
+	indexer   = port.Facet,
+	members   = port.Receptacle,
+	requester = port.Receptacle,
+	profiler  = port.HashReceptacle,
+	types     = port.Receptacle,
+	proxies   = port.Receptacle,
 }
 
 -- LISTENER
@@ -95,16 +96,17 @@ function assemble(components)
 
 	-- REQUESTER
 	OperationRequester.messenger = MessageMarshaler.messenger
-	OperationRequester.mutex     = OperationInvoker.mutex
+	OperationRequester.mutex     = BasicSystem.mutex
 	ProxyIndexer.members         = TypeRepository.indexer
-	ProxyIndexer.invoker         = OperationInvoker.invoker
+	ProxyIndexer.requester       = OperationRequester.requests
 	ProxyIndexer.types           = TypeRepository.types
+	ProxyIndexer.proxies         = ObjectProxies.proxies
 
 	-- LISTENER
 	RequestListener.messenger = MessageMarshaler.messenger
 	RequestListener.mapper    = RequestDispatcher.objects
 	RequestListener.indexer   = ServantIndexer.indexer
-	RequestListener.mutex     = RequestReceiver.mutex
+	RequestListener.mutex     = BasicSystem.mutex
 	ServantIndexer.members    = TypeRepository.indexer
 	
 	-- COMMUNICATION

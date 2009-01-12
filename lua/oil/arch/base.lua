@@ -21,10 +21,6 @@ ClientBroker = component.Template{
 }
 ObjectProxies = component.Template{
 	proxies = port.Facet,
-	invoker = port.Receptacle,
-}
-OperationInvoker = component.Template{
-	invoker   = port.Facet,
 	requester = port.Receptacle,
 }
 
@@ -49,10 +45,9 @@ function assemble(components)
 	arch.start(components)
 	
 	-- CLIENT SIDE
-	OperationInvoker.requester = OperationRequester.requests
-	ObjectProxies.invoker      = OperationInvoker.invoker
-	ClientBroker.proxies       = ObjectProxies.proxies
-	ClientBroker.references    = ObjectReferrer.references
+	ObjectProxies.requester = OperationRequester.requests
+	ClientBroker.proxies    = ObjectProxies.proxies
+	ClientBroker.references = ObjectReferrer.references
 
 	-- SERVER SIDE
 	RequestReceiver.listener   = RequestListener.listener

@@ -19,8 +19,9 @@
 -- members:Receptacle
 -- 	member:table valueof(interface:table, name:string)
 -- 
--- invoker:Receptacle
--- 	[results:object], [except:table] invoke(reference:table, operation, args...)
+-- requester:Receptacle
+-- 	[request:object], [except:table] newrequest(reference:table, operation, args...)
+-- 	[success:boolean], [except:table] getreply(request:object, operation, args...)
 -- 
 -- types:Receptacle
 -- 	[type:table] register(definition:object)
@@ -35,7 +36,6 @@ local ipairs = ipairs
 
 local oo        = require "oil.oo"
 local assert    = require "oil.assert"
-local Proxies   = require "oil.kernel.base.Proxies"
 local idl       = require "oil.corba.idl"
 local giop      = require "oil.corba.giop"
 local Indexer   = require "oil.corba.giop.Indexer"                              --[[VERBOSE]] local verbose = require "oil.verbose"
@@ -47,11 +47,32 @@ oo.class(_M, Indexer)
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+RequestWrapper = oo.class()
+
+local function contentswrapper(self, ...)
+	local request = self.request
+	return self.handler(request, request:contents(...))
+end
+
+function RequestWrapper:__index(field)
+	local request = self.request
+	if field == "contents" and request.contents then
+		return contentswrapper
+	end
+	return request[field]
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
 function context(component, context)
 	local localops = {}
+	------------------------------------------------------------------------------
+	local function nonexistent()
+		return true, true
+	end
 	
-	local function _non_existentresults(self)
-		local success, result = oo.classof(self).results(self)
+	local function handler(request, success, result)
 		if
 			not success and
 			( result.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" or
@@ -61,54 +82,60 @@ function context(component, context)
 		end
 		return success, result
 	end
+	
+	local _non_existent = giop.ObjectOperations._non_existent
 	function localops:_non_existent()
-		local reply, except = context.invoker:invoke(
-			self.__reference, 
-			giop.ObjectOperations._non_existent
-		)
-		if reply then
-			reply.results = _non_existentresults
+		local result, except = context.requester:newrequest(self.__reference, _non_existent)
+		if result then
+			result = RequestWrapper{
+				request = result,
+				handler = handler,
+			}
 		elseif except.reason == "connect" or except.reason == "closed" then
-			reply = Proxies.packresults(true)
+			result.contents = nonexistent
 		end
-		return reply, except
+		return result, except
+	end
+	------------------------------------------------------------------------------
+	local function narrowed(self)
+		return true, self[1]
 	end
 	
-	local function _narrowresults(self)
-		local success, result = oo.classof(self).results(self)
+	local function handler(request, success, result)
 		if success then
 			result = context.types:lookup_id(result:_get_id()) or
 			         context.types:register(result)
-			result = self.__context.proxies:proxyto(self.__reference, result)
+			result = context.proxies:proxyto(request.reference, result)
 		end
 		return success, result
 	end
+	
+	local _interface = giop.ObjectOperations._interface
 	function localops:_narrow(iface)
-		local reply, except
+		local result, except
 		if iface == nil then
-			reply, except = context.invoker:invoke(
-				self.__reference, 
-				giop.ObjectOperations._interface
-			)
-			if reply then
-				reply.__context = self.__context
-				reply.__reference = self.__reference
-				reply.results = _narrowresults
+			result, except = context.requester:newrequest(self.__reference, _interface)
+			if result then
+				result = RequestWrapper{
+					reference = self.__reference,
+					request = result,
+					handler = handler,
+				}
 			end
 		else
-			reply, except = context.types:resolve(iface)
-			if reply then
-				reply, except = self.__context.proxies:proxyto(self.__reference, reply)
+			result, except = context.types:resolve(iface)
+			if result then
+				result, except = context.proxies:proxyto(self.__reference, result)
 			end
-			if reply then
-				reply = Proxies.packresults(reply)
+			if result then
+				result = { result, contents = narrowed }
 			end
 		end
-		return reply, except
+		return result, except
 	end
-	
-	local IsEquivalentReply = Proxies.packresults(true)
-	local NotEquivalentReply = Proxies.packresults(false)
+	------------------------------------------------------------------------------
+	local IsEquivalentReply = { contents = function() return true end }
+	local NotEquivalentReply = { contents = function() return false end }
 	function localops:_is_equivalent(proxy)
 		local reference = proxy.__reference
 		local ref = self.__reference
@@ -139,15 +166,19 @@ end
 function importinterfaceof(self, reference)
 	local context = self.context
 	local operation = giop.ObjectOperations._interface
-	local success, result = context.invoker:invoke(reference, operation)
-	if success then
-		success, result = success:results()
-		if success then
-			success = context.types:lookup_id(result:_get_id()) or
-			          context.types:register(result)
+	local result, except = context.requester:newrequest(reference, operation)
+	if result then
+		local request = result
+		result, except = context.requester:getreply(request)
+		if result then
+			result, except = request:contents()
+			if result then
+				result = context.types:lookup_id(except:_get_id()) or
+				         context.types:register(except)
+			end
 		end
 	end
-	return success or assert.exception(result)
+	return result or assert.exception(except)
 end
 
 --------------------------------------------------------------------------------

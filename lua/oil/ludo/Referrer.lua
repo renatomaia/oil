@@ -13,7 +13,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- references:Facet
--- 	reference:table referenceto(objectkey:string, accesspointinfo:table...)
+-- 	reference:table newreference(objectkey:string, accesspointinfo:table...)
 -- 	reference:string encode(reference:table)
 -- 	reference:table decode(reference:string)
 --------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ context = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function referenceto(self, objectkey, accessinfo)
+function newreference(self, objectkey, accessinfo)
 	local host = accessinfo.host
 	if host == "*" then
 		host = socket.dns.gethostname()

@@ -175,7 +175,11 @@ function decodeurl(self, data)
 	end
 	local major, minor
 	major, minor, temp = string.match(data, "^(%d+).(%d+)@(.+)$")
-	if not minor then minor = 0 end
+	if not minor then
+		minor = 0
+	else
+		minor = tonumber(minor)
+	end
 	local profileidl = ProfileBody_v1_[minor]
 	if (major and major ~= "1") or (not profileidl) then
 		return nil, Exception{ "INTERNAL", minor_code_value = 0,

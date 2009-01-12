@@ -18,8 +18,8 @@
 -- listener:Facet
 -- 	configs:table default([configs:table])
 -- 	channel:object, [except:table] getchannel(configs:table)
--- 	success:boolean, [except:table] disposechannels(configs:table)
--- 	success:boolean, [except:table] disposechannel(channel:object)
+-- 	success:boolean, [except:table] freeaccess(configs:table)
+-- 	success:boolean, [except:table] freeachannel(channel:object)
 -- 	request:object, [except:table], [requests:table] = getrequest(channel:object, [probe:boolean])
 -- 
 -- channels:HashReceptacle
@@ -36,10 +36,6 @@
 -- 
 -- indexer:Receptacle
 -- 	member:table valueof(interface:table, name:string)
--- 
--- mutex:Receptacle
--- 	locksend(channel:object)
--- 	freesend(channel:object)
 --------------------------------------------------------------------------------
 
 local ipairs = ipairs
@@ -106,7 +102,7 @@ function getchannel(self, configs, probe)                                       
 	if result then
 		result, except = result:retrieve(configs, probe)
 	else
-		except = nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
+		except = Exception{ "IMP_LIMIT", minor_code_value = 1,
 			message = "no supported GIOP profile found for configuration",
 			reason = "protocol",
 			configuration = configs,
@@ -117,7 +113,7 @@ end
 
 --------------------------------------------------------------------------------
 
-function disposechannels(self, configs)                                         --[[VERBOSE]] verbose:listen(true, "closing all channels with configs ",configs)
+function freeaccess(self, configs)                                         --[[VERBOSE]] verbose:listen(true, "closing all channels with configs ",configs)
 	local channels = self.context.channels[configs.tag or 0]
 	local result, except = channels:dispose(configs)
 	if result then
@@ -134,7 +130,7 @@ end
 
 --------------------------------------------------------------------------------
 
-function disposechannel(self, channel)                                          --[[VERBOSE]] verbose:listen "close channel"
+function freeachannel(self, channel)                                          --[[VERBOSE]] verbose:listen "close channel"
 	if table.maxn(channel) > 0 then
 		channel.invalid = true
 		return true
@@ -173,10 +169,7 @@ function bypass(self, channel, request, ...)
 	request.bypassed = true
 	if request.response_expected ~= false then
 		local context = self.context
-		local mutex = context.mutex
-		if mutex then mutex:locksend(channel) end
 		result, except = context.messenger:sendmsg(channel, ...)
-		if mutex then mutex:freesend(channel) end
 	end
 	return result, except
 end
@@ -184,85 +177,92 @@ end
 --------------------------------------------------------------------------------
 
 function getrequest(self, channel, probe)                                       --[[VERBOSE]] verbose:listen(true, "get request from channel")
-	if probe then
-		if not channel:probe() then                                                 --[[VERBOSE]] verbose:listen(false, "unready channel probed")
-			return false
-		end
-	end
 	local context = self.context
-	local except
-	local result, header, decoder = context.messenger:receivemsg(channel)
-	if result == RequestID then
-		local requestid = header.request_id
-		if not channel[requestid] then
-			local iface = context.mapper:typeof(header.object_key)
-			if iface then
-				local member, opimpl = context.indexer:valueof(iface, header.operation)
-				if member then                                                          --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
-					for index, input in ipairs(member.inputs) do
-						header[index] = decoder:get(input)
+	local result, except = true, nil
+	if channel:trylock("read", not probe) then
+		if not probe or channel:probe() then
+			local msgid, header, decoder = context.messenger:receivemsg(channel)
+			if msgid == RequestID then
+				local requestid = header.request_id
+				if not channel[requestid] then
+					local iface = context.mapper:typeof(header.object_key)
+					if iface then
+						local member, opimpl = context.indexer:valueof(iface, header.operation)
+						if member then                                                          --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
+							for index, input in ipairs(member.inputs) do
+								header[index] = decoder:get(input)
+							end
+							header.member = member
+							header.opimpl = opimpl
+							if header.response_expected then
+								channel[requestid] = header                                         --[[VERBOSE]] else verbose:listen "no response expected"
+							end
+							header.channel = channel
+							result = Request(header)
+						else                                                                    --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
+							result, except = self:bypass(channel, header,
+								self:sysexreply(requestid, {
+									exception_id = "IDL:omg.org/CORBA/BAD_OPERATION:1.0",
+									minor_code_value  = 1, -- TODO:[maia] Which value?
+									completion_status = COMPLETED_NO,
+								}))
+						end
+					else                                                                      --[[VERBOSE]] verbose:listen("got illegal object ",header.object_key)
+						result, except = self:bypass(channel, header,
+							self:sysexreply(requestid, {
+								exception_id = "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0",
+								minor_code_value  = 1, -- TODO:[maia] Which value?
+								completion_status = COMPLETED_NO,
+							}))
 					end
-					header = Request(header)
-					header.member = member
-					header.opimpl = opimpl
-					if header.response_expected then
-						channel[requestid] = header                                         --[[VERBOSE]] else verbose:listen "no response expected"
-					end
-					result = header
-				else                                                                    --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
+				else                                                                        --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
 					result, except = self:bypass(channel, header,
 						self:sysexreply(requestid, {
-							exception_id = "IDL:omg.org/CORBA/BAD_OPERATION:1.0",
-							minor_code_value  = 1, -- TODO:[maia] Which value?
+							exception_id = "IDL:omg.org/CORBA/INTERNAL:1.0",
+							minor_code_value = 0, -- TODO:[maia] Which value?
 							completion_status = COMPLETED_NO,
 						}))
 				end
-			else                                                                      --[[VERBOSE]] verbose:listen("got illegal object ",header.object_key)
-				result, except = self:bypass(channel, header,
-					self:sysexreply(requestid, {
-						exception_id = "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0",
-						minor_code_value  = 1, -- TODO:[maia] Which value?
-						completion_status = COMPLETED_NO,
-					}))
+			elseif msgid == CancelRequestID then                                          --[[VERBOSE]] verbose:listen("got cancelling of request ",header.request_id)
+				channel[header.request_id] = nil
+				header.bypassed = true
+				result = true
+			elseif msgid == LocateRequestID then                                          --[[VERBOSE]] verbose:listen("got locate request ",header.request_id)
+				local reply = { request_id = header.request_id }
+				if context.mapper:typeof(header.object_key)
+					then reply.locate_status = "OBJECT_HERE"
+					else reply.locate_status = "UNKNOWN_OBJECT"
+				end
+				result, except = self:bypass(channel, header, LocateReplyID, reply)
+			elseif result == MessageErrorID then                                           --[[VERBOSE]] verbose:listen "got message error notification"
+				result, except = self:bypass(channel, header, CloseConnectionID)
+			elseif MessageType[msgid] then                                                --[[VERBOSE]] verbose:listen("got unknown message ",msgid,", sending message error notification")
+				result, except = self:bypass(channel, header, MessageErrorID)
+			else
+				result, except = nil, header
 			end
-		else                                                                        --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
-			result, except = self:bypass(channel, header,
-				self:sysexreply(requestid, {
-					exception_id = "IDL:omg.org/CORBA/INTERNAL:1.0",
-					minor_code_value = 0, -- TODO:[maia] Which value?
-					completion_status = COMPLETED_NO,
-				}))
+		
+			if result then
+				if header.bypassed then                                                     --[[VERBOSE]] verbose:listen(false, "reissuing request read")
+					return self:getrequest(channel, probe)
+				end
+			elseif except.reason == "closed" then                                         --[[VERBOSE]] verbose:listen("client closed the connection")
+				result, except = true, nil
+			end
 		end
-	elseif result == CancelRequestID then                                          --[[VERBOSE]] verbose:listen("got cancelling of request ",header.request_id)
-		channel[header.request_id] = nil
-		header.bypassed = true
-	elseif result == LocateRequestID then                                          --[[VERBOSE]] verbose:listen("got locate request ",header.request_id)
-		local reply = { request_id = header.request_id }
-		if context.mapper:typeof(header.object_key)
-			then reply.locate_status = "OBJECT_HERE"
-			else reply.locate_status = "UNKNOWN_OBJECT"
-		end
-		result, except = self:bypass(channel, header, LocateReplyID, reply)
-	elseif result == MessageErrorID then                                           --[[VERBOSE]] verbose:listen "got message error notification"
-		result, except = self:bypass(channel, header, CloseConnectionID)
-	elseif MessageType[result] then                                                --[[VERBOSE]] verbose:listen("got unknown message ",result,", sending message error notification")
-		result, except = self:bypass(channel, header, MessageErrorID)
-	else
-		except = header
+		channel:freelock("read")
 	end                                                                           --[[VERBOSE]] verbose:listen(false)
 	
-	if result and header.bypassed then                                            --[[VERBOSE]] verbose:listen("reissuing request read")
-		return self:getrequest(channel, probe)
-	end
-	return result, except, except and channel
+	return result, except
 end
 
 --------------------------------------------------------------------------------
 
 local ExceptionReplyTypes = { idl.string }
 
-function sendreply(self, channel, request, success, ...)                        --[[VERBOSE]] verbose:listen(true, "got reply for request ",request.request_id)
+function sendreply(self, request, success, ...)                        --[[VERBOSE]] verbose:listen(true, "got reply for request ",request.request_id)
 	local except
+	local channel = request.channel
 	local requestid = request.request_id
 	local messenger = self.context.messenger
 	if channel[requestid] == request then
@@ -344,5 +344,8 @@ function sendreply(self, channel, request, success, ...)                        
 	else
 		success = true
 	end                                                                           --[[VERBOSE]] verbose:listen(false)
+	if not success and except.reason ~= "closed" then
+		success, except = true, nil
+	end
 	return success, except
 end

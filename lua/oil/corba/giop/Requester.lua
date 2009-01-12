@@ -71,15 +71,24 @@ local ChannelKey = newproxy()
 
 local function register(channel, request)
 	local id = #channel + 1
+	request.channel = channel
 	channel[id] = request
 	return id
 end
 
 local function unregister(channel, id)
 	local request = channel[id]
-	channel[id] = nil
-	return request
+	if request then
+		request.channel = nil
+		channel[id] = nil
+		return request
+	end
 end
+
+local function results(self)
+	return self.success, unpack(self, 1, self.resultcount)
+end
+
 
 --------------------------------------------------------------------------------
 
@@ -136,165 +145,185 @@ local OneWayRequest = {
 	requesting_principal = Empty,
 	resultcount          = 0,
 	success              = true,
+	contents             = results,
 }
 
-function newrequest(self, channel, reference, operation, ...)
-	local request
-	if operation.oneway then
-		request = OneWayRequest
-	else
-		request = {
-			response_expected    = true,
-			service_context      = Empty,
-			requesting_principal = Empty,
-			inputs               = operation.inputs,
-			...,
-		}
-		request.request_id = register(channel, request)
-	end                                                                           --[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",operation.name,"'")
-	request.object_key = reference._object
-	request.operation  = operation.name
-	request.opidl      = operation
-	local success, except = self.context.messenger:sendmsg(channel,
-	                                                       RequestID, request,
-	                                                       operation.inputs, ...)
-	if not success then
-		request = nil
-	end	                                                                          --[[VERBOSE]] verbose:invoke(false)
-	return request, except, except and channel
+function newrequest(self, reference, operation, ...)
+	local result, except = self:getchannel(reference)
+	if result then
+		local channel = result
+		if operation.oneway then
+			result = OneWayRequest
+		else
+			result = {
+				response_expected    = true,
+				service_context      = Empty,
+				requesting_principal = Empty,
+				inputs               = operation.inputs,
+				...,
+			}
+			result.request_id = register(channel, result)
+		end                                                                          --[[VERBOSE]] verbose:invoke(true, "request ",result.request_id," for operation '",operation.name,"'")
+		result.object_key = reference._object
+		result.operation  = operation.name
+		result.opidl      = operation
+		local context = self.context
+		local success, except = context.messenger:sendmsg(channel,
+		                                                  RequestID, result,
+		                                                  operation.inputs, ...)
+		if not success then
+			unregister(channel, result)
+			result = nil
+		end
+	end                                                                           --[[VERBOSE]] verbose:invoke(false)
+	return result, except
 end
 
 --------------------------------------------------------------------------------
 
 function reissue(self, channel, request)                                        --[[VERBOSE]] verbose:invoke(true, "reissue request for operation '",request.operation,"'")
 	local context = self.context
-	local mutex = context.mutex
-	if mutex then mutex:locksend(channel) end
 	local success, except = context.messenger:sendmsg(channel, RequestID,
 	                                                  request, request.inputs,
 	                                                  unpack(request, 1,
-	                                                         #request.inputs))
-	if mutex then mutex:freesend(channel) end                                     --[[VERBOSE]] verbose:invoke(false)
-	return success, except, except and channel
+	                                                         #request.inputs))    --[[VERBOSE]] verbose:invoke(false)
+	return success, except
 end
 
-function getreply(self, channel, probe)                                         --[[VERBOSE]] verbose:invoke(true, "get a reply from communication channel")
-	local context = self.context
-	if probe and not channel:probe() then
-		return true                                                                 --[[VERBOSE]],verbose:invoke(false, "no reply available at the moment")
-	end
-	local result, except
-	local msgid, header, decoder = context.messenger:receivemsg(channel)
-	if msgid == ReplyID then
-		result = unregister(channel, header.request_id)
-		if result then
-			local status = header.reply_status
-			if status == "LOCATION_FORWARD" then                                      --[[VERBOSE]] verbose:invoke("forwarding request ",header.request_id," through other channel")
-				result.success = "forward"
-				result[1] = decoder:struct(IOR)
-			else
-				local operation = result.opidl
-				if status == "NO_EXCEPTION" then                                        --[[VERBOSE]] verbose:invoke(true, "got successful reply for request ",header.request_id)
-					result.success = true
-					result.resultcount = #operation.outputs
-					for index, output in ipairs(operation.outputs) do
-						result[index] = decoder:get(output)
-					end                                                                   --[[VERBOSE]] verbose:invoke(false)
-				else
-					
-					result.success = false
-					result.resultcount = 1
-					if status == "USER_EXCEPTION" then                                    --[[VERBOSE]] verbose:invoke(true, "got reply with exception for ",header.request_id)
-						local repId = decoder:string()
-						local exception = operation.exceptions[repId]
-						if exception then
-							exception = Exception(decoder:except(exception))
-							exception[1] = repId
-							result[1] = exception
-						else
-							result[1] = Exception{ "UNKNOWN", minor_code_value = 0,
-								message = "unexpected user-defined exception",
-								reason = "exception",
-								exception = exception,
-							}
-						end                                                                 --[[VERBOSE]] verbose:invoke(false)
-					elseif status == "SYSTEM_EXCEPTION" then                              --[[VERBOSE]] verbose:invoke(true, "got reply with system exception for ",header.request_id)
-						-- TODO:[maia] set its type to the proper SystemExcep.
-						local exception = decoder:struct(SystemExceptionIDL)
-						exception[1] = exception.exception_id
-						result[1] = Exception(exception)
-					else
-						result[1] = Exception{ "INTERNAL", minor_code_value = 0,
-							message = "unsupported reply status",
-							reason = "replystatus",
-							status = status,
+function getreply(self, request, probe)                                         --[[VERBOSE]] verbose:invoke(true, "get a reply from communication channel")
+	local success, except = true, nil
+	if request.contents == nil then
+		local channel = request.channel
+		local context = self.context
+		if channel:trylock("read", not probe, request) then
+			local replied
+			while success and (replied~=request) and (not probe or channel:probe()) do
+				local msgid, header, decoder = context.messenger:receivemsg(channel)
+				if msgid == ReplyID then
+					replied = unregister(channel, header.request_id)
+					if replied then
+						local status = header.reply_status
+						if status == "LOCATION_FORWARD" then                                --[[VERBOSE]] verbose:invoke("forwarding request ",header.request_id," through other channel")
+							success, except = self:getchannel(decoder:struct(IOR))
+							if success then
+								replied.request_id = register(channel, replied)
+								success, except = self:reissue(channel, replied)
+							end
+							if success then
+								replied = nil
+							else
+								replied.contents = results
+								replied.success = false
+								replied.resultcount = 1
+								replied[1] = except
+								success, except = true, nil
+							end
+						else -- status ~= LOCATION_FORWARD
+							local operation = replied.opidl
+							replied.contents = results
+							if status == "NO_EXCEPTION" then                                  --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
+								replied.success = true
+								replied.resultcount = #operation.outputs
+								for index, output in ipairs(operation.outputs) do
+									replied[index] = decoder:get(output)
+								end
+							else -- status ~= "NO_EXCEPTION"
+								replied.success = false
+								replied.resultcount = 1
+								if status == "USER_EXCEPTION" then                              --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
+									local repId = decoder:string()
+									local exception = operation.exceptions[repId]
+									if exception then
+										exception = Exception(decoder:except(exception))
+										exception[1] = repId
+										replied[1] = exception
+									else
+										replied[1] = Exception{ "UNKNOWN", minor_code_value = 0,
+											message = "unexpected user-defined exception",
+											reason = "exception",
+											exception = exception,
+										}
+									end
+								elseif status == "SYSTEM_EXCEPTION" then                        --[[VERBOSE]] verbose:invoke("got reply with system exception for ",header.request_id)
+									-- TODO:[maia] set its type to the proper SystemExcep.
+									local exception = decoder:struct(SystemExceptionIDL)
+									exception[1] = exception.exception_id
+									replied[1] = Exception(exception)
+								else -- status == ???
+									replied[1] = Exception{ "INTERNAL", minor_code_value = 0,
+										message = "unsupported reply status",
+										reason = "replystatus",
+										status = status,
+									}
+								end --[[ of if status == "USER_EXCEPTION"]]
+							end -- of if status == "NO_EXCEPTION"
+						end -- of if status == "LOCATION_FORWARD"
+						if replied then
+							channel:signal(replied)
+						end
+					else -- replied == nil
+						success, except = nil, Exception{ "INTERNAL", minor_code_value = 0,
+							message = "unexpected request id",
+							reason = "requestid",
+							id = header.request_id,
 						}
-					end                                                                   --[[VERBOSE]] verbose:invoke(false)
-					
+					end
+				elseif (msgid == CloseConnectionID) or
+				       (msgid == nil and header.reason == "closed") then                --[[VERBOSE]] verbose:invoke("got remote request to close channel or channel is broken")
+					success, except = channel:reset()
+					if success then                                                       --[[VERBOSE]] verbose:invoke(true, "reissue all pending requests")
+						-- reissue pending all requests
+						for id, pending in pairs(channel) do
+							if type(id) == "number" then
+								success, except = self:reissue(channel, pending)
+								if not success then
+									unregister(channel, id)
+									pending.contents = results
+									pending.success = false
+									pending.resultcount = 1
+									pending[1] = except
+									if pending == request then
+										replied = pending
+									else
+										channel:signal(pending)
+									end
+								end
+							end
+						end                                                                 --[[VERBOSE]] verbose:invoke(false)
+						success, except = true, nil
+					elseif except == "connection refused" then
+						except = Exception{ "COMM_FAILURE", minor_code_value = 1,
+							reason = "connect",
+							message = "unable to restablish channel",
+							channel = channel,
+						}
+					elseif except == "too many open connections" then
+						except = Exception{ "NO_RESOURCES", minor_code_value = 0,
+							reason = "resources",
+							message = "unbale to restablish channel, too many open connections",
+							channel = channel,
+						}
+					end
+				elseif msgid == MessageErrorID then
+					success, except = nil, Exception{ "COMM_FAILURE", minor_code_value = 0,
+						reason = "server",
+						message = "error in server message processing",
+					}
+				elseif MessageType[msgid] then
+					success, except = nil, Exception{ "INTERNAL", minor_code_value = 0,
+						reason = "unexpected",
+						message = "unexpected GIOP message",
+						message = MessageType[msgid],
+						id = msgid,
+					}
+				elseif header.reason == "version" then                                  --[[VERBOSE]] verbose:invoke("got message with wrong version, send message error notification")
+					success, except = context.messenger:sendmsg(channel, MessageErrorID)
+				else -- not msgid and header.reason ~= ["version"|"closed"]
+					success, except = nil, header
 				end
-			end
-		else
-			except = Exception{ "INTERNAL", minor_code_value = 0,
-				message = "unexpected request id",
-				reason = "requestid",
-				id = header.request_id,
-			}
-		end
-	elseif msgid == LocateReplyID then                                            --[[VERBOSE]] verbose:invoke("got object location reply for ",header.request_id)
-		result = unregister(channel, header.request_id)
-		result.locate_status = header.locate_status
-		if result.locate_status == "OBJECT_FORWARD" then
-			result.success = "forward"
-			result[1] = decoder:struct(IOR)
-		end
-	elseif (msgid == CloseConnectionID) or
-	       (msgid == nil and header.reason == "closed") then                      --[[VERBOSE]] verbose:invoke("got remote request to close channel or channel is broken")
-		result, except = channel:reset()
-		if result then                                                              --[[VERBOSE]] verbose:invoke(true, "reissue all pending requests")
-			for id, request in pairs(channel) do
-				if type(id) == "number" then
-					result, except = self:reissue(channel, request)
-					if not result then break end
-				end
-			end                                                                       --[[VERBOSE]] verbose:invoke(false)
-			if result then                                                            --[[VERBOSE]] verbose:invoke(false, "get a reply from renewed channel")
-				return self:getreply(channel, probe)
-			end
-		elseif except == "connection refused" then
-			except = Exception{ "COMM_FAILURE", minor_code_value = 1,
-				reason = "connect",
-				message = "unable to restablish channel",
-				channel = channel,
-			}
-		elseif except == "too many open connections" then
-			except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-				reason = "resources",
-				message = "unbale to restablish channel, too many open connections",
-				channel = channel,
-			}
-		end
-	elseif msgid == MessageErrorID then
-		except = Exception{ "COMM_FAILURE", minor_code_value = 0,
-			reason = "server",
-			message = "error in server message processing",
-		}
-	elseif MessageType[msgid] then
-		except = Exception{ "INTERNAL", minor_code_value = 0,
-			reason = "unexpected",
-			message = "unexpected GIOP message",
-			message = MessageType[msgid],
-			id = msgid,
-		}
-	elseif header.reason == "version" then                                        --[[VERBOSE]] verbose:invoke(true, "got message with wrong version")
-		local mutex = context.mutex
-		if mutex then mutex:locksend(channel) end
-		result, except = context.messenger:sendmsg(channel, MessageErrorID)         --[[VERBOSE]] verbose:invoke "send message error notification"
-		if mutex then mutex:freesend(channel) end                                   --[[VERBOSE]] verbose:invoke(false)
-		if result then                                                              --[[VERBOSE]] verbose:invoke(false, "get a reply from renewed channel")
-			return self:getreply(channel, probe)
-		end
-	else
-		except = header
-	end                                                                           --[[VERBOSE]] verbose:invoke(false)
-	return result, except, except and channel
+			end -- of while should continue receiving messages
+			channel:freelock("read")
+		end -- of if mutex:lockreceive(channel, request)
+	end --[[of if request.contents == nil]]                                        --[[VERBOSE]] verbose:invoke(false)
+	return success, except
 end
