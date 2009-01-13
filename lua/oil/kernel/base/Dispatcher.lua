@@ -31,8 +31,6 @@ local Exception   = require "oil.Exception"                                     
 
 module("oil.kernel.base.Dispatcher", oo.class)
 
-context = false
-
 pcall = luapcall
 
 --------------------------------------------------------------------------------

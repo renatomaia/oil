@@ -33,6 +33,7 @@
 -- 	interface:table typeof(objectkey:string)
 --------------------------------------------------------------------------------
 
+local ipairs       = ipairs
 local select       = select
 local setmetatable = setmetatable
 local tonumber     = tonumber
@@ -121,8 +122,8 @@ function newreference(self, objectkey, ...)
 			}
 		end
 	end
-	local type = select(2, self.context.servants:retrieve(objectkey))
-	if type then
+	local _, type = self.context.servants:retrieve(objectkey)
+	if _ then
 		return setmetatable({
 			type_id = type.repID,
 			profiles = profiles,
@@ -134,6 +135,20 @@ function newreference(self, objectkey, ...)
 			message = "illegal object key",
 			objectkey = objectkey,
 		}
+	end
+end
+
+function islocal(self, reference, accesspoint)
+	local context = self.context
+	local profilers = context.profiler
+	for _, profile in ipairs(reference.profiles) do
+		local profiler = profilers[profile.tag]
+		if profiler then
+			local result = profiler:belongsto(profile.profile_data, accesspoint)
+			if result then
+				return result
+			end
+		end
 	end
 end
 
@@ -149,6 +164,8 @@ function typeof(self, reference)
 			result, except = request:contents()
 			if result then
 				result = except
+			elseif except.reason == "noimplement" then
+				result = reference.type_id
 			end
 		end
 	end

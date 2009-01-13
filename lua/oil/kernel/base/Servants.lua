@@ -49,7 +49,7 @@ local oo = require "oil.oo"
 local table = require "loop.table"
 local ObjectCache = require "loop.collection.ObjectCache"                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.kernel.base.Server", oo.class)
+module("oil.kernel.base.Servants", oo.class)
 
 context = false
 
@@ -75,7 +75,7 @@ function __init(self, ...)
 			local object
 			object = {
 				_deactivate = deactivate,
-				_dispatcher = self.context.objects,
+				_dispatcher = self.context.dispatcher,
 				_key = key,
 				__index = indexer,
 				__methods = ObjectCache{
@@ -114,7 +114,7 @@ function register(self, object, key, ...)
 	key = key or "\0"..self:hashof(object)
 	local result, except = context.dispatcher:register(key, object, ...)
 	if result then
-		result, except = context.references:newreference(key, self.accesspoint)
+		result, except = context.referrer:newreference(key, self.accesspoint)
 		if result then
 			local wrapper = self.wrappers[key]
 			rawset(wrapper, "__newindex", object)
@@ -148,7 +148,7 @@ function remove(self, object)
 end
 
 function tostring(self, object)
-	return self.context.references:encode(object.__reference)
+	return self.context.referrer:encode(object.__reference)
 end
 
 function retrieve(self, key)

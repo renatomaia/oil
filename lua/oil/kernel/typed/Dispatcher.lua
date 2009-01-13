@@ -60,13 +60,6 @@ function retrieve(self, key)
 	return result, except
 end
 
-function typeof(self, key)
-	local entry = self.map[key]
-	if entry then
-		return entry.type
-	end
-end
-
 --------------------------------------------------------------------------------
 -- Dispatcher facet
 
@@ -81,7 +74,7 @@ function dispatch(self, key, operation, default, ...)
 				object = entry
 				method = default
 			end
-			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",operation, ...)
+			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching operation ",entry.object,":",operation, ...)
 				return self.pcall(method, object, ...)
 			else
 				return false, Exception{

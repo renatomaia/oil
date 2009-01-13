@@ -23,9 +23,9 @@ OperationRequester = component.Template{
 
 -- LISTENER
 RequestListener = component.Template{
-	listener = port.Facet,
+	requests = port.Facet,
 	channels = port.Receptacle,
-	codec = port.Receptacle,
+	codec    = port.Receptacle,
 }
 
 function assemble(components)

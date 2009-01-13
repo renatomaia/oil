@@ -28,8 +28,6 @@ local idl    = require "oil.corba.idl"                                          
 
 module("oil.corba.idl.Indexer", oo.class)
 
-context = false
-
 --------------------------------------------------------------------------------
 -- Internal Functions ----------------------------------------------------------
 

@@ -411,27 +411,10 @@ function Decoder:Object(idltype)                                                
 	if ior.type_id == "" then                                                     --[[VERBOSE]] verbose:unmarshal "got a null reference"
 		ior = nil
 	else
-		local context = self.context
-		local servants = context.servants
-		local profilers = context.profiler
-		if servants and profilers then
-			for _, profile in ipairs(ior.profiles) do
-				local profiler = profilers[profile.tag]
-				if profiler then
-					local servant = profiler:belongsto(profile.profile_data, servants.accesspoint)
-					if servant then
-						servant = servants:retrieve(servant)
-						if servant then                                                      --[[VERBOSE]] verbose:unmarshal "local object implementation restored"
-							return servant
-						end
-					end
-				end
-			end
-		end
-		local proxies = context.proxies
+		local proxies = self.context.proxies
 		if proxies then                                                             --[[VERBOSE]] verbose:unmarshal(true, "retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
-			ior = assert.results(proxies:newproxy(ior, idltype), "MARSHAL")           --[[VERBOSE]] verbose:unmarshal(false)
+			ior = assert.results(proxies:resolve(ior, idltype), "MARSHAL")           --[[VERBOSE]] verbose:unmarshal(false)
 		end
 	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return ior
@@ -801,6 +784,9 @@ function Encoder:enum(value, idltype)                                           
 end
 
 function Encoder:string(value)                                                  --[[VERBOSE]] verbose:marshal(true, self, idl.string, value)
+
+if value == nil then verbose:debug("Oops!") end
+
 	assert.type(value, "string", "string value", "MARSHAL")
 	local length = #value
 	self:ulong(length + 1)

@@ -11,7 +11,6 @@ module "oil.arch.corba"
 -- TYPES
 TypeRepository = component.Template({
 	registry  = port.Facet,
-	indexer   = port.Facet,
 	compiler  = port.Facet,
 	delegated = port.Receptacle,
 }, base.TypeRepository)
@@ -20,8 +19,7 @@ TypeRepository = component.Template({
 ValueEncoder = component.Template{
 	codec    = port.Facet,
 	proxies  = port.Receptacle,
-	objects  = port.Receptacle,
-	profiler = port.HashReceptacle,
+	servants = port.Receptacle,
 }
 
 -- REFERENCES
@@ -37,29 +35,20 @@ ObjectReferrer = component.Template{
 	profiler   = port.HashReceptacle,
 }
 
--- MESSENGER
-MessageMarshaler = component.Template{
-	messenger = port.Facet,
-	codec     = port.Receptacle,
-}
-
 -- REQUESTER
 OperationRequester = component.Template{
 	requests  = port.Facet,
-	messenger = port.Receptacle,
-	channels  = port.HashReceptacle,
+	codec     = port.Receptacle,
 	profiler  = port.HashReceptacle,
-	mutex     = port.Receptacle,
+	channels  = port.HashReceptacle,
 }
 
 -- LISTENER
 RequestListener = component.Template{
-	listener   = port.Facet,
-	messenger  = port.Receptacle,
-	channels   = port.HashReceptacle,
-	dispatcher = port.Receptacle,
-	indexer    = port.Receptacle,
-	mutex      = port.Receptacle,
+	requests = port.Facet,
+	codec    = port.Receptacle,
+	servants = port.Receptacle,
+	channels = port.HashReceptacle,
 }
 
 function assemble(components)
@@ -80,15 +69,14 @@ function assemble(components)
 	-- MARSHALING
 	ValueEncoder.proxies   = ProxyManager.proxies
 	ValueEncoder.servants  = ServantManager.servants
-	MessageMarshaler.codec = ValueEncoder.codec
 
 	-- REQUESTER
-	OperationRequester.messenger = MessageMarshaler.messenger
+	OperationRequester.codec = ValueEncoder.codec
 
 	-- LISTENER
-	RequestListener.messenger  = MessageMarshaler.messenger
-	RequestListener.dispatcher = ServantManager.dispatcher
-	RequestListener.indexer    = TypeRepository.indexer
+	RequestListener.codec    = ValueEncoder.codec
+	RequestListener.servants = ServantManager.servants
+	RequestListener.indexer  = TypeRepository.indexer
 	
 	-- COMMUNICATION
 	for tag, ClientChannels in pairs(IOPClientChannels) do
@@ -106,7 +94,6 @@ function assemble(components)
 	ObjectReferrer.requester  = OperationRequester.requests
 	for tag, ReferenceProfiler in pairs(ReferenceProfilers) do
 		ReferenceProfiler.codec          = ValueEncoder.codec
-		ValueEncoder.profiler[tag]       = ReferenceProfiler.profiler
 		ObjectReferrer.profiler[tag]     = ReferenceProfiler.profiler
 		OperationRequester.profiler[tag] = ReferenceProfiler.profiler
 	end

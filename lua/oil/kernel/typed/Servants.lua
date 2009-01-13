@@ -43,9 +43,9 @@ local type         = type
 local table = require "loop.table"
 
 local oo     = require "oil.oo"
-local Server = require "oil.kernel.base.Server"                                 --[[VERBOSE]] local verbose = require "oil.verbose"
+local Server = require "oil.kernel.base.Servants"                                 --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module "oil.kernel.typed.Server"
+module "oil.kernel.typed.Servants"
 
 oo.class(_M, Server)
 

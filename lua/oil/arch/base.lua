@@ -15,16 +15,17 @@ BasicSystem = component.Template{
 
 -- CLIENT SIDE
 ProxyManager = component.Template{
-	proxies    = port.Facet,
-	requester  = port.Receptacle,
-	references = port.Receptacle,
+	proxies   = port.Facet,
+	requester = port.Receptacle,
+	referrer  = port.Receptacle,
+	servants  = port.Receptacle,
 }
 
 -- SERVER SIDE
 ServantManager = component.Template{
 	servants   = port.Facet,
 	dispatcher = port.Facet,
-	references = port.Receptacle,
+	referrer   = port.Receptacle,
 }
 RequestReceiver = component.Template{
 	acceptor   = port.Facet,
@@ -36,13 +37,14 @@ function assemble(components)
 	arch.start(components)
 	
 	-- CLIENT SIDE
-	ProxyManager.requester  = OperationRequester.requests
-	ProxyManager.references = ObjectReferrer.references
+	ProxyManager.requester = OperationRequester.requests
+	ProxyManager.referrer  = ObjectReferrer.references
+	ProxyManager.servants  = ServantManager.servants
 
 	-- SERVER SIDE
-	RequestReceiver.listener   = RequestListener.listener
+	ServantManager.referrer    = ObjectReferrer.references
 	RequestReceiver.dispatcher = ServantManager.dispatcher
-	ServantManager.references  = ObjectReferrer.references
+	RequestReceiver.listener   = RequestListener.requests
 	
 	arch.finish(components)
 end

@@ -43,7 +43,7 @@ module("oil.corba.idl.Importer", oo.class)
 
 function context(self, context)
 	self.context = context
-	local registry = context.registry
+	local registry = context.__component
 	registry:register(iridl)
 	self.DefaultDefs = oo.class()
 	for id, def in pairs(registry.definition_map) do
@@ -53,7 +53,7 @@ end
 
 function lookup(self, search_name)
 	local context = self.context
-	local definition = context.registry:lookup(search_name)
+	local definition = context.__component:lookup(search_name)
 	if not definition then
 		if context.delegated then
 			definition = context.delegated:lookup(search_name)
@@ -67,7 +67,7 @@ end
 
 function lookup_id(self, search_id)
 	local context = self.context
-	local definition = context.registry:lookup_id(search_id)
+	local definition = context.__component:lookup_id(search_id)
 	if not definition then
 		if context.delegated then
 			definition = context.delegated:lookup_id(search_id)
@@ -101,7 +101,7 @@ local Contained = {
 
 function register(self, object, history)
 	local result
-	local registry = self.context.registry
+	local registry = self.context.__component
 	if object._get_def_kind then -- is a remote definition
 		local kind = object:_get_def_kind()
 		if kind == "dk_Repository" then
@@ -199,6 +199,6 @@ function resolve(self, typeref)
 	if type(typeref) == "table" and typeref.__reference then
 		return self:register(typeref)
 	else
-		return self.context.registry:resolve(typeref)
+		return self.context.__component:resolve(typeref)
 	end
 end

@@ -90,7 +90,7 @@ end
 
 function doresults(self, ...)
 	if ... then
-		return self.context.registry:register(...)
+		return self.context.__component:register(...)
 	end
 	return ...
 end

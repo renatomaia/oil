@@ -167,9 +167,25 @@ Extras = {
 }
 
 function fromstring(self, reference, ...)
-	local result, except = self.context.references:decode(reference)
+	local result, except = self.context.referrer:decode(reference)
 	if result then
 		result, except = self:newproxy(result, ...)
+	end
+	return result, except
+end
+
+function resolve(self, reference, ...)
+	local result, except
+	local context = self.context
+	local servants = context.servants
+	if servants then
+		result, except = context.referrer:islocal(reference, servants.accesspoint)
+		if result then
+			result = servants:retrieve(result)
+		end
+	end
+	if not result then
+		result, except = self:newproxy(reference, ...)                              --[[VERBOSE]] else verbose:unmarshal "local object implementation restored"
 	end
 	return result, except
 end

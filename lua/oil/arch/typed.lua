@@ -7,7 +7,8 @@ module "oil.arch.typed"
 
 -- TYPES
 TypeRepository = component.Template{
-	types = port.Facet,
+	types   = port.Facet,
+	indexer = port.Facet,
 }
 
 -- CLIENT SIDE

@@ -27,10 +27,6 @@
 -- 	channel:object dispose(configs:table)
 -- 	configs:table default([configs:table])
 -- 
--- messenger:Receptacle
--- 	success:boolean, [except:table] sendmsg(channel:object, type:number, header:table, idltypes:table, values...)
--- 	type:number, [header:table|except:table], [decoder:object] receivemsg(channel:object)
--- 
 -- mapper:Receptacle
 -- 	interface:table typeof(objectkey:string)
 -- 
@@ -50,9 +46,12 @@ local oo        = require "oil.oo"
 local bit       = require "oil.bit"
 local idl       = require "oil.corba.idl"
 local giop      = require "oil.corba.giop"
-local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local Exception = require "oil.corba.giop.Exception"
+local Messenger = require "oil.corba.giop.Messenger"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.corba.giop.Listener", oo.class)
+module "oil.corba.giop.Listener"
+
+oo.class(_M, Messenger)
 
 context = false
 
@@ -101,9 +100,8 @@ function freeaccess(self, accesspoint)                                         -
 	local channels = self.context.channels[accesspoint.tag or 0]
 	local result, except = channels:dispose(accesspoint)
 	if result then
-		local messenger = self.context.messenger
 		for _, channel in ipairs(result) do
-			result, except = messenger:sendmsg(channel, CloseConnectionID)
+			result, except = self:sendmsg(channel, CloseConnectionID)
 			if not result and except.reason ~= "closed" then
 				break
 			end
@@ -135,7 +133,7 @@ function freeachannel(self, channel)                                          --
 		channel.invalid = true
 		return true
 	else
-		return self.context.messenger:sendmsg(channel, CloseConnectionID)
+		return self:sendmsg(channel, CloseConnectionID)
 	end
 end
 
@@ -168,8 +166,7 @@ function bypass(self, channel, request, ...)
 	local result, except = true
 	request.bypassed = true
 	if request.response_expected ~= false then
-		local context = self.context
-		result, except = context.messenger:sendmsg(channel, ...)
+		result, except = self:sendmsg(channel, ...)
 	end
 	return result, except
 end
@@ -181,11 +178,11 @@ function getrequest(self, channel, probe)                                       
 	local result, except = true, nil
 	if channel:trylock("read", not probe) then
 		if not probe or channel:probe() then
-			local msgid, header, decoder = context.messenger:receivemsg(channel)
+			local msgid, header, decoder = self:receivemsg(channel)
 			if msgid == RequestID then
 				local requestid = header.request_id
 				if not channel[requestid] then
-					local _, iface = context.dispatcher:retrieve(header.object_key)
+					local _, iface = context.servants:retrieve(header.object_key)
 					if _ then
 						local operation = header.operation
 						local member = context.indexer:valueof(iface, operation)
@@ -230,7 +227,7 @@ function getrequest(self, channel, probe)                                       
 				result = true
 			elseif msgid == LocateRequestID then                                          --[[VERBOSE]] verbose:listen("got locate request ",header.request_id)
 				local reply = { request_id = header.request_id }
-				if context.dispatcher:retrieve(header.object_key)
+				if context.servants:retrieve(header.object_key)
 					then reply.locate_status = "OBJECT_HERE"
 					else reply.locate_status = "UNKNOWN_OBJECT"
 				end
@@ -265,14 +262,13 @@ function sendreply(self, request, success, ...)                        --[[VERBO
 	local except
 	local channel = request.channel
 	local requestid = request.request_id
-	local messenger = self.context.messenger
 	if channel[requestid] == request then
 		local member = request.member
 		if success then                                                             --[[VERBOSE]] verbose:listen "got successful results"
 			request.service_context = Empty
 			request.reply_status = "NO_EXCEPTION"
-			success, except = messenger:sendmsg(channel, ReplyID, request,
-			                                    member.outputs, ...)
+			success, except = self:sendmsg(channel, ReplyID, request,
+			                               member.outputs, ...)
 		else
 			except = ...
 			if type(except) == "table" then                                           --[[VERBOSE]] verbose:listen("got exception ",except)
@@ -281,9 +277,9 @@ function sendreply(self, request, success, ...)                        --[[VERBO
 					ExceptionReplyTypes[2] = excepttype
 					request.service_context = Empty
 					request.reply_status = "USER_EXCEPTION"
-					success, except = messenger:sendmsg(channel, ReplyID, request,
-					                                    ExceptionReplyTypes,
-					                                    except[1], except)
+					success, except = self:sendmsg(channel, ReplyID, request,
+					                               ExceptionReplyTypes,
+					                               except[1], except)
 				else
 					if SystemExceptions[ except[1] ] then                                 --[[VERBOSE]] verbose:listen("got system exception ",except)
 						except.exception_id = except[1]
@@ -304,11 +300,11 @@ function sendreply(self, request, success, ...)                        --[[VERBO
 						except.minor_code_value  = 0
 						except.completion_status = COMPLETED_MAYBE
 					end
-					success, except = messenger:sendmsg(channel,
+					success, except = self:sendmsg(channel,
 						self:sysexreply(requestid, except))
 				end
 			elseif type(except) == "string" then                                      --[[VERBOSE]] verbose:listen("got unexpected error ", except)
-				success, except = messenger:sendmsg(channel,
+				success, except = self:sendmsg(channel,
 					self:sysexreply(requestid, {
 						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
 						minor_code_value = 0,
@@ -320,7 +316,7 @@ function sendreply(self, request, success, ...)                        --[[VERBO
 						error = except,
 					}))
 			else                                                                      --[[VERBOSE]] verbose:listen("got illegal exception ", except)
-				success, except = messenger:sendmsg(channel,
+				success, except = self:sendmsg(channel,
 					self:sysexreply(requestid, {
 						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
 						minor_code_value = 0,
@@ -334,12 +330,12 @@ function sendreply(self, request, success, ...)                        --[[VERBO
 		if success then
 			channel[requestid] = nil
 			if channel.invalid and table.maxn(channel) == 0 then                      --[[VERBOSE]] verbose:listen "all pending requests replied, connection being closed"
-				success, except = messenger:sendmsg(channel, CloseConnectionID)
+				success, except = self:sendmsg(channel, CloseConnectionID)
 			end
 		elseif SystemExceptions[ except[1] ] then                                   --[[VERBOSE]] verbose:listen("got system exception ",except," at reply send")
 			except.exception_id = except[1]
 			except.completion_status = COMPLETED_YES
-			success, except = messenger:sendmsg(channel,
+			success, except = self:sendmsg(channel,
 				self:sysexreply(requestid, except))
 		end
 	else

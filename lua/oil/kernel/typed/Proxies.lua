@@ -1,5 +1,3 @@
-local error = error
-
 --------------------------------------------------------------------------------
 ------------------------------  #####      ##     ------------------------------
 ------------------------------ ##   ##  #  ##     ------------------------------
@@ -118,7 +116,7 @@ function newproxy(self, reference, type)                                        
 	local result, except
 	local context = self.context
 	if not type then
-		type, except = context.references:typeof(reference)
+		type, except = context.referrer:typeof(reference)
 	end
 	if type then
 		type, except = context.types:resolve(type)

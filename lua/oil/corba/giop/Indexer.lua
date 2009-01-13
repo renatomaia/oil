@@ -24,8 +24,6 @@ module "oil.corba.giop.Indexer"
 
 oo.class(_M, Indexer)
 
-context = false
-
 function valueof(self, interface, name)
 	return Indexer.valueof(self, interface, name) or
 	       giop.ObjectOperations[name]

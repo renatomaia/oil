@@ -20,10 +20,6 @@
 -- 	reply:object, [except:table], [requests:table] newrequest(channel:object, reference:table, operation:table, args...)
 -- 	reply:object, [except:table], [requests:table] getreply(channel:object, [probe:boolean])
 -- 
--- messenger:Receptacle
--- 	success:boolean, [except:table] sendmsg(channel:object, type:number, header:table, idltypes:table, values...)
--- 	type:number, [header:table|except:table], [decoder:object] receivemsg(channel:object)
--- 
 -- channels:HashReceptacle
 -- 	channel:object retieve(configs:table)
 -- 
@@ -44,9 +40,12 @@ local unpack   = unpack
 local oo        = require "oil.oo"
 local bit       = require "oil.bit"
 local giop      = require "oil.corba.giop"
-local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local Exception = require "oil.corba.giop.Exception"
+local Messenger = require "oil.corba.giop.Messenger"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.corba.giop.Requester", oo.class)
+module "oil.corba.giop.Requester"
+
+oo.class(_M, Messenger)
 
 context = false
 
@@ -167,10 +166,9 @@ function sendrequest(self, reference, operation, ...)
 		result.object_key = reference._object
 		result.operation  = operation.name
 		result.opidl      = operation
-		local context = self.context
-		local success, except = context.messenger:sendmsg(channel,
-		                                                  RequestID, result,
-		                                                  operation.inputs, ...)
+		local success, except = self:sendmsg(channel,
+		                             RequestID, result,
+		                             operation.inputs, ...)
 		if not success then
 			unregister(channel, result)
 			result = nil
@@ -187,23 +185,29 @@ end
 --------------------------------------------------------------------------------
 
 function reissue(self, channel, request)                                        --[[VERBOSE]] verbose:invoke(true, "reissue request for operation '",request.operation,"'")
-	local context = self.context
-	local success, except = context.messenger:sendmsg(channel, RequestID,
-	                                                  request, request.inputs,
-	                                                  unpack(request, 1,
-	                                                         #request.inputs))    --[[VERBOSE]] verbose:invoke(false)
+	local success, except = self:sendmsg(channel, RequestID,
+	                                     request, request.inputs,
+	                                     unpack(request, 1,
+	                                            #request.inputs))                 --[[VERBOSE]] verbose:invoke(false)
 	return success, except
 end
+
+local SystemExceptionReason = {
+	["IDL:omg.org/CORBA/COMM_FAILURE:1.0"    ] = "closed",
+	["IDL:omg.org/CORBA/MARSHAL:1.0"         ] = "marshal",
+	["IDL:omg.org/CORBA/NO_IMPLEMENT:1.0"    ] = "noimplement",
+	["IDL:omg.org/CORBA/BAD_OPERATION:1.0"   ] = "badoperation",
+	["IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"] = "badkey",
+}
 
 function getreply(self, request, probe)                                         --[[VERBOSE]] verbose:invoke(true, "get a reply from communication channel")
 	local success, except = true, nil
 	if request.contents == nil then
 		local channel = request.channel
-		local context = self.context
 		if channel:trylock("read", not probe, request) then
 			local replied
 			while success and (replied~=request) and (not probe or channel:probe()) do
-				local msgid, header, decoder = context.messenger:receivemsg(channel)
+				local msgid, header, decoder = self:receivemsg(channel)
 				if msgid == ReplyID then
 					replied = unregister(channel, header.request_id)
 					if replied then
@@ -253,6 +257,7 @@ function getreply(self, request, probe)                                         
 									-- TODO:[maia] set its type to the proper SystemExcep.
 									local exception = decoder:struct(SystemExceptionIDL)
 									exception[1] = exception.exception_id
+									exception.reason = SystemExceptionReason[ exception[1] ]
 									replied[1] = Exception(exception)
 								else -- status == ???
 									replied[1] = Exception{ "INTERNAL", minor_code_value = 0,
@@ -326,7 +331,7 @@ function getreply(self, request, probe)                                         
 						id = msgid,
 					}
 				elseif header.reason == "version" then                                  --[[VERBOSE]] verbose:invoke("got message with wrong version, send message error notification")
-					success, except = context.messenger:sendmsg(channel, MessageErrorID)
+					success, except = self:sendmsg(channel, MessageErrorID)
 				else -- not msgid and header.reason ~= ["version"|"closed"]
 					success, except = nil, header
 				end
@@ -400,43 +405,3 @@ function OperationReplier:_non_existent(request)
 	end
 	return true
 end
-
---local _interface = giop.ObjectOperations._interface
---function OperationRequester:_narrow(reference, _, interface)
---	local result, except
---	if interface == nil then
---		result, except = self:sendrequest(reference, _interface)
---	else
---		result, except = context.types:resolve(iface)
---		if result then
---			result, except = context.proxies:proxyto(reference, result)
---			if result then
---				result = {
---					contents = contents,
---					success = true,
---					resultcount = 1,
---					[1] = result,
---				}
---			end
---		end
---	end
---	return result, except
---end
---function OperationReplier:_narrow(request)
---	if request.success then
---		local result, except = context.types:lookup_id(request[1]:_get_id())
---		if not result then
---			result, except = context.types:register(result)
---		end
---		result, except = context.proxies:proxyto(request.reference, result)
---		if result then
---			request.resultcount = 1
---			request[1] = result
---		else
---			request.success = false
---			request.resultcount = 1
---			request[1] = except
---		end
---	end
---	return true
---end
