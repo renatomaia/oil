@@ -702,18 +702,21 @@ function Encoder:Object(value, idltype)                                         
 	local reference
 	if value == nil then
 		reference = NullReference
-	elseif getmetatable(value) == giop.IOR then
-		reference = value
 	else
-		assert.type(value, "table", "object reference", "MARSHAL")
-		reference = value.__reference
-		if not reference then
-			local servants = self.context.servants
-			if servants then                                                          --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
-				value = assert.results(servants:register(value, nil, idltype))          --[[VERBOSE]] verbose:marshal(false)
-				reference = value.__reference
-			else
-				assert.illegal(value, "Object, unable to create from value", "MARHSALL")
+		local metatable = getmetatable(value)
+		if metatable == giop.IOR or metatable.__type == giop.IOR then
+			reference = value
+		else
+			assert.type(value, "table", "object reference", "MARSHAL")
+			reference = value.__reference
+			if not reference then
+				local servants = self.context.servants
+				if servants then                                                        --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
+					value = assert.results(servants:register(value, nil, idltype))        --[[VERBOSE]] verbose:marshal(false)
+					reference = value.__reference
+				else
+					assert.illegal(value, "Object, unable to create from value", "MARHSALL")
+				end
 			end
 		end
 	end

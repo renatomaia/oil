@@ -23,7 +23,7 @@
 -- 	configs:table default([configs:table])
 -- 	channel:object, [except:table] getchannel(configs:table)
 -- 	success:boolean, [except:table] freeaccess(configs:table)
--- 	success:boolean, [except:table] freeachannel(channel:object)
+-- 	success:boolean, [except:table] freechannel(channel:object)
 -- 	request:table, [except:table] = getrequest(channel:object, [probe:boolean])
 -- 	success:booelan, [except:table] = sendreply(request:table, success:booelan, results...)
 -- 
@@ -38,6 +38,15 @@ local Exception = require "oil.Exception"                                       
 module("oil.kernel.base.Receiver", oo.class)
 
 context = false
+
+function processrequest(self, request)
+	local context = self.context
+	local result, except = context.dispatcher:dispatch(request)
+	if result then
+		result, except = context.listener:sendreply(request)
+	end
+	return result, except
+end
 
 --------------------------------------------------------------------------------
 
@@ -54,22 +63,16 @@ function hasrequest(self)
 end
 
 function acceptone(self)                                                        --[[VERBOSE]] verbose:acceptor(true, "accept one request from channel ",self.accesspoint)
+	local result, except
 	local context = self.context
 	local listener = context.listener
-	local result, except
 	result, except = listener:getchannel(self.accesspoint)
 	if result then
 		local channel = result
 		result, except = listener:getrequest(channel)
-		channel:release()
+		listener:putchannel(channel)
 		if result and result ~= true then                                           --[[VERBOSE]] verbose:acceptor(true, "dispatching request from accepted channel")
-			local dispatcher = context.dispatcher
-			result, except = listener:sendreply(result,
-				dispatcher:dispatch(result.object_key,
-				                    result.operation,
-				                    result.opimpl,
-				                    result:params())
-			)                                                                         --[[VERBOSE]] verbose:acceptor(false)
+			result, except = self:processrequest(result)
 		end
 	end                                                                           --[[VERBOSE]] verbose:acceptor(false)
 	return result, except
@@ -86,15 +89,9 @@ function acceptall(self)
 		if result then
 			local channel = result
 			result, except = listener:getrequest(channel)
-			channel:release()
+			listener:putchannel(channel)
 			if result and result ~= true then                                         --[[VERBOSE]] verbose:acceptor "dispatching request from accepted channel"
-				local dispatcher = context.dispatcher
-				result, except = listener:sendreply(result,
-					dispatcher:dispatch(result.object_key,
-					                    result.operation,
-					                    result.opimpl,
-					                    result:params())
-				)
+				result, except = self:processrequest(result)
 			end
 		end
 	until not result or not self[accesspoint]                                     --[[VERBOSE]] verbose:acceptor(false)
@@ -110,7 +107,6 @@ function halt(self)                                                             
 		return nil, Exception{
 			reason = "halt",
 			message = "channels not being accepted",
-			channels = accesspoint,
 		}
 	end
 end

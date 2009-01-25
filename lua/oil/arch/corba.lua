@@ -90,7 +90,7 @@ function assemble(components)
 	
 	-- REFERENCES
 	ObjectReferrer.codec      = ValueEncoder.codec
-	ObjectReferrer.servants   = ServantManager.dispatcher
+	ObjectReferrer.servants   = ServantManager.servants
 	ObjectReferrer.requester  = OperationRequester.requests
 	for tag, ReferenceProfiler in pairs(ReferenceProfilers) do
 		ReferenceProfiler.codec          = ValueEncoder.codec

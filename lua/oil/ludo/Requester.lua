@@ -38,12 +38,6 @@ context = false
 
 --------------------------------------------------------------------------------
 
-local function results(self)
-	return self.success, unpack(self, 1, self.resultcount)
-end
-
---------------------------------------------------------------------------------
-
 local MessageFmt = "%d\n%s"
 
 function newrequest(self, reference, operation, ...)
@@ -72,24 +66,23 @@ local function update(channel, requestid, success, ...)
 	if request then
 		channel[requestid] = nil
 		request.channel = nil
-		request.contents = results
 		request.success = success
-		request.resultcount = select("#", ...)
-		for i = 1, request.resultcount do
+		request.n = select("#", ...)
+		for i = 1, request.n do
 			request[i] = select(i, ...)
 		end
 	else
-		except = "LuDO protocol: unexpected request reply"
+		except = "LuDO protocol: unexpected reply"
 	end
 	return request, except
 end
 
 function getreply(self, request, probe)
 	local result, except = true, nil
-	if request.contents == nil then
+	if request.success == nil then
 		local channel = request.channel
 		local context = self.context
-		if channel:trylock("receive", not probe, request) then
+		if channel:trylock("read", not probe, request) then
 			local codec = self.context.codec
 			while result and (result ~= request) and (not probe or channel:probe()) do
 				result, except = channel:receive()
@@ -108,7 +101,7 @@ function getreply(self, request, probe)
 					end
 				end
 			end
-			channel:freelock("receive")
+			channel:freelock("read")
 		end
 	end
 	return result, except

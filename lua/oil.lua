@@ -687,14 +687,28 @@ pcall = tasks and tasks:getpcall() or luapcall
 -- @usage oil.main(oil.run)
 -- @usage oil.main(function() print(oil.tostring(oil.getLIR())) oil.run() end)
 --
+local function handleresults(success, except, ...)
+	if not success then
+		error(tostring(except), 2)
+	end
+	return ...
+end
 function main(main, ...)
 	assert.type(main, "function", "main function")
+	local args = { n = select("#", ...), ... }
+	local func
 	if tasks then
 		assert.results(tasks:register(coroutine.create(main), tasks.currentkey))
-		return BasicSystem.control:run(...)
+		local control = BasicSystem.control
+		function func()
+			return control:run(unpack(args, 1, args.n))
+		end
 	else
-		return main(...)
+		function func()
+			return main(unpack(args, 1, args.n))
+		end
 	end
+	return handleresults(xpcall(result, debug.traceback))
 end
 
 --------------------------------------------------------------------------------

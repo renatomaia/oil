@@ -14,23 +14,13 @@
 --------------------------------------------------------------------------------
 -- broker:Facet
 -- 	servant:object register(impl:object, [objectkey:string])
+-- 	impl:object remove(servant:object|impl:object|objectkey:string)
+-- 	impl:object retrieve(objectkey:string)
 -- 	reference:string tostring(servant:object)
--- 	success:boolean, [except:table] pending()
--- 	success:boolean, [except:table] step()
--- 	success:boolean, [except:table] run()
--- 	success:boolean, [except:table] shutdown()
--- 
--- objects:Receptacle
--- 	object:object register(impl:object, key:string)
--- 	impl:object unregister(key:string)
--- 	impl:object retrieve(key:string)
--- 
--- acceptor:Receptacle
--- 	configs:table, [except:table] setupaccess([configs:table])
--- 	success:boolean, [except:table] hasrequest(configs:table)
--- 	success:boolean, [except:table] acceptone(configs:table)
--- 	success:boolean, [except:table] acceptall(configs:table)
--- 	success:boolean, [except:table] halt(configs:table)
+--
+-- referrer:Receptacle
+-- 	reference:table newreference(objectkey:string, accesspointinfo:table...)
+-- 	stringfiedref:string encode(reference:table)
 -- 
 -- types:Receptacle
 -- 	type:table resolve(type:string)
@@ -42,14 +32,34 @@ local type         = type
 
 local table = require "loop.table"
 
-local oo     = require "oil.oo"
-local Server = require "oil.kernel.base.Servants"                                 --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo       = require "oil.oo"
+local Servants = require "oil.kernel.base.Servants"                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.kernel.typed.Servants"
 
-oo.class(_M, Server)
+oo.class(_M, Servants)
 
 context = false
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function addentry(self, key, impl, type)
+	local entry = self.map[key]
+	if entry == nil
+	or entry.object ~= impl
+	or entry.type ~= type
+	then
+		return Servants.addentry(self, key, { object = impl, type = type })
+	end
+	return true
+end
+
+function removeentry(self, key)
+	local result, except = Servants.removeentry(self, key)
+	if result then result, except = result.object, result.type end
+	return result, except
+end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -69,7 +79,7 @@ function register(self, object, key, type)
 	local result, except = context.types:resolve(type)
 	if result then
 		key = key or KeyFmt:format(self:hashof(object), self:hashof(result))
-		result, except = Server.register(self, object, key, result)
+		result, except = Servants.register(self, object, key, result)
 	end
 	return result, except
 end
@@ -86,7 +96,13 @@ function remove(self, key, objtype)
 		end
 	end
 	if key then
-		result, except = context.dispatcher:unregister(key)
+		result, except = self:removeentry(key)
 	end
+	return result, except
+end
+
+function retrieve(self, key)
+	local result, except = Servants.retrieve(self, key)
+	if result then result, except = result.object, result.type end
 	return result, except
 end

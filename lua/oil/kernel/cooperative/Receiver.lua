@@ -23,7 +23,7 @@
 -- 	configs:table default([configs:table])
 -- 	channel:object, [except:table] getchannel(configs:table)
 -- 	success:boolean, [except:table] freeaccess(configs:table)
--- 	success:boolean, [except:table] freeachannel(channel:object)
+-- 	success:boolean, [except:table] freechannel(channel:object)
 -- 	request:table, [except:table] = getrequest(channel:object, [probe:boolean])
 -- 	success:booelan, [except:table] = sendreply(request:table, success:booelan, results...)
 -- 
@@ -62,43 +62,34 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function sendreply(self, request, ...)
-	local context = self.context
-	local result, except = context.listener:sendreply(request, ...)
+function processrequest(self, request)
+	local result, except = Receiver.processrequest(self, request)
 	if not result and not self.except then
 		self.except = except
 	end
 end
 
-function dispatchrequest(self, channel, request)
-	self:sendreply(request, self.context.dispatcher:dispatch(
-		request.object_key,
-		request.operation,
-		request.opimpl,
-		request:params()
-	))
-end
-
 function getallrequests(self, accesspoint, channel)
 	local context = self.context
+	local listener = context.listener
 	local thread = context.tasks.current
 	local threads = self.threads[accesspoint]
 	threads[thread] = channel
 	local result, except
 	repeat
-		result, except = context.listener:getrequest(channel)
+		result, except = listener:getrequest(channel)
 		if result then
 			if result == true then
 				break
 			else
-				context.tasks:start(self.dispatchrequest, self, channel, result)
+				context.tasks:start(self.processrequest, self, result)
 			end
 		elseif not self.except then
 			self.except = except
 			break
 		end
 	until self.except
-	channel:release()
+	listener:putchannel(channel)
 	threads[thread] = nil
 end
 
@@ -139,7 +130,7 @@ function halt(self)                                                             
 	if threads then
 		for thread, channel in pairs(threads) do
 			tasks:remove(thread)
-			result, except = listener:freeachannel(channel)
+			result, except = listener:freechannel(channel)
 		end
 		self.threads[accesspoint] = nil
 	end

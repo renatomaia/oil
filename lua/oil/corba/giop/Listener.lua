@@ -19,7 +19,7 @@
 -- 	configs:table default([configs:table])
 -- 	channel:object, [except:table] getchannel(configs:table)
 -- 	success:boolean, [except:table] freeaccess(configs:table)
--- 	success:boolean, [except:table] freeachannel(channel:object)
+-- 	success:boolean, [except:table] freechannel(channel:object)
 -- 	request:object, [except:table], [requests:table] = getrequest(channel:object, [probe:boolean])
 -- 
 -- channels:HashReceptacle
@@ -94,8 +94,6 @@ function setupaccess(self, configs)
 	end
 end
 
---------------------------------------------------------------------------------
-
 function freeaccess(self, accesspoint)                                         --[[VERBOSE]] verbose:listen(true, "closing all channels with accesspoint ",accesspoint)
 	local channels = self.context.channels[accesspoint.tag or 0]
 	local result, except = channels:dispose(accesspoint)
@@ -126,9 +124,11 @@ function getchannel(self, accesspoint, probe)                                   
 	return result, except
 end
 
---------------------------------------------------------------------------------
+function putchannel(self, channel)                                              --[[VERBOSE]] verbose:listen "put channel back"
+	return channel:release()
+end
 
-function freeachannel(self, channel)                                          --[[VERBOSE]] verbose:listen "close channel"
+function freechannel(self, channel)                                             --[[VERBOSE]] verbose:listen "close channel"
 	if table.maxn(channel) > 0 then
 		channel.invalid = true
 		return true
@@ -144,12 +144,13 @@ local SysExReply = {
 	request_id      = nil, -- defined later
 	reply_status    = "SYSTEM_EXCEPTION",
 }
-
 local SysExType = { giop.SystemExceptionIDL }
+local SysExBody = { --[[defined later]] }
 
 function sysexreply(self, requestid, body)                                      --[[VERBOSE]] verbose:listen("new system exception ",body.exception_id," for request ",requestid)
 	SysExReply.request_id = requestid
-	return ReplyID, SysExReply, SysExType, body
+	SysExBody[1] = body
+	return ReplyID, SysExReply, SysExType, SysExBody
 end
 
 --------------------------------------------------------------------------------
@@ -190,13 +191,15 @@ function getrequest(self, channel, probe)                                       
 							for index, input in ipairs(member.inputs) do
 								header[index] = decoder:get(input)
 							end
+							header.n = #member.inputs
+							header.target = header.object_key
+							header.defaultimpl = member.implementation
 							header.member = member
-							header.opimpl = member.implementation
 							if header.response_expected then
+								header.channel = channel
 								channel[requestid] = header                                         --[[VERBOSE]] else verbose:listen "no response expected"
 							end
-							header.channel = channel
-							result = Request(header)
+							result = header
 						else                                                                    --[[VERBOSE]] verbose:listen("got illegal operation ",operation)
 							result, except = self:bypass(channel, header,
 								self:sysexreply(requestid, {
@@ -231,6 +234,7 @@ function getrequest(self, channel, probe)                                       
 					then reply.locate_status = "OBJECT_HERE"
 					else reply.locate_status = "UNKNOWN_OBJECT"
 				end
+				reply[1] = reply
 				result, except = self:bypass(channel, header, LocateReplyID, reply)
 			elseif result == MessageErrorID then                                           --[[VERBOSE]] verbose:listen "got message error notification"
 				result, except = self:bypass(channel, header, CloseConnectionID)
@@ -258,28 +262,29 @@ end
 
 local ExceptionReplyTypes = { idl.string }
 
-function sendreply(self, request, success, ...)                        --[[VERBOSE]] verbose:listen(true, "got reply for request ",request.request_id)
-	local except
+function sendreply(self, request)                                               --[[VERBOSE]] verbose:listen(true, "got reply for request ",request.request_id)
+	local success, except = request.success
 	local channel = request.channel
 	local requestid = request.request_id
-	if channel[requestid] == request then
+	if channel and channel[requestid] == request then
 		local member = request.member
 		if success then                                                             --[[VERBOSE]] verbose:listen "got successful results"
 			request.service_context = Empty
 			request.reply_status = "NO_EXCEPTION"
 			success, except = self:sendmsg(channel, ReplyID, request,
-			                               member.outputs, ...)
+			                               member.outputs, request)
 		else
-			except = ...
+			except = request[1]
 			if type(except) == "table" then                                           --[[VERBOSE]] verbose:listen("got exception ",except)
 				local excepttype = member.exceptions[ except[1] ]
 				if excepttype then
 					ExceptionReplyTypes[2] = excepttype
 					request.service_context = Empty
 					request.reply_status = "USER_EXCEPTION"
+					request[1] = except[1]
+					request[2] = except
 					success, except = self:sendmsg(channel, ReplyID, request,
-					                               ExceptionReplyTypes,
-					                               except[1], except)
+					                               ExceptionReplyTypes, request)
 				else
 					if SystemExceptions[ except[1] ] then                                 --[[VERBOSE]] verbose:listen("got system exception ",except)
 						except.exception_id = except[1]

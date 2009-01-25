@@ -12,18 +12,15 @@
 -- Title  : Object Request Dispatcher                                         --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
--- objects:Facet
--- 	object:object register(impl:object, key:string)
--- 	impl:object unregister(key:string)
--- 	impl:object retrieve(key:string)
--- 
 -- dispatcher:Facet
 -- 	success:boolean, [except:table]|results... dispatch(key:string, operation:string|function, params...)
 --------------------------------------------------------------------------------
 
 local luapcall     = pcall
 local setmetatable = setmetatable
-local type         = type                                                       --[[VERBOSE]] local select = select
+local type         = type                                                       
+local select       = select
+local unpack       = unpack
 
 local table       = require "loop.table"
 local oo          = require "oil.oo"
@@ -33,69 +30,43 @@ module("oil.kernel.base.Dispatcher", oo.class)
 
 pcall = luapcall
 
---------------------------------------------------------------------------------
--- Objects facet
+context = false
 
-function __init(self, object)
-	self = oo.rawnew(self, object)
-	self.map = self.map or {}
-	return self
-end
-
-function register(self, key, entry)
-	local result, except = self.map[key]
-	if result then
-		if result == entry then
-			result = true
-		else
-			result, except = nil, Exception{
-				reason = "usedkey",
-				message = "object key already in use",
-				key = key,
-			}
-		end
-	else                                                                          --[[VERBOSE]] verbose:dispatcher("object ",entry," registered with key ",key)
-		self.map[key] = entry
-		result = true
+function setresults(self, request, success, ...)
+	local count = select("#", ...)
+	request.success = success
+	request.n = count
+	for i = 1, count do
+		request[i] = select(i, ...)
 	end
-	return result, except
-end
-
-function unregister(self, key)
-	local map = self.map
-	local entry = map[key]
-	map[key] = nil
-	return entry
-end
-
-function retrieve(self, key)
-	return self.map[key]
 end
 
 --------------------------------------------------------------------------------
 -- Dispatcher facet
 
-function dispatch(self, key, operation, default, ...)
-	local entry = self.map[key]
-	if entry then
-		local method = entry[operation] or default
-		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",operation, ...)
-			return self.pcall(method, object, ...)
+function dispatch(self, request)
+	local object = self.context.servants:retrieve(request.target)
+	if object then
+		local method = object[request.operation] or request.defaultimpl
+		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",request.operation,unpack(request, 1, request.n))
+			self:setresults(request, self.pcall(method, object,
+			                                    unpack(request, 1, request.n)))
 		else
-			return false, Exception{
+			self:setresults(request, false, Exception{
 				reason = "noimplement",
 				message = "no implementation for operation of object with key",
 				operation = operation,
 				object = object,
-			}
+			})
 		end
 	else
-		return false, Exception{
+		self:setresults(request, false, Exception{
 			reason = "badkey",
 			message = "no object with key",
 			key = key,
-		}
+		})
 	end
+	return true
 end
 
 --------------------------------------------------------------------------------

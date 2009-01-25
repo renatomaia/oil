@@ -45,8 +45,6 @@ function setupaccess(self, configs)
 	return self.context.channels:default(configs)
 end
 
---------------------------------------------------------------------------------
-
 function freeaccess(self, accesspoint)                                          --[[VERBOSE]] verbose:listen("closing all channels with configs ",accesspoint)
 	return self.context.channels:dispose(accesspoint)
 end
@@ -57,9 +55,11 @@ function getchannel(self, accesspoint, probe)
 	return self.context.channels:retrieve(accesspoint, probe)
 end
 
---------------------------------------------------------------------------------
+function putchannel(self, channel)                                              --[[VERBOSE]] verbose:listen "put channel back"
+	return channel:release()
+end
 
-function freeachannel(self, channel)                                          --[[VERBOSE]] verbose:listen "close channel"
+function freechannel(self, channel)                                            --[[VERBOSE]] verbose:listen "close channel"
 	return channel:close()
 end
 
@@ -67,17 +67,13 @@ end
 
 local Request = oo.class()
 
-function Request:__init(requestid, objectkey, operation, ...)                   --[[VERBOSE]] verbose:listen("got request for request ",requestid," to object ",objectkey,":",operation)
-	self = oo.rawnew(self, {...})
-	self.requestid = requestid
-	self.object_key = objectkey
-	self.operation = operation
-	self.paramcount = select("#", ...)
-	return self
-end
-
-function Request:params()
-	return unpack(self, 1, self.paramcount)
+function newrequest(requestid, objectkey, operation, ...)                   --[[VERBOSE]] verbose:listen("got request for request ",requestid," to object ",objectkey,":",operation)
+	local request = {...}
+	request.n = select("#", ...)
+	request.requestid = requestid
+	request.target = objectkey
+	request.operation = operation
+	return request
 end
 
 function getrequest(self, channel, probe)
@@ -91,7 +87,7 @@ function getrequest(self, channel, probe)
 					result, except = channel:receive(result)
 					if result then
 						local decoder = self.context.codec:decoder(result)
-						result = Request(decoder:get())
+						result = newrequest(decoder:get())
 						result.channel = channel
 						channel[result.requestid] = result
 					end
@@ -116,13 +112,15 @@ end
 
 local MessageFmt = "%d\n%s"
 
-function sendreply(self, request, ...)                                          --[[VERBOSE]] verbose:listen("got reply for request ",request.requestid," to object ",request.object_key,":",request.operation)
+function sendreply(self, request)                                               --[[VERBOSE]] verbose:listen("got reply for request ",request.requestid," to object ",request.target,":",request.operation)
 	local channel = request.channel
 	local encoder = self.context.codec:encoder()
-	encoder:put(request.requestid, ...)
+	encoder:put(request.requestid, request.success, unpack(request, 1, request.n))
 	channel[request.requestid] = nil
 	local data = encoder:__tostring()
+	channel:trylock("write", true)
 	local result, except = channel:send(MessageFmt:format(#data, data))
+	channel:freelock("write")
 	if not result then
 		if except == "closed" then                                                  --[[VERBOSE]] verbose:listen("client closed the connection")
 			channel:close()

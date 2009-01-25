@@ -84,11 +84,6 @@ local function unregister(channel, id)
 	end
 end
 
-local function contents(self)
-	return self.success, unpack(self, 1, self.resultcount)
-end
-
-
 --------------------------------------------------------------------------------
 
 function getchannel(self, reference)                                            --[[VERBOSE]] verbose:invoke(true, "get communication channel")
@@ -142,9 +137,8 @@ local OneWayRequest = {
 	object_key           = nil, -- defined later
 	operation            = nil, -- defined later
 	requesting_principal = Empty,
-	resultcount          = 0,
 	success              = true,
-	contents             = contents,
+	n                    = 0,
 }
 
 function sendrequest(self, reference, operation, ...)
@@ -168,7 +162,7 @@ function sendrequest(self, reference, operation, ...)
 		result.opidl      = operation
 		local success, except = self:sendmsg(channel,
 		                             RequestID, result,
-		                             operation.inputs, ...)
+		                             operation.inputs, result)
 		if not success then
 			unregister(channel, result)
 			result = nil
@@ -185,10 +179,8 @@ end
 --------------------------------------------------------------------------------
 
 function reissue(self, channel, request)                                        --[[VERBOSE]] verbose:invoke(true, "reissue request for operation '",request.operation,"'")
-	local success, except = self:sendmsg(channel, RequestID,
-	                                     request, request.inputs,
-	                                     unpack(request, 1,
-	                                            #request.inputs))                 --[[VERBOSE]] verbose:invoke(false)
+	local success, except = self:sendmsg(channel, RequestID, request,
+	                                     request.inputs, request)                 --[[VERBOSE]] verbose:invoke(false)
 	return success, except
 end
 
@@ -202,7 +194,7 @@ local SystemExceptionReason = {
 
 function getreply(self, request, probe)                                         --[[VERBOSE]] verbose:invoke(true, "get a reply from communication channel")
 	local success, except = true, nil
-	if request.contents == nil then
+	if request.success == nil then
 		local channel = request.channel
 		if channel:trylock("read", not probe, request) then
 			local replied
@@ -221,24 +213,22 @@ function getreply(self, request, probe)                                         
 							if success then
 								replied = nil
 							else
-								replied.contents = contents
 								replied.success = false
-								replied.resultcount = 1
+								replied.n = 1
 								replied[1] = except
 								success, except = true, nil
 							end
 						else -- status ~= LOCATION_FORWARD
 							local operation = replied.opidl
-							replied.contents = contents
 							if status == "NO_EXCEPTION" then                                  --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
 								replied.success = true
-								replied.resultcount = #operation.outputs
+								replied.n = #operation.outputs
 								for index, output in ipairs(operation.outputs) do
 									replied[index] = decoder:get(output)
 								end
 							else -- status ~= "NO_EXCEPTION"
 								replied.success = false
-								replied.resultcount = 1
+								replied.n = 1
 								if status == "USER_EXCEPTION" then                              --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
 									local repId = decoder:string()
 									local exception = operation.exceptions[repId]
@@ -292,9 +282,8 @@ function getreply(self, request, probe)                                         
 								success, except = self:reissue(channel, pending)
 								if not success then
 									unregister(channel, id)
-									pending.contents = contents
 									pending.success = false
-									pending.resultcount = 1
+									pending.n = 1
 									pending[1] = except
 									if pending == request then
 										replied = pending
@@ -338,7 +327,7 @@ function getreply(self, request, probe)                                         
 			end -- of while should continue receiving messages
 			channel:freelock("read")
 		end -- of if mutex:lockreceive(channel, request)
-	end --[[of if request.contents == nil]]                                        --[[VERBOSE]] verbose:invoke(false)
+	end --[[of if request.success == nil]]                                        --[[VERBOSE]] verbose:invoke(false)
 	return success, except
 end
 
@@ -348,16 +337,14 @@ OperationRequester = {}
 OperationReplier = {}
 
 local ReplyTrue  = {
-	contents = contents,
 	success = true,
-	resultcount = 1,
-	[1] = true,
+	n = 1,
+	true,
 }
 local ReplyFalse = {
-	contents = contents,
 	success = true,
-	resultcount = 1,
-	[1] = false,
+	n = 1,
+	false,
 }
 
 function OperationRequester:_is_equivalent(reference, _, otherref)
@@ -400,7 +387,7 @@ function OperationReplier:_non_existent(request)
 		    except.reason == "closed" )
 	then
 		request.success = true
-		request.resultcount = 1
+		request.n = 1
 		request[1] = true
 	end
 	return true

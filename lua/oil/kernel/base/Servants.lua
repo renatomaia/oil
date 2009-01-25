@@ -14,26 +14,11 @@
 --------------------------------------------------------------------------------
 -- broker:Facet
 -- 	servant:object register(impl:object, [objectkey:string])
+-- 	impl:object remove(servant:object|impl:object|objectkey:string)
+-- 	impl:object retrieve(objectkey:string)
 -- 	reference:string tostring(servant:object)
--- 	success:boolean, [except:table] pending()
--- 	success:boolean, [except:table] step()
--- 	success:boolean, [except:table] run()
--- 	success:boolean, [except:table] shutdown()
 -- 
--- objects:Receptacle
--- 	configs:table
--- 	object:object register(impl:object, key:string)
--- 	impl:object unregister(key:string)
--- 	impl:object retrieve(key:string)
--- 
--- acceptor:Receptacle
--- 	configs:table, [except:table] setupaccess([configs:table])
--- 	success:boolean, [except:table] hasrequest(configs:table)
--- 	success:boolean, [except:table] acceptone(configs:table)
--- 	success:boolean, [except:table] acceptall(configs:table)
--- 	success:boolean, [except:table] halt(configs:table)
--- 
--- references:Receptacle
+-- referrer:Receptacle
 -- 	reference:table newreference(objectkey:string, accesspointinfo:table...)
 -- 	stringfiedref:string encode(reference:table)
 --------------------------------------------------------------------------------
@@ -57,10 +42,14 @@ context = false
 -- Servant object proxy
 
 local function deactivate(self)
-	return self._dispatcher:unregister(self._key)
+	return self._registry:unregister(self._key)
 end
 
-local function indexer(self, key)
+local function wrappertostring(self)
+	return self._registry:tostring(self)
+end
+
+local function wrapperindexer(self, key)
 	local value = self.__newindex[key]
 	if type(value) == "function"
 		then return self.__methods[value]
@@ -68,32 +57,40 @@ local function indexer(self, key)
 	end
 end
 
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
 function __init(self, ...)
 	self = oo.rawnew(self, ...)
-	self.wrappers = ObjectCache{
-		retrieve = function(_, key)
-			local object
-			object = {
-				_deactivate = deactivate,
-				_dispatcher = self.context.dispatcher,
-				_key = key,
-				__index = indexer,
-				__methods = ObjectCache{
-					retrieve = function(_, method)
-						return function(_, ...)
-							return method(object.__newindex, ...)
-						end
-					end
-				}
-			}
-			return setmetatable(object, object)
-		end
-	}
+	self.map = self.map or {}
 	return self
 end
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
+function addentry(self, key, entry)
+	local result, except = self.map[key]
+	if result then
+		if result == entry then
+			result = true
+		else
+			result, except = nil, Exception{
+				reason = "usedkey",
+				message = "object key already in use",
+				key = key,
+			}
+		end
+	else                                                                          --[[VERBOSE]] verbose:servants("object ",entry," registered with key ",key)
+		self.map[key] = entry
+		result = true
+	end
+	return result, except
+end
+
+function removeentry(self, key)
+	local map = self.map
+	local entry = map[key]
+	map[key] = nil
+	return entry
+end
 
 function hashof(self, object)
 	local meta = getmetatable(object)
@@ -108,20 +105,57 @@ function hashof(self, object)
 	end
 	return hash:match("%l+: (%w+)") or hash
 end
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+
+function setaccessinfo(self, ...)
+	local result, except = true
+	local accessinfo = self.accessinfo
+	if not accessinfo then
+		self.accessinfo = {...}
+	else
+		result, except = nil, Exception{
+			reason = "configuration",
+			message = "attempt to set access info twice",
+			accessinfo = accessinfo,
+		}
+	end
+	return result, except
+end
+
+function tostring(self, object)
+	return self.context.referrer:encode(object.__reference)
+end
+
+--------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
 function register(self, object, key, ...)
 	local context = self.context
 	key = key or "\0"..self:hashof(object)
-	local result, except = context.dispatcher:register(key, object, ...)
+	local result, except = self:addentry(key, object, ...)
 	if result then
-		result, except = context.referrer:newreference(key, self.accesspoint)
+		result, except = context.referrer:newreference(self.accesspoint, key, ...)
 		if result then
-			local wrapper = self.wrappers[key]
-			rawset(wrapper, "__newindex", object)
-			rawset(wrapper, "__reference", result)
-			result = wrapper
+			result = {
+				_deactivate = deactivate,
+				_registry = self,
+				_key = key,
+				__tostring = wrappertostring,
+				__index = wrapperindexer,
+				__newindex = object,
+				__reference = result,
+				__methods = ObjectCache{
+					retrieve = function(_, method)
+						return function(_, ...)
+							return method(object, ...)
+						end
+					end
+				}
+			}
+			setmetatable(result, result)
 		else
-			context.dispatcher:unregister(key)
+			self:removeentry(key)
 		end
 	end
 	return result, except
@@ -142,15 +176,9 @@ function remove(self, object)
 			end
 		end
 	end
-	local success, errmsg = context.dispatcher:unregister(key)
-	if success then self.wrappers[key] = nil end
-	return success, errmsg
-end
-
-function tostring(self, object)
-	return self.context.referrer:encode(object.__reference)
+	return self:removeentry(key)
 end
 
 function retrieve(self, key)
-	return self.context.dispatcher:retrieve(key)
+	return self.map[key]
 end

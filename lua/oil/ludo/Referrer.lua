@@ -29,16 +29,17 @@ context = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function newreference(self, objectkey, accessinfo)
-	local host = accessinfo.host
+function newreference(self, access, key)
+	access = access[1]
+	local host = access.host
 	if host == "*" then
 		host = socket.dns.gethostname()
 		host = socket.dns.toip(host) or host
 	end
 	return {
 		host = host,
-		port = accessinfo.port,
-		object = objectkey,
+		port = access.port,
+		object = key,
 	}
 end
 

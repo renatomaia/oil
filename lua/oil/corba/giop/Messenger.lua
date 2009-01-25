@@ -16,7 +16,7 @@
 --   See section 15.4.1 of CORBA 3.0 specification.                           --
 --------------------------------------------------------------------------------
 -- messenger:Facet
--- 	success:booelan, [except:table] = sendmsg(channel:object, type:number, header:table, types:table, values...)
+-- 	success:booelan, [except:table] = sendmsg(channel:object, type:number, header:table, types:table, values)
 -- 	type:number, header:table, decoder:object = receivemsg(channel:object , [wait:boolean])
 -- 
 -- codec:Receptacle
@@ -53,7 +53,7 @@ header = {
 
 --------------------------------------------------------------------------------
 
-function sendmsg(self, channel, type, message, types, ...)                      --[[VERBOSE]] verbose:message(true, "send message ",type)
+function sendmsg(self, channel, type, message, types, values)                   --[[VERBOSE]] verbose:message(true, "send message ",type)
 	--
 	-- Create GIOP message body
 	--
@@ -64,7 +64,7 @@ function sendmsg(self, channel, type, message, types, ...)                      
 	end
 	if types then
 		for index, type in ipairs(types) do
-			encoder:put(select(index, ...), type)
+			encoder:put(values[index], type)
 		end
 	end
 	local stream = encoder:getdata()

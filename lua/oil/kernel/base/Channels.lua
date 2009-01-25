@@ -43,7 +43,7 @@ module("oil.kernel.base.Channels", oo.class)
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local function dummy() end
+local function dummy() return true end
 
 LuaSocketOps = {
 	trylock  = dummy,

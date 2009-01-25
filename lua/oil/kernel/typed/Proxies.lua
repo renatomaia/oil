@@ -92,6 +92,7 @@ function __init(self, object)
 					table.clear(class)
 					class.__context = self.context
 					class.__type = type
+					class.__tostring = proxytostring
 					class.__narrow = narrow
 					class._narrow = narrow -- TODO:[maia] should be deprecated
 					oo.initclass(class)
@@ -130,6 +131,12 @@ function newproxy(self, reference, type)                                        
 				end
 			end
 		end
+	else
+		except = Exception{
+			reason = "type",
+			message = "unable to get type for reference",
+			reference = reference,
+		}
 	end
 	return result, except
 end

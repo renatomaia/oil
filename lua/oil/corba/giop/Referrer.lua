@@ -27,7 +27,7 @@
 -- 
 -- profiler:HashReceptacle
 -- 	profile:table decodeurl(url:string)
--- 	data:string encode(objectkey:string, acceptorinfo...)
+-- 	data:string encode(accesspoints:list, key:string, type)
 -- 
 -- types:Receptacle--[[
 -- 	interface:table typeof(objectkey:string)
@@ -105,14 +105,13 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function newreference(self, objectkey, ...)
+function newreference(self, access, key, type)
 	local profiles = {}
-	for i = 1, select("#", ...) do
-		local acceptor = select(i, ...)
-		local tag = acceptor.tag or 0
+	for _, access in ipairs(access) do
+		local tag = access.tag or 0
 		local profiler = self.context.profiler[tag]
 		if profiler then
-			local ok, except = profiler:encode(profiles, objectkey, acceptor)
+			local ok, except = profiler:encode(profiles, objectkey, access)
 			if not ok then return nil, except end
 		else
 			return nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
@@ -122,20 +121,10 @@ function newreference(self, objectkey, ...)
 			}
 		end
 	end
-	local _, type = self.context.servants:retrieve(objectkey)
-	if _ then
-		return setmetatable({
-			type_id = type.repID,
-			profiles = profiles,
-		}, giop.IOR)
-	else
-		-- TODO:[maia] Is this the right exception?
-		return nil, Exception{ "OBJECT_NOT_EXIST",
-			reason = "objectkey",
-			message = "illegal object key",
-			objectkey = objectkey,
-		}
-	end
+	return setmetatable({
+		type_id = type.repID,
+		profiles = profiles,
+	}, giop.IOR)
 end
 
 function islocal(self, reference, accesspoint)
@@ -161,11 +150,13 @@ function typeof(self, reference)
 		local request = result
 		result, except = requester:getreply(request)
 		if result then
-			result, except = request:contents()
-			if result then
-				result = except
-			elseif except.reason == "noimplement" then
-				result = reference.type_id
+			result = request[1]
+			if request.success then
+				except = nil
+			elseif result.reason == "noimplement" then
+				result, except = reference.type_id, nil
+			else
+				result, except = nil, result
 			end
 		end
 	end
