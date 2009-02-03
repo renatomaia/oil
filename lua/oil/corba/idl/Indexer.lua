@@ -52,8 +52,8 @@ function builders:get(attribute, opname, attribop)
 		return idl.operation{ attribute = attribute, attribop = attribop,
 			name = opname,
 			result = attribute.type,
-			implementation = function(entry)
-				return entry.object[attribname]
+			implementation = function(self)
+				return self[attribname]
 			end,
 		}
 	end
@@ -64,8 +64,8 @@ function builders:set(attribute, opname, attribop)
 		return idl.operation{ attribute = attribute, attribop = attribop,
 			name = opname,
 			parameters = { {type = attribute.type, name = "value"} },
-			implementation = function(entry, value)
-				entry.object[attribname] = value
+			implementation = function(self, value)
+				self[attribname] = value
 			end,
 		}
 	end

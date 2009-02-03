@@ -57,7 +57,8 @@ function sendmsg(self, channel, type, message, types, values)                   
 	--
 	-- Create GIOP message body
 	--
-	local encoder = self.context.codec:encoder()
+	local context = self.context
+	local encoder = context.codec:encoder()
 	encoder:shift(self.headersize) -- alignment accordingly to GIOP header size
 	if message then
 		encoder:put(message, self.messagetype[type])
@@ -75,7 +76,7 @@ function sendmsg(self, channel, type, message, types, values)                   
 	local header = self.header
 	header.message_size = #stream
 	header.message_type = type
-	encoder = self.context.codec:encoder()
+	encoder = context.codec:encoder()
 	encoder:struct(header, self.headertype)
 	stream = encoder:getdata()..stream
 

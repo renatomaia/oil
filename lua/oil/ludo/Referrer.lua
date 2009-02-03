@@ -43,6 +43,12 @@ function newreference(self, access, key)
 	}
 end
 
+function islocal(self, reference, access)
+	if reference.host == access.host and reference.port == access.port then
+		return reference.object
+	end
+end
+
 local ReferenceFrm = "@%s:%d"
 function encode(self, reference)
 	return reference.object..ReferenceFrm:format(reference.host, reference.port)

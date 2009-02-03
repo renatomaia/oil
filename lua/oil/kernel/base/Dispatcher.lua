@@ -47,7 +47,7 @@ end
 function dispatch(self, request)
 	local object = self.context.servants:retrieve(request.target)
 	if object then
-		local method = object[request.operation] or request.defaultimpl
+		local method = object[request.operation]
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",request.operation,unpack(request, 1, request.n))
 			self:setresults(request, self.pcall(method, object,
 			                                    unpack(request, 1, request.n)))
@@ -57,6 +57,7 @@ function dispatch(self, request)
 				message = "no implementation for operation of object with key",
 				operation = operation,
 				object = object,
+				key = key,
 			})
 		end
 	else

@@ -118,7 +118,7 @@ function getchannel(self, reference)                                            
 				break
 	 		end
 		end
-		if not channel and not except then
+		if not channel and not except then                                          --[[VERBOSE]] verbose:invoke("[no supported profile found]")
 		 	except = Exception{ "IMP_LIMIT", minor_code_value = 1,
 				message = "no supported GIOP profile found",
 				reason = "profiles",
@@ -132,7 +132,7 @@ end
 
 local OneWayRequest = {
 	service_context      = Empty,
-	request_id           = 0, -- value not used
+	request_id           = 0, -- reserved request ID
 	response_expected    = false,
 	object_key           = nil, -- defined later
 	operation            = nil, -- defined later
@@ -160,14 +160,14 @@ function sendrequest(self, reference, operation, ...)
 		result.object_key = reference._object
 		result.operation  = operation.name
 		result.opidl      = operation
-		local success, except = self:sendmsg(channel,
-		                             RequestID, result,
-		                             operation.inputs, result)
+		local success
+		success, except = self:sendmsg(channel, RequestID, result,
+		                               operation.inputs, result)
 		if not success then
 			unregister(channel, result)
 			result = nil
-		end
-	end                                                                           --[[VERBOSE]] verbose:invoke(false)
+		end                                                                         --[[VERBOSE]] verbose:invoke(false)
+	end
 	return result, except
 end
 

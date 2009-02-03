@@ -28,42 +28,32 @@ local ReplyID   = giop.ReplyID
 
 --------------------------------------------------------------------------------
 
-CanceledRequest = oo.class()
-
-function CanceledRequest:ready()
-	return true
-end
-
-function CanceledRequest:results()
-	return self.success, unpack(self, 1, self.resultcount)
-end
-
 function before(self, request, object, ...)
 	if request.port == "requests" then
 		if request.method == request.object.newrequest then
 			local interceptor = self.interceptor
 			if interceptor.sendrequest then
-				local channel, reference, operation = ...
+				local reference, operation = ...
 				request.service_context      = nil
 				request.object_key           = reference._object
 				request.interface            = operation.defined_in
 				request.operation            = operation.name
 				request.response_expected    = not operation.oneway
 				request.requesting_principal = nil
-				request.count = select("#", ...) - 3
+				request.count = select("#", ...) - 2
 				for i = 1, request.count do
-					request[i] = select(i+3, ...)
+					request[i] = select(i+2, ...)
 				end
 				interceptor:sendrequest(request)
 				if request.success == nil then
 					self.message = request
 					request.cancel = nil
-					return object, channel, reference, operation, unpack(request, 1, request.count)
+					return object, reference, operation, unpack(request, 1, request.count)
 				else
 					self.message = nil
 					request.cancel = true
-					request.resultcount = request.count
-					return CanceledRequest(request)
+					request.n = request.count
+					return request
 				end
 			else
 				self.message = nil

@@ -38,23 +38,21 @@ function dispatch(self, request)
 	local context = self.context
 	local object, type = context.servants:retrieve(request.target)
 	if object then
-		local operation = request.operation
-		if context.indexer:valueof(type, operation) then
-			local method = object[operation]
-			if method == nil then
-				object = context.servants.map[request.target] -- TODO:[maia] this is ugly!
-				method = request.defaultimpl
-			end
-			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",operation, unpack(request, 1, request.n))
+		local opname = request.operation
+		local opinfo = context.indexer:valueof(type, opname)
+		if opinfo then
+			local method = object[opname] or opinfo.implementation
+			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",opname, unpack(request, 1, request.n))
 				self:setresults(request, self.pcall(method, object,
 				                                    unpack(request, 1, request.n)))
 			else
 				self:setresults(false, Exception{
 					reason = "noimplement",
 					message = "no implementation for operation of object with key",
-					operation = operation,
+					operationdescription = opinfo,
+					operation = opname,
 					object = object,
-					type = entry.type,
+					type = type,
 					key = key,
 				})
 			end
@@ -62,8 +60,9 @@ function dispatch(self, request)
 			self:setresults(false, Exception{
 				reason = "badoperation",
 				message = "operation is illegal for object with key",
-				operation = operation,
-				type = entry.type,
+				operation = opname,
+				object = object,
+				type = type,
 				key = key,
 			})
 		end

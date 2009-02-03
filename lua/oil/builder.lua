@@ -27,14 +27,16 @@ function build(customization, built)
 		if success then
 			built = module.create(built)
 		elseif not module:find(ErrorFrm:format(package), nil, true) then            --[[VERBOSE]] verbose:built(false)
-			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load builder for architecture ",name,": ",module)
+			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load builder for architecture ",name)
 		end                                                                         --[[VERBOSE]] verbose:built(false)
 	end
 	for name in customization:gmatch(NamePat) do                                  --[[VERBOSE]] verbose:built(true, "assembling ",name," components")
 		local package = ArchFrm:format(name)
 		local success, module = pcall(require, package)
 		if success then
-			module.assemble(built)
+			if module.assemble then
+				module.assemble(built)
+			end
 		elseif not module:find(ErrorFrm:format(package), nil, true) then            --[[VERBOSE]] verbose:built(false)
 			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load architecture definition for ",name)
 		end                                                                         --[[VERBOSE]] verbose:built(false)

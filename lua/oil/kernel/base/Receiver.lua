@@ -54,6 +54,7 @@ function initialize(self, config)
 	local result, except = self.context.listener:setupaccess(config)
 	if result then
 		self.accesspoint = result
+		result = {result}
 	end
 	return result, except
 end

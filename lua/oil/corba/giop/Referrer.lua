@@ -27,7 +27,7 @@
 -- 
 -- profiler:HashReceptacle
 -- 	profile:table decodeurl(url:string)
--- 	data:string encode(accesspoints:list, key:string, type)
+-- 	data:string encode(accesspoint:object, key:string, type)
 -- 
 -- types:Receptacle--[[
 -- 	interface:table typeof(objectkey:string)
@@ -105,13 +105,13 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function newreference(self, access, key, type)
+function newreference(self, accesspoint, key, type)
 	local profiles = {}
-	for _, access in ipairs(access) do
+	for _, access in ipairs(accesspoint) do
 		local tag = access.tag or 0
 		local profiler = self.context.profiler[tag]
 		if profiler then
-			local ok, except = profiler:encode(profiles, objectkey, access)
+			local ok, except = profiler:encode(profiles, key, access)
 			if not ok then return nil, except end
 		else
 			return nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
@@ -133,9 +133,11 @@ function islocal(self, reference, accesspoint)
 	for _, profile in ipairs(reference.profiles) do
 		local profiler = profilers[profile.tag]
 		if profiler then
-			local result = profiler:belongsto(profile.profile_data, accesspoint)
-			if result then
-				return result
+			for _, access in ipairs(accesspoint) do
+				local result = profiler:belongsto(profile.profile_data, access)
+				if result then
+					return result
+				end
 			end
 		end
 	end

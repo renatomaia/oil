@@ -57,16 +57,22 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
+local error    = error
+local ipairs   = ipairs
 local module   = module
 local luapcall = pcall
 local require  = require
+local tostring = tostring
 
 local io        = require "io"
 local coroutine = require "coroutine"
+local table     = require "table"
 
-local oo        = require "oil.oo"
-local builder   = require "oil.builder"
-local assert    = require "oil.assert"
+local OrderedSet = require "loop.collection.OrderedSet"
+
+local oo      = require "oil.oo"
+local builder = require "oil.builder"
+local assert  = require "oil.assert"
 
 --------------------------------------------------------------------------------
 -- OiL main programming interface (API).
@@ -78,13 +84,66 @@ local assert    = require "oil.assert"
 
 module "oil"
 
+local Aliases = {
+	["ludo"]        = {"ludo.client","ludo.server"},
+	["corba"]       = {"corba.client","corba.server"},
+	["cooperative"] = {"cooperative.client","cooperative.server"},
+	["intercepted"] = {"intercepted.client","intercepted.server"},
+}
+
+local Dependencies = {
+	-- LuDO support
+	["ludo.client"] = {"ludo.common","basic.client"},
+	["ludo.server"] = {"ludo.common","basic.server"},
+	-- CORBA support
+	["corba.client"] = {"corba.common","typed.client"},
+	["corba.server"] = {"corba.common","typed.server"},
+	-- kernel extension for cooperative multithreading
+	["cooperative.client"] = {"cooperative.common","basic.client"},
+	["cooperative.server"] = {"cooperative.common","basic.server"},
+	-- kernel extension for type-check
+	["typed.client"] = {"typed.common","basic.client"},
+	["typed.server"] = {"typed.common","basic.server"},
+	-- kernel support
+	["basic.client"] = {"basic.common"},
+	["basic.server"] = {"basic.common"},
+}
+
+local function makeflavor(flavors)
+	local packs = OrderedSet()
+	for pack in flavors:gmatch("[^;]+") do
+		local aliases = Aliases[pack]
+		if aliases then
+			for _, alias in ipairs(aliases) do
+				packs:add(alias)
+			end
+		else
+			packs:add(pack)
+		end
+	end
+	for pack in packs:sequence() do
+		local deps = Dependencies[pack]
+		if deps then
+			for _, dep in ipairs(deps) do
+				packs:remove(dep)
+				packs:add(dep)
+			end
+		end
+	end
+	flavors = {}
+	for pack in packs:sequence() do
+		flavors[#flavors+1] = pack
+	end
+	return table.concat(flavors, ";")
+end
+
 --------------------------------------------------------------------------------
 -- Class that implements the OiL's broker API.
 --
 ORB = oo.class()
 
 function ORB:__init(config)
-	self = oo.rawnew(self, builder.build(config.flavor, config))
+	self = oo.rawnew(self, builder.build(makeflavor(config.flavor), config))
 	
 	if self.TypeRepository ~= nil then
 		----------------------------------------------------------------------------
@@ -110,8 +169,8 @@ function ORB:__init(config)
 	if self.ServantManager ~= nil and config.objectmap then
 		self.ServantManager.map = config.objectmap
 	end
-	local accesspoint = assert.results(self.RequestReceiver.acceptor:initialize(self))
-	self.ServantManager.servants.accesspoint = accesspoint
+	self.ServantManager.servants.accesspoint = 
+		assert.results(self.RequestReceiver.acceptor:initialize(self))
 	
 	return self
 end
@@ -587,7 +646,7 @@ end
 VERSION = "OiL 0.4 beta"
 
 if BasicSystem == nil then
-	local factories = require "oil.builder.cooperative"
+	local factories = require "oil.builder.cooperative.common"
 	BasicSystem = factories.BasicSystem()
 end
 
@@ -636,7 +695,7 @@ function init(config)
 		config = DefaultORB
 	end
 	if config.flavor == nil then
-		config.flavor = "corba;typed;cooperative;base"
+		config.flavor = "cooperative;corba"
 	end
 	if BasicSystem and config.BasicSystem == nil then
 		config.BasicSystem = BasicSystem
@@ -695,20 +754,13 @@ local function handleresults(success, except, ...)
 end
 function main(main, ...)
 	assert.type(main, "function", "main function")
-	local args = { n = select("#", ...), ... }
-	local func
 	if tasks then
 		assert.results(tasks:register(coroutine.create(main), tasks.currentkey))
 		local control = BasicSystem.control
-		function func()
-			return control:run(unpack(args, 1, args.n))
-		end
+		return handleresults(pcall(control.run, control, ...))
 	else
-		function func()
-			return main(unpack(args, 1, args.n))
-		end
+		return handleresults(pcall(main, ...))
 	end
-	return handleresults(xpcall(result, debug.traceback))
 end
 
 --------------------------------------------------------------------------------

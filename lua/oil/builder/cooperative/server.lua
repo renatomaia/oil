@@ -1,10 +1,9 @@
 local require = require
 local builder = require "oil.builder"
-local arch    = require "oil.arch.cooperative"
+local arch    = require "oil.arch.cooperative.server"
 
-module "oil.builder.cooperative"
+module "oil.builder.cooperative.server"
 
-BasicSystem     = arch.BasicSystem    {require "loop.thread.SocketScheduler"    }
 RequestReceiver = arch.RequestReceiver{require "oil.kernel.cooperative.Receiver"}
 
 function create(comps)

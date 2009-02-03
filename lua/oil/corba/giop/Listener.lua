@@ -130,7 +130,7 @@ end
 
 function freechannel(self, channel)                                             --[[VERBOSE]] verbose:listen "close channel"
 	if table.maxn(channel) > 0 then
-		channel.invalid = true
+		channel.freed = true
 		return true
 	else
 		return self:sendmsg(channel, CloseConnectionID)
@@ -193,7 +193,6 @@ function getrequest(self, channel, probe)                                       
 							end
 							header.n = #member.inputs
 							header.target = header.object_key
-							header.defaultimpl = member.implementation
 							header.member = member
 							if header.response_expected then
 								header.channel = channel
@@ -275,7 +274,8 @@ function sendreply(self, request)                                               
 			                               member.outputs, request)
 		else
 			except = request[1]
-			if type(except) == "table" then                                           --[[VERBOSE]] verbose:listen("got exception ",except)
+			local extype = type(except)
+			if extype == "table" then                                                 --[[VERBOSE]] verbose:listen("got exception ",except)
 				local excepttype = member.exceptions[ except[1] ]
 				if excepttype then
 					ExceptionReplyTypes[2] = excepttype
@@ -308,7 +308,7 @@ function sendreply(self, request)                                               
 					success, except = self:sendmsg(channel,
 						self:sysexreply(requestid, except))
 				end
-			elseif type(except) == "string" then                                      --[[VERBOSE]] verbose:listen("got unexpected error ", except)
+			elseif extype == "string" then                                            --[[VERBOSE]] verbose:listen("got unexpected error ", except)
 				success, except = self:sendmsg(channel,
 					self:sysexreply(requestid, {
 						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
@@ -326,7 +326,7 @@ function sendreply(self, request)                                               
 						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
 						minor_code_value = 0,
 						completion_status = COMPLETED_MAYBE,
-						message = "invalid exception, got "..type(except),
+						message = "invalid exception, got "..extype,
 						reason = "exception",
 						exception = except,
 					}))
@@ -334,7 +334,7 @@ function sendreply(self, request)                                               
 		end
 		if success then
 			channel[requestid] = nil
-			if channel.invalid and table.maxn(channel) == 0 then                      --[[VERBOSE]] verbose:listen "all pending requests replied, connection being closed"
+			if channel.freed and table.maxn(channel) == 0 then                      --[[VERBOSE]] verbose:listen "all pending requests replied, connection being closed"
 				success, except = self:sendmsg(channel, CloseConnectionID)
 			end
 		elseif SystemExceptions[ except[1] ] then                                   --[[VERBOSE]] verbose:listen("got system exception ",except," at reply send")

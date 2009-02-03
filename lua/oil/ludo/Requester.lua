@@ -42,19 +42,22 @@ local MessageFmt = "%d\n%s"
 
 function newrequest(self, reference, operation, ...)
 	local context = self.context
-	local channel = context.channels:retrieve(reference)
-	local encoder = context.codec:encoder()
-	local requestid = #channel+1
-	encoder:put(requestid, reference.object, operation, ...)
-	local data = encoder:__tostring()
-	channel:trylock("write", true)
-	local result, except = channel:send(MessageFmt:format(#data, data))
-	channel:freelock("write")
+	local result, except = context.channels:retrieve(reference)
 	if result then
-		result = { channel = channel }
-		channel[requestid] = result
-	else
-		if except == "closed" then channel:close() end
+		local channel = result
+		local encoder = context.codec:encoder()
+		local requestid = #channel+1
+		encoder:put(requestid, reference.object, operation, ...)
+		local data = encoder:__tostring()
+		channel:trylock("write", true)
+		result, except = channel:send(MessageFmt:format(#data, data))
+		channel:freelock("write")
+		if result then
+			result = { channel = channel }
+			channel[requestid] = result
+		else
+			if except == "closed" then channel:close() end
+		end
 	end
 	return result, except
 end
