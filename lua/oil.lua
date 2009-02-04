@@ -63,6 +63,10 @@ local module   = module
 local luapcall = pcall
 local require  = require
 local tostring = tostring
+local traceback = debug and debug.traceback
+local xpcall    = xpcall
+local select = select
+local unpack = unpack
 
 local io        = require "io"
 local coroutine = require "coroutine"
@@ -92,6 +96,7 @@ local Aliases = {
 }
 
 local Dependencies = {
+	["ludo.byref"] = {"ludo.client","ludo.server"},
 	-- LuDO support
 	["ludo.client"] = {"ludo.common","basic.client"},
 	["ludo.server"] = {"ludo.common","basic.server"},
@@ -159,6 +164,7 @@ function ORB:__init(config)
 		-- @usage oil.types:lookup_id("IDL:omg.org/CORBA/InterfaceDef:1.0")        .
 		--
 		self.types = self.TypeRepository.types
+		self.TypeRepository.compiler.defaults.incpath = config.idlpaths
 	end
 	if self.ClientChannels ~= nil and config.tcpoptions then
 		self.ClientChannels.options = config.tcpoptions
@@ -166,8 +172,8 @@ function ORB:__init(config)
 	if self.ServerChannels ~= nil and config.tcpoptions then
 		self.ServerChannels.options = config.tcpoptions
 	end
-	if self.ServantManager ~= nil and config.objectmap then
-		self.ServantManager.map = config.objectmap
+	if self.ServantManager ~= nil then
+		self.ServantManager.prefix = config.keyprefix
 	end
 	self.ServantManager.servants.accesspoint = 
 		assert.results(self.RequestReceiver.acceptor:initialize(self))
@@ -228,7 +234,7 @@ end
 -- @usage oil.writeto("ir.ior", oil.tostring(oil.getLIR()))                    .
 --
 function ORB:getLIR()
-	return self:newservant(self.TypeRepository.types,
+	return self:newservant(self.types,
 	                       "InterfaceRepository",
 	                       "IDL:omg.org/CORBA/Repository:1.0")
 end
@@ -358,8 +364,8 @@ end
 -- @usage oil.newservant({say_hello_to=print}, "Key","::HelloWorld::Hello")    .
 --
 function ORB:newservant(impl, key, type)
-	if not impl then assert.illegal(impl, "servant's implementation") end
-	if key then assert.type(key, "string", "servant's key") end
+	if impl == nil then assert.illegal(impl, "servant's implementation") end
+	if key ~= nil then assert.type(key, "string", "servant's key") end
 	return assert.results(self.ServantManager.servants:register(impl, key, type))
 end
 
@@ -405,8 +411,8 @@ end
 -- @usage oil.writeto("ref.ior", oil.tostring(oil.newservant(impl, "::Hello"))).
 --
 function ORB:tostring(object)
-	assert.type(object, "table", "servant object")
-	return assert.results(self.ServantManager.servants:tostring(object))
+	assert.type(object, "table", "object")
+	return assert.results(self.ObjectReferrer.references:encode(object.__reference))
 end
 
 --------------------------------------------------------------------------------
@@ -643,7 +649,7 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-VERSION = "OiL 0.4 beta"
+VERSION = "OiL 0.4"
 
 if BasicSystem == nil then
 	local factories = require "oil.builder.cooperative.common"
@@ -743,24 +749,29 @@ pcall = tasks and tasks:getpcall() or luapcall
 --
 -- @param main function Appplication's main function.
 --
--- @usage oil.main(oil.run)
+-- @usage oil.main(orb.run, orb)
 -- @usage oil.main(function() print(oil.tostring(oil.getLIR())) oil.run() end)
 --
 local function handleresults(success, except, ...)
 	if not success then
 		error(tostring(except), 2)
 	end
-	return ...
+	return except, ...
 end
 function main(main, ...)
 	assert.type(main, "function", "main function")
+	local args, body = { n = select("#", ...), ... }
 	if tasks then
 		assert.results(tasks:register(coroutine.create(main), tasks.currentkey))
-		local control = BasicSystem.control
-		return handleresults(pcall(control.run, control, ...))
+		function body()
+			return BasicSystem.control:run(unpack(args, 1, args.n))
+		end
 	else
-		return handleresults(pcall(main, ...))
+		function body()
+			return main(unpack(args, 1, args.n))
+		end
 	end
+	return handleresults(xpcall(body, traceback))
 end
 
 --------------------------------------------------------------------------------

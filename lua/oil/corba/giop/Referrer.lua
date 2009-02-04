@@ -105,21 +105,19 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function newreference(self, accesspoint, key, type)
+function newreference(self, access, key, type)
 	local profiles = {}
-	for _, access in ipairs(accesspoint) do
-		local tag = access.tag or 0
-		local profiler = self.context.profiler[tag]
-		if profiler then
-			local ok, except = profiler:encode(profiles, key, access)
-			if not ok then return nil, except end
-		else
-			return nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
-				message = "GIOP profile tag not supported",
-				reason = "profiles",
-				tag = tag,
-			}
-		end
+	local tag = access.tag or 0
+	local profiler = self.context.profiler[tag]
+	if profiler then
+		local ok, except = profiler:encode(profiles, key, access)
+		if not ok then return nil, except end
+	else
+		return nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
+			message = "GIOP profile tag not supported",
+			reason = "profiles",
+			tag = tag,
+		}
 	end
 	return setmetatable({
 		type_id = type.repID,

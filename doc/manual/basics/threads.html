@@ -25,7 +25,7 @@ These threads are then scheduled for execution, in such way that whenever a coro
 <p>Since the coroutine scheduler is not part of the standard virtual machine of Lua, it must be created and started by the application.
 This can be done by operation <%=link("Module","<code>oil.main</code>","#main")%><code>(mainbody)</code> that creates and initiates the execution of the scheduler with a single thread registered that executes the function <code>mainbody</code> provided as parameter.
 After this operations is called, other threads can be created with operation <%=link("Module","<code>oil.newthread</code>","#newthread")%><code>(function, ...)</code> that register new coroutines to execute the function informed as the first parameter, and starts its execution immediately.
-The scheduler also provides other operations to register or unregister as described <a href="http://loop.luaforge.net/library/thread/Scheduler.lua">here</a>.</p>
+The scheduler also provides other operations to register or unregister as described <a href="http://loop.luaforge.net/library/thread/Scheduler.html">here</a>.</p>
 
 <h2>Synchronization</h2>
 
@@ -73,5 +73,5 @@ To alleviate the problem of the <a href="http://www.lua.org/manual/5.1/manual.ht
 <p>The other limitation is that the thread scheduler is not integrated to the underlying operating system.
 Therefore, any blocking system call performed by a thread will eventually suspend the execution of the application as a whole since the coroutine does not yield the execution back to the scheduler.
 This is particularly true for file operations that suspend the entire execution of the application regardless of the number of other independent threads that might be ready to execute.
-For socket operations in particular, OiL provides a cooperative API similar to the one provided by <a href="http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/">LuaSocket</a>, as described <a href="http://loop.luaforge.net/library/thread/CoSocket.lua">here</a>.
+For socket operations in particular, OiL provides a cooperative API similar to the one provided by <a href="http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/">LuaSocket</a>, as described <a href="http://loop.luaforge.net/library/thread/CoSocket.html">here</a>.
 This cooperative socket API is provided by field <code>oil.tasks.sockets</code>.</p>

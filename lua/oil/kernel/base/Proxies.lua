@@ -174,7 +174,7 @@ Extras = {
 function fromstring(self, reference, ...)
 	local result, except = self.context.referrer:decode(reference)
 	if result then
-		result, except = self:newproxy(result, ...)
+		result, except = self:resolve(result, ...)
 	end
 	return result, except
 end

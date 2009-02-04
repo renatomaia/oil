@@ -32,8 +32,6 @@ local tonumber = tonumber
 
 local string = require "string"
 
-local socket = require "socket.core"
-
 local oo        = require "oil.oo"
 local idl       = require "oil.corba.idl"
 local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
@@ -80,23 +78,11 @@ function encode(self, profiles, object_key, config, minor)
 	if not minor then minor = 0 end
 	local profileidl = ProfileBody_v1_[minor]
 	if profileidl then
-		local host = config.refhost or config.host
 		local port = config.refport or config.port
-		if host == "*" then host = socket.dns.gethostname() end
-		local hosts, address = socket.dns.toip(host)
-		if hosts then
-			hosts = address.ip
-			hosts[#hosts+1] = address.name
-			for _, alias in ipairs(address.alias) do
-				hosts[#hosts+1] = alias
-			end
-		else
-			hosts = {host}
-		end
-		for _, host in ipairs(hosts) do
+		for _, addr in ipairs(config.addresses) do
 			local profile = {
 				components = Empty,
-				host = host,
+				host = addr,
 				port = port,
 				object_key = object_key
 			}
@@ -145,9 +131,7 @@ end
 function belongsto(self, profile, config)
 	local objectkey
 	profile, objectkey = self:decode(profile)
-	local host = config.host
-	if host == "*" then host = socket.dns.gethostname() end
-	if profile.host == host and profile.port == config.port then
+	if config.addresses[profile.host] and profile.port == config.port then
 		return objectkey
 	end
 end

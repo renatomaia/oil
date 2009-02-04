@@ -787,9 +787,6 @@ function Encoder:enum(value, idltype)                                           
 end
 
 function Encoder:string(value)                                                  --[[VERBOSE]] verbose:marshal(true, self, idl.string, value)
-
-if value == nil then verbose:debug("Oops!") end
-
 	assert.type(value, "string", "string value", "MARSHAL")
 	local length = #value
 	self:ulong(length + 1)

@@ -45,9 +45,9 @@ done
 
 PACKAGE=oil-$VERSION-$RELEASE-win32
 mkdir $PACKAGE
-cp $LUA51/bin/Win32/lua5.1.{exe,dll} $PACKAGE
-mkdir $PACKAGE/oil   ; cp lib/$plat/oilbit.dll    $PACKAGE/oil/bit.dll
-mkdir $PACKAGE/socket; cp lib/$plat/luasocket.dll $PACKAGE/socket/core.dll
+cp $LUA51/bin/Win32/* $PACKAGE
+mkdir $PACKAGE/oil   ; cp lib/dll8/oilbit.dll    $PACKAGE/oil/bit.dll
+mkdir $PACKAGE/socket; cp lib/dll8/luasocket.dll $PACKAGE/socket/core.dll
 cp -R lua $PACKAGE
 cp -R demo $PACKAGE
 find $PACKAGE/demo -type f -iname execute | xargs rm -f

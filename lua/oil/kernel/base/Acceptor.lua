@@ -214,8 +214,17 @@ local PortLowerBound = 2809 -- inclusive (never at first attempt)
 local PortUpperBound = 9999 -- inclusive
 
 function default(self, profile)
+	local sockets = self.context.sockets
 	profile = profile or {}
-	profile.host = profile.host or "*"
+	
+	-- find a network interface
+	local host = profile.host
+	if host == nil then
+		profile.host = "*"
+		host = sockets.dns.gethostname()
+	end
+	
+	-- find a socket port
 	if not profile.port then
 		local ports = self.cache[profile.host]
 		local start = PortLowerBound + math.random(PortUpperBound - PortLowerBound)
@@ -239,5 +248,23 @@ function default(self, profile)
 			end
 		until port or count == start
 	end
+	
+	-- collect addresses
+	host = profile.refhost or host
+	local addr, info = sockets.dns.toip(host)
+	if addr then
+		addr = info.ip
+		addr[#addr+1] = info.name
+		for _, alias in ipairs(info.alias) do
+			addr[#addr+1] = alias
+		end
+	else
+		addr = {host}
+	end
+	for index, name in ipairs(addr) do
+		addr[name] = index
+	end
+	profile.addresses = addr
+	
 	return profile
 end

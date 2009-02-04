@@ -35,6 +35,7 @@ function before(self, request, object, ...)
 			if interceptor.sendrequest then
 				local reference, operation = ...
 				request.service_context      = nil
+				request.reference            = reference
 				request.object_key           = reference._object
 				request.interface            = operation.defined_in
 				request.operation            = operation.name

@@ -8,8 +8,8 @@ LUAIDL_PACKAGE=luaidl-$LUAIDL_VERSION-$LUAIDL_RELEASE
 
 mkdir $LUAIDL_PACKAGE
 cd $LUAIDL_PACKAGE
-svn export --force $SVNBASE/oil/trunk/lua/luaidl
-svn export --force $SVNBASE/oil/trunk/lua/luaidl.lua
+svn export --force $SVNBASE/oil/branches/OIL_0_4/lua/luaidl
+svn export --force $SVNBASE/oil/branches/OIL_0_4/lua/luaidl.lua
 cd ..
 tar -czvf $LUAIDL_PACKAGE.tar.gz $LUAIDL_PACKAGE/
 zip -r $LUAIDL_PACKAGE.zip $LUAIDL_PACKAGE/
@@ -35,9 +35,9 @@ mv src/*.lua lua/socket/
 rm -f src/makefile
 cd ..
 
-svn export --force $SVNBASE/oil/trunk $OIL_PACKAGE
-svn export --force $SVNBASE/loop/trunk/lua $OIL_PACKAGE/lua
-svn export --force $SVNBASE/loop/trunk/doc/build.lua $OIL_PACKAGE/doc/build.lua
+svn export --force $SVNBASE/oil/branches/OIL_0_4 $OIL_PACKAGE
+svn export --force $SVNBASE/loop/branches/LOOP_2_3/lua $OIL_PACKAGE/lua
+svn export --force $SVNBASE/loop/branches/LOOP_2_3/doc/build.lua $OIL_PACKAGE/doc/build.lua
 
 cd $OIL_PACKAGE
 # pack files to build Windows binaries

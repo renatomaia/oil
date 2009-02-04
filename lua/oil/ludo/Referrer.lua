@@ -18,6 +18,8 @@
 -- 	reference:table decode(reference:string)
 --------------------------------------------------------------------------------
 
+local tonumber = tonumber
+
 local socket = require "socket.core"
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
@@ -30,7 +32,6 @@ context = false
 --------------------------------------------------------------------------------
 
 function newreference(self, access, key)
-	access = access[1]
 	local host = access.host
 	if host == "*" then
 		host = socket.dns.gethostname()
@@ -44,22 +45,30 @@ function newreference(self, access, key)
 end
 
 function islocal(self, reference, access)
-	if reference.host == access.host and reference.port == access.port then
+	if access.addresses[reference.host] and reference.port == access.port then
 		return reference.object
 	end
 end
 
 local ReferenceFrm = "@%s:%d"
 function encode(self, reference)
-	return reference.object..ReferenceFrm:format(reference.host, reference.port)
+	local object, host, port = reference.object, reference.host, reference.port
+	if object ~= nil and host ~= nil and port ~= nil then
+		return object..ReferenceFrm:format(host, port)
+	end
+	return nil, "bad LuDO reference"
 end
 
-local ReferencePat = "^([^@]*)@([^:]*):(%d*)$"
+local ReferencePat = "^([^@]+)@([^:]+):(%d+)$"
 function decode(self, reference)
 	local object, host, port = reference:match(ReferencePat)
-	return {
-		host = host,
-		port = port,
-		object = object,
-	}
+	port = tonumber(port)
+	if object ~= nil and host ~= nil and port ~= nil then
+		return {
+			host = host,
+			port = port,
+			object = object,
+		}
+	end
+	return nil, "invalid LuDO reference"
 end

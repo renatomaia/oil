@@ -45,18 +45,16 @@ end
 -------------------------------------------------------------
 
 local function processDirective(...)
-  local directive = arg[1]
+  local directive, macro, value = ...
   if (directive == "endif") then
     isProcessing = true
     return ''
   end
   if (isProcessing) then
     if (directive == "define") then
-      local macro = arg[2]
-      local value = arg[3]
       tab_macros[macro] = value
     elseif (directive == "include") then
-      local incFilename = string.sub(arg[2], 2, -2)
+      local incFilename = string.sub(macro, 2, -2)
       local path = homedir..incFilename
       local fh, msg = io.open(path)
       if not fh then
@@ -81,12 +79,11 @@ local function processDirective(...)
                             incENDNumLine, OUTFilename
                          )
     elseif (directive == "ifndef") then
-      local macro = arg[2]
       if (tab_macros[macro]) then
         isProcessing = false
       end
     else
-      return '#'..table.concat(arg, ' ')
+      return '#'..table.concat({...}, ' ')
     end
   end
   return ''

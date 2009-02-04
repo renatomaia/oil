@@ -13,11 +13,15 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 
+local luapcall = pcall
+
 local socket = require "socket.core"
 
 local oo = require "oil.oo"
 
 module("oil.kernel.base.Sockets", oo.class)
+
+pcall = luapcall
 
 function __index(self, field)
 	return _M[field] or socket[field]

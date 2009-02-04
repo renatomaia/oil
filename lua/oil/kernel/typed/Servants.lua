@@ -64,7 +64,7 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local KeyFmt = "\0%s%s"
+local KeyFmt = "%s%s%s"
 
 function register(self, object, key, type)
 	local context = self.context
@@ -78,7 +78,9 @@ function register(self, object, key, type)
 	end
 	local result, except = context.types:resolve(type)
 	if result then
-		key = key or KeyFmt:format(self:hashof(object), self:hashof(result))
+		key = key or KeyFmt:format(self.prefix,
+		                           self:hashof(object),
+		                           self:hashof(result))
 		result, except = Servants.register(self, object, key, result)
 	end
 	return result, except
@@ -90,9 +92,12 @@ function remove(self, key, objtype)
 	if type(key) == "table" then key = rawget(key, "_key") or key end
 	if type(key) ~= "string" then
 		result, except = context.types:resolve(result)
-		if result
-			then key = KeyFmt:format(self:hashof(key), self:hashof(result))
-			else key = nil
+		if result then
+			key = KeyFmt:format(self.prefix,
+			                    self:hashof(key),
+			                    self:hashof(result))
+		else
+			key = nil
 		end
 	end
 	if key then

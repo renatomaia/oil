@@ -25,7 +25,7 @@ local component = require "oil.component" -- component model
 local port      = require "oil.port"      -- port model
 local arch      = require "oil.arch"      -- helper module
 
-module "oil.arch.base.client" -- layer name is 'base.client'
+module "oil.arch.basic.client" -- layer name is 'base.client'
 
 ClientBroker = component.Template{
 	broker     = port.Facet,
@@ -70,7 +70,7 @@ Below, there is the definition of a builder module that defines a set of factori
 See files <code>lua/oil/builder/*.lua</code> from OiL's standard distribution for examples of other builder modules using LOOP.</p>
 
 <pre>
-local arch    = require "oil.arch.base.client" -- arch module
+local arch    = require "oil.arch.basic.client" -- arch module
 local builder = require "oil.builder"          -- helper module
 
 module "oil.builder.base.client" -- layer name is 'base.client'

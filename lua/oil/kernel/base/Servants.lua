@@ -30,23 +30,25 @@ local setmetatable = setmetatable
 local luatostring  = tostring
 local type         = type
 
-local oo = require "oil.oo"
 local table = require "loop.table"
 local ObjectCache = require "loop.collection.ObjectCache"                       --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
+local Exception = require "oil.Exception"
 
 module("oil.kernel.base.Servants", oo.class)
 
 context = false
+prefix = "_"
 
 --------------------------------------------------------------------------------
 -- Servant object proxy
 
 local function deactivate(self)
-	return self._registry:unregister(self._key)
+	return self.__context.servants:removeentry(self.__key)
 end
 
 local function wrappertostring(self)
-	return self._registry:tostring(self)
+	return self.__context.referrer:encode(self.__reference)
 end
 
 local function wrapperindexer(self, key)
@@ -123,24 +125,21 @@ function setaccessinfo(self, ...)
 	return result, except
 end
 
-function tostring(self, object)
-	return self.context.referrer:encode(object.__reference)
-end
-
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 function register(self, object, key, ...)
 	local context = self.context
-	key = key or "\0"..self:hashof(object)
+	key = key or self.prefix..self:hashof(object)
 	local result, except = self:addentry(key, object, ...)
 	if result then
 		result, except = context.referrer:newreference(self.accesspoint, key, ...)
 		if result then
 			result = {
-				_deactivate = deactivate,
-				_registry = self,
-				_key = key,
+				_deactivate = deactivate, -- TODO[maia]: DEPRECATED!
+				__deactivate = deactivate,
+				__context = context,
+				__key = key,
 				__tostring = wrappertostring,
 				__index = wrapperindexer,
 				__newindex = object,
@@ -164,7 +163,7 @@ end
 function remove(self, object)
 	local key
 	if type(object) == "table" then
-		key = rawget(object, "_key") or object
+		key = rawget(object, "__key") or object
 	end
 	if type(key) ~= "string" then
 		key = object.__objkey
@@ -172,7 +171,7 @@ function remove(self, object)
 			local meta = getmetatable(object)
 			if meta then key = meta.__objkey end
 			if key == nil then
-				key = "\0"..self:hashof(key)
+				key = self.prefix..self:hashof(key)
 			end
 		end
 	end

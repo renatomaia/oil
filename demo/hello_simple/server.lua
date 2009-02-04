@@ -15,7 +15,7 @@ oil.main(function()
 		self.quiet = value
 	end
 
-	local orb = oil.init{ flavor = "ludo;base" }
+	local orb = oil.init{ flavor = "ludo" }
 	
 	hello = orb:newservant(hello)                  -- Create Ludo object
 

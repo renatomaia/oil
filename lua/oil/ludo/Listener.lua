@@ -67,7 +67,7 @@ end
 
 local Request = oo.class()
 
-function newrequest(requestid, objectkey, operation, ...)                   --[[VERBOSE]] verbose:listen("got request for request ",requestid," to object ",objectkey,":",operation)
+function newrequest(self, requestid, objectkey, operation, ...)                 --[[VERBOSE]] verbose:listen("got request for request ",requestid," to object ",objectkey,":",operation)
 	local request = {...}
 	request.n = select("#", ...)
 	request.requestid = requestid
@@ -87,7 +87,7 @@ function getrequest(self, channel, probe)
 					result, except = channel:receive(result)
 					if result then
 						local decoder = self.context.codec:decoder(result)
-						result = newrequest(decoder:get())
+						result = self:newrequest(decoder:get())
 						result.channel = channel
 						channel[result.requestid] = result
 					end
