@@ -142,6 +142,7 @@ function islocal(self, reference, accesspoint)
 end
 
 local _interface = giop.ObjectOperations._interface
+local NO_IMPLEMENT = giop.SystemExceptionIDs.NO_IMPLEMENT
 function typeof(self, reference)
 	local context = self.context
 	local requester = context.requester
@@ -153,7 +154,7 @@ function typeof(self, reference)
 			result = request[1]
 			if request.success then
 				except = nil
-			elseif result.reason == "noimplement" then
+			elseif result[1] == NO_IMPLEMENT then
 				result, except = reference.type_id, nil
 			else
 				result, except = nil, result

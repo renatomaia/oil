@@ -16,24 +16,15 @@
 -- 	success:boolean, [except:table]|results... dispatch(key:string, operation:string|function, params...)
 --------------------------------------------------------------------------------
 
-local luapcall     = pcall
-local setmetatable = setmetatable
-local type         = type                                                       
-local select       = select
 local unpack       = unpack
 
-local table       = require "loop.table"
 local oo          = require "oil.oo"
 local Exception   = require "oil.Exception"
 local Dispatcher  = require "oil.kernel.base.Dispatcher"                        --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module "oil.ludo.DispatcherByRef"
+module "oil.kernel.lua.Dispatcher"
 
 oo.class(_M, Dispatcher)
-
-pcall = luapcall
-
-context = false
 
 --------------------------------------------------------------------------------
 

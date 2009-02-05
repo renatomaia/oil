@@ -113,7 +113,8 @@ function acceptall(self)
 	return nil, self.except or except
 end
 
-function halt(self)                                                             --[[VERBOSE]] verbose:acceptor "halt acceptor"
+function halt(self)                                                             --[[VERBOSE]] verbose:acceptor("halt acceptor",accesspoint)
+	local accesspoint = self.accesspoint
 	local tasks = self.context.tasks
 	local listener = self.context.listener
 	local result, except = nil, Exception{

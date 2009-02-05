@@ -17,7 +17,7 @@ oil.main(function()
 		self.quiet = value
 	end
 
-	local orb = oil.init{ flavor = "ludo.byref" }
+	local orb = oil.init{ flavor = "lua;ludo;ludo.byref" }
 	
 	hello = orb:newservant(hello)
 

@@ -89,6 +89,7 @@ local assert  = require "oil.assert"
 module "oil"
 
 local Aliases = {
+	["lua"]         = {"lua.client","lua.server"},
 	["ludo"]        = {"ludo.client","ludo.server"},
 	["corba"]       = {"corba.client","corba.server"},
 	["cooperative"] = {"cooperative.client","cooperative.server"},
@@ -96,8 +97,8 @@ local Aliases = {
 }
 
 local Dependencies = {
-	["ludo.byref"] = {"ludo.client","ludo.server"},
 	-- LuDO support
+	["ludo.byref"] = {"ludo.common"},
 	["ludo.client"] = {"ludo.common","basic.client"},
 	["ludo.server"] = {"ludo.common","basic.server"},
 	-- CORBA support
@@ -290,9 +291,16 @@ end
 -- @usage oil.newproxy("IOR:00000002B494...", "IDL:HelloWorld/Hello:1.0")      .
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 --
-function ORB:newproxy(object, type)
-	assert.type(object, "string", "object reference")
-	return assert.results(self.ProxyManager.proxies:fromstring(object, type))
+function ORB:newproxy(reference, kind, type)
+	assert.type(reference, "string", "object reference")
+	local proxies
+	if kind == nil then
+		proxies = self.ProxyManager.proxies
+	else
+		proxies = self.extraproxies[kind] or
+		          assert.illegal(kind, "string", "proxy kind")
+	end
+	return assert.results(proxies:fromstring(reference, type))
 end
 
 --------------------------------------------------------------------------------

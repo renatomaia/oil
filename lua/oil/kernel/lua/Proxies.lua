@@ -21,18 +21,19 @@
 
 local ipairs = ipairs
 
-local oo = require "oil.oo"
+local oo      = require "oil.oo"
 local Proxies = require "oil.kernel.base.Proxies"                               --[[VERBOSE]] local verbose = require "oil.verbose"
+local utils   = require "oil.kernel.base.Proxies.utils"
 
-module "oil.ludo.ProxiesByRef"
+module "oil.kernel.lua.Proxies"
 
 oo.class(_M, Proxies)
 
-context = false
+local assertresults = utils.assertresults
+local unpackrequest = utils.unpackrequest
+local callhandler   = utils.callhandler
 
---------------------------------------------------------------------------------
-
-Proxy = oo.class()
+class = oo.class()
 for _, field in ipairs{
 	"tostring",
 	"unm",
@@ -51,7 +52,7 @@ for _, field in ipairs{
 	"index",
 	"newindex",
 } do
-	Proxy["__"..field] = function(self, ...)                                      --[[VERBOSE]] verbose:proxies("call to ",field," ", ...)
+	class["__"..field] = function(self, ...)                                      --[[VERBOSE]] verbose:proxies("call to ",field," ", ...)
 		local requester = self.__context.requester
 		local success, except = requester:newrequest(self.__reference, field, ...)
 		if success then
@@ -65,13 +66,4 @@ for _, field in ipairs{
 			return callhandler(self, except, operation)
 		end
 	end
-end
-
---------------------------------------------------------------------------------
-
-function newproxy(self, reference)                                              --[[VERBOSE]] verbose:proxies("new proxy to ",reference)
-	return Proxy{
-		__context = self.context,
-		__reference = reference,
-	}
 end

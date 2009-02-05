@@ -23,16 +23,10 @@
 -- 	[results:object], [except:table] invoke(reference, operation, args...)
 --------------------------------------------------------------------------------
 
---[[VERBOSE]] local select = select
-
-local pairs  = pairs
-local rawget = rawget
 local rawset = rawset
-local type   = type
 
-local table = require "loop.table"
-
-local ObjectCache = require "loop.collection.ObjectCache"
+local tabop       = require "loop.table"                                        --[[VERBOSE]] local select = select
+local ObjectCache = require "loop.collection.ObjectCache"                       --[[VERBOSE]] local type   = type
 
 local oo        = require "oil.oo"
 local Exception = require "oil.Exception"
@@ -46,18 +40,19 @@ context = false
 
 --------------------------------------------------------------------------------
 
-function newcache(methodmaker)
+local function newclass(methodmaker)
 	return oo.class{
-		__index = function(cache, field)                                            --[[VERBOSE]] verbose:proxies(true, "attempt to invoke operation named ",field)
+		__call = oo.rawnew,
+		__index = function(cache, field)                                            --[[VERBOSE]] verbose:proxies("first attempt to invoke operation ",field)
 			local context = cache.__context
 			local operation = context.indexer:valueof(cache.__type, field)
 			if operation then
 				local function invoker(self, ...)                                       --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
 					return context.requester:newrequest(self.__reference, operation, ...)
 				end
-				invoker = methodmaker(invoker, operation)                               --[[VERBOSE]] verbose:proxies(false, "operation named ",field," was created")
+				invoker = methodmaker(invoker, operation)                               --[[VERBOSE]] verbose:proxies("operation named ",field," was created")
 				cache[field] = invoker                                                  --[[VERBOSE]]
-				return invoker                                                          --[[VERBOSE]] else verbose:proxies(false, "operation named ",field," not found")
+				return invoker                                                          --[[VERBOSE]] else verbose:proxies("operation named ",field," not found")
 			end
 		end
 	}
@@ -65,49 +60,33 @@ end
 
 --------------------------------------------------------------------------------
 
-ProxyClass     = newcache(Proxies.makemethod)
-ProtectedClass = newcache(Proxies.makeprotected)
-DeferredClass  = newcache(Proxies.makedeferred)
+function proxynarrow(self, type)
+	return self.__context.proxies:newproxy(self.__reference, type)
+end
 
---------------------------------------------------------------------------------
-
-local Classes = {
-	ProxyClass,
-	__deferred =  DeferredClass,
-	__try = ProtectedClass,
-}
-
-function __init(self, object)
-	self = oo.rawnew(self, object)
-	local function narrow(proxy, type)
-		return self:newproxy(proxy.__reference, type)
-	end
-	local prxcls = {}
-	for label, class in pairs(Classes) do
-		prxcls[label] = ObjectCache{
-			retrieve = function(_, type)
-				local class = class()
-				local updater = {}
-				function updater.notify()
-					table.clear(class)
-					class.__context = self.context
-					class.__type = type
-					class.__tostring = proxytostring
-					class.__narrow = narrow
-					class._narrow = narrow -- TODO:[maia] should be deprecated
-					oo.initclass(class)
-				end
-				updater:notify()
-				if type.observer then
-					rawset(type.observer, class, updater)
-				end
-				return class
+function __init(self, ...)
+	self = oo.rawnew(self, ...)
+	self.class = self.class or newclass(self.invoker)
+	self.classes = ObjectCache{
+		retrieve = function(_, type)
+			local class = self.class()
+			local updater = {}
+			function updater.notify()
+				tabop.clear(class)
+				class.__context = self.context
+				class.__type = type
+				class.__tostring = proxytostring
+				class.__narrow = proxynarrow
+				class._narrow = proxynarrow -- TODO:[maia] DEPRECATED!
+				oo.initclass(class)
 			end
-		}
-	end
-	self.classes = prxcls[1]
-	prxcls[1] = nil
-	self.extras = prxcls
+			updater:notify()
+			if type.observer then
+				rawset(type.observer, class, updater)
+			end
+			return class
+		end
+	}
 	return self
 end
 
@@ -122,21 +101,8 @@ function newproxy(self, reference, type)                                        
 	if type then
 		type, except = context.types:resolve(type)
 		if type then
-			local class = self.classes[type]
-			result = oo.rawnew(class, { __reference = reference })
-			for label, classes in pairs(self.extras) do
-				class = classes[type]
-				if class then
-					result[label] = oo.rawnew(class, { __reference = reference })
-				end
-			end
+			result = self.classes[type]{ __reference = reference }
 		end
-	else
-		except = Exception{
-			reason = "type",
-			message = "unable to get type for reference",
-			reference = reference,
-		}
 	end                                                                           --[[VERBOSE]] verbose:proxies(false)
 	return result, except
 end
@@ -152,25 +118,12 @@ function excepthandler(self, handler, type)                                     
 		if type then
 			local class = self.classes[type]
 			class.__exceptions = handler
-			for label, classes in pairs(self.extras) do
-				local class = classes[type]
-				if class then
-					class.__exceptions = handler
-				end
-			end
-			return class
+			result, except = class, nil
 		else
-			return Proxies.excepthandler(self, handler)
+			result, except = Proxies.excepthandler(self, handler)
 		end
 	end
 	return result, except
-end
-
-function resetcache(self, interface)
-	local class = rawget(self.classes, interface)
-	if class then
-		table.clear(class)
-	end
 end
 
 --------------------------------------------------------------------------------
