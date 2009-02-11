@@ -1,3 +1,5 @@
+local ipairs = ipairs
+
 local port      = require "oil.port"
 local component = require "oil.component"
 local arch      = require "oil.arch"
@@ -16,5 +18,12 @@ function assemble(components)
 	ProxyManager.requester = OperationRequester.requests
 	ProxyManager.referrer  = ObjectReferrer.references
 	ProxyManager.servants  = ServantManager.servants
+	
+	for _, proxykind in ipairs(extraproxies) do
+		local ProxyManager = extraproxies[proxykind]
+		ProxyManager.requester = OperationRequester.requests
+		ProxyManager.referrer  = ObjectReferrer.references
+		ProxyManager.servants  = ServantManager.servants
+	end
 	arch.finish(components)
 end

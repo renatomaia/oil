@@ -125,17 +125,14 @@ function newreference(self, access, key, type)
 	}, giop.IOR)
 end
 
-function islocal(self, reference, accesspoint)
-	local context = self.context
-	local profilers = context.profiler
+function islocal(self, reference, access)
+	local profilers = self.context.profiler
 	for _, profile in ipairs(reference.profiles) do
 		local profiler = profilers[profile.tag]
 		if profiler then
-			for _, access in ipairs(accesspoint) do
-				local result = profiler:belongsto(profile.profile_data, access)
-				if result then
-					return result
-				end
+			local result = profiler:belongsto(profile.profile_data, access)
+			if result then
+				return result
 			end
 		end
 	end
@@ -144,8 +141,7 @@ end
 local _interface = giop.ObjectOperations._interface
 local NO_IMPLEMENT = giop.SystemExceptionIDs.NO_IMPLEMENT
 function typeof(self, reference)
-	local context = self.context
-	local requester = context.requester
+	local requester = self.context.requester
 	local result, except = requester:newrequest(reference, _interface)
 	if result then
 		local request = result

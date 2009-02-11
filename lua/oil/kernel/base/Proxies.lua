@@ -60,19 +60,19 @@ function fromstring(self, reference, ...)
 	return result, except
 end
 
-function resolve(self, reference, ...)
+function resolve(self, reference, ...)                                          --[[VERBOSE]] verbose:proxies(true, "resolve reference for ",reference)
 	local result, except
 	local context = self.context
 	local servants = context.servants
 	if servants then
 		result, except = context.referrer:islocal(reference, servants.accesspoint)
-		if result then
+		if result then                                                              --[[VERBOSE]] verbose:unmarshal "local object implementation restored"
 			result = servants:retrieve(result)
 		end
 	end
 	if not result then
-		result, except = self:newproxy(reference, ...)                              --[[VERBOSE]] else verbose:unmarshal "local object implementation restored"
-	end
+		result, except = self:newproxy(reference, ...)
+	end                                                                           --[[VERBOSE]] verbose:proxies(false)
 	return result, except
 end
 

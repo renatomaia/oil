@@ -46,7 +46,7 @@ function dispatch(self, request)
 				self:setresults(request, self.pcall(method, object,
 				                                    unpack(request, 1, request.n)))
 			else
-				self:setresults(false, Exception{
+				self:setresults(request, false, Exception{
 					reason = "noimplement",
 					message = "no implementation for operation of object with key",
 					operationdescription = opinfo,
@@ -57,7 +57,7 @@ function dispatch(self, request)
 				})
 			end
 		else
-			self:setresults(false, Exception{
+			self:setresults(request, false, Exception{
 				reason = "badoperation",
 				message = "operation is illegal for object with key",
 				operation = opname,
@@ -67,7 +67,7 @@ function dispatch(self, request)
 			})
 		end
 	else
-		self:setresults(false, Exception{
+		self:setresults(request, false, Exception{
 			reason = "badkey",
 			message = "no object with key",
 			key = key,

@@ -20,8 +20,8 @@ function create(comps)
 	end
 	
 	for _, proxykind in ipairs(comps.extraproxies) do
-		if comps.extraproxies[proxikind] == nil then
-			comps.extraproxies[proxikind] = ProxyManager{
+		if comps.extraproxies[proxykind] == nil then
+			comps.extraproxies[proxykind] = ProxyManager{
 				invoker = require("oil.kernel.base.Proxies."..proxykind),
 			}
 		end

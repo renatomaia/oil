@@ -126,7 +126,7 @@ function register(self, object, history)
 			object = object:_narrow(Contained[kind].iface)
 			local desc = object:describe().value
 			history = history or self.DefaultDefs()
-			result = history[desc.id] 
+			result = history[desc.id] or registry:lookup_id(desc.id)
 			if not result then                                                        --[[VERBOSE]] verbose:repository(true, "importing definition ",desc.id)
 				desc.repID = desc.id
 				desc.defined_in = nil -- will be resolved later

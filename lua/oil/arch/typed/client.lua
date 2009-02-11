@@ -1,3 +1,5 @@
+local ipairs = ipairs
+
 local port      = require "oil.port"
 local component = require "oil.component"
 local arch      = require "oil.arch"
@@ -15,5 +17,11 @@ function assemble(components)
 	arch.start(components)
 	ProxyManager.indexer = TypeRepository.indexer
 	ProxyManager.types   = TypeRepository.types
+	
+	for _, proxykind in ipairs(extraproxies) do
+		local ProxyManager = extraproxies[proxykind]
+		ProxyManager.indexer = TypeRepository.indexer
+		ProxyManager.types   = TypeRepository.types
+	end
 	arch.finish(components)
 end

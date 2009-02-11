@@ -57,16 +57,17 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local error    = error
-local ipairs   = ipairs
-local module   = module
-local luapcall = pcall
-local require  = require
-local tostring = tostring
+local error     = error
+local ipairs    = ipairs
+local module    = module
+local luapcall  = pcall
+local require   = require
+local tostring  = tostring
+local type      = type
 local traceback = debug and debug.traceback
 local xpcall    = xpcall
-local select = select
-local unpack = unpack
+local select    = select
+local unpack    = unpack
 
 local io        = require "io"
 local coroutine = require "coroutine"
@@ -89,21 +90,24 @@ local assert  = require "oil.assert"
 module "oil"
 
 local Aliases = {
-	["lua"]         = {"lua.client","lua.server"},
-	["ludo"]        = {"ludo.client","ludo.server"},
-	["corba"]       = {"corba.client","corba.server"},
-	["cooperative"] = {"cooperative.client","cooperative.server"},
-	["intercepted"] = {"intercepted.client","intercepted.server"},
+	["lua"]               = {"lua.client","lua.server"},
+	["ludo"]              = {"ludo.client","ludo.server"},
+	["corba"]             = {"corba.client","corba.server"},
+	["cooperative"]       = {"cooperative.client","cooperative.server"},
+	["corba.intercepted"] = {"corba.intercepted.client","corba.intercepted.server"},
 }
 
 local Dependencies = {
 	-- LuDO support
-	["ludo.byref"] = {"ludo.common"},
+	["ludo.byref"]  = {"ludo.common"},
 	["ludo.client"] = {"ludo.common","basic.client"},
 	["ludo.server"] = {"ludo.common","basic.server"},
 	-- CORBA support
 	["corba.client"] = {"corba.common","typed.client"},
 	["corba.server"] = {"corba.common","typed.server"},
+	-- CORBA extension for interception
+	["corba.intercepted.client"] = {"corba.client"},
+	["corba.intercepted.server"] = {"corba.server"},
 	-- kernel extension for cooperative multithreading
 	["cooperative.client"] = {"cooperative.common","basic.client"},
 	["cooperative.server"] = {"cooperative.common","basic.server"},
@@ -291,8 +295,14 @@ end
 -- @usage oil.newproxy("IOR:00000002B494...", "IDL:HelloWorld/Hello:1.0")      .
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 --
-function ORB:newproxy(reference, kind, type)
-	assert.type(reference, "string", "object reference")
+function ORB:newproxy(reference, kind, ...)
+	local operation
+	if type(reference) == "string" then
+		operation = "fromstring"
+	else
+		operation = "resolve"
+		reference = reference.__reference or reference
+	end
 	local proxies
 	if kind == nil then
 		proxies = self.ProxyManager.proxies
@@ -300,7 +310,7 @@ function ORB:newproxy(reference, kind, type)
 		proxies = self.extraproxies[kind] or
 		          assert.illegal(kind, "string", "proxy kind")
 	end
-	return assert.results(proxies:fromstring(reference, type))
+	return assert.results(proxies[operation](proxies, reference, ...))
 end
 
 --------------------------------------------------------------------------------
@@ -597,13 +607,7 @@ end
 -- those defined in the description of 'reply'.
 --
 function ORB:setclientinterceptor(iceptor)
-	if iceptor then
-		local ClientSide = require "oil.corba.interceptors.ClientSide"
-		iceptor = ClientSide{ interceptor = iceptor }
-	end
-	local port = require "loop.component.intercepted"
-	port.intercept(self.OperationRequester, "requests", "method", iceptor)
-	port.intercept(self.OperationRequester, "messenger", "method", iceptor)
+	return self:setinterceptor(iceptor, "client")
 end
 
 --------------------------------------------------------------------------------
@@ -644,13 +648,47 @@ end
 -- those defined in the description of 'reply'.
 --
 function ORB:setserverinterceptor(iceptor)
-	if iceptor then
-		local ServerSide = require "oil.corba.interceptors.ServerSide"
-		iceptor = ServerSide{ interceptor = iceptor }
-	end
+	return self:setinterceptor(iceptor, "server")
+end
+
+--------------------------------------------------------------------------------
+
+function ORB:setinterceptor(iceptor, side)
 	local port = require "loop.component.intercepted"
-	port.intercept(self.RequestListener, "messenger", "method", iceptor)
-	port.intercept(self.ServantManager, "dispatcher", "method", iceptor)
+	if side ~= "server" then
+		if iceptor == nil then
+			if self.ClientInterceptor and self.OperationRequester then
+				self.OperationRequester.interceptor = nil
+				self.ClientInterceptor.interceptor = nil
+			end
+		else
+			if self.ClientInterceptor and self.OperationRequester then
+				self.OperationRequester.interceptor = self.ClientInterceptor.interceptions
+				self.ClientInterceptor.interceptor = iceptor
+				iceptor = self.ClientInterceptor.interceptions
+			end
+			local Interceptor = require "oil.kernel.intercepted.Client"
+			iceptor = Interceptor{ interceptor = iceptor }
+		end
+		port.intercept(self.OperationRequester, "requests", "method", iceptor)
+	end
+	if side ~= "client" then
+		if iceptor == nil then
+			if self.ServerInterceptor and self.RequestListener then
+				self.RequestListener.interceptor = nil
+				self.ServerInterceptor.interceptor = nil
+			end
+		else
+			if self.ServerInterceptor and self.RequestListener then
+				self.RequestListener.interceptor = self.ServerInterceptor.interceptions
+				self.ServerInterceptor.interceptor = iceptor
+				iceptor = self.ServerInterceptor.interceptions
+			end
+			local Interceptor = require "oil.kernel.intercepted.Server"
+			iceptor = Interceptor{ interceptor = iceptor }
+		end
+		port.intercept(self.ServantManager, "dispatcher", "method", iceptor)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -760,26 +798,18 @@ pcall = tasks and tasks:getpcall() or luapcall
 -- @usage oil.main(orb.run, orb)
 -- @usage oil.main(function() print(oil.tostring(oil.getLIR())) oil.run() end)
 --
-local function handleresults(success, except, ...)
+function main(main)
+	assert.type(main, "function", "main function")
+	if tasks then
+		assert.results(tasks:register(coroutine.create(main), tasks.currentkey))
+		function main()
+			return BasicSystem.control:run()
+		end
+	end
+	local success, except = xpcall(main, traceback)
 	if not success then
 		error(tostring(except), 2)
 	end
-	return except, ...
-end
-function main(main, ...)
-	assert.type(main, "function", "main function")
-	local args, body = { n = select("#", ...), ... }
-	if tasks then
-		assert.results(tasks:register(coroutine.create(main), tasks.currentkey))
-		function body()
-			return BasicSystem.control:run(unpack(args, 1, args.n))
-		end
-	else
-		function body()
-			return main(unpack(args, 1, args.n))
-		end
-	end
-	return handleresults(xpcall(body, traceback))
 end
 
 --------------------------------------------------------------------------------
@@ -837,7 +867,7 @@ function writeto(filepath, text)
 	local result, errmsg = io.open(filepath, "w")
 	if result then
 		local file = result
-		result, errmsg = file:write(text)
+		result, errmsg = file:write(tostring(text))
 		file:close()
 	end
 	return result, errmsg

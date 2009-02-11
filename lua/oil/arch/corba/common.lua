@@ -30,7 +30,6 @@ ReferenceProfiler = component.Template{
 ObjectReferrer = component.Template{
 	references = port.Facet,
 	codec      = port.Receptacle,
-	servants   = port.Receptacle,
 	requester  = port.Receptacle,
 	profiler   = port.HashReceptacle,
 }

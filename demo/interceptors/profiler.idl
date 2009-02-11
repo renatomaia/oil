@@ -1,0 +1,14 @@
+module Profiler {
+	struct ServerInfo {
+		long memory;
+	};
+	struct ClientInfo {
+		double start;
+		double ending;
+	};
+};
+module Concurrency {
+	interface Server {
+		boolean do_something_for(in double seconds);
+	};
+};

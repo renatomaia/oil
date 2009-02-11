@@ -9,3 +9,10 @@ ValueEncoder = component.Template{
 	proxies  = port.Receptacle,
 	servants = port.Receptacle,
 }
+
+function assemble(components)
+	arch.start(components)
+	LuaEncoder.proxies = ProxyManager.proxies
+	LuaEncoder.servants = ServantManager.servants
+	arch.finish(components)
+end

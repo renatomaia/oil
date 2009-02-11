@@ -68,14 +68,14 @@ local ChannelKey = newproxy()
 --------------------------------------------------------------------------------
 -- request id management for channels
 
-local function register(channel, request)
+function register(channel, request)
 	local id = #channel + 1
 	request.channel = channel
 	channel[id] = request
 	return id
 end
 
-local function unregister(channel, id)
+function unregister(channel, id)
 	local request = channel[id]
 	if request then
 		request.channel = nil
@@ -149,6 +149,7 @@ function sendrequest(self, reference, operation, ...)
 			result = OneWayRequest
 		else
 			result = {
+				request_id           = nil, -- defined below
 				response_expected    = true,
 				service_context      = Empty,
 				requesting_principal = Empty,
