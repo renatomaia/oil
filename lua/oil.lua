@@ -99,15 +99,18 @@ local Aliases = {
 
 local Dependencies = {
 	-- LuDO support
-	["ludo.byref"]  = {"ludo.common"},
 	["ludo.client"] = {"ludo.common","basic.client"},
 	["ludo.server"] = {"ludo.common","basic.server"},
+	-- LuDO extension for by reference semantics
+	["ludo.byref"]  = {"ludo.common"},
 	-- CORBA support
 	["corba.client"] = {"corba.common","typed.client"},
 	["corba.server"] = {"corba.common","typed.server"},
 	-- CORBA extension for interception
 	["corba.intercepted.client"] = {"corba.client"},
 	["corba.intercepted.server"] = {"corba.server"},
+	-- CORBA extension for marshal code generation
+	["corba.gencode"] = {"corba.common"},
 	-- kernel extension for cooperative multithreading
 	["cooperative.client"] = {"cooperative.common","basic.client"},
 	["cooperative.server"] = {"cooperative.common","basic.server"},
@@ -739,12 +742,11 @@ end
 -- @usage oil.init{ port = 8080, flavor = "corba;typed;base" }                 .
 -- @usage oil.init{ port = 8080, flavor = "ludo;cooperative;base" }            .
 --
-local DefaultORB
 function init(config)
 	if config == nil then
-		if DefaultORB then return DefaultORB end
-		DefaultORB = {}
-		config = DefaultORB
+		if Default then return Default end
+		Default = {}
+		config = Default
 	end
 	if config.flavor == nil then
 		config.flavor = "cooperative;corba"

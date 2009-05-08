@@ -23,6 +23,10 @@ module("oil.kernel.base.Sockets", oo.class)
 
 pcall = luapcall
 
+function getpcall(self)
+	return self.pcall
+end
+
 function __index(self, field)
 	return _M[field] or socket[field]
 end

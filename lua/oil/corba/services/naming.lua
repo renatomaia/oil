@@ -41,7 +41,7 @@ local table  = require "table"
 local oo                = require "oil.oo"
 local assert            = require "oil.assert"
 local MapWithArrayOfKey = require "loop.collection.MapWithArrayOfKeys"
-local UnorderedArray    = require "loop.collection.UnorderedArray"
+local UnorderedArray    = require "loop.collection.UnorderedArray"              --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.corba.services.naming"
 

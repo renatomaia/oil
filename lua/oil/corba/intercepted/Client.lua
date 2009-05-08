@@ -36,20 +36,15 @@ function marshalrequest(self, header)
 	end
 end
 
-function unmarshalreply(self, header, request)
-	request.request_id      = header.request_id
-	request.reply_status    = header.reply_status
-	request.service_context = header.service_context
+function unmarshalreply(self, header, reply)
+	reply.request_id      = header.request_id
+	reply.reply_status    = header.reply_status
+	reply.service_context = header.service_context
 end
 
 function receivereply(self, reply, request)
 	local interceptor = self.context.interceptor
 	if interceptor.receivereply then
-		reply.interface         = request.interface
-		reply.interface_name    = request.interface
-		reply.operation_name    = request.operation_name
-		reply.object_key        = request.object_key
-		reply.response_expected = request.response_expected
-		return interceptor:receivereply(reply)
+		return interceptor:receivereply(reply, request)
 	end
 end

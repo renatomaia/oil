@@ -82,7 +82,7 @@ file:write(instance,[[.TypeRepository.types:register(
 		function()
 			return ]])
 
-stream:serialize(luaidl.parsefile(select(start, ...), Compiler.Options))
+stream:serialize(luaidl.parsefile(select(start, ...), Compiler.DefaultOptions))
 
 file:write([[ 
 		end,

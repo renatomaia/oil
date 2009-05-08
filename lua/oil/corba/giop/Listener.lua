@@ -39,6 +39,7 @@ local pairs  = pairs
 local select = select
 local type   = type
 local unpack = unpack
+local stderr = io and io.stderr
 
 local table = require "table"
 
@@ -185,21 +186,21 @@ function getrequest(self, channel, probe)                                       
 				if not channel[requestid] then
 					local _, iface = context.servants:retrieve(header.object_key)
 					if _ then
-						local operation = header.operation
-						local member = context.indexer:valueof(iface, operation)
-						if member then                                                      --[[VERBOSE]] verbose:listen("got request ",requestid," for ",operation)
+						local member = context.indexer:valueof(iface, header.operation)
+						if member then                                                      --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
 							for index, input in ipairs(member.inputs) do
 								header[index] = decoder:get(input)
 							end
 							header.n = #member.inputs
 							header.target = header.object_key
 							header.member = member
+							header.outputs = member.outputs
 							if header.response_expected then
 								header.channel = channel
 								channel[requestid] = header                                     --[[VERBOSE]] else verbose:listen "no response expected"
 							end
 							result = header
-						else                                                                --[[VERBOSE]] verbose:listen("got illegal operation ",operation)
+						else                                                                --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
 							result, except = self:bypass(channel, header,
 								self:sysexreply(requestid, {
 									exception_id = "IDL:omg.org/CORBA/BAD_OPERATION:1.0",
@@ -271,7 +272,7 @@ function sendreply(self, request)                                               
 			request.service_context = Empty
 			request.reply_status = "NO_EXCEPTION"
 			success, except = self:sendmsg(channel, ReplyID, request,
-			                               member.outputs, request)
+			                               request.outputs, request)
 		else
 			except = request[1]
 			local extype = type(except)
@@ -309,6 +310,7 @@ function sendreply(self, request)                                               
 						self:sysexreply(requestid, except))
 				end
 			elseif extype == "string" then                                            --[[VERBOSE]] verbose:listen("got unexpected error ", except)
+				if stderr then stderr:write(except, "\n") end
 				success, except = self:sendmsg(channel,
 					self:sysexreply(requestid, {
 						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",

@@ -219,7 +219,7 @@ function default(self, profile)
 	
 	-- find a network interface
 	local host = profile.host
-	if host == nil then
+	if host == nil or host == "*" then
 		profile.host = "*"
 		host = sockets.dns.gethostname()
 	end

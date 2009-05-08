@@ -161,6 +161,7 @@ function sendrequest(self, reference, operation, ...)
 		result.object_key = reference._object
 		result.operation  = operation.name
 		result.opidl      = operation
+		result.outputs    = operation.outputs
 		local success
 		success, except = self:sendmsg(channel, RequestID, result,
 		                               operation.inputs, result)
@@ -222,9 +223,10 @@ function getreply(self, request, probe)                                         
 						else -- status ~= LOCATION_FORWARD
 							local operation = replied.opidl
 							if status == "NO_EXCEPTION" then                                  --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
+								local outputs = replied.outputs
 								replied.success = true
-								replied.n = #operation.outputs
-								for index, output in ipairs(operation.outputs) do
+								replied.n = #outputs
+								for index, output in ipairs(outputs) do
 									replied[index] = decoder:get(output)
 								end
 							else -- status ~= "NO_EXCEPTION"

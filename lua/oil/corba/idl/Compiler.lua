@@ -36,7 +36,7 @@ module("oil.corba.idl.Compiler", oo.class)
 context = false
 
 --------------------------------------------------------------------------------
-local DefaultOptions = {
+DefaultOptions = {
 	callbacks = {
 		VOID      = idl.void,
 		SHORT     = idl.short,

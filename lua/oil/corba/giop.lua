@@ -62,6 +62,11 @@ ObjectOperations = {
 		name = "_non_existent",
 		result = idl.boolean,
 	},
+	_is_equivalent = idl.operation{
+		name = "_is_equivalent",
+		parameters = {{ type = idl.object, name = "reference" }},
+		result = idl.boolean,
+	},
 	-- TODO:[maia] add other basic operations
 }
 

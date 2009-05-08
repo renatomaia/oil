@@ -90,8 +90,10 @@ end
 function removeentry(self, key)
 	local map = self.map
 	local entry = map[key]
-	map[key] = nil
-	return entry
+	if entry ~= nil then
+		map[key] = nil
+		return entry
+	end
 end
 
 function hashof(self, object)

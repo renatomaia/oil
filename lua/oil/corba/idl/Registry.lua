@@ -713,12 +713,12 @@ function OperationDef:_set_result_def(type_def, registry)
 			if self.outputs == Empty then
 				self.outputs = { newval }
 			else
-				table.insert(self.outputs, 1, newval)
+				self.outputs = { newval, unpack(self.outputs) }
 			end
 		elseif newval == idl.void then
-			table.remove(self.outputs, 1)
+			self.outputs = { unpack(self.outputs, 2) }
 		else
-			self.outputs[1] = newval
+			self.outputs = { newval, unpack(self.outputs, 2) }
 		end
 		self:notify("result")
 	end

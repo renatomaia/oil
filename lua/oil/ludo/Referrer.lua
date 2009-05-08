@@ -50,19 +50,19 @@ function islocal(self, reference, access)
 	end
 end
 
-local ReferenceFrm = "@%s:%d"
 function encode(self, reference)
 	local object, host, port = reference.object, reference.host, reference.port
 	if object ~= nil and host ~= nil and port ~= nil then
-		return object..ReferenceFrm:format(host, port)
+		local encoder = self.context.codec:encoder()
+		encoder:put(object, host, port)
+		return encoder:__tostring()
 	end
 	return nil, "bad LuDO reference"
 end
 
-local ReferencePat = "^([^@]+)@([^:]+):(%d+)$"
 function decode(self, reference)
-	local object, host, port = reference:match(ReferencePat)
-	port = tonumber(port)
+	local decoder = self.context.codec:decoder(reference)
+	local object, host, port = decoder:get()
 	if object ~= nil and host ~= nil and port ~= nil then
 		return {
 			host = host,

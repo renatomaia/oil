@@ -414,7 +414,7 @@ function Decoder:Object(idltype)                                                
 		local proxies = self.context.proxies
 		if proxies then                                                             --[[VERBOSE]] verbose:unmarshal(true, "retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
-			ior = assert.results(proxies:resolve(ior, idltype), "MARSHAL")           --[[VERBOSE]] verbose:unmarshal(false)
+			ior = assert.results(proxies:resolve(ior, idltype), "MARSHAL")            --[[VERBOSE]] verbose:unmarshal(false)
 		end
 	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return ior

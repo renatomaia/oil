@@ -24,8 +24,10 @@
 
 local getmetatable = getmetatable
 local pairs = pairs
+local tonumber = tonumber
 local tostring = tostring
 local rawget = rawget
+local rawset = rawset
 
 local table        = require "loop.table"
 local StringStream = require "loop.serial.StringStream"
@@ -42,27 +44,46 @@ context = false
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+-- TODO:[maia] copied from loop.serial.Serializer. Make it a member function
+local function getidfor(value)
+	local meta = getmetatable(value)
+	local backup
+	if meta then
+		backup = rawget(meta, "__tostring")
+		if backup ~= nil then rawset(meta, "__tostring", nil) end
+	end
+	local id = tostring(value):match("%l+: (%w+)")
+	if meta then
+		if backup ~= nil then rawset(meta, "__tostring", backup) end
+	end
+	return tonumber(id, 16) or id
+end
+
 local function serialproxy(self, value, id)                                     --[[VERBOSE]] verbose:marshal("marshalling proxy for value ",value)
 	self[value] = self.namespace..":value("..id..")"
 	self:write(self.namespace,":value(",id,",'table',")
 	self:write("proxies:resolve(")
-	self:serialize(self.servants:register(value).__reference)
+	local reference = self.servants:register(value).__reference
+	StringStream.table(self, reference, getidfor(reference))
 	self:write("))")
 end
 
 local function serialtable(self, value, id)                                     --[[VERBOSE]] verbose:marshal(true, "marshalling of table ",value)
 	local reference = rawget(value, "__reference")
-	if reference then                                                     --[[VERBOSE]] verbose:marshal "table is a proxy"
+	if reference then                                                             --[[VERBOSE]] verbose:marshal "table is a proxy"
 		self[value] = self.namespace..":value("..id..")"
 		self:write(self.namespace,":value(",id,",'table',")
 		self:write("proxies:resolve(")
 		self:serialize(reference)
 		self:write("))")
-	elseif getmetatable(value) == nil then                                        --[[VERBOSE]] verbose:marshal "table by copy"
-		StringStream.table(self, value, id)
-	else                                                                          --[[VERBOSE]] verbose:marshal "table by reference"
-		serialproxy(self, value, id)
-	end                                                                           --[[VERBOSE]] verbose:marshal(false)
+	else
+		local meta = getmetatable(value)
+		if meta and meta.__marshalcopy then                                         --[[VERBOSE]] verbose:marshal "table by copy"
+			StringStream.table(self, value, id)
+		else                                                                        --[[VERBOSE]] verbose:marshal "table by reference"
+			serialproxy(self, value, id)
+		end                                                                         --[[VERBOSE]] verbose:marshal(false)
+	end
 end
 
 local LuDOStream = oo.class({

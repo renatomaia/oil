@@ -89,9 +89,9 @@ end
 function remove(self, key, objtype)
 	local context = self.context
 	local result, except
-	if type(key) == "table" then key = rawget(key, "_key") or key end
+	if type(key) == "table" then key = rawget(key, "__key") or key end
 	if type(key) ~= "string" then
-		result, except = context.types:resolve(result)
+		result, except = context.types:resolve(objtype)
 		if result then
 			key = KeyFmt:format(self.prefix,
 			                    self:hashof(key),
