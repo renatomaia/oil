@@ -34,6 +34,7 @@
 local ipairs   = ipairs
 local newproxy = newproxy
 local pairs    = pairs
+local select   = select
 local type     = type
 local unpack   = unpack
 
@@ -154,6 +155,7 @@ function sendrequest(self, reference, operation, ...)
 				service_context      = Empty,
 				requesting_principal = Empty,
 				inputs               = operation.inputs,
+				n                    = select("#", ...),
 				...,
 			}
 			result.request_id = register(channel, result)
@@ -379,7 +381,7 @@ local _non_existent = giop.ObjectOperations._non_existent
 function OperationRequester:_non_existent(reference)
 	local result, except = self:sendrequest(reference, _non_existent)
 	if not result and (except.reason=="connect" or except.reason=="closed") then
-		result = ReplyFalse
+		result = ReplyTrue
 	end
 	return result, except
 end

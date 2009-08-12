@@ -65,7 +65,10 @@ function sendmsg(self, channel, type, message, types, values)                   
 	end
 	if types then
 		for index, type in ipairs(types) do
-			encoder:put(values[index], type)
+			local value
+			if index <= values.n then
+				value = values[index]
+			end
 		end
 	end
 	local stream = encoder:getdata()
