@@ -389,7 +389,7 @@ function OperationReplier:_non_existent(request)
 	local success, except = request.success, request[1]
 	if not success
 	and ( except.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" or
-		    except.reason == "closed" )
+		    except.reason=="connect" or except.reason == "closed" )
 	then
 		request.success = true
 		request.n = 1

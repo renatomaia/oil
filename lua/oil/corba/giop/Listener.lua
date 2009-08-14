@@ -282,6 +282,7 @@ function sendreply(self, request)                                               
 					ExceptionReplyTypes[2] = excepttype
 					request.service_context = Empty
 					request.reply_status = "USER_EXCEPTION"
+					request.n = 2
 					request[1] = except[1]
 					request[2] = except
 					success, except = self:sendmsg(channel, ReplyID, request,
