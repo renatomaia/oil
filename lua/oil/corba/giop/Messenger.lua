@@ -101,6 +101,13 @@ function sendmsg(self, channel, type, message, types, values)                   
 					channel:close()
 				end
 			end
+		-- else
+			--TODO:[maia] How can I assure that someone is actually listening
+			--            to this channel? Because if the server has closed
+			--            the connection, we have received a FIN, but the RST
+			--            may not have been received yet, so we may send data
+			--            to a socket no one is listening. (see page 132 of
+			--            R.Stevens,UNIX network programming,2nd ed,1997)
 		end
 	until success or except
 	if except then

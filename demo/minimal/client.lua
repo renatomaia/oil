@@ -1,25 +1,26 @@
-require "oil.iiop"  -- transport protocol used (CORBA default is IIOP)
-require "oil.ior"   -- for decode of stringfied IOR
-require "oil.proxy" -- use of sugar of proxy objects for method invokation
+
 --------------------------------------------------------------------------------
-local iface = oil.idl.interface{
+
+local idl = require "oil.corba.idl"
+
+local iface = idl.interface{
 	repID = "IDL:Hello/Hello:1.0",
 	name = "Hello",
 	members = {
-		quiet = oil.idl.attribute{ oil.idl.boolean },
-		count = oil.idl.attribute{ oil.idl.long, readonly=true },
-		say_hello_to = oil.idl.operation{
+		quiet = idl.attribute{ idl.boolean },
+		count = idl.attribute{ idl.long, readonly=true },
+		say_hello_to = idl.operation{
 			parameters = {
-				{ type = oil.idl.Object("IDL:Hello/Person:1.0"), name = "person" }
+				{ type = idl.Object("IDL:Hello/Person:1.0"), name = "person" }
 			},
-			result = oil.idl.string,
+			result = idl.string,
 		},
-		new_person = oil.idl.operation{
+		new_person = idl.operation{
 			parameters = {
-				{ type = oil.idl.string , name = "name" },
-				{ type = oil.idl.boolean, name = "male" },
+				{ type = idl.string , name = "name" },
+				{ type = idl.boolean, name = "male" },
 			},
-			result = oil.idl.Object("IDL:Hello/Person:1.0"),
+			result = idl.Object("IDL:Hello/Person:1.0"),
 		},
 	},
 }

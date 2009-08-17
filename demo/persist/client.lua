@@ -15,7 +15,8 @@ oil.main(function()
 		print()
 	end
 
-	hello:_set_quiet(false)
-	for i = 1, 3 do print(hello:say_hello_to("world")) end
+	--hello:_set_quiet(false)
+	--for i = 1, 3 do print(hello:say_hello_to("world")) end
+	repeat print(hello:say_hello_to("world")) until false
 	print("Object already said hello "..hello:_get_count().." times till now.")
 end)

@@ -10,13 +10,13 @@ querytime = .5
 
 Reference = "corbaloc::%s:%d/%s"
 function resolve(proc, port, objkey, nowait, nonarrow)
-	local proxy = oil.newproxy(
+	local proxy = orb:newproxy(
 		Reference:format(hosts[proc] or proc, port, objkey),
 		oil.corba.idl.object)
-	if nowait then return nonarrow and proxy or oil.narrow(proxy) end
+	if nowait then return nonarrow and proxy or orb:narrow(proxy) end
 	for i = 1, timeout/querytime do
 		if not proxy:_non_existent() then
-			return nonarrow and proxy or oil.narrow(proxy)
+			return nonarrow and proxy or orb:narrow(proxy)
 		end
 		oil.sleep(querytime)
 	end

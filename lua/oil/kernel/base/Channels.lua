@@ -72,7 +72,8 @@ end
 function CoSocketOps:signal(signal)
 	local thread = self[signal]
 	if thread then
-		return self.cosocket.scheduler:resume(thread)
+		self.cosocket.scheduler:resume(thread)
+		return true
 	end
 end
 

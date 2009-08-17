@@ -11,7 +11,7 @@ querytime = .5
 
 Reference = "%s@%s:%d"
 function resolve(proc, port, objkey, nowait)
-	local proxy = oil.newproxy(Reference:format(objkey, hosts[proc] or proc, port))
+	local proxy = orb:newproxy(Reference:format(objkey, hosts[proc] or proc, port))
 	if nowait then return proxy end
 	for i = 1, timeout/querytime do
 		local success, errmsg = oil.pcall(proxy._non_existent, proxy)

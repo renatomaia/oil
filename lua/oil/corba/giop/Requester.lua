@@ -162,11 +162,12 @@ function sendrequest(self, reference, operation, ...)
 		end                                                                         --[[VERBOSE]] verbose:invoke(true, "request ",result.request_id," for operation '",operation.name,"'")
 		result.object_key = reference._object
 		result.operation  = operation.name
-		result.opidl      = operation
+		result.inputs     = operation.inputs
 		result.outputs    = operation.outputs
+		result.exceptions = operation.exceptions
 		local success
 		success, except = self:sendmsg(channel, RequestID, result,
-		                               operation.inputs, result)
+		                               result.inputs, result)
 		if not success then
 			unregister(channel, result)
 			result = nil
@@ -183,8 +184,13 @@ end
 --------------------------------------------------------------------------------
 
 function reissue(self, channel, request)                                        --[[VERBOSE]] verbose:invoke(true, "reissue request for operation '",request.operation,"'")
+	request.request_id = register(channel, request)
 	local success, except = self:sendmsg(channel, RequestID, request,
-	                                     request.inputs, request)                 --[[VERBOSE]] verbose:invoke(false)
+	                                     request.inputs, request)
+	if not success then
+		unregister(channel, request)
+		result = nil
+	end                                                                           --[[VERBOSE]] verbose:invoke(false)
 	return success, except
 end
 
@@ -196,122 +202,124 @@ local SystemExceptionReason = {
 	["IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"] = "badkey",
 }
 
-function getreply(self, request, probe)                                         --[[VERBOSE]] verbose:invoke(true, "get a reply from communication channel")
-	local success, except = true, nil
-	if request.success == nil then
+function doreply(self, channel, header, decoder)
+	local replied = unregister(channel, header.request_id)
+	if replied then
+		local status = header.reply_status
+		if status == "NO_EXCEPTION" then                                              --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
+			local outputs = replied.outputs
+			replied.success = true
+			replied.n = #outputs
+			for index, output in ipairs(outputs) do
+				replied[index] = decoder:get(output)
+			end
+		else -- status ~= "NO_EXCEPTION"
+			local except
+			if status == "LOCATION_FORWARD" then                                        --[[VERBOSE]] verbose:invoke("forwarding request ",header.request_id," through other channel")
+				local success
+				success, except = self:getchannel(decoder:struct(IOR))
+				if success then
+					success, except = self:reissue(success, replied)
+					if success then
+						return true -- do not do anything else and notify that reply
+						            -- was handled successfully
+					end
+				end
+			else -- status ~= ["LOCATION_FORWARD"|"NO_EXCEPTION"]
+				if status == "USER_EXCEPTION" then                                        --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
+					local repId = decoder:string()
+					except = replied.exceptions[repId]
+					if except then
+						except = decoder:except(except)
+						except[1] = repId
+						except.reason = "userexception"
+						except = Exception(except)
+					else
+						except = Exception{ "UNKNOWN", minor_code_value = 0,
+							message = "unexpected user-defined exception",
+							reason = "badexception",
+							exception = repId,
+						}
+					end
+				elseif status == "SYSTEM_EXCEPTION" then                                  --[[VERBOSE]] verbose:invoke("got reply with system exception for ",header.request_id)
+					-- TODO:[maia] set its type to the proper SystemExcep.
+					except = decoder:struct(SystemExceptionIDL)
+					except[1] = except.exception_id
+					except.reason = SystemExceptionReason[ except[1] ]
+					except = Exception(except)
+				else -- status == ???
+					except = Exception{ "INTERNAL", minor_code_value = 0,
+						message = "unsupported reply status",
+						reason = "badreply",
+						status = status,
+					}
+				end -- of if status == "USER_EXCEPTION"
+			end -- of if status == "LOCATION_FORWARD"
+			replied.success = false
+			replied.n = 1
+			replied[1] = except
+		end -- of if status == "NO_EXCEPTION"
+		channel:signal(replied)
+		return true
+	else -- replied == nil
+		return nil, Exception{ "INTERNAL", minor_code_value = 0,
+			message = "unexpected request id",
+			reason = "requestid",
+			id = header.request_id,
+		}
+	end
+end
+
+function resetchannel(self, channel)
+	local success, except = channel:reset()
+	if success then                                                               --[[VERBOSE]] verbose:invoke(true, "reissue all pending requests")
+		for id, pending in pairs(channel) do
+			if type(id) == "number" then
+				unregister(channel, id)
+				success, except = self:reissue(success, pending)
+				if not success then break end
+			end
+		end                                                                         --[[VERBOSE]] verbose:invoke(false)
+	elseif except == "connection refused" then
+		except = Exception{ "COMM_FAILURE", minor_code_value = 1,
+			reason = "connect",
+			message = "unable to restablish channel",
+			channel = channel,
+		}
+	elseif except == "too many open connections" then
+		except = Exception{ "NO_RESOURCES", minor_code_value = 0,
+			reason = "resources",
+			message = "unbale to restablish channel, too many open connections",
+			channel = channel,
+		}
+	else -- unknown error
+		return success, except
+	end
+	-- set error for all requests that are still pending in this channel
+	for id, pending in pairs(channel) do
+		if type(id) == "number" then
+			unregister(channel, id)
+			pending.success = false
+			pending.n = 1
+			pending[1] = except
+			channel:signal(pending)
+		end
+	end
+	return true
+end
+
+function getreply(self, request, probe)
+	local success, except = true
+	while success and (request.success == nil) do
 		local channel = request.channel
 		if channel:trylock("read", not probe, request) then
-			local replied
-			while success and (replied~=request) and (not probe or channel:probe()) do
+			while (request.channel == channel) and (not probe or channel:probe()) do
 				local msgid, header, decoder = self:receivemsg(channel)
 				if msgid == ReplyID then
-					replied = unregister(channel, header.request_id)
-					if replied then
-						local status = header.reply_status
-						if status == "LOCATION_FORWARD" then                                --[[VERBOSE]] verbose:invoke("forwarding request ",header.request_id," through other channel")
-							success, except = self:getchannel(decoder:struct(IOR))
-							if success then
-								replied.request_id = register(channel, replied)
-								success, except = self:reissue(channel, replied)
-							end
-							if success then
-								replied = nil
-							else
-								replied.success = false
-								replied.n = 1
-								replied[1] = except
-								success, except = true, nil
-							end
-						else -- status ~= LOCATION_FORWARD
-							local operation = replied.opidl
-							if status == "NO_EXCEPTION" then                                  --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
-								local outputs = replied.outputs
-								replied.success = true
-								replied.n = #outputs
-								for index, output in ipairs(outputs) do
-									replied[index] = decoder:get(output)
-								end
-							else -- status ~= "NO_EXCEPTION"
-								replied.success = false
-								replied.n = 1
-								if status == "USER_EXCEPTION" then                              --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
-									local repId = decoder:string()
-									local exception = operation.exceptions[repId]
-									if exception then
-										exception = Exception(decoder:except(exception))
-										exception[1] = repId
-										replied[1] = exception
-									else
-										replied[1] = Exception{ "UNKNOWN", minor_code_value = 0,
-											message = "unexpected user-defined exception",
-											reason = "exception",
-											exception = exception,
-										}
-									end
-								elseif status == "SYSTEM_EXCEPTION" then                        --[[VERBOSE]] verbose:invoke("got reply with system exception for ",header.request_id)
-									-- TODO:[maia] set its type to the proper SystemExcep.
-									local exception = decoder:struct(SystemExceptionIDL)
-									exception[1] = exception.exception_id
-									exception.reason = SystemExceptionReason[ exception[1] ]
-									replied[1] = Exception(exception)
-								else -- status == ???
-									replied[1] = Exception{ "INTERNAL", minor_code_value = 0,
-										message = "unsupported reply status",
-										reason = "replystatus",
-										status = status,
-									}
-								end --[[ of if status == "USER_EXCEPTION"]]
-							end -- of if status == "NO_EXCEPTION"
-						end -- of if status == "LOCATION_FORWARD"
-						if replied then
-							local replier = self.OperationReplier[replied.operation]
-							if replier then
-								success, except = replier(self, replied)
-							end
-							channel:signal(replied)
-						end
-					else -- replied == nil
-						success, except = nil, Exception{ "INTERNAL", minor_code_value = 0,
-							message = "unexpected request id",
-							reason = "requestid",
-							id = header.request_id,
-						}
-					end
+					success, except = self:doreply(channel, header, decoder)
 				elseif (msgid == CloseConnectionID) or
 				       (msgid == nil and header.reason == "closed") then                --[[VERBOSE]] verbose:invoke("got remote request to close channel or channel is broken")
-					success, except = channel:reset()
-					if success then                                                       --[[VERBOSE]] verbose:invoke(true, "reissue all pending requests")
-						-- reissue pending all requests
-						for id, pending in pairs(channel) do
-							if type(id) == "number" then
-								success, except = self:reissue(channel, pending)
-								if not success then
-									unregister(channel, id)
-									pending.success = false
-									pending.n = 1
-									pending[1] = except
-									if pending == request then
-										replied = pending
-									else
-										channel:signal(pending)
-									end
-								end
-							end
-						end                                                                 --[[VERBOSE]] verbose:invoke(false)
-						success, except = true, nil
-					elseif except == "connection refused" then
-						except = Exception{ "COMM_FAILURE", minor_code_value = 1,
-							reason = "connect",
-							message = "unable to restablish channel",
-							channel = channel,
-						}
-					elseif except == "too many open connections" then
-						except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-							reason = "resources",
-							message = "unbale to restablish channel, too many open connections",
-							channel = channel,
-						}
-					end
+					success, except = self:resetchannel(channel)
 				elseif msgid == MessageErrorID then
 					success, except = nil, Exception{ "COMM_FAILURE", minor_code_value = 0,
 						reason = "server",
@@ -329,13 +337,19 @@ function getreply(self, request, probe)                                         
 				else -- not msgid and header.reason ~= ["version"|"closed"]
 					success, except = nil, header
 				end
-			end -- of while should continue receiving messages
+				if not success then break end
+			end -- of while current channel is from the reply should be read
 			channel:freelock("read")
-		end -- of if mutex:lockreceive(channel, request)
-	end --[[of if request.success == nil]]                                        --[[VERBOSE]] verbose:invoke(false)
+		end
+	end
+	if success then
+		local replier = self.OperationReplier[request.operation]
+		if replier then
+			success, except = replier(self, request)
+		end
+	end
 	return success, except
 end
-
 --------------------------------------------------------------------------------
 
 OperationRequester = {}
@@ -386,10 +400,10 @@ function OperationRequester:_non_existent(reference)
 	return result, except
 end
 function OperationReplier:_non_existent(request)
-	local success, except = request.success, request[1]
-	if not success
+	local except = request[1]
+	if not request.success
 	and ( except.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" or
-		    except.reason=="connect" or except.reason == "closed" )
+		    except.reason == "connect" or except.reason == "closed" )
 	then
 		request.success = true
 		request.n = 1

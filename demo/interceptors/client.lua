@@ -31,8 +31,8 @@ oil.main(function()
 			}
 		}
 	end
-	function profiler:receivereply(reply)
-		print("intercepting reply of opreation "..reply.operation_name)
+	function profiler:receivereply(reply, request)
+		print("intercepting reply of opreation "..request.operation_name)
 		print("\tsuccess:", reply.success)
 		print("\tresults:", unpack(reply, 1, reply.n))
 		for _, context in ipairs(reply.service_context) do

@@ -1,5 +1,3 @@
---OIL_FLAVOR = "corba;typed;base" -- test in non-concurrent mode
-
 LuaServer = {}
 function LuaServer:dostring(chunk)
 	assert(loadstring(chunk))()

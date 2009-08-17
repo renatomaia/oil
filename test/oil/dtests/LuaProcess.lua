@@ -1,5 +1,3 @@
-function package.preload.oil() return require "oil.compat" end
-
 local socket = require "socket"
 local Results = require "loop.test.Results"
 local Message = "%s\n%d\n%s\n"

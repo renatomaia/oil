@@ -1,5 +1,3 @@
---OIL_FLAVOR = "corba;typed;base" -- test in non-concurrent mode
-
 local oil = require "oil"
 
 oil.loadidl[[

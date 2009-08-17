@@ -38,8 +38,11 @@ local CodeBody = table.concat({
 	"local flavor = {}",
 	"for name in OIL_FLAVOR:gmatch('[^;]+') do flavor[name] = true end",
 	"require 'oil'",
-	"oil.ServerChannels.options = {reuseaddr=true}",
 	"require 'oil.dtests.%s'",
+	"oil.dtests.orb = oil.init{
+		flavor = OIL_FLAVOR,
+		tcpoptions = {reuseaddr=true},
+	}",
 	"oil.dtests.flavor = flavor",
 	"oil.dtests.hosts = {%s}",
 	"oil.dtests.checks = ...",
@@ -48,8 +51,10 @@ local CodeBody = table.concat({
 
 local Command = oo.class{
 	execpath = OIL_HOME.."/test/",
+	input = "",
+	output = "",
 	requirements = {},
-	flavor = "corba;cooperative;typed;base",
+	flavor = "cooperative;corba",
 }
 
 local Packages = { {"corba"}, {"ludo"} }
@@ -101,7 +106,16 @@ function newtest(self, infos)
 			if type(name) == "string" then
 				local command = Command(infos[name])
 				command.id = name
-				command.command = LuaProcess:format(hostname, portno)
+				command.command = "lua"
+				command.arguments = { "-eHOST=[["..hostname.."]]PORT="..portno,
+				                      "-loil.dtests.LuaProcess" }
+				command.environment = {
+					PATH = os.getenv("PATH"),
+					LUA_INIT = os.getenv("LUA_INIT"),
+					LUA_PATH = os.getenv("LUA_PATH"),
+					LUA_CPATH = os.getenv("LUA_CPATH"),
+					OIL_HOME = os.getenv("OIL_HOME"),
+				}
 				local process = helper:start(command)
 				HostTable[#HostTable+1] = TableEntry:format(name, process:_get_host())
 				Processes[name] = {
@@ -248,12 +262,12 @@ local Names = {
 	ludo = "LuDO",
 	corba = "CORBA",
 	cooperative = "Co",
-	intercepted = "Icept",
+	--intercepted = "Icept",
 	gencode = "Gen",
 }
 local Tags = {
 	"gencode",
-	"intercepted",
+	--"intercepted",
 	"cooperative",
 	"corba",
 	"ludo",
@@ -289,21 +303,21 @@ function newsuite(self, required)
 	local ludo = "ludo"
 	local corba = seq{
 		alt{"gencode"    , ""};
-		alt{"intercepted", ""};
+--		alt{"intercepted", ""};
 		"corba";
-		"typed";
+		--"typed";
 	}
 	local flavors = seq{
 		"";
 		alt{"cooperative", ""};
-		"base";
+		--"base";
 	};
 	local protocols = {
 		ludo    = true,
 		[corba] = true,
 	}
 	if required.gencode          then corba[1][2]      = nil end
-	if required.intercepted      then corba[2][2]      = nil end
+	--if required.intercepted      then corba[2][2]      = nil end
 	if required.cooperative      then flavors[2][2]    = nil end
 	if rawget(required, "ludo")  then protocols[corba] = nil end
 	if rawget(required, "corba") then protocols[ludo]  = nil end

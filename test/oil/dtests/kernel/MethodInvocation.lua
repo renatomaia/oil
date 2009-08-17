@@ -22,9 +22,9 @@ function Worker:work(timeout)
 	return timeout
 end
 
-oil.init{ port = 2809 }
-oil.newservant(Worker, "Worker", "worker")
-oil.run()
+local orb = oil.init{ port = 2809 }
+orb:newservant(Worker, "worker", "Worker")
+orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
