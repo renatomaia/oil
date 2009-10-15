@@ -18,10 +18,11 @@ local Serializer = require "loop.serial.Serializer"
 
 module("idl2lua", require "loop.compiler.Arguments")
 
-output   = "idl.lua"
-instance = "require('oil').init()"
+output  = "idl.lua"
+broker  = "require('oil').init()"
+include = {}
 
-_alias = {}
+_alias = { I = "include" }
 for name in pairs(_M) do
 	_alias[name:sub(1, 1)] = name
 end
@@ -31,17 +32,20 @@ local finish = select("#", ...)
 if not start or start ~= finish then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
 	io.stderr:write([[
-IDL Descriptor Pre-Loader 1.0  Copyright (C) 2006-2008 Tecgraf, PUC-Rio
+IDL Descriptor Pre-Parser 1.1  Copyright (C) 2006-2008 Tecgraf, PUC-Rio
 Usage: ]].._NAME..[[.lua [options] <idlfile>
 Options:
-	
-	-o, -output     Output file that should be generated. Its default is
-	                ']],output,[['.
-	
-	-i, -instance   ORB instance the IDL must be loaded to. Its default
-	                is ']],instance,[[' that denotes the instance returned
-	                by the 'oil' package.
-	
+  
+  -o, -output       Output file that should be generated. Its default is
+                    ']],output,[['.
+  
+  -b, -broker       ORB instance the IDL must be loaded to. Its default
+                    is ']],instance,[[' that denotes the instance returned
+                    by the 'oil' package.
+  
+  -I, i, -include   Adds a directory to the list of paths where the IDL files
+                    are searched.
+
 ]])
 	os.exit(1)
 end
@@ -77,14 +81,15 @@ stream[idl.basesof]      = "idl.basesof"
 stream[idl.Contents]     = "idl.Contents"
 stream[idl.ContainerKey] = "idl.ContainerKey"
 
-file:write(instance,[[.TypeRepository.types:register(
+local compiler = Compiler()
+compiler.default.incpath = include
+local compiled = stream:serialize(assert(luaidl.parsefile(select(start, ...),
+                                                          compiler.default)))
+
+file:write(broker,[[.TypeRepository.types:register(
 	setfenv(
 		function()
-			return ]])
-
-stream:serialize(luaidl.parsefile(select(start, ...), Compiler.DefaultOptions))
-
-file:write([[ 
+			return ]],compiled,[[ 
 		end,
 		{
 			idl = require "oil.corba.idl",
