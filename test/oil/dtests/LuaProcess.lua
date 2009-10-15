@@ -2,32 +2,28 @@ local socket = require "socket"
 local Results = require "loop.test.Results"
 local Message = "%s\n%d\n%s\n"
 local conn = assert(socket.connect(HOST, PORT))
-repeat
-	local results = Results()
-	local result, errmsg = conn:receive() -- get chunk name
+local results = Results()
+local result, errmsg = conn:receive() -- get chunk name
+if result then
+	local name = result
+	result, errmsg = conn:receive() -- get chunk size
 	if result then
-		local name = result
-		result, errmsg = conn:receive() -- get chunk size
+		result, errmsg = tonumber(result) -- convert size to number
 		if result then
-			result, errmsg = tonumber(result) -- convert size to number
+			result, errmsg = conn:receive(result) -- get code chunk
 			if result then
-				result, errmsg = conn:receive(result) -- get code chunk
+				result, errmsg = loadstring(result, name) -- compile code
 				if result then
-					result, errmsg = loadstring(result, name) -- compile code
+					result, errmsg = results:test(nil, result, results) -- run code
 					if result then
-						result, errmsg = results:test(nil, result, results) -- run code
-						if result then
-							result = "success"
-						elseif results:isfailure(errmsg) then
-							result = "failure"
-						else
-							result = "error"
-						end
+						result = "success"
+					elseif results:isfailure(errmsg) then
+						result = "failure"
 					else
-						result = "compile"
+						result = "error"
 					end
 				else
-					result = "protocol"
+					result = "compile"
 				end
 			else
 				result = "protocol"
@@ -38,5 +34,8 @@ repeat
 	else
 		result = "protocol"
 	end
-	errmsg = tostring(errmsg)
-until not conn:send(Message:format(result, #errmsg, errmsg))
+else
+	result = "protocol"
+end
+errmsg = tostring(errmsg)
+conn:send(Message:format(result, #errmsg, errmsg))
