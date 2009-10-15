@@ -1,16 +1,18 @@
 
+local assert = assert
 local error = error
 local type  = type
 
 local oil = require "oil"
-
+require "oil.dtests"
 module "oil.dtests"
 
-timeout = 10
+timeout = 3
 querytime = .5
 
-Reference = "%s@%s:%d"
-function resolve(proc, port, objkey, nowait)
+Reference = "%q,%q,%d\0"
+function resolve(proc, port, objkey, kind, nowait)
+	assert(orb ~= nil, "DTest not initialized")
 	local proxy = orb:newproxy(Reference:format(objkey, hosts[proc] or proc, port))
 	if nowait then return proxy end
 	for i = 1, timeout/querytime do

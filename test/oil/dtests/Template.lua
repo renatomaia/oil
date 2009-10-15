@@ -1,4 +1,3 @@
-local print = print
 
 local assert   = assert
 local error    = error
@@ -37,15 +36,13 @@ local CodeBody = table.concat({
 	"OIL_FLAVOR=%q",
 	"local flavor = {}",
 	"for name in OIL_FLAVOR:gmatch('[^;]+') do flavor[name] = true end",
-	"require 'oil'",
-	"require 'oil.dtests.%s'",
-	"oil.dtests.orb = oil.init{
-		flavor = OIL_FLAVOR,
-		tcpoptions = {reuseaddr=true},
-	}",
+	"if flavor['corba.intercepted'] then flavor.corba = true end",
+	"oil = oil or {}",
+	"oil.dtests = oil.dtests or {}",
 	"oil.dtests.flavor = flavor",
 	"oil.dtests.hosts = {%s}",
 	"oil.dtests.checks = ...",
+	"require 'oil.dtests.%s'",
 	"oil.main(function(...) %s\nend)",
 }, ";")
 
@@ -131,8 +128,8 @@ function newtest(self, infos)
 		for name, info in pairs(Processes) do
 			local code = CodeBody:format(
 				info.command.flavor,
-				getpackage(info.command.flavor),
 				table.concat(HostTable, ","),
+				getpackage(info.command.flavor),
 				info.code
 			)
 			assert(info.connection:send(Message:format(name, #code, code)))
@@ -259,16 +256,16 @@ end
 --[intercepted?;gencode?;corba;typed|ludo];cooperative?;base
 
 local Names = {
-	ludo = "LuDO",
-	corba = "CORBA",
-	cooperative = "Co",
-	--intercepted = "Icept",
 	gencode = "Gen",
+	cooperative = "Co",
+	["corba.intercepted"] = "IceptGIOP",
+	corba = "CORBA",
+	ludo = "LuDO",
 }
 local Tags = {
 	"gencode",
-	--"intercepted",
 	"cooperative",
+	"corba.intercepted",
 	"corba",
 	"ludo",
 }
@@ -302,10 +299,8 @@ function newsuite(self, required)
 	required = required or {}
 	local ludo = "ludo"
 	local corba = seq{
-		alt{"gencode"    , ""};
---		alt{"intercepted", ""};
-		"corba";
-		--"typed";
+		alt{"gencode"          , ""};
+		alt{"corba.intercepted", "corba"};
 	}
 	local flavors = seq{
 		"";
@@ -317,23 +312,48 @@ function newsuite(self, required)
 		[corba] = true,
 	}
 	if required.gencode          then corba[1][2]      = nil end
-	--if required.intercepted      then corba[2][2]      = nil end
+	if required.interceptedcorba then corba[2][2]      = nil end
 	if required.cooperative      then flavors[2][2]    = nil end
 	if rawget(required, "ludo")  then protocols[corba] = nil end
 	if rawget(required, "corba") then protocols[ludo]  = nil end
 	local suite = Suite()
+	
+	---[=[
+	
 	for protocol in pairs(protocols) do
 		flavors[1] = protocol
 		for client in flavors:combinations() do
 			for server in flavors:combinations() do
 				client = tostring(client)
 				server = tostring(server)
-				suite[getname(client, server)] = self:newtest{
+				local config = {
 					Client = { flavor = client },
 					Server = { flavor = server },
 				}
+				for name in pairs(self) do
+					if config[name] == nil then
+						config[name] = config.Server
+					end
+				end
+				suite[getname(client, server)] = self:newtest(config)
 			end
 		end
 	end
+	
+	--[[]=]
+	local client = "corba"
+	local server = "corba"
+	local config = {
+		Client = { flavor = client },
+		Server = { flavor = server },
+	}
+	for name in pairs(self) do
+		if config[name] == nil then
+			config[name] = config.Server
+		end
+	end
+	suite[getname(client, server)] = self:newtest(config)
+	--]]
+	
 	return suite
 end
