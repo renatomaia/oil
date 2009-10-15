@@ -31,6 +31,7 @@
 -- 	freesend(channel:object)
 --------------------------------------------------------------------------------
 
+local assert   = assert
 local ipairs   = ipairs
 local newproxy = newproxy
 local pairs    = pairs
@@ -64,13 +65,16 @@ local SystemExceptionIDL = giop.SystemExceptionIDL
 
 local Empty = {}
 
-local ChannelKey = newproxy()
+local COMPLETED_YES   = 0
+local COMPLETED_NO    = 1
+local COMPLETED_MAYBE = 2
 
 --------------------------------------------------------------------------------
 -- request id management for channels
 
 function register(channel, request)
 	local id = #channel + 1
+	request.request_id = id
 	request.channel = channel
 	channel[id] = request
 	return id
@@ -79,6 +83,7 @@ end
 function unregister(channel, id)
 	local request = channel[id]
 	if request then
+		request.request_id = nil
 		request.channel = nil
 		channel[id] = nil
 		return request
@@ -88,92 +93,97 @@ end
 --------------------------------------------------------------------------------
 
 function getchannel(self, reference)                                            --[[VERBOSE]] verbose:invoke(true, "get communication channel")
-	local channel, except = reference[ChannelKey]
-	if not channel then
-		for _, profile in ipairs(reference.profiles) do                             --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",profile.tag,"]")
-			local tag = profile.tag
-			local context = self.context
-			local channels = context.channels[tag]
-			local profiler = context.profiler[tag]
-			if channels and profiler then
-				profiler, except = profiler:decode(profile.profile_data)
-				if profiler then
-					reference._object = except
-					channel, except = channels:retrieve(profiler)
-					if channel then
-						reference[ChannelKey] = channel
-					elseif except == "connection refused" then
-						except = Exception{ "COMM_FAILURE", minor_code_value = 1,
-							reason = "connect",
-							message = "connection to profile refused",
-							profile = profiler,
-						}
-					elseif except == "too many open connections" then
-						except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-							reason = "resources",
-							message = "too many open connections by protocol",
-							protocol = tag,
-						}
-					end
+	local result, except = reference._channel
+	if result then                                                                --[[VERBOSE]] verbose:invoke(false, "reusing channel from preivous calls")
+		return reference._channel, reference._objectkey, reference._profile
+	end
+	for _, profile in ipairs(reference.profiles) do                               --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",profile.tag,"]")
+		local tag = profile.tag
+		local context = self.context
+		local channels = context.channels[tag]
+		local profiler = context.profiler[tag]
+		if channels and profiler then
+			profiler, except = profiler:decode(profile.profile_data)
+			if profiler then
+				reference._profiletag = tag
+				reference._profiledata = profiler
+				reference._objectkey = except
+				result, except = channels:retrieve(profiler)
+				if result then
+					reference._channel = result                                           --[[VERBOSE]] verbose:invoke(false, "got channel from profile with tag ",profile.tag,"]")
+					return result, reference._objectkey, reference._profile
+				elseif except == "connection refused" then
+					except = Exception{ "COMM_FAILURE",
+						minor_code_value = 1,
+						completion_status = COMPLETED_NO,
+						reason = "closed",
+						message = "connection to profile refused",
+						profile = profiler,
+					}
+				elseif except == "too many open connections" then
+					except = Exception{ "NO_RESOURCES",
+						minor_code_value = 0,
+						completion_status = COMPLETED_NO,
+						reason = "resources",
+						message = "too many open connections by protocol",
+						protocol = tag,
+					}
 				end
-				break
-	 		end
-		end
-		if not channel and not except then                                          --[[VERBOSE]] verbose:invoke("[no supported profile found]")
-		 	except = Exception{ "IMP_LIMIT", minor_code_value = 1,
-				message = "no supported GIOP profile found",
-				reason = "profiles",
-			}
-		end
+			end
+			break
+ 		end
+	end
+	if not except then                                                            --[[VERBOSE]] verbose:invoke("[no supported profile found]")
+	 	except = Exception{ "IMP_LIMIT",
+			minor_code_value = 1,
+			completion_status = COMPLETED_NO,
+			message = "no supported GIOP profile found",
+			reason = "profiles",
+		}
 	end                                                                           --[[VERBOSE]] verbose:invoke(false)
-	return channel, except
+	return nil, except
 end
 
 --------------------------------------------------------------------------------
 
-local OneWayRequest = {
-	service_context      = Empty,
-	request_id           = 0, -- reserved request ID
-	response_expected    = false,
-	object_key           = nil, -- defined later
-	operation            = nil, -- defined later
-	requesting_principal = Empty,
-	success              = true,
-	n                    = 0,
-}
+function makerequest(self, channel, objectkey, operation, ...)
+	local request = {
+		request_id           = 0,
+		response_expected    = not operation.oneway,
+		service_context      = Empty,
+		requesting_principal = Empty,
+		object_key           = objectkey,
+		operation            = operation.name,
+		inputs               = operation.inputs,
+		outputs              = operation.outputs,
+		exceptions           = operation.exceptions,
+		n                    = select("#", ...),
+		...,
+	}
+	if channel and request.response_expected then
+		register(channel, request)
+	end
+	return request
+end
 
 function sendrequest(self, reference, operation, ...)
-	local result, except = self:getchannel(reference)
-	if result then
-		local channel = result
-		if operation.oneway then
-			result = OneWayRequest
+	local channel, objectkey = self:getchannel(reference)
+	if channel then
+		local request = self:makerequest(channel, objectkey, operation, ...)        --[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",operation.name,"'")
+		local result, except = self:sendmsg(channel, RequestID, request,
+		                                    request.inputs, request)
+		if result then
+			if not request.response_expected then
+				request.success = true
+				request.n = 0
+			end
+			result, except = request, nil
 		else
-			result = {
-				request_id           = nil, -- defined below
-				response_expected    = true,
-				service_context      = Empty,
-				requesting_principal = Empty,
-				inputs               = operation.inputs,
-				n                    = select("#", ...),
-				...,
-			}
-			result.request_id = register(channel, result)
-		end                                                                         --[[VERBOSE]] verbose:invoke(true, "request ",result.request_id," for operation '",operation.name,"'")
-		result.object_key = reference._object
-		result.operation  = operation.name
-		result.inputs     = operation.inputs
-		result.outputs    = operation.outputs
-		result.exceptions = operation.exceptions
-		local success
-		success, except = self:sendmsg(channel, RequestID, result,
-		                               result.inputs, result)
-		if not success then
-			unregister(channel, result)
-			result = nil
+			unregister(channel, request.request_id)
 		end                                                                         --[[VERBOSE]] verbose:invoke(false)
+		return result, except
 	end
-	return result, except
+	return nil, objectkey
 end
 
 function newrequest(self, reference, operation, ...)
@@ -184,13 +194,12 @@ end
 --------------------------------------------------------------------------------
 
 function reissue(self, channel, request)                                        --[[VERBOSE]] verbose:invoke(true, "reissue request for operation '",request.operation,"'")
-	request.request_id = register(channel, request)
+	register(channel, request)
 	local success, except = self:sendmsg(channel, RequestID, request,
 	                                     request.inputs, request)
 	if not success then
-		unregister(channel, request)
-		result = nil
-	end                                                                           --[[VERBOSE]] verbose:invoke(false)
+		unregister(channel, request.request_id)
+	end                                                                           --[[VERBOSE]] verbose:invoke(false, "reissue",success and "d successfully" or " failed")
 	return success, except
 end
 
@@ -202,92 +211,118 @@ local SystemExceptionReason = {
 	["IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"] = "badkey",
 }
 
-function doreply(self, channel, header, decoder)
-	local replied = unregister(channel, header.request_id)
-	if replied then
-		local status = header.reply_status
-		if status == "NO_EXCEPTION" then                                              --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
-			local outputs = replied.outputs
-			replied.success = true
-			replied.n = #outputs
-			for index, output in ipairs(outputs) do
-				replied[index] = decoder:get(output)
+function doreply(self, replied, header, decoder)
+	local status = header.reply_status
+	if status == "NO_EXCEPTION" then                                              --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
+		local outputs = replied.outputs
+		replied.success = true
+		replied.n = #outputs
+		for index, output in ipairs(outputs) do
+			local ok, result = self.pcall(decoder.get, decoder, output)
+			if not ok then
+				assert(type(result) == "table", result)
+				return nil, result
 			end
-		else -- status ~= "NO_EXCEPTION"
-			local except
-			if status == "LOCATION_FORWARD" then                                        --[[VERBOSE]] verbose:invoke("forwarding request ",header.request_id," through other channel")
-				local success
-				success, except = self:getchannel(decoder:struct(IOR))
+			replied[index] = result
+		end
+	else -- status ~= "NO_EXCEPTION"
+		local except
+		if status == "LOCATION_FORWARD" then                                        --[[VERBOSE]] verbose:invoke("forwarding request ",header.request_id," through other channel")
+			local success
+			success, except = self:getchannel(decoder:struct(IOR))
+			if success then
+				success, except = self:reissue(success, replied)
 				if success then
-					success, except = self:reissue(success, replied)
-					if success then
-						return true -- do not do anything else and notify that reply
-						            -- was handled successfully
-					end
+					return true -- do not do anything else and notify that reply
+					            -- was handled successfully
 				end
-			else -- status ~= ["LOCATION_FORWARD"|"NO_EXCEPTION"]
-				if status == "USER_EXCEPTION" then                                        --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
-					local repId = decoder:string()
-					except = replied.exceptions[repId]
-					if except then
-						except = decoder:except(except)
-						except[1] = repId
-						except.reason = "userexception"
-						except = Exception(except)
-					else
-						except = Exception{ "UNKNOWN", minor_code_value = 0,
-							message = "unexpected user-defined exception",
-							reason = "badexception",
-							exception = repId,
-						}
-					end
-				elseif status == "SYSTEM_EXCEPTION" then                                  --[[VERBOSE]] verbose:invoke("got reply with system exception for ",header.request_id)
-					-- TODO:[maia] set its type to the proper SystemExcep.
-					except = decoder:struct(SystemExceptionIDL)
-					except[1] = except.exception_id
-					except.reason = SystemExceptionReason[ except[1] ]
+			end
+		else -- status ~= ["LOCATION_FORWARD"|"NO_EXCEPTION"]
+			if status == "USER_EXCEPTION" then                                        --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
+				local repId = decoder:string()
+				except = replied.exceptions[repId]
+				if except then
+					except = decoder:except(except)
+					except[1] = repId
 					except = Exception(except)
-				else -- status == ???
-					except = Exception{ "INTERNAL", minor_code_value = 0,
-						message = "unsupported reply status",
-						reason = "badreply",
-						status = status,
+				else
+					except = Exception{ "UNKNOWN",
+						minor_code_value = 0,
+						completion_status = COMPLETED_MAYBE,
+						message = "unexpected user-defined exception",
+						reason = "badexception",
+						exception = repId,
 					}
-				end -- of if status == "USER_EXCEPTION"
-			end -- of if status == "LOCATION_FORWARD"
-			replied.success = false
-			replied.n = 1
-			replied[1] = except
-		end -- of if status == "NO_EXCEPTION"
-		channel:signal(replied)
-		return true
-	else -- replied == nil
-		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "unexpected request id",
-			reason = "requestid",
-			id = header.request_id,
-		}
+				end
+			elseif status == "SYSTEM_EXCEPTION" then                                  --[[VERBOSE]] verbose:invoke("got reply with system exception for ",header.request_id)
+				-- TODO:[maia] set its type to the proper SystemExcep.
+				except = decoder:struct(SystemExceptionIDL)
+				except[1] = except.exception_id
+				except.reason = SystemExceptionReason[ except[1] ]
+				except = Exception(except)
+			else -- status == ???
+				except = Exception{ "INTERNAL",
+					minor_code_value = 0,
+					completion_status = COMPLETED_MAYBE,
+					message = "unsupported reply status",
+					reason = "badreply",
+					status = status,
+				}
+			end -- of if status == "USER_EXCEPTION"
+		end -- of if status == "LOCATION_FORWARD"
+		replied.success = false
+		replied.n = 1
+		replied[1] = except
+	end -- of if status == "NO_EXCEPTION"
+	local replier = self.OperationReplier[replied.operation]
+	if replier then
+		local success, except = replier(self, replied)
+		if not success then
+			return nil, except
+		end
 	end
+	return true
 end
 
 function resetchannel(self, channel)
 	local success, except = channel:reset()
 	if success then                                                               --[[VERBOSE]] verbose:invoke(true, "reissue all pending requests")
+		local requests = {}
 		for id, pending in pairs(channel) do
 			if type(id) == "number" then
 				unregister(channel, id)
-				success, except = self:reissue(success, pending)
-				if not success then break end
+				requests[#requests+1] = pending
 			end
-		end                                                                         --[[VERBOSE]] verbose:invoke(false)
+		end
+		local index = 1
+		repeat
+			local pending = requests[index]
+			if pending == nil then break end
+			success, except = self:reissue(channel, pending)
+			index = index + 1
+		until not success
+		if not success then
+			-- set error for all requests that are still pending in this channel
+			for i = index, #requests do
+				local pending = requests[i]
+				pending.success = false
+				pending.n = 1
+				pending[1] = except
+				channel:signal(pending)
+			end
+		end                                                                         --[[VERBOSE]] verbose:invoke(false, "reissue",success and "d successfully" or " failed")
 	elseif except == "connection refused" then
-		except = Exception{ "COMM_FAILURE", minor_code_value = 1,
-			reason = "connect",
+		except = Exception{ "COMM_FAILURE",
+			minor_code_value = 1,
+			completion_status = COMPLETED_MAYBE,
+			reason = "closed",
 			message = "unable to restablish channel",
 			channel = channel,
 		}
 	elseif except == "too many open connections" then
-		except = Exception{ "NO_RESOURCES", minor_code_value = 0,
+		except = Exception{ "NO_RESOURCES",
+			minor_code_value = 0,
+			completion_status = COMPLETED_MAYBE,
 			reason = "resources",
 			message = "unbale to restablish channel, too many open connections",
 			channel = channel,
@@ -295,38 +330,46 @@ function resetchannel(self, channel)
 	else -- unknown error
 		return success, except
 	end
-	-- set error for all requests that are still pending in this channel
-	for id, pending in pairs(channel) do
-		if type(id) == "number" then
-			unregister(channel, id)
-			pending.success = false
-			pending.n = 1
-			pending[1] = except
-			channel:signal(pending)
-		end
-	end
 	return true
 end
 
 function getreply(self, request, probe)
-	local success, except = true
-	while success and (request.success == nil) do
+	local success, except = true, nil
+	local continue = true
+	while continue and (request.success == nil) do
 		local channel = request.channel
 		if channel:trylock("read", not probe, request) then
-			while (request.channel == channel) and (not probe or channel:probe()) do
+			while request.channel == channel do
+				if probe and not channel:probe() then continue = false break end
 				local msgid, header, decoder = self:receivemsg(channel)
 				if msgid == ReplyID then
-					success, except = self:doreply(channel, header, decoder)
+					local replied = unregister(channel, header.request_id)
+					if replied then
+						success, except = self:doreply(replied, header, decoder)
+						channel:signal(replied)
+					else -- replied == nil
+						success, except = nil, Exception{ "INTERNAL",
+							minor_code_value = 0,
+							completion_status = COMPLETED_MAYBE,
+							message = "unexpected request id",
+							reason = "requestid",
+							id = header.request_id,
+						}
+					end
 				elseif (msgid == CloseConnectionID) or
 				       (msgid == nil and header.reason == "closed") then                --[[VERBOSE]] verbose:invoke("got remote request to close channel or channel is broken")
 					success, except = self:resetchannel(channel)
 				elseif msgid == MessageErrorID then
-					success, except = nil, Exception{ "COMM_FAILURE", minor_code_value = 0,
+					success, except = nil, Exception{ "COMM_FAILURE",
+						minor_code_value = 0,
+						completion_status = COMPLETED_MAYBE,
 						reason = "server",
 						message = "error in server message processing",
 					}
 				elseif MessageType[msgid] then
-					success, except = nil, Exception{ "INTERNAL", minor_code_value = 0,
+					success, except = nil, Exception{ "INTERNAL",
+						minor_code_value = 0,
+						completion_status = COMPLETED_MAYBE,
 						reason = "unexpected",
 						message = "unexpected GIOP message",
 						message = MessageType[msgid],
@@ -337,15 +380,9 @@ function getreply(self, request, probe)
 				else -- not msgid and header.reason ~= ["version"|"closed"]
 					success, except = nil, header
 				end
-				if not success then break end
+				if not success then continue = false break end
 			end -- of while current channel is from the reply should be read
 			channel:freelock("read")
-		end
-	end
-	if success then
-		local replier = self.OperationReplier[request.operation]
-		if replier then
-			success, except = replier(self, request)
 		end
 	end
 	return success, except
@@ -394,8 +431,11 @@ end
 local _non_existent = giop.ObjectOperations._non_existent
 function OperationRequester:_non_existent(reference)
 	local result, except = self:sendrequest(reference, _non_existent)
-	if not result and (except.reason=="connect" or except.reason=="closed") then
-		result = ReplyTrue
+	if result and result.success == false then
+		result, except = nil, result[1]
+	end
+	if not result and except.reason=="closed" then
+		result, except = ReplyTrue, nil
 	end
 	return result, except
 end
@@ -403,7 +443,7 @@ function OperationReplier:_non_existent(request)
 	local except = request[1]
 	if not request.success
 	and ( except.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" or
-		    except.reason == "connect" or except.reason == "closed" )
+		    except.reason == "closed" )
 	then
 		request.success = true
 		request.n = 1

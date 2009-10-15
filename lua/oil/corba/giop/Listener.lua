@@ -34,12 +34,13 @@
 -- 	member:table valueof(interface:table, name:string)
 --------------------------------------------------------------------------------
 
-local ipairs = ipairs
-local pairs  = pairs
-local select = select
-local type   = type
-local unpack = unpack
-local stderr = io and io.stderr
+local assert   = assert
+local ipairs   = ipairs
+local pairs    = pairs
+local select   = select
+local type     = type
+local unpack   = unpack
+local stderr   = io and io.stderr
 
 local table = require "table"
 
@@ -95,7 +96,7 @@ function setupaccess(self, configs)
 	end
 end
 
-function freeaccess(self, accesspoint)                                         --[[VERBOSE]] verbose:listen(true, "closing all channels with accesspoint ",accesspoint)
+function freeaccess(self, accesspoint)                                          --[[VERBOSE]] verbose:listen(true, "closing all channels with accesspoint ",accesspoint)
 	local channels = self.context.channels[accesspoint.tag or 0]
 	local result, except = channels:dispose(accesspoint)
 	if result then
@@ -151,7 +152,8 @@ local SysExBody = { n = 1, --[[defined later]] }
 function sysexreply(self, requestid, body)                                      --[[VERBOSE]] verbose:listen("new system exception ",body.exception_id," for request ",requestid)
 	SysExReply.request_id = requestid
 	SysExBody[1] = body
-	return ReplyID, SysExReply, SysExType, SysExBody
+	body.exception_id = body[1]
+	return SysExReply, SysExType, SysExBody
 end
 
 --------------------------------------------------------------------------------
@@ -159,75 +161,92 @@ end
 local Request = oo.class()
 
 function Request:params()
-	return unpack(self, 1, #self.member.inputs)
+	return unpack(self, 1, #self.inputs)
 end
 
 --------------------------------------------------------------------------------
 
-function bypass(self, channel, request, ...)
-	local result, except = true
-	request.bypassed = true
-	if request.response_expected ~= false then
-		result, except = self:sendmsg(channel, ...)
+function handlerequest(self, channel, header, decoder)
+	local context = self.context
+	local requestid = header.request_id
+	if not channel[requestid] then
+		header.objectkey = header.object_key
+		local target, iface = context.servants:retrieve(header.object_key)
+		if target then
+			header.target = target
+			header.interface = iface
+			local member = context.indexer:valueof(iface, header.operation)
+			if member then                                                            --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
+				header.member = member
+				header.n = #member.inputs
+				header.inputs = member.inputs
+				header.outputs = member.outputs
+				header.exceptions = member.exceptions
+				for index, input in ipairs(member.inputs) do
+					local ok, result = self.pcall(decoder.get, decoder, input)
+					if not ok then
+						assert(type(result) == "table", result)
+						header.success = false
+						header.n = 1
+						header[1] = result
+						break
+					end
+					header[index] = result
+				end
+			else                                                                      --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
+				header.success = false
+				header.n = 1
+				header[1] = Exception{
+					reason = "badoperation",
+					message = "servant with object_key does not decare operation",
+					object_key = header.object_key,
+					operation = header.operation,
+				}
+			end
+		else                                                                        --[[VERBOSE]] verbose:listen("got illegal object ",header.object_key)
+			header.success = false
+			header.n = 1
+			header[1] = Exception{
+				reason = "badkey",
+				message = "no servant found with object_key",
+				object_key = header.object_key,
+			}
+		end
+	else                                                                          --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
+		header.success = false
+		header.n = 1
+		header[1] = Exception{
+			reason = "badrequestid",
+			message = "provided request_id is already in use by a pending request",
+			request_id = header.request_id,
+		}
 	end
-	return result, except
+	if header.response_expected then
+		header.channel = channel
+		channel[requestid] = header                                                 --[[VERBOSE]] else verbose:listen "no response expected"
+	end
 end
-
---------------------------------------------------------------------------------
 
 function getrequest(self, channel, probe)                                       --[[VERBOSE]] verbose:listen(true, "get request from channel")
 	local context = self.context
 	local result, except = true, nil
 	if channel:trylock("read", not probe) then
 		if not probe or channel:probe() then
+			local bypassed = false
+			
 			local msgid, header, decoder = self:receivemsg(channel)
 			if msgid == RequestID then
-				local requestid = header.request_id
-				if not channel[requestid] then
-					local _, iface = context.servants:retrieve(header.object_key)
-					if _ then
-						local member = context.indexer:valueof(iface, header.operation)
-						if member then                                                      --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
-							for index, input in ipairs(member.inputs) do
-								header[index] = decoder:get(input)
-							end
-							header.n = #member.inputs
-							header.target = header.object_key
-							header.member = member
-							header.outputs = member.outputs
-							if header.response_expected then
-								header.channel = channel
-								channel[requestid] = header                                     --[[VERBOSE]] else verbose:listen "no response expected"
-							end
-							result = header
-						else                                                                --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
-							result, except = self:bypass(channel, header,
-								self:sysexreply(requestid, {
-									exception_id = "IDL:omg.org/CORBA/BAD_OPERATION:1.0",
-									minor_code_value  = 1, -- TODO:[maia] Which value?
-									completion_status = COMPLETED_NO,
-								}))
-						end
-					else                                                                  --[[VERBOSE]] verbose:listen("got illegal object ",header.object_key)
-						result, except = self:bypass(channel, header,
-							self:sysexreply(requestid, {
-								exception_id = "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0",
-								minor_code_value  = 1, -- TODO:[maia] Which value?
-								completion_status = COMPLETED_NO,
-							}))
-					end
-				else                                                                    --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
-					result, except = self:bypass(channel, header,
-						self:sysexreply(requestid, {
-							exception_id = "IDL:omg.org/CORBA/INTERNAL:1.0",
-							minor_code_value = 0, -- TODO:[maia] Which value?
-							completion_status = COMPLETED_NO,
-						}))
+				self:handlerequest(channel, header, decoder)
+				if header.success ~= nil then
+					result, except = self:sendreply(header)
+					bypassed = result
+				else
+					result, except = header, nil
 				end
 			elseif msgid == CancelRequestID then                                      --[[VERBOSE]] verbose:listen("got cancelling of request ",header.request_id)
 				channel[header.request_id] = nil
-				header.bypassed = true
-				result = true
+				result, except = true, nil
+				bypassed = true
 			elseif msgid == LocateRequestID then                                      --[[VERBOSE]] verbose:listen("got locate request ",header.request_id)
 				local reply = { request_id = header.request_id }
 				if context.servants:retrieve(header.object_key)
@@ -235,122 +254,124 @@ function getrequest(self, channel, probe)                                       
 					else reply.locate_status = "UNKNOWN_OBJECT"
 				end
 				reply[1] = reply
-				result, except = self:bypass(channel, header, LocateReplyID, reply)
+				result, except = self:sendmsg(channel, LocateReplyID, reply)
+				bypassed = result
 			elseif result == MessageErrorID then                                      --[[VERBOSE]] verbose:listen "got message error notification"
-				result, except = self:bypass(channel, header, CloseConnectionID)
+				result, except = self:sendmsg(channel, CloseConnectionID)
+				bypassed = result
 			elseif MessageType[msgid] then                                            --[[VERBOSE]] verbose:listen("got unknown message ",msgid,", sending message error notification")
-				result, except = self:bypass(channel, header, MessageErrorID)
+				result, except = self:sendmsg(channel, MessageErrorID)
+				bypassed = result
 			else
 				result, except = nil, header
 			end
-		
-			if result then
-				if header.bypassed then                                                 --[[VERBOSE]] verbose:listen(false, "reissuing request read")
-					return self:getrequest(channel, probe)
-				end
-			elseif except.reason == "closed" then                                     --[[VERBOSE]] verbose:listen("client closed the connection")
+			
+			if bypassed then                                                          --[[VERBOSE]] verbose:listen(false, "reissuing request read")
+				return self:getrequest(channel, probe)
+			elseif not result and except.reason == "closed" then                      --[[VERBOSE]] verbose:listen("client closed the connection")
 				result, except = true, nil
 			end
 		end
 		channel:freelock("read")
 	end                                                                           --[[VERBOSE]] verbose:listen(false)
-	
 	return result, except
 end
 
 --------------------------------------------------------------------------------
 
 local ExceptionReplyTypes = { idl.string }
+local ExceptionReplyBody = { n = 2, --[[defined later]] }
+
+function handlereply(self, request)
+	if request.success then                                                       --[[VERBOSE]] verbose:listen "got successful results"
+		request.service_context = Empty
+		request.reply_status = "NO_EXCEPTION"
+		return request, request.outputs, request
+	else
+		local requestid = request.request_id
+		local except = request[1]
+		local extype = type(except)
+		if extype == "table" then                                                   --[[VERBOSE]] verbose:listen("got exception ",except)
+			local excepttype = request.exceptions
+			excepttype = excepttype and excepttype[ except[1] ]
+			if excepttype then
+				request.service_context = Empty
+				request.reply_status = "USER_EXCEPTION"
+				ExceptionReplyTypes[2] = excepttype
+				ExceptionReplyBody[1] = except[1]
+				ExceptionReplyBody[2] = except
+				return request, ExceptionReplyTypes, ExceptionReplyBody
+			else
+				if except.reason == "badkey" then
+					except[1] = "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
+					except.minor_code_value  = 1
+					except.completion_status = COMPLETED_NO
+				elseif except.reason == "noimplement" then
+					except[1] = "IDL:omg.org/CORBA/NO_IMPLEMENT:1.0"
+					except.minor_code_value  = 1
+					except.completion_status = COMPLETED_NO
+				elseif except.reason == "badoperation" then
+					except[1] = "IDL:omg.org/CORBA/BAD_OPERATION:1.0"
+					except.minor_code_value  = 1
+					except.completion_status = COMPLETED_NO
+				elseif except.reason == "badrequestid" then
+					except[1] = "IDL:omg.org/CORBA/INTERNAL:1.0"
+					except.minor_code_value  = 1
+					except.completion_status = COMPLETED_NO
+				elseif not SystemExceptions[ except[1] ] then                           --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
+					except[1] = "IDL:omg.org/CORBA/UNKNOWN:1.0"
+					except.minor_code_value  = 0
+					except.completion_status = COMPLETED_MAYBE                            --[[VERBOSE]] else verbose:listen("got system exception ",except)
+				end
+				return self:sysexreply(requestid, except)
+			end
+		elseif extype == "string" then                                              --[[VERBOSE]] verbose:listen("got unexpected error ", except)
+			if stderr then stderr:write(except, "\n") end
+			return self:sysexreply(requestid, {
+				"IDL:omg.org/CORBA/UNKNOWN:1.0",
+				minor_code_value = 0,
+				completion_status = COMPLETED_MAYBE,
+				message = "servant error: "..except,
+				reason = "servant",
+				operation = operation,
+				servant = servant,
+				error = except,
+			})
+		else                                                                        --[[VERBOSE]] verbose:listen("got illegal exception ", except)
+			return self:sysexreply(requestid, {
+				"IDL:omg.org/CORBA/UNKNOWN:1.0",
+				minor_code_value = 0,
+				completion_status = COMPLETED_MAYBE,
+				message = "invalid exception, got "..extype,
+				reason = "exception",
+				exception = except,
+			})
+		end
+	end
+end
 
 function sendreply(self, request)                                               --[[VERBOSE]] verbose:listen(true, "got reply for request ",request.request_id)
-	local success, except = request.success
+	local success, except = true, nil
 	local channel = request.channel
 	local requestid = request.request_id
 	if channel and channel[requestid] == request then
-		local member = request.member
-		if success then                                                             --[[VERBOSE]] verbose:listen "got successful results"
-			request.service_context = Empty
-			request.reply_status = "NO_EXCEPTION"
-			success, except = self:sendmsg(channel, ReplyID, request,
-			                               request.outputs, request)
-		else
-			except = request[1]
-			local extype = type(except)
-			if extype == "table" then                                                 --[[VERBOSE]] verbose:listen("got exception ",except)
-				local excepttype = member.exceptions[ except[1] ]
-				if excepttype then
-					ExceptionReplyTypes[2] = excepttype
-					request.service_context = Empty
-					request.reply_status = "USER_EXCEPTION"
-					request.n = 2
-					request[1] = except[1]
-					request[2] = except
-					success, except = self:sendmsg(channel, ReplyID, request,
-					                               ExceptionReplyTypes, request)
-				else
-					if SystemExceptions[ except[1] ] then                                 --[[VERBOSE]] verbose:listen("got system exception ",except)
-						except.exception_id = except[1]
-					elseif except.reason == "badkey" then
-						except.exception_id = "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
-						except.minor_code_value  = 1
-						except.completion_status = COMPLETED_NO
-					elseif except.reason == "noimplement" then
-						except.exception_id = "IDL:omg.org/CORBA/NO_IMPLEMENT:1.0"
-						except.minor_code_value  = 1
-						except.completion_status = COMPLETED_NO
-					elseif except.reason == "badoperation" then
-						except.exception_id = "IDL:omg.org/CORBA/BAD_OPERATION:1.0"
-						except.minor_code_value  = 1
-						except.completion_status = COMPLETED_NO
-					else                                                                  --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
-						except.exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0"
-						except.minor_code_value  = 0
-						except.completion_status = COMPLETED_MAYBE
-					end
-					success, except = self:sendmsg(channel,
-						self:sysexreply(requestid, except))
-				end
-			elseif extype == "string" then                                            --[[VERBOSE]] verbose:listen("got unexpected error ", except)
-				if stderr then stderr:write(except, "\n") end
-				success, except = self:sendmsg(channel,
-					self:sysexreply(requestid, {
-						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
-						minor_code_value = 0,
-						completion_status = COMPLETED_MAYBE,
-						message = "servant error: "..except,
-						reason = "servant",
-						operation = operation,
-						servant = servant,
-						error = except,
-					}))
-			else                                                                      --[[VERBOSE]] verbose:listen("got illegal exception ", except)
-				success, except = self:sendmsg(channel,
-					self:sysexreply(requestid, {
-						exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
-						minor_code_value = 0,
-						completion_status = COMPLETED_MAYBE,
-						message = "invalid exception, got "..extype,
-						reason = "exception",
-						exception = except,
-					}))
-			end
-		end
+		success, except = self:sendmsg(channel, ReplyID,
+		                               self:handlereply(request))
 		if success then
 			channel[requestid] = nil
-			if channel.freed and table.maxn(channel) == 0 then                      --[[VERBOSE]] verbose:listen "all pending requests replied, connection being closed"
+			if channel.freed and table.maxn(channel) == 0 then                        --[[VERBOSE]] verbose:listen "all pending requests replied, connection being closed"
 				success, except = self:sendmsg(channel, CloseConnectionID)
 			end
 		elseif SystemExceptions[ except[1] ] then                                   --[[VERBOSE]] verbose:listen("got system exception ",except," at reply send")
-			except.exception_id = except[1]
 			except.completion_status = COMPLETED_YES
-			success, except = self:sendmsg(channel,
-				self:sysexreply(requestid, except))
+			success, except = self:sendmsg(channel, ReplyID,
+			                               self:sysexreply(requestid, except))
 		end
-	else
+	else                                                                          --[[VERBOSE]] verbose:listen("no pending request found with id ",requestid,", reply discarted")
 		success = true
-	end                                                                           --[[VERBOSE]] verbose:listen(false)
-	if not success and except.reason ~= "closed" then
-		success, except = true, nil
 	end
+	if not success and except.reason == "closed" then
+		success, except = true, nil
+	end                                                                           --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully sent" or "failed", except)
 	return success, except
 end
