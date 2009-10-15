@@ -26,10 +26,8 @@
 -- 	input:table, output:table select([input:table], [output:table], [timeout:number])
 --------------------------------------------------------------------------------
 
-local next   = next
-local pairs  = pairs
-local select = select
-local type   = type
+local pairs = pairs
+local type  = type
 
 local tabop       = require "loop.table"
 local ObjectCache = require "loop.collection.ObjectCache"

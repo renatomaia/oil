@@ -66,11 +66,11 @@ function resolve(self, reference, ...)                                          
 	local servants = context.servants
 	if servants then
 		result, except = context.referrer:islocal(reference, servants.accesspoint)
-		if result then                                                              --[[VERBOSE]] verbose:unmarshal "local object implementation restored"
+		if result then                                                              --[[VERBOSE]] verbose:proxies("local object with key '",result,"' restored")
 			result = servants:retrieve(result)
 		end
 	end
-	if not result then
+	if not result then                                                            --[[VERBOSE]] verbose:proxies("new proxy created for reference", reference)
 		result, except = self:newproxy(reference, ...)
 	end                                                                           --[[VERBOSE]] verbose:proxies(false)
 	return result, except
