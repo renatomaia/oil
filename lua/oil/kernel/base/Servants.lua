@@ -31,9 +31,10 @@ local luatostring  = tostring
 local type         = type
 
 local table = require "loop.table"
-local ObjectCache = require "loop.collection.ObjectCache"                       --[[VERBOSE]] local verbose = require "oil.verbose"
+local ObjectCache = require "loop.collection.ObjectCache"
+
 local oo = require "oil.oo"
-local Exception = require "oil.Exception"
+local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.kernel.base.Servants", oo.class)
 
@@ -90,10 +91,15 @@ end
 function removeentry(self, key)
 	local map = self.map
 	local entry = map[key]
-	if entry ~= nil then
+	if entry ~= nil then                                                          --[[VERBOSE]] verbose:servants("object ",entry," with key ",key," removed")
 		map[key] = nil
 		return entry
 	end
+	return nil, Exception{
+		reason = "usedkey",
+		message = "unknown object key",
+		key = key,
+	}
 end
 
 function hashof(self, object)
@@ -130,9 +136,26 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+function resolvekey(self, object)
+	local key = nil
+	local meta = getmetatable(object)
+	if type(object) == "table" or (meta ~= nil and meta.__index) then
+		key = object.__objkey
+	end
+	if key == nil and meta ~= nil then
+		 key = meta.__objkey
+	end
+	if key == nil then
+		key = self.prefix..self:hashof(object)
+	end
+	return key
+end
+
 function register(self, object, key, ...)
 	local context = self.context
-	key = key or self.prefix..self:hashof(object)
+	if key == nil then
+		key = self:resolvekey(object)
+	end
 	local result, except = self:addentry(key, object, ...)
 	if result then
 		result, except = context.referrer:newreference(self.accesspoint, key, ...)
@@ -162,18 +185,19 @@ function register(self, object, key, ...)
 	return result, except
 end
 
-function remove(self, object)
-	local key
-	if type(object) == "table" then
-		key = rawget(object, "__key") or object
-	end
-	if type(key) ~= "string" then
-		key = object.__objkey
-		if key == nil then
-			local meta = getmetatable(object)
-			if meta then key = meta.__objkey end
-			if key == nil then
-				key = self.prefix..self:hashof(key)
+function remove(self, key)
+	local keytype = type(key)
+	if keytype ~= "string" then
+		local object = key
+		if keytype == "table" then
+			key = rawget(object, "__key") -- is it a servant?
+			keytype = type(key)
+		end
+		if keytype ~= "string" then
+			local except
+			key, except = self:resolvekey(object)
+			if not key then                                                           --[[VERBOSE]] verbose:servants("unbale to identify key of object ",entry)
+				return nil, except
 			end
 		end
 	end

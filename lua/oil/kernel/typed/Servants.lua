@@ -64,46 +64,73 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local KeyFmt = "%s%s%s"
-
-function register(self, object, key, type)
-	local context = self.context
-	local metatable = getmetatable(object)
-	if metatable then
-		type = object.__type   or metatable.__type   or type
-		key  = object.__objkey or metatable.__objkey or key
-	else
-		type = object.__type   or type
-		key  = object.__objkey or key
+function resolvetype(self, object)
+	local objtype = nil
+	local meta = getmetatable(object)
+	if type(object) == "table" or (meta ~= nil and meta.__index) then
+		objtype = object.__type
 	end
-	local result, except = context.types:resolve(type)
-	if result then
-		key = key or KeyFmt:format(self.prefix,
-		                           self:hashof(object),
-		                           self:hashof(result))
-		result, except = Servants.register(self, object, key, result)
+	if objtype == nil and meta ~= nil then
+		 objtype = meta.__type
 	end
-	return result, except
+	return objtype
 end
 
-function remove(self, key, objtype)
+function resolvekey(self, object, objtype)
+	local key = nil
+	local meta = getmetatable(object)
+	if type(object) == "table" or (meta ~= nil and meta.__index) then
+		key = object.__objkey
+	end
+	if key == nil and meta ~= nil then
+		 key = meta.__objkey
+	end
+	if key == nil and objtype ~= nil then
+		key = self.prefix..self:hashof(object)..self:hashof(objtype)
+	end
+	return key
+end
+
+function register(self, object, objkey, objtype)
+	local except
+	if objtype == nil then
+		objtype = self:resolvetype(object)
+	end
+	objtype, except = self.context.types:resolve(objtype)
+	if not objtype then
+		return nil, except
+	end
+	if objkey == nil then
+		objkey = self:resolvekey(object, objtype)
+	end
+	return Servants.register(self, object, objkey, objtype)
+end
+
+function remove(self, objkey, objtype)
 	local context = self.context
-	local result, except
-	if type(key) == "table" then key = rawget(key, "__key") or key end
-	if type(key) ~= "string" then
-		result, except = context.types:resolve(objtype)
-		if result then
-			key = KeyFmt:format(self.prefix,
-			                    self:hashof(key),
-			                    self:hashof(result))
-		else
-			key = nil
+	local keytype = type(objkey)
+	if keytype ~= "string" then
+		local object = objkey
+		if keytype == "table" then
+			objkey = rawget(object, "__key")
+			keytype = type(objkey)
+		end
+		if keytype ~= "string" then
+			objkey = self:resolvekey(object)
+			if objkey == nil then
+				if objtype == nil then
+					objtype = self:resolvetype(object)
+				end
+				local except
+				objtype, except = self.context.types:resolve(objtype)
+				if not objtype then                                                     --[[VERBOSE]] verbose:servants("unable to identify type of object ",object)
+					return nil, except
+				end
+				objkey = self.prefix..self:hashof(object)..self:hashof(objtype)
+			end
 		end
 	end
-	if key then
-		result, except = self:removeentry(key)
-	end
-	return result, except
+	return self:removeentry(objkey)
 end
 
 function retrieve(self, key)
