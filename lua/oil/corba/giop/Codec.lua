@@ -8,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.4                                                               --
+-- Release: 0.5                                                               --
 -- Title  : Mapping of Lua values into Common Data Representation (CDR)       --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------

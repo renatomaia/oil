@@ -8,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.4 alpha                                                         --
+-- Release: 0.5 alpha                                                         --
 -- Title  : Interoperable Naming Service                                      --
 -- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>                       --
 --------------------------------------------------------------------------------

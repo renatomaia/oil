@@ -8,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua                                                  --
--- Release: 0.4                                                               --
+-- Release: 0.5                                                               --
 -- Title  : Server-side CORBA GIOP Protocol                                   --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------

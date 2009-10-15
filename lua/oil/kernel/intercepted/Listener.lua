@@ -12,8 +12,8 @@ __index = Wrapper.__index
 
 function getrequest(self, channel, probe)
 	local result, except = self.__object:getrequest(channel, probe)
-	if result then
-		local request = {                                                           --[[VERBOSE]] verbose:interceptors(true, "intercepting request being sent")
+	if result then                                                                --[[VERBOSE]] verbose:interceptors(true, "intercepting request being sent")
+		local request = {
 			target    = result.objectkey,
 			operation = result.operation,
 			n         = result.n,

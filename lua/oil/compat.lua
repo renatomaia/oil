@@ -8,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.4 alpha                                                         --
+-- Release: 0.5 alpha                                                         --
 -- Title  : OiL main programming interface (API)                              --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ local OIL_FLAVOR = OIL_FLAVOR
 
 module "oil"
 
-VERSION = "OiL 0.4 beta"
+VERSION = "OiL 0.5 beta"
 
 --------------------------------------------------------------------------------
 -- Creates and assembles OiL components to compose an ORB instance.

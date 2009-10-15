@@ -8,7 +8,7 @@
 ----------------------- An Object Request Broker in Lua ------------------------
 --------------------------------------------------------------------------------
 -- Project: OiL - ORB in Lua                                                  --
--- Release: 0.4                                                               --
+-- Release: 0.5                                                               --
 -- Title  : IIOP Profile Encoder/Decoder                                      --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------

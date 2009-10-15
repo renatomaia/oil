@@ -43,7 +43,7 @@ LDFLAGS= /nologo /LIBPATH:$(LUA_LIB) $(MYLDFLAGS)
 RM= -del
 LBT= lib
 
-V= 0.4
+V= 0.5
 
 LUA= $(LUA_BIN)\lua.exe -epackage.path=[[../lua/?.lua]]
 

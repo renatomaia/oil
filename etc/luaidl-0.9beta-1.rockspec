@@ -1,7 +1,7 @@
 package = "LuaIDL"
-version = "0.8.9beta-1"
+version = "0.9beta-1"
 source = {
-	url = "http://luaforge.net/frs/download.php/3543/luaidl-0.8.9-beta.tar.gz",
+	url = "http://www.tecgraf.puc-rio.br/~maia/oil/packs/v05/luaidl-0.9-beta.tar.gz",
 }
 description = {
 	summary = "A OMG IDL Compiler Front End",
@@ -25,10 +25,10 @@ build = {
 	type = "none",
 	install = {
 		lua = {
-			["luaidl"] = "luaidl.lua",
-			["luaidl.pre"] = "luaidl/pre.lua",
 			["luaidl.lex"] = "luaidl/lex.lua",
+			["luaidl.pre"] = "luaidl/pre.lua",
 			["luaidl.sin"] = "luaidl/sin.lua",
+			["luaidl"] = "luaidl.lua",
 		},
 	},
 }

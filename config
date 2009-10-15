@@ -64,9 +64,9 @@ OILBIT= oilbit
 OILALL= oilall
 
 vLOOP= 2.3
-vLIDL= 0.8.9
+vLIDL= 0.9
 vSOCK= 2.0.2
-vOIL=  0.4
+vOIL=  0.5
 
 CLIBS= $(LUASOCKET).$(vSOCK) \
        $(OILBIT).$(vOIL)
