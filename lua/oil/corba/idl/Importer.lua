@@ -39,7 +39,9 @@ local idl      = require "oil.corba.idl"
 local iridl    = require "oil.corba.idl.ir"
 local Registry = require "oil.corba.idl.Registry"                               --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.corba.idl.Importer", oo.class)
+module "oil.corba.idl.Importer"
+
+oo.class(_M, Registry)
 
 function context(self, context)
 	self.context = context
@@ -199,6 +201,6 @@ function resolve(self, typeref)
 	if type(typeref) == "table" and typeref.__reference then
 		return self:register(typeref)
 	else
-		return self.context.__component:resolve(typeref)
+		return Registry.resolve(self, typeref)
 	end
 end
