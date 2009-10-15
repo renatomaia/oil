@@ -1,7 +1,7 @@
 local error        = error
 local getmetatable = getmetatable
 local rawget       = rawget
-local unpack       = unpack
+local unpack       = unpack                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.kernel.base.Proxies.utils"
 

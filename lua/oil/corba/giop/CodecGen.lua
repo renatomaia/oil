@@ -334,7 +334,7 @@ function Decoder:get(idltype)
 			idltype.unmarshall = unmarshall
 		else                                                                        --[[VERBOSE]] verbose:marshal("using dynamic unmarshaller for type ",idltype._type)
 			unmarshall = self[type] or
-			             assert.illegal(type, "supported type", "MARSHALL")
+			             assert.illegal(type, "supported type", "MARSHAL")
 		end                                                                         --[[VERBOSE]] else verbose:marshal("generated unmarshaller found for type ",idltype._type)
 	end
 	return unmarshall(self, idltype)
@@ -557,7 +557,7 @@ function Encoder:put(value, idltype)
 			idltype.marshall = marshall
 		else                                                                        --[[VERBOSE]] verbose:marshal("using dynamic marshaller for type ",idltype._type)
 			marshall = self[type] or
-			           assert.illegal(type, "supported type", "MARSHALL")
+			           assert.illegal(type, "supported type", "MARSHAL")
 		end                                                                         --[[VERBOSE]] else verbose:marshal("generated marshaller found for type ",idltype._type)
 	end
 	return marshall(self, value, idltype)

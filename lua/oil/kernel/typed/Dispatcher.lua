@@ -36,7 +36,7 @@ context = false
 
 function dispatch(self, request)
 	local context = self.context
-	local object, type = context.servants:retrieve(request.target)
+	local object, type = context.servants:retrieve(request.objectkey)
 	if object then
 		local opname = request.operation
 		local opinfo = context.indexer:valueof(type, opname)

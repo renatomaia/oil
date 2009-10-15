@@ -307,7 +307,7 @@ function Decoder:jump(shift)
 	local cursor = self.cursor
 	self.cursor = cursor + shift
 	if self.cursor - 1 > #self.data then
-		assert.illegal(self.data, "data stream, insufficient data", "MARSHALL")
+		assert.illegal(self.data, "data stream, insufficient data", "MARSHAL")
 	end
 	return cursor
 end
@@ -315,7 +315,7 @@ end
 function Decoder:get(idltype)
 	local unmarshall = self[idltype._type]
 	if not unmarshall then
-		assert.illegal(idltype._type, "supported type", "MARSHALL")
+		assert.illegal(idltype._type, "supported type", "MARSHAL")
 	end
 	return unmarshall(self, idltype)
 end
@@ -342,7 +342,7 @@ function Decoder:indirection(unmarshall, ...)
 		pos = (self.start - 1) + self.cursor
 		value = history[pos + self:long()]                                          --[[VERBOSE]] verbose:unmarshal("got indirection to previously unmarshaled value.")
 		if value == nil then
-			assert.illegal(nil, "indirection offset", "MARSHALL")
+			assert.illegal(nil, "indirection offset", "MARSHAL")
 		end
 	else
 		value = unmarshall(self, history, pos, tag, ...)
@@ -506,9 +506,9 @@ Decoder.interface = Decoder.Object
 local function gettype(decoder, storage, key, kind)
 	local tcinfo = TypeCodeInfo[kind]
 	
-	if tcinfo == nil then assert.illegal(kind, "type code", "MARSHALL") end       --[[VERBOSE]] verbose:unmarshal("TypeCode defines a ",tcinfo.name)
+	if tcinfo == nil then assert.illegal(kind, "type code", "MARSHAL") end       --[[VERBOSE]] verbose:unmarshal("TypeCode defines a ",tcinfo.name)
 	if tcinfo.unhandled then
-		assert.illegal(tcinfo.name, "supported type code", "MARSHALL")
+		assert.illegal(tcinfo.name, "supported type code", "MARSHAL")
 	end
 	local value = tcinfo.idl
 	
@@ -588,7 +588,7 @@ end
 function Encoder:put(value, idltype)
 	local marshall = self[idltype._type]
 	if not marshall then
-		assert.illegal(idltype._type, "supported type", "MARSHALL")
+		assert.illegal(idltype._type, "supported type", "MARSHAL")
 	end
 	return marshall(self, value, idltype)
 end
@@ -698,7 +698,7 @@ function Encoder:any(value)                                                     
 end
 
 local NullReference = { type_id = "", profiles = { n=0 } }
-function Encoder:Object(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype)
+function Encoder:Object(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	local reference
 	if value == nil then
 		reference = NullReference
@@ -711,10 +711,11 @@ function Encoder:Object(value, idltype)                                         
 		else
 			assert.type(value, "table", "object reference", "MARSHAL")
 			reference = value.__reference
-			if not reference then
+			if not reference or reference == value then
 				local servants = self.context.servants
 				if servants then                                                        --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
-					value = assert.results(servants:register(value, nil, idltype))        --[[VERBOSE]] verbose:marshal(false)
+					local objtype = servants:resolvetype(value) or idltype
+					value = assert.results(servants:register(value, nil, objtype))        --[[VERBOSE]] verbose:marshal(false)
 					reference = value.__reference
 				else
 					assert.illegal(value, "Object, unable to create from value", "MARHSALL")
@@ -893,7 +894,7 @@ function Encoder:TypeCode(value)                                                
 	local kind   = TypeCodes[value._type]
 	local tcinfo = TypeCodeInfo[kind]
 
-	if not kind then assert.illegal(value, "idl type", "MARSHALL") end
+	if not kind then assert.illegal(value, "idl type", "MARSHAL") end
 	
 	if tcinfo.type == "empty" then
 		self:ulong(kind)

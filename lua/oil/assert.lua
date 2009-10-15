@@ -45,8 +45,8 @@ function type(value, expected, description, except)
 		return true
 	else
 		local checker = TypeCheckers[expected]
-		if checker and checker(value) then
-			return true
+		if checker then
+			return checker(value)
 		else
 			for pattern, checker in pairs(TypeCheckers) do
 				local result = expected:match(pattern)

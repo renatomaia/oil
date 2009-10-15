@@ -13,8 +13,11 @@ completion_status = 2
 
 function __init(self, except, ...)
 	if except then
-		local name = except[1]
-		except[1] = giop.SystemExceptionIDs[name] or name
+		local sysex = giop.SystemExceptionIDs[ except[1] ]
+		if sysex then
+			except[1] = sysex
+			except.exception_id = sysex
+		end
 	end
 	return Exception.__init(self, except, ...)
 end

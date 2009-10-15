@@ -47,7 +47,7 @@ function output(self, output)
 	self.viewer.output = output
 end
 
-groups.broker = { "acceptor", "dispatcher", "proxies" }
+groups.broker = { "acceptor", "dispatcher", "servants", "proxies" }
 groups.communication = { "mutex", "invoke", "listen", "message", "channels" }
 groups.transport = { "marshal", "unmarshal" }
 groups.idltypes = { "idl", "repository" }

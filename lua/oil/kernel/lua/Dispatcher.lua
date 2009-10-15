@@ -50,7 +50,7 @@ local Operations = {
 --------------------------------------------------------------------------------
 
 function dispatch(self, request)
-	local object = self.context.servants:retrieve(request.target)
+	local object = self.context.servants:retrieve(request.objectkey)
 	if object then
 		local method = Operations[request.operation]
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",request.operation,unpack(request, 1, request.n))

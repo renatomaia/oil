@@ -110,17 +110,15 @@ end
 function excepthandler(self, handler, type)                                     --[[VERBOSE]] verbose:proxies("setting exception handler for proxies of ",type)
 	local result, except = true
 	local context = self.context
-	if type then
+	if type == nil then
+		result, except = Proxies.excepthandler(self, handler)
+	else
 		result, except = context.types:resolve(type)
-		if result then type = result end
-	end
-	if result then
-		if type then
+		if result then
+			type = result
 			local class = self.classes[type]
 			class.__exceptions = handler
 			result, except = class, nil
-		else
-			result, except = Proxies.excepthandler(self, handler)
 		end
 	end
 	return result, except

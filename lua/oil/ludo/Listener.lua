@@ -59,7 +59,7 @@ function putchannel(self, channel)                                              
 	return channel:release()
 end
 
-function freechannel(self, channel)                                            --[[VERBOSE]] verbose:listen "close channel"
+function freechannel(self, channel)                                             --[[VERBOSE]] verbose:listen "close channel"
 	return channel:close()
 end
 
@@ -71,7 +71,7 @@ function newrequest(self, requestid, objectkey, operation, ...)                 
 	local request = {...}
 	request.n = select("#", ...)
 	request.requestid = requestid
-	request.target = objectkey
+	request.objectkey = objectkey
 	request.operation = operation
 	return request
 end
@@ -112,7 +112,7 @@ end
 
 local MessageFmt = "%d\n%s"
 
-function sendreply(self, request)                                               --[[VERBOSE]] verbose:listen("got reply for request ",request.requestid," to object ",request.target,":",request.operation)
+function sendreply(self, request)                                               --[[VERBOSE]] verbose:listen("got reply for request ",request.requestid," to object ",request.objectkey,":",request.operation)
 	local channel = request.channel
 	local encoder = self.context.codec:encoder()
 	encoder:put(request.requestid, request.success, unpack(request, 1, request.n))
