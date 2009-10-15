@@ -80,7 +80,7 @@ In this approach, the example above would become.</p>
 
 <p>One last alternative is to use the specialized proxy available in field <code>_try</code> denominated protected proxy.
 These proxy behaves like a standard proxy, but every invocation returns an additional value that indicates whether the remote method raised an error or not.
-Additionally, if the remote method raises somfe error, this error is returned as the second returned value, just after the <code>false</code> indicating that the error was raised.
+Additionally, if the remote method raises some error, this error is returned as the second returned value, just after the <code>false</code> indicating that the error was raised.
 Using this last approach, the example above would become.</p>
 
 <pre>local ok, err = proxy._try:invoked_method()</pre>
