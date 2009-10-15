@@ -36,11 +36,6 @@ orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
 orb:setclientinterceptor(Interceptor)
 forward = oil.dtests.resolve("Server", 2809, "object")
 sync = oil.dtests.resolve("Fake", 2809, "object", nil, true, true)
-orb:loadidl[[
-	interface MyInterface {
-		string concat(in string str1, in string str2);
-	};
-]]
 sync = orb:narrow(sync, "MyInterface")
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")

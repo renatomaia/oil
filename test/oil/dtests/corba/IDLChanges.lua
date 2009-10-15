@@ -19,18 +19,19 @@ orb = oil.dtests.init()
 checks = oil.dtests.checks
 object = oil.dtests.resolve("Server", 2809, "object")
 
-local newiface = "interface Lua { void say_hello(); };"
+local newiface = "interface Lua { string say_hello(); };"
 
 object:dostring([[
 	orb:loadidl("]]..newiface..[[")
 	function Lua:say_hello()
-		print "Hello, World!"
+		return "Hello, World!"
 	end
 ]])
 
 orb:loadidl(newiface)
-object:say_hello()
-checks:assert(object.dostring == nil, "old method was not removed from proxy class cache")
+
+checks:assert(object:say_hello(), checks.is("Hello, World!"))
+checks:assert(object.dostring, checks.is(nil, "old method was not removed from proxy class cache"))
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true }

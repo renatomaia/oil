@@ -791,7 +791,7 @@ tasks = BasicSystem and BasicSystem.tasks
 -- @param ... any Values returned by the function or an the error raised by the
 -- function.
 --
-pcall = tasks and tasks:getpcall() or luapcall
+pcall = tasks and tasks.pcall or luapcall
 
 local function extracer(ex)
 	return traceback(tostring(ex))
