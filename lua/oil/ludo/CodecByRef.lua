@@ -74,7 +74,7 @@ local function serialtable(self, value, id)                                     
 		self[value] = self.namespace..":value("..id..")"
 		self:write(self.namespace,":value(",id,",'table',")
 		self:write("proxies:resolve(")
-		self:serialize(reference)
+		StringStream.table(self, reference, getidfor(reference))
 		self:write("))")
 	else
 		local meta = getmetatable(value)

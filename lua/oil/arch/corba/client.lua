@@ -21,6 +21,7 @@ function assemble(components)
 	
 	-- REQUESTER
 	OperationRequester.codec = CDREncoder.codec
+	OperationRequester.requests.pcall = BasicSystem:getpcall()
 
 	-- COMMUNICATION
 	for tag, ClientChannels in pairs(IOPClientChannels) do

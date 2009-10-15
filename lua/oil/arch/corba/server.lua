@@ -23,6 +23,7 @@ function assemble(components)
 	RequestListener.codec    = CDREncoder.codec
 	RequestListener.servants = ServantManager.servants
 	RequestListener.indexer  = TypeRepository.indexer
+	RequestListener.requests.pcall = BasicSystem:getpcall()
 	
 	-- COMMUNICATION
 	for tag, ServerChannels in pairs(IOPServerChannels) do
