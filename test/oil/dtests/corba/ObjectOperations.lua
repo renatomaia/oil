@@ -1,26 +1,24 @@
 local Suite = require "loop.test.Suite"
-local Template = require"oil.dtests.Template"
+local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-oil.init{ port = 2809 }
-oil.newservant({}, "::CORBA::InterfaceDef", "object")
-oil.run()
+orb = oil.dtests.init{ port = 2809 }
+orb:newservant{ __type = "::CORBA::InterfaceDef", __objkey = "object" }
+orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
 table = require "loop.table"
 
+orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
 checks = oil.dtests.checks
-object = oil.dtests.resolve("Server", 2809, "object", false, true)
-fake   = oil.dtests.resolve("", 0, "", true, true)
+object = oil.dtests.resolve("Server", 2809, "object", nil, false, true)
+fake   = oil.dtests.resolve("", 0, "", nil, true, true)
 
 cases = {
-	_narrow = {
-		[object] = { checks.similar(table.copy(object), nil, {isomorphic=false}) },
-	},
 	_interface = {
-		[object] = { checks.similar(oil.types:lookup("::CORBA::InterfaceDef"), nil, {isomorphic=false}) },
+		[object] = { checks.similar(orb.types:lookup("::CORBA::InterfaceDef"), nil, {metatable=true}) },
 	},
 	_component = {
 		[object] = { checks.is(nil) },
@@ -46,14 +44,16 @@ for opname, opdesc in pairs(cases) do
 			checks:assert(result, checker)
 			
 			-- asynchronous call
-			future = proxy.__deferred[opname](proxy.__deferred, unpack(opdesc))
+			async = orb:newproxy(proxy, "asynchronous", proxy.__type)
+			future = async[opname](async, unpack(opdesc))
 			ok, result = future:results()
 			checks:assert(ok, checks.is(true, "operation results indicated a unexpected error."))
 			checks:assert(result, checker)
 			checks:assert(future:evaluate(), checker)
 			
 			-- protected synchronous call
-			ok, result = proxy.__try[opname](proxy.__try, unpack(opdesc))
+			prot = orb:newproxy(proxy, "protected", proxy.__type)
+			ok, result = prot[opname](prot, unpack(opdesc))
 			checks:assert(ok, checks.is(true, "operation results indicated a unexpected error."))
 			checks:assert(result, checker)
 			

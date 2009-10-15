@@ -1,56 +1,50 @@
-local Template = require"oil.dtests.Template"
+local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-if oil.dtests.flavor.corba then
-	oil.loadidl[[
-		exception RaisedException {
-			string reason;
-		};
-		interface ExceptionRaiser {
-			void raisenow() raises (RaisedException);
-		};
-	]]
-end
-
 Raiser = {}
 function Raiser:raisenow()
-	error{ "IDL:RaisedException:1.0",
+	error{ "IDL:ExceptionRaiser/RaisedException:1.0",
 		reason = "exception",
 	}
 end
 
-oil.init{ port = 2809 }
-oil.newservant(Raiser, "ExceptionRaiser", "raiser")
-oil.run()
---[Server]=====================================================================]
-
-Client = [=====================================================================[
-checks = oil.dtests.checks
-
-raiser = oil.dtests.resolve("Server", 2809, "raiser")
-badobj = oil.dtests.resolve("", 0, "", true, true)
-
+orb = oil.dtests.init{ port = 2809 }
 if oil.dtests.flavor.corba then
-	oil.loadidl[[
-		exception RaisedException {
-			string reason;
-		};
+	orb:loadidl[[
 		interface ExceptionRaiser {
+			exception RaisedException {
+				string reason;
+			};
 			void raisenow() raises (RaisedException);
 		};
 	]]
-	badobj = oil.narrow(badobj, "ExceptionRaiser")
+	Raiser.__type = "ExceptionRaiser"
+end
+orb:newservant(Raiser, "raiser")
+
+orb:run()
+--[Server]=====================================================================]
+
+Client = [=====================================================================[
+orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
+checks = oil.dtests.checks
+
+raiser = oil.dtests.resolve("Server", 2809, "raiser")
+badobj = oil.dtests.resolve("", 0, "", nil, true, true)
+
+if oil.dtests.flavor.corba then
+	badobj = orb:narrow(badobj, "ExceptionRaiser")
 end
 
 raisers = {
 	[raiser] = function(exception)
-		checks:assert(exception[1], checks.equals("IDL:RaisedException:1.0", "wrong exception."))
+		checks:assert(exception[1], checks.equals("IDL:ExceptionRaiser/RaisedException:1.0", "wrong exception."))
 		checks:assert(exception.reason, checks.equals("exception", "wrong exception field."))
 	end,
 	[badobj] = function(exception)
 		if oil.dtests.flavor.corba then
-			checks:assert(exception[1], checks.equals("IDL:omg.org/CORBA/COMM_FAILURE:1.0", "wrong exception."))
+			checks:assert(exception, checks.similar{"IDL:omg.org/CORBA/COMM_FAILURE:1.0"})
 		elseif oil.dtests.flavor.ludo then
 			checks:assert(exception, checks.match("connection refused$", "wrong exception."))
 		end
@@ -58,6 +52,9 @@ raisers = {
 }
 
 for raiser, exchecker in pairs(raisers) do
+	async = orb:newproxy(raiser, "asynchronous")
+	prote = orb:newproxy(raiser, "protected")
+	
 	--
 	-- pcall exception catch
 	--
@@ -66,8 +63,8 @@ for raiser, exchecker in pairs(raisers) do
 	checks:assert(not ok, "exception was not raised.")
 	exchecker(exception)
 	-- asynchronous call
-	future = raiser.__deferred:raisenow()
-	oil.sleep(1); assert(future:ready())
+	future = async:raisenow()
+	oil.sleep(.1); assert(future:ready())
 	ok, exception = future:results()
 	checks:assert(not ok, "exception was not raised.")
 	exchecker(exception)
@@ -90,12 +87,12 @@ for raiser, exchecker in pairs(raisers) do
 	for case = 1, 3 do
 		if case == 1 then
 			raiser.__exceptions = handler
-			raiser.__deferred.__exceptions = handler
+			async.__exceptions = handler
 		elseif case == 2 then
-			oil.setexcatch(handler)
+			orb:setexcatch(handler)
 		elseif case == 3 then
 			if not oil.dtests.flavor.corba then break end
-			oil.setexcatch(handler, "ExceptionRaiser")
+			orb:setexcatch(handler, "ExceptionRaiser")
 		end
 		
 		excount = 0
@@ -104,8 +101,8 @@ for raiser, exchecker in pairs(raisers) do
 		checks:assert(excount, checks.is(1, "wrong number of raised exceptions."))
 		checks:assert(result, checks.is(excount, "wrong operation result after exception catch."))
 		-- asynchronous call
-		future = raiser.__deferred:raisenow()
-		oil.sleep(1); assert(future:ready())
+		future = async:raisenow()
+		oil.sleep(.1); assert(future:ready())
 		ok, exception = future:results()
 		checks:assert(not ok, "exception was not raised.")
 		exchecker(exception)
@@ -115,18 +112,18 @@ for raiser, exchecker in pairs(raisers) do
 		
 		if case == 1 then
 			raiser.__exceptions = nil
-			raiser.__deferred.__exceptions = nil
+			async.__exceptions = nil
 		elseif case == 2 then
-			oil.setexcatch(nil)
+			orb:setexcatch(nil)
 		elseif case == 3 and oil.dtests.flavor.corba then
-			oil.setexcatch(nil, "ExceptionRaiser")
+			orb:setexcatch(nil, "ExceptionRaiser")
 		end
 	end
 	
 	--
 	-- protected proxy
 	--
-	ok, exception = raiser.__try:raisenow()
+	ok, exception = prote:raisenow()
 	checks:assert(not ok, "exception was not raised.")
 	exchecker(exception)
 end
