@@ -9,14 +9,17 @@ local arg = {...}
 require "oil"
 
 oil.main(function()
-	local orb = oil.init{ flavor = "corba;typed;base" } -- no concurrency support
-	local proxy = orb:newproxy(assert(oil.readfrom("server.ior")))
+	local orb = oil.init{
+		flavor = "corba", -- no concurrency support
+		extraproxies = {"asynchronous"}, -- enable support for asynchronous proxies
+	}
+	local proxy = orb:newproxy(assert(oil.readfrom("server.ior")), "asynchronous")
 	
 	-- make deferred calls
 	local calls = {}
 	for id, time in ipairs(arg) do
 		print(id, "about to request work for "..time.." seconds")
-		calls[proxy.__deferred:do_something_for(tonumber(time))] = id
+		calls[proxy:do_something_for(tonumber(time))] = id
 	end
 	
 	-- wait for the replies

@@ -21,8 +21,8 @@ oil.main(function()
 	}
 	setmetatable(objectMap, {
 		__index = function(map, objkey)
-			-- object keys that start with \0 are reserved for OiL
-			if not objkey:match("^%z") then
+			-- object keys that start with '_' are reserved for OiL
+			if not objkey:match("^_") then
 				Hello.name = objkey
 				return defaultEntry
 			end

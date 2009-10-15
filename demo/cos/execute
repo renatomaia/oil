@@ -1,6 +1,6 @@
 #!/bin/sh
 
-LUA="lua /Users/maia/Work/proj/dtest/trunk/debuglua.lua"
+LUA="lua"
 
 echo "Starting interface repository ..."
 $LUA ird.lua --port=3001 CosNaming.idl CosEvent.idl &

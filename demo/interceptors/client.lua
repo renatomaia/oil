@@ -1,7 +1,5 @@
-package.loaded["oil.component"] = require "loop.component.wrapped"
-package.loaded["oil.port"]      = require "loop.component.intercepted"
-local Viewer                    = require "loop.debug.Viewer"
-local oil                       = require "oil"
+local Viewer = require "loop.debug.Viewer"
+local oil    = require "oil"
 
 if select("#", ...) == 0 then
 	io.stderr:write "usage: lua client.lua <time of client 1>, <time of client 2>, ..."
@@ -18,8 +16,9 @@ oil.main(function()
 	local viewer = Viewer{ maxdepth = 2 }
 	local profiler = {}
 	function profiler:sendrequest(request)
+		local params = request.parameters
 		print("intercepting request to "..request.operation_name..
-		      "("..viewer:tostring(unpack(request, 1, request.n))..")")
+		      "("..viewer:tostring(unpack(params, 1, params.n))..")")
 		local encoder = orb:newencoder()
 		encoder:put({
 			memory = collectgarbage("count"),
@@ -31,11 +30,12 @@ oil.main(function()
 			}
 		}
 	end
-	function profiler:receivereply(reply, request)
+	function profiler:receivereply(request)
 		print("intercepting reply of opreation "..request.operation_name)
-		print("\tsuccess:", reply.success)
-		print("\tresults:", unpack(reply, 1, reply.n))
-		for _, context in ipairs(reply.service_context) do
+		print("\tsuccess:", request.success)
+		local results = request.results
+		print("\tresults:", unpack(results, 1, results.n))
+		for _, context in ipairs(request.reply_service_context) do
 			if context.context_id == 4321 then
 				local decoder = orb:newdecoder(context.context_data)
 				local result = decoder:get(ClientInfo)
@@ -44,14 +44,14 @@ oil.main(function()
 			end
 		end
 		io.stderr:write("context 4321 not found! Canceling ...\n")
-		reply.cancel = true
-		reply.success = false
-		reply.n = 1
-		reply[1] = orb:newexcept{ "NoProfiling", -- local exception, unknown to CORBA
-			operation = operation
+		request.success = false
+		request.results = {
+			orb:newexcept{ "NoProfiling", -- local exception, unknown to CORBA
+				operation = operation
+			}
 		}
 	end
-	orb:setinterceptor(profiler, "client")
+	orb:setinterceptor(profiler, "corba.client")
 	
 	local server = orb:newproxy(assert(oil.readfrom("server.ior")))
 	local function showprogress(id, time)

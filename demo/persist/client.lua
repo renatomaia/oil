@@ -5,7 +5,7 @@ oil.main(function()
 	
 	orb:loadidlfile("hello.idl")
 
-	local hello = orb:newproxy("corbaloc::/MyHello", "Hello")
+	local hello = orb:newproxy("corbaloc::/MyHello", nil, "Hello")
 
 	local secs = 1
 	local dots = 3
@@ -15,8 +15,7 @@ oil.main(function()
 		print()
 	end
 
-	--hello:_set_quiet(false)
-	--for i = 1, 3 do print(hello:say_hello_to("world")) end
-	repeat print(hello:say_hello_to("world")) until false
+	hello:_set_quiet(false)
+	for i = 1, 3 do print(hello:say_hello_to("world")) end
 	print("Object already said hello "..hello:_get_count().." times till now.")
 end)

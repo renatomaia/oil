@@ -1,7 +1,7 @@
 require "oil"
 
 oil.main(function()
-	local broker = oil.init{flavor="ludo;cooperative;base"}
+	local broker = oil.init{flavor="cooperative;ludo"}
 	
 	local Invoker = {}
 	function Invoker:invoke(object, method, ...)

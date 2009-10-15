@@ -1,6 +1,7 @@
 require "oil"
 
 local orb = oil.init()
+orb.ProxyManager.servants = nil -- disable local reference resolution
 orb:loadidl("interface MyObject { void shutdown(); };")
 
 oil.main(function()

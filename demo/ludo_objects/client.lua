@@ -1,7 +1,9 @@
 require "oil"
 
 oil.main(function()
-	local broker = oil.init{flavor="ludo;cooperative;base"}
+	local broker = oil.init{flavor="cooperative;ludo"}
+	broker.ProxyManager.servants = nil -- disable local reference resolution
+	
 	oil.newthread(broker.run, broker)
 	
 	local Hello = {}

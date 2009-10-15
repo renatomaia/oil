@@ -1,8 +1,6 @@
-package.loaded["oil.component"] = require "loop.component.wrapped"
-package.loaded["oil.port"]      = require "loop.component.intercepted"
-local Viewer                    = require "loop.debug.Viewer"
-local oil                       = require "oil"
-local socket                    = require "socket"
+local Viewer = require "loop.debug.Viewer"
+local oil    = require "oil"
+local socket = require "socket"
 
 oil.main(function()
 	local orb = oil.init{ flavor = "cooperative;corba.intercepted" }
@@ -15,8 +13,9 @@ oil.main(function()
 	local profiler = {}
 	function profiler:receiverequest(request)
 		request.start_time = socket.gettime()
-		print("intercepting request to "..request.operation..
-		      "("..viewer:tostring(unpack(request, 1, request.n))..")")
+		local params = request.parameters
+		print("intercepting request to "..request.operation_name..
+		      "("..viewer:tostring(unpack(params, 1, params.n))..")")
 		for _, context in ipairs(request.service_context) do
 			if context.context_id == 1234 then
 				local decoder = orb:newdecoder(context.context_data)
@@ -26,15 +25,16 @@ oil.main(function()
 			end
 		end
 		io.stderr:write("context 1234 not found! Canceling...\n")
-		request.cancel = true
 		request.success = false
-		request.n = 1
-		request[1] = orb:newexcept{ "CORBA::NO_PERMISSION", minor_code_value = 0 }
+		request.results = {
+			orb:newexcept{ "CORBA::NO_PERMISSION", minor_code_value = 0 }
+		}
 	end
 	function profiler:sendreply(reply)
-		print("intercepting reply of opreation "..reply.operation)
+		print("intercepting reply of opreation "..reply.operation_name)
 		print("\tsuccess:", reply.success)
-		print("\tresults:", unpack(reply, 1, reply.n))
+		local results = reply.results
+		print("\tresults:", unpack(results, 1, results.n))
 		local encoder = orb:newencoder()
 		encoder:put({
 			start = reply.start_time,
@@ -47,12 +47,10 @@ oil.main(function()
 			}
 		}
 	end
-	orb:setinterceptor(profiler, "server")
+	orb:setinterceptor(profiler, "corba.server")
 	
 	-- create servant and write its reference
-	local impl = {
-		__type = "Concurrency::Server"
-	}
+	local impl = { __type = "Concurrency::Server" }
 	function impl:do_something_for(seconds)
 		oil.sleep(seconds)
 		return true
