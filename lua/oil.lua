@@ -57,17 +57,19 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local error     = error
-local ipairs    = ipairs
-local module    = module
-local luapcall  = pcall
-local require   = require
-local tostring  = tostring
-local type      = type
-local traceback = debug and debug.traceback
-local xpcall    = xpcall
-local select    = select
-local unpack    = unpack
+local error        = error
+local ipairs       = ipairs
+local module       = module
+local pairs        = pairs
+local luapcall     = pcall
+local require      = require
+local tostring     = tostring
+local type         = type
+local traceback    = debug and debug.traceback
+local xpcall       = xpcall
+local select       = select
+local setmetatable = setmetatable
+local unpack       = unpack
 
 local io        = require "io"
 local coroutine = require "coroutine"
@@ -182,6 +184,7 @@ function ORB:__init(config)
 	end
 	if self.ServantManager ~= nil then
 		self.ServantManager.prefix = config.keyprefix
+		self.ServantManager.map = config.objectmap or self.ServantManager.map
 	end
 	self.ServantManager.servants.accesspoint = 
 		assert.results(self.RequestReceiver.acceptor:initialize(self))
@@ -298,12 +301,13 @@ end
 -- @usage oil.newproxy("IOR:00000002B494...", "IDL:HelloWorld/Hello:1.0")      .
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 --
-function ORB:newproxy(reference, kind, ...)
+function ORB:newproxy(reference, kind, iface)
 	local operation
 	if type(reference) == "string" then
 		operation = "fromstring"
 	else
 		operation = "resolve"
+		iface = iface or reference.__type
 		reference = reference.__reference or reference
 	end
 	local proxies
@@ -311,9 +315,9 @@ function ORB:newproxy(reference, kind, ...)
 		proxies = self.ProxyManager.proxies
 	else
 		proxies = self.extraproxies[kind] or
-		          assert.illegal(kind, "string", "proxy kind")
+		          assert.illegal(kind, "proxy kind")
 	end
-	return assert.results(proxies[operation](proxies, reference, ...))
+	return assert.results(proxies[operation](proxies, reference, iface))
 end
 
 --------------------------------------------------------------------------------
@@ -571,7 +575,13 @@ end
 -- @usage oil.setexcatch(function(_, except) error(tostring(except)) end)
 --
 function ORB:setexcatch(handler, type)
-	assert.results(self.ProxyManager.proxies:excepthandler(handler, type))
+	local managers = { self.ProxyManager }
+	for _, name in ipairs(self.extraproxies) do
+		managers[#managers+1] = self.extraproxies[name]
+	end
+	for _, manager in pairs(managers) do
+		assert.results(manager.proxies:excepthandler(handler, type))
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -610,7 +620,7 @@ end
 -- those defined in the description of 'reply'.
 --
 function ORB:setclientinterceptor(iceptor)
-	return self:setinterceptor(iceptor, "client")
+	return self:setinterceptor(iceptor, "corba.client")
 end
 
 --------------------------------------------------------------------------------
@@ -651,46 +661,41 @@ end
 -- those defined in the description of 'reply'.
 --
 function ORB:setserverinterceptor(iceptor)
-	return self:setinterceptor(iceptor, "server")
+	return self:setinterceptor(iceptor, "corba.server")
 end
 
 --------------------------------------------------------------------------------
 
-function ORB:setinterceptor(iceptor, side)
-	local port = require "loop.component.intercepted"
-	if side ~= "server" then
-		if iceptor == nil then
-			if self.ClientInterceptor and self.OperationRequester then
-				self.OperationRequester.interceptor = nil
-				self.ClientInterceptor.interceptor = nil
-			end
-		else
-			if self.ClientInterceptor and self.OperationRequester then
-				self.OperationRequester.interceptor = self.ClientInterceptor.interceptions
-				self.ClientInterceptor.interceptor = iceptor
-				iceptor = self.ClientInterceptor.interceptions
-			end
-			local Interceptor = require "oil.kernel.intercepted.Client"
-			iceptor = Interceptor{ interceptor = iceptor }
+function ORB:setinterceptor(iceptor, kind)
+	local corbakind = kind:match("^corba(.-)$")
+	if corbakind then
+		if corbakind ~= ".server" then
+			self.OperationRequester.interceptor = iceptor
 		end
-		port.intercept(self.OperationRequester, "requests", "method", iceptor)
-	end
-	if side ~= "client" then
-		if iceptor == nil then
-			if self.ServerInterceptor and self.RequestListener then
-				self.RequestListener.interceptor = nil
-				self.ServerInterceptor.interceptor = nil
-			end
-		else
-			if self.ServerInterceptor and self.RequestListener then
-				self.RequestListener.interceptor = self.ServerInterceptor.interceptions
-				self.ServerInterceptor.interceptor = iceptor
-				iceptor = self.ServerInterceptor.interceptions
-			end
-			local Interceptor = require "oil.kernel.intercepted.Server"
-			iceptor = Interceptor{ interceptor = iceptor }
+		if corbakind ~= ".client" then
+			self.RequestListener.interceptor = iceptor
 		end
-		port.intercept(self.ServantManager, "dispatcher", "method", iceptor)
+	else
+		if kind ~= "server" then
+			local Wrapper = require "oil.kernel.intercepted.Requester"
+			local wrapper = Wrapper{
+				__object = self.OperationRequester.requests,
+				interceptor = iceptor,
+			}
+			self.ProxyManager.requester = wrapper
+			for _, proxykind in ipairs(self.extraproxies) do
+				local ProxyManager = self.extraproxies[proxykind]
+				ProxyManager.requester = wrapper
+			end
+		end
+		if kind ~= "client" then
+			local Wrapper = require "oil.kernel.intercepted.Listener"
+			local wrapper = Wrapper{
+				__object = self.RequestListener.requests,
+				interceptor = iceptor,
+			}
+			self.RequestReceiver.listener = wrapper
+		end
 	end
 end
 
@@ -698,7 +703,7 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-VERSION = "OiL 0.4"
+VERSION = "OiL 0.5 beta"
 
 if BasicSystem == nil then
 	local factories = require "oil.builder.cooperative.common"
@@ -788,6 +793,19 @@ tasks = BasicSystem and BasicSystem.tasks
 --
 pcall = tasks and tasks:getpcall() or luapcall
 
+local function extracer(ex)
+	return traceback(tostring(ex))
+end
+
+if tasks then
+	local function maintrap(scheduler, thread, success, exception)
+		if not success then
+			error(traceback(thread, tostring(exception)), 3)
+		end
+	end
+	setmetatable(tasks.traps, { __index = function() return maintrap end })
+end
+
 --------------------------------------------------------------------------------
 -- Function executes the main function of the application.
 --
@@ -803,14 +821,13 @@ pcall = tasks and tasks:getpcall() or luapcall
 function main(main)
 	assert.type(main, "function", "main function")
 	if tasks then
-		assert.results(tasks:register(coroutine.create(main), tasks.currentkey))
-		function main()
-			return BasicSystem.control:run()
-		end
+		main = coroutine.create(main)
+		assert.results(tasks:register(main, tasks.currentkey))
+		return BasicSystem.control:run()
 	end
-	local success, except = xpcall(main, traceback)
+	local success, except = xpcall(main, extracer)
 	if not success then
-		error(tostring(except), 2)
+		error(except, 2)
 	end
 end
 
