@@ -68,6 +68,7 @@ function interceptrequest(self, reference, operation, request)
 					request.exceptions = operation.exceptions
 				end
 				-- update GIOP message fields
+				request.object_key           = intercepted.object_key
 				request.response_expected    = intercepted.response_expected
 				request.service_context      = intercepted.service_context or
 				                               request.service_context
@@ -152,7 +153,9 @@ function interceptreply(self, request, header)
 		request.intercepted = nil
 		local interceptor = self.context.interceptor
 		if interceptor and interceptor.receivereply then
-			intercepted.reply_service_context = header.service_context
+			if header.service_context then
+				intercepted.reply_service_context = header.service_context
+			end
 			intercepted.reply_status          = header.reply_status
 			intercepted.success               = request.success
 			intercepted.results = {
