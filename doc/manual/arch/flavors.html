@@ -1,11 +1,11 @@
 <p><%=link("Brokers","Brokers")%> are created merging components assemblies from different layers.
-The layers used to create a broker are denominated its <em>flavor</em>.
+The layers used to create a broker are denominated a <em>flavor</em>.
 The flavor used in the creation of a broker is provided by field <code>flavor</code> of the configuration table passed as argument of function <%=link("Module","<code>oil.init</code>","#init")%><code>(config)</code>.
 The value of this field must be a string with the names of the different layers separated by semicolons (<code>;</code>), like in the example below:</p>
 
 <pre>
 broker = oil.init{
-	flavor = "intercepted;corba;typed;base"
+	flavor = "intercepted;cooperative;corba;base"
 }
 </pre>
 

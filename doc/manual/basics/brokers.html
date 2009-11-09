@@ -8,8 +8,8 @@ Basically, brokers can be seen as the way invocation are performed through the d
 <p>Brokers are created by operation <%=link("Module","<code>oil.init</code>","#init")%><code>([config])</code> that returns an initialized broker.
 The optional parameter <code>config</code> is a table containing the description of the parameters used to initialize the broker.
 If no parameter is informed, then a default broker is created and returned.
-All future calls to operation <%=link("Module","<code>oil.init</code>","#init")%><code>()</code> without parameters return the same default broker.
-The <code>config</code> table might contain field <code>flavor</code>, which defines the flavor used to create the new broker.
+All future calls to operation <%=link("Module","<code>oil.init</code>","#init")%><code>()</code> without a parameter return the same default broker.
+The <code>config</code> table might contain the field <code>flavor</code>, which defines the flavor used to create the new broker.
 For more information about flavors, check section <%=link"Flavors"%>.
 Other additional fields are defined by the underlying RMI protocol selected for the broker.
 To get details about these additional fields, see the specific documentation of the RMI protocol that your intend to use.</p>
@@ -116,14 +116,12 @@ This method can be called at any time when method <a href="#run"><code>run</code
 	<dd>Checks whether there is some request pending.</dd>
 	<dt><a href="#run"><b><code>run</code></b></a><code>()</code></dt>
 	<dd>Runs the ORB main loop.</dd>
-	<dt><a href="#setclientinterceptor"><b><code>setclientinterceptor</code></b></a><code>([interceptor])</code></dt>
+	<dt><a href="#setinterceptor"><b><code>setinterceptor</code></b></a><code>([interceptor [, point]])</code></dt>
 	<dd>Sets a CORBA-specific interceptor for operation invocations in the client-size.</dd>
 	<dt><a href="#setexcatch"><b><code>setexcatch</code></b></a><code>(function, [interface])</code></dt>
 	<dd>Defines a exception handling function for proxies.</dd>
 	<dt><a href="#setIR"><b><code>setIR</code></b></a><code>(remoteIR)</code></dt>
 	<dd>Sets the Interface Repository used to retrieve interface definitions.</dd>
-	<dt><a href="#setserverinterceptor"><b><code>setserverinterceptor</code></b></a><code>([interceptor])</code></dt>
-	<dd>Sets a CORBA-specific interceptor for operation invocations in the server-size.</dd>
 	<dt><a href="#shutdown"><b><code>shutdown</code></b></a><code>()</code></dt>
 	<dd>Shuts down the ORB.</dd>
 	<dt><a href="#step"><b><code>step</code></b></a><code>()</code></dt>
@@ -501,6 +499,12 @@ oil.writeto("ref.ior", broker:tostring(broker:newservant(impl, "::Hello")))
 			<td>Textual representation of object's reference the new proxy will represent.</td>
 		</tr>
 		<tr>
+			<td valign="top"><code>kind</code></td>
+			<td valign="top"><b>string</b></td>
+			<td valign="top">[optional]</td>
+			<td>Name of the kind of proxy that must be created, like 'synchronous', 'asynchronous' or 'protected'.</td>
+		</tr>
+		<tr>
 			<td valign="top"><code>interface</code></td>
 			<td valign="top"><b>string</b></td>
 			<td valign="top">[optional]</td>
@@ -521,9 +525,9 @@ oil.writeto("ref.ior", broker:tostring(broker:newservant(impl, "::Hello")))
 		<i>Usage:</i>
 		<pre>
 broker:newproxy("IOR:00000002B494...")
-broker:newproxy("IOR:00000002B494...", "HelloWorld::Hello")
-broker:newproxy("IOR:00000002B494...", "IDL:HelloWorld/Hello:1.0")
-broker:newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")
+broker:newproxy("IOR:00000002B494...", "synchronous", "HelloWorld::Hello")
+broker:newproxy("IOR:00000002B494...", "asynchronous", "IDL:HelloWorld/Hello:1.0")
+broker:newproxy("corbaloc::host:8080/Key", "protected", "IDL:HelloWorld/Hello:1.0")
 		</pre>
 	</dd>
 
@@ -703,84 +707,10 @@ broker:setexcatch(function(_, except) error(tostring(except)) end)
 		</pre>
 	</dd>
 	
-	<dt><a name="setclientinterceptor"><b><code>setclientinterceptor</code></b></a><code>([interceptor])</code></dt>
+	<dt><a name="setinterceptor"><b><code>setinterceptor</code></b></a><code>([interceptor [, point]])</code></dt>
 	<dd>
 	<p>
-		<b>Sets a CORBA-specific interceptor for operation invocations in the client-size.</b>
-		The interceptor must provide the following operations:<br>
-		<ul>
-			<li>
-				<code>sendrequest(request)</code>: <code>request</code> structure is described below.
-				<table>
-				<tr>
-					<td valign="top"><code>response_expected</code></td>
-					<td valign="top"><b>boolean</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Flag that indicates if the server must send a response for this request.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>object_key</code></td>
-					<td valign="top"><b>string</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Key of the object the request is addressed to.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>operation</code></td>
-					<td valign="top"><b>string</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Name of the operation being invoked.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>service_context</code></td>
-					<td valign="top"><b>table</b></td>
-					<td valign="top"></td>
-					<td>Defines the service context values. See <code>ServiceContextList</code> in CORBA specs.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>success</code></td>
-					<td valign="top"><b>boolean</b></td>
-					<td valign="top">[optional]</td>
-					<td>Set this value to cancel request and define the results:
-					<code>true</code> cancels the request and indicates to the application that invocation was successful;
-					<code>false</code> cancels the request and indicates to the application that invocation raised an exception.</td>
-				</tr>
-				</table>
-				<a name="#client-params-note">Note:</a> The integer indexes store the operation's parameter values and should also be used to store the results values if the request is canceled (see <a href="#client-return-note">note below</a>).
-				<br>
-				<br>
-			</li>
-			<li>
-				<code>receivereply(reply)</code>: <code>reply</code> structure is described below.
-				<table>
-				<tr>
-					<td valign="top"><code>service_context</code></td>
-					<td valign="top"><b>table</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Service context present in reply message. See <code>ServiceContextList</code> in CORBA specs.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>reply_status</code></td>
-					<td valign="top"><b>string</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Enumeration value that indicates the reply status. See <code>ReplyStatus</code> in CORBA specs.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>success</code></td>
-					<td valign="top"><b>boolean</b></td>
-					<td valign="top">[optional]</td>
-					<td>Set this value to cancel the reply and replace results:
-					<code>true</code> cancels the reply and indicates to the application that invocation was successful;
-					<code>false</code> cancels the reply and indicates to the application that invocation raised an exception.</td>
-				</tr>
-				</table>
-				<a name="client-return-note">Note:</a> The integer indexes store the results that will be sent as request result.
-				For successful invocations these values must be the operation's results (return, out and inout parameters) in the same order they appear in the IDL description.
-				For failed invocations, index 1 must be the exception that identifies the failure.
-			</li>
-		</ul>
-		<br>
-		The <code>request</code> and <code>reply</code> are the same table in a single invocation.
-		Therefore, the fields of <code>request</code> are also available in <code>reply</code> except for those defined in the description of <code>reply</code>.<br>
+		<b>Sets an interceptor for operation invocations in both client-side or server-side.</b>
 	<p>
 		<i>Parameters:</i>
 		<table>
@@ -788,109 +718,28 @@ broker:setexcatch(function(_, except) error(tostring(except)) end)
 			<td valign="top"><code>interceptor</code></td>
 			<td valign="top"><b>object</b></td>
 			<td valign="top">[optional]</td>
-			<td>Interceptor object that must provide the interface described above. If no value or <code>nil</code> is provided the the current interceptor is unregistered from the ORB.</td>
+			<td>Interceptor object that must provide the interface described above.
+			If no value or <code>nil</code> is provided the the current interceptor is unregistered from the ORB.</td>
 		</tr>
-		</table>
-	</dd>
-
-	<dt><a name="setserverinterceptor"><b><code>setserverinterceptor</code></b></a><code>([interceptor])</code></dt>
-	<dd>
-	<p>
-		<b>Sets a CORBA-specific interceptor for operation invocations in the server-size.</b>
-		The interceptor must provide the following operations:<br>
-		<ul>
-			<li>
-				<code>receiverequest(request)</code>: <code>request</code> structure is described below.
-				<table>
-				<tr>
-					<td valign="top"><code>service_context</code></td>
-					<td valign="top"><b>table</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Service context present in reply message. See <code>ServiceContextList</code> in CORBA specs.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>request_id</code></td>
-					<td valign="top"><b>number</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Number that identifies the request in the multiplexed channel.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>response_expected</code></td>
-					<td valign="top"><b>boolean</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Flag that indicates if the server must send a response for this request.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>object_key</code></td>
-					<td valign="top"><b>string</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Key of the object the request is addressed to.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>operation</code></td>
-					<td valign="top"><b>string</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Name of the operation being invoked.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>servant</code></td>
-					<td valign="top"><b>object</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Local object the invocation will be dispatched to.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>method</code></td>
-					<td valign="top"><b>function</b></td>
-					<td valign="top">[read-only]</td>
-					<td>Function that will be invoked on object <code>servant</code>.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>success</code></td>
-					<td valign="top"><b>boolean</b></td>
-					<td valign="top">[optional]</td>
-					<td>Set this value to cancel the request and define the results:
-					<code>true</code> cancels the request and indicates to the application that invocation was successful;
-					<code>false</code> cancels the request and indicates to the application that invocation raised an exception.</td>
-				</tr>
-				</table>
-				<a name="#server-params-note">Note:</a> The integer indexes store the operation's parameter values and should also be used to store the results values if the request is canceled (see <a href="#server-return-note">note below</a>).
-				<br>
-				<br>
-			</li>
-			<li>
-				<code>sendreply(reply)</code>: <code>reply</code> structure is described below.
-				<table>
-				<tr>
-					<td valign="top"><code>service_context</code></td>
-					<td valign="top"><b>table</b></td>
-					<td valign="top"></td>
-					<td>Set this value to define a service context values. See <code>ServiceContextList</code> in CORBA specs.</td>
-				</tr>
-				<tr>
-					<td valign="top"><code>success</code></td>
-					<td valign="top"><b>boolean</b></td>
-					<td valign="top">[optional]</td>
-					<td>Set this value to cancel the reply and replace results:
-					<code>true</code> cancels the reply and indicates to the application that invocation was successful;
-					<code>false</code> cancels the reply and indicates to the application that invocation raised an exception.</td>
-				</tr>
-				</table>
-				<a name="server-return-note">Note:</a> The integer indexes store the results that will be sent as request result.
-				For successful invocations these values must be the operation's results (return, out and inout parameters) in the same order they appear in the IDL description.
-				For failed invocations, index 1 must be the exception that identifies the failure.
-			</li>
-		</ul>
-		<br>
-		The <code>request</code> and <code>reply</code> are the same table in a single invocation.
-		Therefore, the fields of <code>request</code> are also available in <code>reply</code> except for those defined in the description of <code>reply</code>.<br>
-	<p>
-		<i>Parameters:</i>
-		<table>
 		<tr>
-			<td valign="top"><code>interceptor</code></td>
-			<td valign="top"><b>object</b></td>
+			<td valign="top"><code>point</code></td>
+			<td valign="top"><b>string</b></td>
 			<td valign="top">[optional]</td>
-			<td>Interceptor object that must provide the interface described above. If no value or <code>nil</code> is provided the the current interceptor is unregistered from the ORB.</td>
+			<td>Defines the points where the interceptor must be invoked.
+			Options are:
+			<dl>
+				<dt><code>"server"</code></dt>
+				<dt>Interceptor is invoked whenever a request to a local servant is received or replied by the ORB.</dt>
+				<dt><code>"client"</code></dt>
+				<dt>Interceptor is invoked whenever a request to a remove servant is sent or received by the ORB.</dt>
+				<dt><code>"corba.server"</code></dt>
+				<dt>Interceptor is invoked whenever a CORBA request to a local servant is received or replied by the ORB.
+				For more information on CORBA interceptors, see <%=link("Intercept")%></dt>
+				<dt><code>"corba.client"</code></dt>
+				<dt>Interceptor is invoked whenever a CORBA request to a remove servant is sent or received by the ORB.
+				For more information on CORBA interceptors, see <%=link("Intercept")%></dt>
+			</dl>
+			</td>
 		</tr>
 		</table>
 	</dd>

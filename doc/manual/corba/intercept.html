@@ -33,7 +33,286 @@ function TimeProfiler:sendreply(reply)
 end
 </pre>
 
-<p>For a list of the fields available in the tables passed as parameter to the methods of interceptors, see description of method <%=link("Brokers","<code>setinterceptor</code>","#setinterceptor")%>.</p>
+<h3>Client Interceptors</h3>
+
+<p>The fields provided by table <code>request</code> of operation <code>sendrequest</code> of the client interceptor are:
+
+<table>
+	<tr>
+		<td valign="top"><code>request_id</code></td>
+		<td valign="top"><b>number</b></td>
+		<td valign="top">[read-only]</td>
+		<td>Number that identifies the pending request over the connection used to communicate with the remote ORB.
+		Note that this identifier is not unique across different connections, and it may be reused by other requests after this one is completed (<em>i.e.</em> replied).</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>response_expected</code></td>
+		<td valign="top"><b>boolean</b></td>
+		<td valign="top"></td>
+		<td>Flag that indicates if the server must send a response for this request.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>reference</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[read-only]</td>
+		<td>The complete IOR structure (see <code>CORBA::IOP::IOR</code> in CORBA specs.) that identifies the servant the request is sent to.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>object_key</code></td>
+		<td valign="top"><b>string</b></td>
+		<td valign="top">[occasional]</td>
+		<td>Key of the object the request is addressed to.</td>
+		If the ORB is not able to decode an IOR profile, this field is <code>nil</code>.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>profile_tag</code></td>
+		<td valign="top"><b>number</b></td>
+		<td valign="top">[occasional, read-only]</td>
+		<td>The identification of the kind of the IOR profile used to establish a connection with the servant's ORB.
+		If the ORB is not able to establish a connection, this field is <code>nil</code>.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>profile_data</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[occasional, read-only]</td>
+		<td>The decoded profile data used to establish a connection with the servant's ORB.
+		If the ORB is not able to establish a connection, this field is <code>nil</code>.
+		The structure of this profile depends on the value of the <code>profile_tag</code>.
+		For IIOP profiles (<code>profile_tag == 0</code>), this table follows the structure of <code>CORBA::IIOP::ProfileBody_1_0</code>.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>interface</code></td>
+		<td valign="top"><b>object</b></td>
+		<td valign="top">[read-only]</td>
+		<td>Complete description of the interface of the servant being invoked.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>interface_name</code></td>
+		<td valign="top"><b>string</b></td>
+		<td valign="top">[read-only]</td>
+		<td>Name of the the interface of the servant being invoked.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>operation</code></td>
+		<td valign="top"><b>object</b></td>
+		<td valign="top"></td>
+		<td>Description of the operation being invoked.
+		To change the operation being invoked on the remote servant, the application must set a new operation description to this field, which can be obtained from the local Interface Repository (see field <%=link("Brokers","<code>types</code>","#types")%>)</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>operation_name</code></td>
+		<td valign="top"><b>string</b></td>
+		<td valign="top">[read-only]</td>
+		<td>Name of the operation being invoked.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>parameters</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top"></td>
+		<td>List of the parameters passed to the operation being invoked.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>service_context</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to define the list of service context data to be marshaled in the request.
+		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>success</code></td>
+		<td valign="top"><b>boolean</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to cancel request:
+		<code>true</code> cancels the request and indicates to the invocation was successful;
+		<code>false</code> cancels the request and indicates to the invocation raised an exception.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>results</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to provide the result values of a canceled request.
+		This value must be a list of the values to be returned (in case of a successful invocation) or a list with a single value indicating the raised exception or error (in case of a failed invocation).</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>reply_service_context</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to define the list of service context to be added to the reply of a cancelled request.
+		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>forward_reference</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to forward this request to another reference.
+		This value must be a complete IOR structure (see <code>CORBA::IOP::IOR</code> in CORBA specs.).</td>
+	</tr>
+</table>
+</p>
+
+<p>The fields added to table <code>request</code> of operation <code>receivereply</code> of the client interceptor are (all other fields provided on the corresponding <code>sendrequest</code> operation are still available):
+<table>
+	<tr>
+		<td valign="top"><code>success</code></td>
+		<td valign="top"><b>boolean</b></td>
+		<td valign="top"></td>
+		<td>Indication of success of the invocation.
+		<code>true</code> indicates the invocation was successful;
+		<code>false</code> indicates the invocation raised an exception.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>results</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top"></td>
+		<td>List of the values to be returned (in case of a successful invocation) or a list with a single value indicating the raised exception or error (in case of a failed invocation).</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>reply_service_context</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top"></td>
+		<td>The list of service context received with the reply of the request.
+		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+	</tr>
+</table>
+</p>
+
+<h3>Server Interceptors</h3>
+
+<p>The fields provided by table <code>request</code> of operation <code>receiverequest</code> of the client interceptor are:
+
+<table>
+	<tr>
+		<td valign="top"><code>request_id</code></td>
+		<td valign="top"><b>number</b></td>
+		<td valign="top">[read-only]</td>
+		<td>Number that identifies the pending request over the connection used to communicate with the remote ORB.
+		Note that this identifier is not unique across different connections, and it may be reused by other requests after this one is completed (<em>i.e.</em> replied).</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>response_expected</code></td>
+		<td valign="top"><b>boolean</b></td>
+		<td valign="top">[read-only]</td>
+		<td>Flag that indicates if the server must send a response for this request.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>servant</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[occasional, read-only]</td>
+		<td>The implementation of the object request is addressed to.
+		If the ORB cannot find a servant with the provided <code>object_key</code> then this field is <code>nil</code>.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>object_key</code></td>
+		<td valign="top"><b>string</b></td>
+		<td valign="top"></td>
+		<td>Key of the object the request is addressed to.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>interface</code></td>
+		<td valign="top"><b>object</b></td>
+		<td valign="top">[read-only]</td>
+		<td>Complete description of the interface of the servant being invoked.
+		If the ORB cannot find a servant with the provided <code>object_key</code> then this field is <code>nil</code>.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>interface_name</code></td>
+		<td valign="top"><b>string</b></td>
+		<td valign="top">[occasional, read-only]</td>
+		<td>Name of the the interface of the servant being invoked.
+		If the ORB cannot find a servant with the provided <code>object_key</code> then this field is <code>nil</code>.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>operation</code></td>
+		<td valign="top"><b>object</b></td>
+		<td valign="top">[occasional]</td>
+		<td>Description of the operation being invoked.
+		If the ORB cannot find a servant with the provided <code>object_key</code> or the operation requested is not defined in the servant's interface then this field is <code>nil</code>.
+		To change the operation being invoked on the remote servant, the application must set a new operation description to this field, which can be obtained from the local Interface Repository (see field <%=link("Brokers","<code>types</code>","#types")%>)</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>operation_name</code></td>
+		<td valign="top"><b>string</b></td>
+		<td valign="top">[read-only]</td>
+		<td>Name of the operation being invoked.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>parameters</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[occasional]</td>
+		<td>List of the parameters passed to the operation being invoked.
+		If the ORB cannot find a servant with the provided <code>object_key</code> or the operation requested is not defined in the servant's interface then this field is <code>nil</code>.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>service_context</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to define the list of service context data to be marshaled in the request.
+		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>success</code></td>
+		<td valign="top"><b>boolean</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to cancel request:
+		<code>true</code> cancels the request and indicates to the invocation was successful;
+		<code>false</code> cancels the request and indicates to the invocation raised an exception.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>results</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to provide the result values of a canceled request.
+		This value must be a list of the values to be returned (in case of a successful invocation) or a list with a single value indicating the raised exception or error (in case of a failed invocation).</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>reply_service_context</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to define the list of service context to be added to the reply of a cancelled request.
+		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>forward_reference</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to forward this request to another reference.
+		This value must be a complete IOR structure (see <code>CORBA::IOP::IOR</code> in CORBA specs.).</td>
+	</tr>
+</table>
+</p>
+
+<p>The fields added to table <code>request</code> of operation <code>sendreply</code> of the client interceptor are (all other fields provided on the corresponding <code>receiverequest</code> operation are still available):
+<table>
+	<tr>
+		<td valign="top"><code>success</code></td>
+		<td valign="top"><b>boolean</b></td>
+		<td valign="top"></td>
+		<td>Indication of success of the invocation.
+		<code>true</code> indicates the invocation was successful;
+		<code>false</code> indicates the invocation raised an exception.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>results</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top"></td>
+		<td>List of the values to be returned (in case of a successful invocation) or a list with a single value indicating the raised exception or error (in case of a failed invocation).</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>reply_service_context</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top"></td>
+		<td>The list of service context received with the reply of the request.
+		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>forward_reference</code></td>
+		<td valign="top"><b>table</b></td>
+		<td valign="top">[optional]</td>
+		<td>Set this value to forward this request to another reference.
+		This value must be a complete IOR structure (see <code>CORBA::IOP::IOR</code> in CORBA specs.).</td>
+	</tr>
+</table>
+</p>
 
 <h2>Adding Information to Invocations</h2>
 
