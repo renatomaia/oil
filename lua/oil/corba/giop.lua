@@ -47,7 +47,10 @@ IOR = idl.struct{ -- because it avoids name clashes with object members.
 ObjectOperations = {
 	_interface = idl.operation{
 		name = "_interface",
-		result = idl.Object("IDL:omg.org/CORBA/InterfaceDef:1.0"),
+		result = idl.Object{
+			repID = "IDL:omg.org/CORBA/InterfaceDef:1.0",
+			name = "InterfaceDef",
+		},
 	},
 	_component = idl.operation{
 		name = "_component",

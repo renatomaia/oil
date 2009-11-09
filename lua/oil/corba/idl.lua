@@ -269,10 +269,10 @@ end
 string = { _type = "string", maxlength = 0 }
 
 function Object(self)
-	if type(self) == "string"
-		then self = {repID = self}
-		else assert.type(self, "table", "Object type definition")
-	end
+	assert.type(self, "table", "Object type definition")
+	if self.name  == nil then self.name = "" end
+	if self.repID == nil then setnameof(self, self.name) end
+	assert.type(self.name, "string", "Object type name")
 	assert.type(self.repID, "string", "Object type repository ID")
 	if self.repID == "IDL:omg.org/CORBA/Object:1.0"
 		then self = object
