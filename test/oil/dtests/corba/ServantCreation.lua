@@ -4,8 +4,21 @@ local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
 orb = oil.dtests.init{ port = 2809 }
-orb:newservant({ __type = "::CORBA::InterfaceDef", __objkey = "object1" })
-orb:newservant({}, "object2", "::CORBA::InterfaceDef")
+if oil.dtests.flavor.ludo then
+	function isa(self, iface)
+		return iface == "IDL:omg.org/CORBA/InterfaceDef:1.0"
+	end
+end
+orb:newservant{
+	_is_a = isa,
+	__objkey = "object1",
+	__type = "::CORBA::InterfaceDef",
+}
+orb:newservant(
+	{ _is_a = isa },
+	"object2",
+	"::CORBA::InterfaceDef"
+)
 orb:run()
 --[Server]=====================================================================]
 
@@ -19,4 +32,4 @@ checks:assert(object1:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0"), checks.is(tru
 checks:assert(object2:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0"), checks.is(true))
 --[Client]=====================================================================]
 
-return template:newsuite{ corba = true }
+return template:newsuite()
