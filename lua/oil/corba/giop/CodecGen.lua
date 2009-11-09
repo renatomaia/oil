@@ -148,7 +148,7 @@ local function numberunmarshaller(size, format)
 	local code = code:format(format, size)
 	return function(self) self:add(code) end
 end
-DecoderGenerator.null       = function() self:add(" nil") end
+DecoderGenerator.null       = function(self) self:add(" nil") end
 DecoderGenerator.void       = DecoderGenerator.null
 DecoderGenerator.short      = numberunmarshaller( 2, "s")
 DecoderGenerator.long       = numberunmarshaller( 4, "l")
@@ -261,7 +261,7 @@ function DecoderGenerator:sequence(idltype)
 		gen:generate(elementtype)
 		self:add("setmetatable(self:sequenceof(",self:upvalue(gen:compile(elementtype)),",")
 		self:ulong()
-		self:add("),",self:upvalue(elementtype),")")
+		self:add("),",self:upvalue(idltype),")")
 	end
 end
 
@@ -316,7 +316,7 @@ function Decoder:alignedjump(value)
 end
 
 function Decoder:sequenceof(decoder, length)
-	local sequence = {}
+	local sequence = { n = length }
 	for i = 1, length do
 		sequence[i] = decoder(self)
 	end
