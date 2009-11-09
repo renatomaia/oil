@@ -6,7 +6,7 @@ OiL 0.5 beta
   implement different servant management policies [demo objectmap].
 - CORBA interceptors can forward the invocation to an alternative reference,
   both in the client or server side.
-- Support to define paths to search for included IDL files.
+- Support to define file paths for search of IDL files defined used '#include'.
 - LuDO support for parameter passing by reference.
 - New flavor 'lua' that enables special proxies that delegate their meta-method
   to their servants (for LuDO by reference only).
@@ -15,26 +15,37 @@ OiL 0.5 beta
 [Improved Features]
 
 - New API:
-  - orb:newproxy(ref, ['synchronous','asynchronous','protected'], type)
+  - orb:newproxy(ref/proxy, ['synchronous'|'asynchronous'|'protected'], [type])
   - orb:setinterceptor(iceptor, 'corba')
-  - orb:setinterceptor(iceptor, 'corba.server')
-  - orb:setinterceptor(iceptor, 'corba.client')
-- New interceptor implementation with more information and more about the call.
+- New interceptor implementation that provides more information about the call.
 - New ORB assembler and builder scripts and simplification of field 'flavor'.
 - Interface parameter (3rd) of 'newservant' now overwrites field '__type' of
   the servant's implementation.
 
-[Deprecated Features]
+[Removed/Deprecated Features]
 
-- Pseudo-method 'proxy:_narrow()' is deprecated in favor of 'orb:narrow(proxy)'
-- Module 'oil.compat' was removed.
+- Module 'oil.compat' is no more available.
+- Alternative proxies ('__deferred' and '__try') are not created automatically.
+  Instead, initialize the ORB with:
+    orb = oil.init{ extraproxies = { "asynchronous", "protected" } }
+  Then use the following commands to explicitly create such proxies whenever
+  necessary.
+    local deferred = orb:newproxy(proxy, "asynchronous")
+    local try      = orb:newproxy(proxy, "protected")
+- Pseudo-method 'proxy:_narrow([iface])' is deprecated in favor of
+  'orb:narrow(proxy, [iface])' or 'orb:newproxy(proxy, [kind], [iface])'
+- Operation 'orb:setclientinterceptor(iceptor)' is deprecated in favor of
+  'orb:setinterceptor(iceptor, "corba.client")'
+- Operation 'orb:setserverinterceptor(iceptor)' is deprecated in favor of
+  'orb:setinterceptor(iceptor, "corba.server")'
 
 [Bug Fixes]
 
 - Bugfix in processing of forward declarations in IDLs.
 - Bugfix to invoke interceptors when exceptions are raised.
-- Bugfix to prevent that marshal errors stops the 'orb:run()' method.
+- Bugfix to prevent '_non_existent' to raise exceptions like 'COMM_FAILURE'.
+- Bugfix to prevent that marshal errors stop the 'orb:run()' method.
+- Bugfix to prevent that marshal errors result in memory leak.
 - Bugfix when unknown repIDs are imported from a remote IR.
-- Bugfix to 'idl2lua.lua' script raise errors when there are problems with the
-  contents of the IDL file.
-
+- Bugfix to make 'idl2lua.lua' script raise errors when there are problems with
+  the contents of the IDL file.
