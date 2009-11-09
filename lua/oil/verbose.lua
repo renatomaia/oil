@@ -19,6 +19,7 @@ local unpack = unpack
 
 local math   = require "math"
 local string = require "string"
+local table  = require "table"
 
 local ObjectCache = require "loop.collection.ObjectCache"
 local Viewer      = require "loop.debug.Viewer"
@@ -61,27 +62,40 @@ _M:newlevel{ "transport" }
 _M:newlevel{ "hexastream" }
 _M:newlevel{ "idltypes" }
 
-local pos
-local count
-function custom:hexastream(rawdata, cursor)
+function custom:hexastream(codec)
+	local stream = codec:getdata()
+	local cursor = codec.cursor
+	local base = codec.previousend
 	local viewer = self.viewer
 	local output = viewer.output
-	local lines = math.ceil(math.log10(#rawdata))
-	lines = string.format("%%%dd-%%%dd:", lines, lines)
-	count = 0
-	pos = cursor
-	for char in rawdata:gmatch("(.)") do
-		count = count + 1
-		column = math.mod(count, 8)
-		if column == 1 then
-			output:write("\n",viewer.prefix,lines:format(count, count + 7))
+	local lines = string.format("%%0%dx:", math.ceil(math.log10((base+#stream)/16)+1))
+	local count = 0
+	local text = {}
+	for char in stream:gmatch("(.)") do
+		column = math.mod(count, 16)
+		if column == 0 then
+			output:write("\n", lines:format(base+count))
 		end
 		local hexa
-		if count == pos
+		if count == cursor-1
 			then hexa = "[%02x]"
 			else hexa = " %02x "
 		end
 		output:write(hexa:format(string.byte(char)))
+		if char == "\0" then
+			text[#text+1] = "?"
+		elseif char:match("[%w%p ]") then
+			text[#text+1] = char
+		else
+			text[#text+1] = "."
+		end
+		if column == 15 then
+			output:write("  |"..table.concat(text).."|")
+			text = {}
+		elseif column == 7 then
+			output:write("  ")
+		end
+		count = count + 1
 	end
 end
 
