@@ -154,7 +154,7 @@ local function insert_symbols(lexeme)
   tab_symbols[lexeme] = {token = tab_tokens.TK_ID, descriptions = {}}
 end
 
-local function search_symbols(lexeme, tab_symbols)
+local function validate_symbol(lexeme, tab_symbols)
   if tab_symbols[lexeme] then
     return lexeme, tab_symbols[lexeme].token
   else
@@ -167,7 +167,7 @@ local function search_symbols(lexeme, tab_symbols)
   return nil, nil
 end
 
-local function search_symbols_wocollide(lexeme, tab_symbols)
+local function search_symbol(lexeme, tab_symbols)
   if tab_symbols[lexeme] then
     return lexeme, tab_symbols[lexeme].token
   end
@@ -764,23 +764,24 @@ function lexer(stridl)
         lexbuf = lexbuf..lookahead
         lookahead = getchar(stridl)
       end
-      if (string.sub(lexbuf, 1, 1) ~= '_') then
-        tokenvalue, tk = search_symbols(lexbuf, tab_keywords)
-        if (tk == "collide") then
+    -- Escaped identifiers - turns off keyword checking.
+      if (string.sub(lexbuf, 1, 1) == '_') then
+        lexbuf = string.sub(lexbuf, 2)
+      else
+        tokenvalue, _token = validate_symbol(lexbuf, tab_keywords)
+        if (_token == "collide") then
           error_lex("'"..lexbuf.."' collides with keyword '"..tokenvalue.."'")
-        elseif tk then
-          token = tk
+        elseif _token then
+          token = _token
           return token
         end
-      else
-        lexbuf = string.sub(lexbuf, 2)
       end
-      tokenvalue, token = search_symbols_wocollide(lexbuf, tab_symbols)
+      tokenvalue, token = search_symbol(lexbuf, tab_symbols)
       if not token then
         insert_symbols(lexbuf)
         tokenvalue = lexbuf
+        token = tab_tokens.TK_ID
       end
-      token = tab_tokens.TK_ID
       return token
   -- operators and other characters
     else

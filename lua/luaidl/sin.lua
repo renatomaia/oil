@@ -785,6 +785,8 @@ local scopeRoots
 local currentScopeName
 local CORBAVisible
 
+local tab_identifiers = {}
+
 -- this a list of type declarations
 local TAB_TYPEID = {
   ['CONST']     = 'const',
@@ -1084,6 +1086,17 @@ end
 ---
 -- Auxiliar functions
 ---------------------------------------------------------------------------------------------------
+local function getID()
+  return lex.tokenvalue_previous  
+end
+
+local function registerID(id)
+  if (string.sub(id, 1, 2) == "::") then
+   id = string.sub(id, 3)
+  end
+  tab_identifiers[string.upper(currentScope.absolute_name.."::"..id)] = true;
+end
+
 local function gotoFatherScope()
   if (scopeRoots[#scopeRoots].scope == currentScope.absolute_name) then
     table.remove(scopeRoots)
@@ -1111,11 +1124,14 @@ local function dclName(name, target, value)
   if namespaces[absolutename] then
     semanticError(string.format(ERRMSG_DECLARED, name))
   else
+    if tab_identifiers[string.upper(absolutename)] then
+      semanticError("collide")
+    end
+    namespaces[absolutename] = {namespace = name}
     if value then
       value.name = name
       table.insert(target, value)
     else
-      namespaces[absolutename] = {namespace = name}
       table.insert(target, name)
     end
   end
@@ -1398,7 +1414,7 @@ rules.const_dcl = function ()
     recognize(lex.tab_tokens.TK_CONST)
     local type = rules.const_type()
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     recognize("=")
     local value = rules.positive_int_const(143)
     local const = {type = type, value = value}
@@ -1441,7 +1457,7 @@ rules.type_dcl = function ()
   elseif (tab_firsts.rule_25[token]) then
     recognize(lex.tab_tokens.TK_NATIVE)
     recognize(lex.tab_tokens.TK_ID)
-    define(lex.tokenvalue_previous, TAB_TYPEID.NATIVE)
+    define(getID(), TAB_TYPEID.NATIVE)
   elseif (tab_firsts.rule_26[token]) then
     rules.union_or_struct()
   else
@@ -1602,7 +1618,7 @@ end
 
 rules.type_dcl_name = function (type)
   recognize(lex.tab_tokens.TK_ID)
-  local name = lex.tokenvalue_previous
+  local name = getID()
   local typedef = {type = rules.fixed_array_size_l(type)}
   define(name, TAB_TYPEID.TYPEDEF, typedef)
   if (callbacks.typedef) then
@@ -1778,19 +1794,19 @@ end
 rules.literal = function ()
   if tab_firsts.rule_120[token] then
     recognize(lex.tab_tokens.TK_INTEGER_LITERAL)
-    return lex.tokenvalue_previous
+    return getID()
   elseif tab_firsts.rule_121[token] then
     recognize(lex.tab_tokens.TK_STRING_LITERAL)
-    return lex.tokenvalue_previous
+    return getID()
   elseif tab_firsts.rule_122[token] then
     recognize(lex.tab_tokens.TK_CHAR_LITERAL)
-    return lex.tokenvalue_previous
+    return getID()
   elseif tab_firsts.rule_123[token] then
     recognize(lex.tab_tokens.TK_FIXED_LITERAL)
-    return lex.tokenvalue_previous
+    return getID()
   elseif tab_firsts.rule_124[token] then
     recognize(lex.tab_tokens.TK_FLOAT_LITERAL)
-    return lex.tokenvalue_previous
+    return getID()
   elseif tab_firsts.rule_125[token] then
     return rules.boolean_literal()
 --  else
@@ -1802,10 +1818,10 @@ end
 rules.boolean_literal = function ()
   if tab_firsts.rule_126[token] then
     recognize(lex.tab_tokens.TK_TRUE)
-    return lex.tokenvalue_previous
+    return getID()
   elseif tab_firsts.rule_127[token] then
     recognize(lex.tab_tokens.TK_FALSE)
-    return lex.tokenvalue_previous
+    return getID()
 --  else
 --    sinError(tab_ERRORMSG[17])
   end
@@ -1840,7 +1856,7 @@ rules.mult_expr_l = function (const1, numrule)
   elseif (
           tab_follow.rule_111[token] or
           tab_follow['rule_'..numrule][token] or
-          (lex.tokenvalue_previous == ':')
+          (getID() == ':')
          )
   then
     --empty
@@ -1870,7 +1886,7 @@ rules.add_expr_l = function (const1, numrule)
   elseif (
           tab_follow.rule_106[token] or
           tab_follow['rule_'..numrule][token] or
-          (lex.tokenvalue_previous == ':')
+          (getID() == ':')
          )
   then
     --empty
@@ -1892,7 +1908,7 @@ rules.shift_expr_l = function (const1, numrule)
   elseif (
           tab_follow.rule_102[token] or
           tab_follow['rule_'..numrule][token] or
-          (lex.tokenvalue_previous == ':')
+          (getID() == ':')
          )
   then
     --empty
@@ -1914,7 +1930,7 @@ rules.and_expr_l = function (const1, numrule)
   elseif (
           tab_follow.rule_98[token] or
           tab_follow['rule_'..numrule][token] or
-          (lex.tokenvalue_previous == ':')
+          (getID() == ':')
          )
   then
     --empty
@@ -1932,7 +1948,7 @@ rules.xor_expr_l = function (numrule)
   elseif (
           tab_follow.rule_95[token] or
           tab_follow['rule_'..numrule][token] or
-          (lex.tokenvalue_previous == ':')
+          (getID() == ':')
          )
   then
     --empty
@@ -1948,7 +1964,7 @@ rules.or_expr_l = function (numrule)
     rules.or_expr_l(numrule)
   elseif (
           tab_follow['rule_'..numrule][token] or
-          (lex.tokenvalue_previous == ':')
+          (getID() == ':')
          )
   then
     --empty
@@ -2039,7 +2055,7 @@ end
 rules.struct_type = function ()
   recognize(lex.tab_tokens.TK_STRUCT)
   recognize(lex.tab_tokens.TK_ID)
-  define(lex.tokenvalue_previous, TAB_TYPEID.STRUCT)
+  define(getID(), TAB_TYPEID.STRUCT)
   recognize("{")
   rules.member_l()
   local struct = currentScope
@@ -2055,7 +2071,7 @@ rules.union_type = function ()
   if tab_firsts.rule_148[token] then
     recognize(lex.tab_tokens.TK_UNION)
     recognize(lex.tab_tokens.TK_ID)
-    local union_name = lex.tokenvalue_previous
+    local union_name = getID()
     recognize(lex.tab_tokens.TK_SWITCH)
     define(union_name, TAB_TYPEID.UNION)
     recognize("(")
@@ -2125,6 +2141,7 @@ rules.case = function ()
     for i, case in pairs(cases) do
       if i == 1 then
         dclName(name, currentScope, {type = tab_type_spec, label = case})
+        registerID(name);
       else
         table.insert(currentScope, {name = name, type = tab_type_spec, label = case})
       end
@@ -2182,14 +2199,14 @@ end
 rules.case_label_aux = function ()
   if (token == lex.tab_tokens.TK_ID) then
     recognize(lex.tab_tokens.TK_ID)
-    tab_scope = getDefinition(lex.tokenvalue_previous)
+    tab_scope = getDefinition(getID())
     recognize(":")
     return rules.case_label_tail(tab_scope)
   elseif (token == ':') then
     recognize(":")
     recognize(":")
     recognize(lex.tab_tokens.TK_ID, "identifier")
-    tab_scope = getDefinition(lex.tokenvalue_previous)
+    tab_scope = getDefinition(getID())
     recognize(":")
     return rules.case_label_tail(tab_scope)
   end
@@ -2210,7 +2227,7 @@ rules.case_label_tail_aux = function (tab_scope)
     recognize(":")
   elseif (token == lex.tab_tokens.TK_ID) then
     recognize(lex.tab_tokens.TK_ID)
-    local namespace = lex.tokenvalue_previous
+    local namespace = getID()
     tab_scope = getDefinition(namespace, tab_scope.absolute_name)
     tab_scope = rules.case_label_tail_aux(tab_scope)
   end
@@ -2221,7 +2238,7 @@ rules.element_spec = function (cases)
   if (tab_firsts.rule_164[token]) then
     local tab_type_spec = rules.type_spec(221)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     return tab_type_spec, name
   else
     sinError(tab_ERRORMSG[03])
@@ -2231,7 +2248,7 @@ end
 rules.enum_type = function ()
   recognize(lex.tab_tokens.TK_ENUM)
   recognize(lex.tab_tokens.TK_ID)
-  local _, tab_enum = define(lex.tokenvalue_previous, TAB_TYPEID.ENUM)
+  local _, tab_enum = define(getID(), TAB_TYPEID.ENUM)
   recognize("{")
   rules.enumerator(tab_enum)
   rules.enumerator_l(tab_enum)
@@ -2244,7 +2261,9 @@ end
 
 rules.enumerator = function (tab_enum)
   recognize(lex.tab_tokens.TK_ID)
-  dclName(lex.tokenvalue_previous, tab_enum)
+  local name = getID()
+  dclName(name, tab_enum)
+  registerID(name);
 end
 
 rules.enumerator_l = function (tab_enum)
@@ -2263,7 +2282,7 @@ rules.module = function ()
   if (tab_firsts.rule_305[token]) then
     recognize(lex.tab_tokens.TK_MODULE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     if (name == 'CORBA') then
       CORBAVisible = true
     end
@@ -2296,7 +2315,7 @@ rules.scoped_name_l = function (tab_scope, full_namespace, num_follow_rule)
     recognize(":")
     recognize(":")
     recognize(lex.tab_tokens.TK_ID)
-    local namespace = lex.tokenvalue_previous
+    local namespace = getID()
     full_namespace = tab_scope.absolute_name..'::'..namespace
     tab_scope = getDefinition(namespace, tab_scope.absolute_name)
     tab_scope = rules.scoped_name_l(tab_scope, full_namespace, num_follow_rule)
@@ -2313,16 +2332,22 @@ rules.scoped_name = function (num_follow_rule)
   local tab_scope = {}
   if (token == lex.tab_tokens.TK_ID) then
     recognize(lex.tab_tokens.TK_ID)
-    name = lex.tokenvalue_previous
+    name = getID()
     tab_scope = getDefinition(name)
     tab_scope = rules.scoped_name_l(tab_scope, name, num_follow_rule)
   elseif (token == ":") then
     recognize(":")
     recognize(":")
     recognize(lex.tab_tokens.TK_ID)
-    name = lex.tokenvalue_previous
+    name = getID()
     tab_scope = getDefinition(name)
     tab_scope = rules.scoped_name_l(tab_scope, name, num_follow_rule)
+  end
+  local absolute_name 
+  if (tab_scope.absolute_name) then
+    absolute_name = tab_scope.absolute_name
+    registerID(tab_scope.absolute_name)
+  else
   end
   return tab_scope
 end
@@ -2331,12 +2356,12 @@ rules.union_or_struct = function ()
   if (tab_firsts.rule_168[token]) then
     recognize(lex.tab_tokens.TK_STRUCT)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     return rules.struct_tail(name)
   elseif (tab_firsts.rule_169[token]) then
     recognize(lex.tab_tokens.TK_UNION)
     recognize(lex.tab_tokens.TK_ID)
-    define(lex.tokenvalue_previous, TAB_TYPEID.UNION)
+    define(getID(), TAB_TYPEID.UNION)
     rules.union_tail()
     local union = currentScope
     gotoFatherScope()
@@ -2417,8 +2442,9 @@ end
 
 rules.declarator = function (type)
   recognize(lex.tab_tokens.TK_ID)
-  local name = lex.tokenvalue_previous
+  local name = getID()
   dclName(name, currentScope, {type = rules.fixed_array_size_l(type)})
+  registerID(name);
 end
 
 rules.union_tail = function ()
@@ -2439,7 +2465,7 @@ end
 rules.except_dcl = function ()
   recognize(lex.tab_tokens.TK_EXCEPTION)
   recognize(lex.tab_tokens.TK_ID)
-  local name = lex.tokenvalue_previous
+  local name = getID()
   define(name, TAB_TYPEID.EXCEPTION)
   recognize("{")
   rules.member_l_empty()
@@ -2491,7 +2517,7 @@ rules.inter_value_event = function ()
   if (tab_firsts.rule_192[token]) then
     recognize(lex.tab_tokens.TK_INTERFACE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     local interface = rules.interface_tail(name)
     if callbacks.interface then
       callbacks.interface(interface)
@@ -2503,7 +2529,7 @@ rules.inter_value_event = function ()
     recognize(lex.tab_tokens.TK_LOCAL)
     recognize(lex.tab_tokens.TK_INTERFACE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     local interface = rules.interface_tail(name, 'local')
     if callbacks.interface and interface then
       callbacks.interface(interface)
@@ -2511,7 +2537,7 @@ rules.inter_value_event = function ()
   elseif (tab_firsts.rule_193[token]) then
     recognize(lex.tab_tokens.TK_VALUETYPE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     define(name, TAB_TYPEID.VALUETYPE)
     local tab_valuetypescope = rules.value_tail(name)
     if callbacks.valuetype then
@@ -2523,7 +2549,7 @@ rules.inter_value_event = function ()
   elseif tab_firsts.rule_194[token] then
     recognize(lex.tab_tokens.TK_EVENTTYPE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     define(name, TAB_TYPEID.EVENTTYPE)
     local tab_eventtypescope = rules.eventtype_tail(name)
     if callbacks.eventtype then
@@ -2538,7 +2564,7 @@ rules.abstract_tail = function ()
   if (tab_firsts.rule_195[token]) then
     recognize(lex.tab_tokens.TK_INTERFACE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     local interface = rules.interface_tail(name, 'abstract')
     if callbacks.interface then
       callbacks.interface(interface)
@@ -2546,7 +2572,7 @@ rules.abstract_tail = function ()
   elseif (tab_firsts.rule_196[token]) then
     recognize(lex.tab_tokens.TK_VALUETYPE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     define(name, TAB_TYPEID.VALUETYPE)
     currentScope.abstract = true
     local tab_valuetypescope = rules.value_tail(name)
@@ -2556,7 +2582,7 @@ rules.abstract_tail = function ()
   elseif tab_firsts.rule_197[token] then
     recognize(lex.tab_tokens.TK_EVENTTYPE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     define(name, TAB_TYPEID.EVENTTYPE)
     currentScope.abstract = true
     local tab_eventtypescope = rules.eventtype_tail(name)
@@ -2661,7 +2687,7 @@ rules.op_dcl = function ()
       semanticError("An operation with the oneway attribute must specify a 'void' return type.")
     end
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     define(name, TAB_TYPEID.OPERATION)
     currentScope.name = name
     currentScope.oneway = true
@@ -2676,7 +2702,7 @@ rules.op_dcl = function ()
   elseif tab_firsts.rule_244[token] then
     local result = rules.op_type_spec()
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     define(name, TAB_TYPEID.OPERATION)
     currentScope.name = name
     currentScope.result = result
@@ -2726,8 +2752,9 @@ rules.param_dcl = function ()
   local attribute = rules.param_attribute()
   local type = rules.param_type_spec()
   recognize(lex.tab_tokens.TK_ID)
-  local name = lex.tokenvalue_previous
+  local name = getID()
   dclName(name, currentScope.parameters, {mode = attribute, type = type})
+  registerID(name);
 end
 
 rules.param_dcl_l = function ()
@@ -2830,7 +2857,9 @@ end
 
 rules.context = function ()
   recognize(lex.tab_tokens.TK_STRING_LITERAL)
-  dclName(lex.tokenvalue_previous, currentScope.contexts, {})
+  local name = getID()
+  dclName(name, currentScope.contexts, {})
+  registerID(name);
 end
 
 rules.string_literal_l = function ()
@@ -2919,7 +2948,7 @@ end
 
 rules.simple_dcl = function ()
   recognize(lex.tab_tokens.TK_ID)
-  return lex.tokenvalue_previous
+  return getID()
 end
 
 rules.simple_dcl_l = function (type, readonly)
@@ -2988,7 +3017,7 @@ end
 rules.component = function ()
   recognize(lex.tab_tokens.TK_COMPONENT)
   recognize(lex.tab_tokens.TK_ID)
-  local name = lex.tokenvalue_previous
+  local name = getID()
   define(name, TAB_TYPEID.COMPONENT)
   currentScope.declarations = {}
   rules.component_tail(name)
@@ -3095,7 +3124,7 @@ rules.provides_dcl = function ()
   local tab_provides = { _type = 'provides' }
   tab_provides.interface_type = rules.interface_type()
   recognize(lex.tab_tokens.TK_ID, '<identifier>')
-  local name = lex.tokenvalue_previous
+  local name = getID()
 --  new_name(name, name, currentScope.declarations, tab_provides, ERRMSG_DECLARED, name)
 end
 
@@ -3121,7 +3150,7 @@ rules.uses_dcl = function ()
   tab_uses.multiple = rules.multiple_e()
   tab_uses.interface_type = rules.interface_type()
   recognize(lex.tab_tokens.TK_ID)
-  local name = lex.tokenvalue_previous
+  local name = getID()
 --  new_name(name, name, currentScope.declarations, tab_uses, ERRMSG_DECLARED, name)
 end
 
@@ -3139,32 +3168,32 @@ end
 
 rules.emits_dcl = function ()
   recognize(lex.tab_tokens.TK_EMITS)
-  local name = lex.tokenvalue_previous
+  local name = getID()
   local tab_uses = { _type = 'emits' }
 --  new_name(name, name, currentScope.declarations, tab_emits, ERRMSG_DECLARED, name)
   tab_uses.event_type = rules.scoped_name(341)
   recognize(lex.tab_tokens.TK_ID)
-  tab_uses.evtsrc = lex.tokenvalue_previous
+  tab_uses.evtsrc = getID()
 end
 
 rules.publishes_dcl = function ()
   recognize(lex.tab_tokens.TK_PUBLISHES)
-  local name = lex.tokenvalue_previous
+  local name = getID()
   local tab_publishes = { _type = 'publishes' }
 --  new_name(name, name, currentScope.declarations, tab_publishes, ERRMSG_DECLARED, name)
   tab_uses.event_type = rules.scoped_name(342)
   recognize(lex.tab_tokens.TK_ID)
-  tab_uses.evtsrc = lex.tokenvalue_previous
+  tab_uses.evtsrc = getID()
 end
 
 rules.consumes_dcl = function ()
   recognize(lex.tab_tokens.TK_CONSUMES)
-  local name = lex.tokenvalue_previous
+  local name = getID()
   local tab_publishes = { _type = 'consumes' }
 --  new_name(name, name, currentScope.declarations, tab_consumes, ERRMSG_DECLARED, name)
   tab_uses.event_type = rules.scoped_name(343)
   recognize(lex.tab_tokens.TK_ID)
-  tab_uses.evtsink = lex.tokenvalue_previous
+  tab_uses.evtsink = getID()
 end
 
 
@@ -3175,7 +3204,7 @@ end
 rules.home_dcl = function ()
   recognize(lex.tab_tokens.TK_HOME)
   recognize(lex.tab_tokens.TK_ID)
-  local name = lex.tokenvalue_previous
+  local name = getID()
   define(name, TAB_TYPEID.HOME)
   rules.home_dcl_tail(name)
   gotoFatherScope()
@@ -3262,7 +3291,7 @@ rules.factory_dcl = function ()
   if tab_firsts.rule_364[token] then
     recognize(lex.tab_tokens.TK_FACTORY)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     local tab_factory = { _type = TAB_TYPEID.FACTORY, name = name }
 --    new_name(name, name,
 --           currentScope.members, tab_factory, ERRMSG_OPDECLARED, name)
@@ -3288,7 +3317,7 @@ rules.init_param_dcl = function (tab_factory)
     recognize(lex.tab_tokens.TK_IN)
     local tab_type_spec = rules.param_type_spec()
     recognize(lex.tab_tokens.TK_ID)
-    local param_name = lex.tokenvalue_previous
+    local param_name = getID()
 --    new_name(tab_factory.name..'._parameters.'..param_name,
 --           param_name, tab_factory.parameters,
 --           { mode = 'PARAM_IN', type = tab_type_spec, name = param_name },
@@ -3313,7 +3342,7 @@ rules.finder_dcl = function ()
   if tab_firsts.rule_365[token] then
     recognize(lex.tab_tokens.TK_FINDER)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     local tab_finder = { _type = TAB_TYPEID.FINDER, name = name }
 --    new_name(name, name,
 --           currentScope.members, tab_finder, ERRMSG_OPDECLARED, name)
@@ -3330,7 +3359,7 @@ rules.value_or_event = function ()
   if (tab_firsts.rule_281[token]) then
     recognize(lex.tab_tokens.TK_VALUETYPE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     define(name, TAB_TYPEID.VALUETYPE)
     currentScope.custom = true
     local tab_valuetypescope = rules.value_tail(name)
@@ -3340,7 +3369,7 @@ rules.value_or_event = function ()
   elseif (tab_firsts.rule_282[token]) then
     recognize(lex.tab_tokens.TK_EVENTTYPE)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     define(name, TAB_TYPEID.EVENTTYPE)
     currentScope.custom = true
     local tab_eventtypescope = rules.eventtype_tail(name)
@@ -3461,7 +3490,7 @@ rules.init_dcl = function ()
   if (tab_firsts.rule_292[token]) then
     recognize(lex.tab_tokens.TK_FACTORY)
     recognize(lex.tab_tokens.TK_ID)
-    local name = lex.tokenvalue_previous
+    local name = getID()
     local tab_factory = { _type = TAB_TYPEID.FACTORY, name = name }
 --    new_name(name, name,
 --           currentScope.members, tab_factory, ERRMSG_OPDECLARED, name)
@@ -3555,6 +3584,7 @@ function parse(stridl, options)
   idl                       = stridl
   CORBAVisible              = nil
   currentScopeName          = ''
+  tab_identifiers           = {}
   scopeRoots                = {}
   table.insert(scopeRoots, {root = '', scope = ''})
   lex.init()
