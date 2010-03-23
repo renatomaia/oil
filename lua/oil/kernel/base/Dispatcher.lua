@@ -18,7 +18,7 @@
 
 local luapcall     = pcall
 local setmetatable = setmetatable
-local type         = type                                                       
+local type         = type
 local select       = select
 local unpack       = unpack
 

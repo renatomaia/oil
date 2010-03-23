@@ -6,7 +6,7 @@ local unpack       = unpack                                                     
 module "oil.kernel.base.Proxies.utils"
 
 function proxytostring(self)
-	return self.__context.referrer:encode(self.__reference)
+	return self.__manager.referrer:encode(self.__reference)
 end
 
 function unpackrequest(request)
@@ -16,7 +16,7 @@ end
 function callhandler(self, ...)
 	local handler = rawget(self, "__exceptions") or
 	                rawget(getmetatable(self), "__exceptions") or
-	                self.__context.proxies.defaulthandler or
+	                self.__manager.proxies.defaulthandler or
 	                error((...))
 	return handler(self, ...)
 end

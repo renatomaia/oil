@@ -34,18 +34,15 @@ module "oil.ludo.Requester"
 
 oo.class(_M, Messenger)
 
-context = false
-
 --------------------------------------------------------------------------------
 
 local MessageFmt = "%d\n%s"
 
 function newrequest(self, reference, operation, ...)
-	local context = self.context
-	local result, except = context.channels:retrieve(reference)
+	local result, except = self.channels:retrieve(reference)
 	if result then
 		local channel = result
-		local encoder = context.codec:encoder()
+		local encoder = self.codec:encoder()
 		local requestid = #channel+1
 		encoder:put(requestid, reference.object, operation, ...)
 		local data = encoder:__tostring()
@@ -84,9 +81,8 @@ function getreply(self, request, probe)
 	local result, except = true, nil
 	if request.success == nil then
 		local channel = request.channel
-		local context = self.context
 		if channel:trylock("read", not probe, request) then
-			local codec = self.context.codec
+			local codec = self.codec
 			while result and (result ~= request) and (not probe or channel:probe()) do
 				result, except = channel:receive()
 				if result then

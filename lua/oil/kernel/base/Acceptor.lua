@@ -50,8 +50,6 @@ module "oil.kernel.base.Acceptor"
 
 oo.class(_M, Channels)
 
-context = false
-
 --------------------------------------------------------------------------------
 -- connection management
 
@@ -69,12 +67,12 @@ end
 local list = {}
 function LuaSocketOps:probe()
 	list[1] = self.__object
-	return self.context.sockets:select(list, nil, 0)[1] == list[1]
+	return self.sockets:select(list, nil, 0)[1] == list[1]
 end
 
 function CoSocketOps:probe()
 	local list = { self }
-	return self.context.sockets:select(list, nil, 0)[1] == list[1]
+	return self.sockets:select(list, nil, 0)[1] == list[1]
 end
 
 --------------------------------------------------------------------------------
@@ -83,11 +81,11 @@ Port = oo.class()
 
 function Port:__init(object)
 	self = oo.rawnew(self, object)
-	local component = self.context.__component
+	local factory = self.factory
 	self.wrapped = ObjectCache()
 	function self.wrapped.retrieve(_, socket)
-		socket = component:setupsocket(socket)
-		socket.context = context
+		socket = factory:setupsocket(socket)
+		socket.socket = factory.sockets
 		socket.port = self
 		return socket
 	end
@@ -100,7 +98,7 @@ end
 function Port:accept(probe)                                                     --[[VERBOSE]] verbose:channels("accepting channel from port with ",#self," active channels")
 	local except
 	if OrderedSet.empty(self) then
-		local selected = self.context.sockets:select(self, nil, probe and 0)
+		local selected = self.factory.sockets:select(self, nil, probe and 0)
 		for _, channel in ipairs(selected) do
 			if channel == self.__object then
 				channel, except = channel:accept()
@@ -132,7 +130,7 @@ function __init(self, object)
 		__index = function(hosts, host)
 			local cache = ObjectCache()
 			function cache.retrieve(_, port)
-				local socket, errmsg = self.context.sockets:tcp()
+				local socket, errmsg = self.sockets:tcp()
 				if socket then
 					self:setupsocket(socket)
 					_, errmsg = socket:bind(host, port)
@@ -140,7 +138,7 @@ function __init(self, object)
 						_, errmsg = socket:listen()
 						if _ then                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
 							return Port{
-								context = self.context,
+								factory = self,
 								__object = socket,
 							}
 						else
@@ -214,7 +212,7 @@ local PortLowerBound = 2809 -- inclusive (never at first attempt)
 local PortUpperBound = 9999 -- inclusive
 
 function default(self, profile)
-	local sockets = self.context.sockets
+	local sockets = self.sockets
 	profile = profile or {}
 	
 	-- find a network interface

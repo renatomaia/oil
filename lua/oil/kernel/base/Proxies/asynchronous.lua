@@ -11,12 +11,12 @@ local Request = oo.class()
 function Request:ready()                                                        --[[VERBOSE]] verbose:proxies("check reply availability")
 	local proxy = self.proxy
 	assertresults(proxy, self.member,
-	              proxy.__context.requester:getreply(self, true))
+	              proxy.__manager.requester:getreply(self, true))
 	return self.success ~= nil
 end
 
 function Request:results()                                                      --[[VERBOSE]] verbose:proxies(true, "get reply results")
-	local success, except = self.proxy.__context.requester:getreply(self)
+	local success, except = self.proxy.__manager.requester:getreply(self)
 	if success then                                                               --[[VERBOSE]] verbose:proxies(false, "got results successfully")
 		return unpackrequest(self)
 	end                                                                           --[[VERBOSE]] verbose:proxies(false, "got errors while reading reply")

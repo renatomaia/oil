@@ -47,8 +47,6 @@ local Exception = require "oil.corba.giop.Exception"                            
 
 module("oil.corba.giop.Referrer", oo.class)
 
-context = false
-
 --------------------------------------------------------------------------------
 -- String/byte conversions -----------------------------------------------------
 
@@ -76,13 +74,13 @@ end
 --------------------------------------------------------------------------------
 
 function IOR(self, stream)
-	local decoder = self.context.codec:decoder(hexa2byte(stream), true)
+	local decoder = self.codec:decoder(hexa2byte(stream), true)
 	return decoder:struct(giop.IOR)
 end
 
 function corbaloc(self, encoded)
 	for token, data in string.gmatch(encoded, "(%w*):([^,]*)") do
-		local profiler = self.context.profiler[token]
+		local profiler = self.profiler[token]
 		if profiler then
 			local profile, except = profiler:decodeurl(data)
 			if profile then
@@ -108,7 +106,7 @@ end
 function newreference(self, access, key, type)
 	local profiles = {}
 	local tag = access.tag or 0
-	local profiler = self.context.profiler[tag]
+	local profiler = self.profiler[tag]
 	if profiler then
 		local ok, except = profiler:encode(profiles, key, access)
 		if not ok then return nil, except end
@@ -126,7 +124,7 @@ function newreference(self, access, key, type)
 end
 
 function islocal(self, reference, access)
-	local profilers = self.context.profiler
+	local profilers = self.profiler
 	for _, profile in ipairs(reference.profiles) do
 		local profiler = profilers[profile.tag]
 		if profiler then
@@ -141,7 +139,7 @@ end
 local _interface = giop.ObjectOperations._interface
 local NO_IMPLEMENT = giop.SystemExceptionIDs.NO_IMPLEMENT
 function typeof(self, reference)
-	local requester = self.context.requester
+	local requester = self.requester
 	local result, except = requester:newrequest(reference, _interface)
 	if result then
 		local request = result
@@ -150,10 +148,8 @@ function typeof(self, reference)
 			result = request[1]
 			if request.success then
 				except = nil
-			elseif result[1] == NO_IMPLEMENT then
-				result, except = reference.type_id, nil
 			else
-				result, except = nil, result
+				result, except = reference.type_id, nil
 			end
 		end
 	end
@@ -164,7 +160,7 @@ end
 -- Coding ----------------------------------------------------------------------
 
 function encode(self, ior)
-	local encoder = self.context.codec:encoder(true)
+	local encoder = self.codec:encoder(true)
 	encoder:struct(ior, giop.IOR)
 	return "IOR:"..byte2hexa(encoder:getdata())
 end

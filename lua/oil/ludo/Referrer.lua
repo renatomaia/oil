@@ -26,8 +26,6 @@ local oo = require "oil.oo"                                                     
 
 module("oil.ludo.Referrer", oo.class)
 
-context = false
-
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -53,7 +51,7 @@ end
 function encode(self, reference)
 	local object, host, port = reference.object, reference.host, reference.port
 	if object ~= nil and host ~= nil and port ~= nil then
-		local encoder = self.context.codec:encoder()
+		local encoder = self.codec:encoder()
 		encoder:put(object, host, port)
 		return encoder:__tostring()
 	end
@@ -61,7 +59,7 @@ function encode(self, reference)
 end
 
 function decode(self, reference)
-	local decoder = self.context.codec:decoder(reference)
+	local decoder = self.codec:decoder(reference)
 	local object, host, port = decoder:get()
 	if object ~= nil and host ~= nil and port ~= nil then
 		return {

@@ -37,13 +37,10 @@ local Exception = require "oil.Exception"                                       
 
 module("oil.kernel.base.Receiver", oo.class)
 
-context = false
-
 function processrequest(self, request)
-	local context = self.context
-	local result, except = context.dispatcher:dispatch(request)
+	local result, except = self.dispatcher:dispatch(request)
 	if result then
-		result, except = context.listener:sendreply(request)
+		result, except = self.listener:sendreply(request)
 	end
 	return result, except
 end
@@ -51,7 +48,7 @@ end
 --------------------------------------------------------------------------------
 
 function initialize(self, config)
-	local result, except = self.context.listener:setupaccess(config)
+	local result, except = self.listener:setupaccess(config)
 	if result then
 		self.accesspoint = result
 	end
@@ -59,13 +56,12 @@ function initialize(self, config)
 end
 
 function hasrequest(self)
-	return self.context.listener:getchannel(self.accesspoint, true)
+	return self.listener:getchannel(self.accesspoint, true)
 end
 
 function acceptone(self)                                                        --[[VERBOSE]] verbose:acceptor(true, "accept one request from channel ",self.accesspoint)
 	local result, except
-	local context = self.context
-	local listener = context.listener
+	local listener = self.listener
 	result, except = listener:getchannel(self.accesspoint)
 	if result then
 		local channel = result
@@ -79,8 +75,7 @@ function acceptone(self)                                                        
 end
 
 function acceptall(self)
-	local context = self.context
-	local listener = context.listener
+	local listener = self.listener
 	local accesspoint = self.accesspoint                                          --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",accesspoint)
 	local result, except
 	self[accesspoint] = true
@@ -102,7 +97,7 @@ function halt(self)                                                             
 	local accesspoint = self.accesspoint
 	if self[accesspoint] then
 		self[accesspoint] = nil
-		return self.context.listener:freeaccess(accesspoint)
+		return self.listener:freeaccess(accesspoint)
 	else
 		return nil, Exception{
 			reason = "halt",

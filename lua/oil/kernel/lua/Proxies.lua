@@ -53,7 +53,7 @@ for _, field in ipairs{
 	"newindex",
 } do
 	class["__"..field] = function(self, ...)                                      --[[VERBOSE]] verbose:proxies("call to ",field," ", ...)
-		local requester = self.__context.requester
+		local requester = self.__manager.requester
 		local success, except = requester:newrequest(self.__reference, field, ...)
 		if success then
 			local request = success

@@ -55,8 +55,6 @@ module "oil.corba.giop.Listener"
 
 oo.class(_M, Messenger)
 
-context = false
-
 --------------------------------------------------------------------------------
 
 local RequestID          = giop.RequestID
@@ -84,7 +82,7 @@ end
 --------------------------------------------------------------------------------
 
 function setupaccess(self, configs)
-	local channels = self.context.channels[configs and configs.tag or 0]
+	local channels = self.channels[configs and configs.tag or 0]
 	if channels then
 		return channels:default(configs)
 	else
@@ -97,7 +95,7 @@ function setupaccess(self, configs)
 end
 
 function freeaccess(self, accesspoint)                                          --[[VERBOSE]] verbose:listen(true, "closing all channels with accesspoint ",accesspoint)
-	local channels = self.context.channels[accesspoint.tag or 0]
+	local channels = self.channels[accesspoint.tag or 0]
 	local result, except = channels:dispose(accesspoint)
 	if result then
 		for _, channel in ipairs(result) do
@@ -113,7 +111,7 @@ end
 --------------------------------------------------------------------------------
 
 function getchannel(self, accesspoint, probe)                                   --[[VERBOSE]] verbose:listen(true, "get channel from accesspoint ",accesspoint)
-	local result, except = self.context.channels[accesspoint.tag or 0]
+	local result, except = self.channels[accesspoint.tag or 0]
 	if result then
 		result, except = result:retrieve(accesspoint, probe)
 	else
@@ -167,15 +165,14 @@ end
 --------------------------------------------------------------------------------
 
 function handlerequest(self, channel, header, decoder)
-	local context = self.context
 	local requestid = header.request_id
 	if not channel[requestid] then
 		header.objectkey = header.object_key
-		local target, iface = context.servants:retrieve(header.object_key)
+		local target, iface = self.servants:retrieve(header.object_key)
 		if target then
 			header.target = target
 			header.interface = iface
-			local member = context.indexer:valueof(iface, header.operation)
+			local member = self.indexer:valueof(iface, header.operation)
 			if member then                                                            --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
 				header.member = member
 				header.n = #member.inputs
@@ -228,7 +225,6 @@ function handlerequest(self, channel, header, decoder)
 end
 
 function getrequest(self, channel, probe)                                       --[[VERBOSE]] verbose:listen(true, "get request from channel")
-	local context = self.context
 	local result, except = true, nil
 	if channel:trylock("read", not probe) then
 		if not probe or channel:probe() then
@@ -249,7 +245,7 @@ function getrequest(self, channel, probe)                                       
 				bypassed = true
 			elseif msgid == LocateRequestID then                                      --[[VERBOSE]] verbose:listen("got locate request ",header.request_id)
 				local reply = { request_id = header.request_id }
-				if context.servants:retrieve(header.object_key)
+				if self.servants:retrieve(header.object_key)
 					then reply.locate_status = "OBJECT_HERE"
 					else reply.locate_status = "UNKNOWN_OBJECT"
 				end

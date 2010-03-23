@@ -39,8 +39,6 @@ module "oil.kernel.typed.Servants"
 
 oo.class(_M, Servants)
 
-context = false
-
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -96,7 +94,7 @@ function register(self, object, objkey, objtype)
 	if objtype == nil then
 		objtype = self:resolvetype(object)
 	end
-	objtype, except = self.context.types:resolve(objtype)
+	objtype, except = self.types:resolve(objtype)
 	if not objtype then
 		return nil, except
 	end
@@ -107,7 +105,6 @@ function register(self, object, objkey, objtype)
 end
 
 function remove(self, objkey, objtype)
-	local context = self.context
 	local keytype = type(objkey)
 	if keytype ~= "string" then
 		local object = objkey
@@ -122,7 +119,7 @@ function remove(self, objkey, objtype)
 					objtype = self:resolvetype(object)
 				end
 				local except
-				objtype, except = self.context.types:resolve(objtype)
+				objtype, except = self.types:resolve(objtype)
 				if not objtype then                                                     --[[VERBOSE]] verbose:servants("unable to identify type of object ",object)
 					return nil, except
 				end

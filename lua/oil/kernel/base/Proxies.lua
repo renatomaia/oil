@@ -25,8 +25,6 @@ local oo = require "oil.oo"                                                     
 
 module("oil.kernel.base.Proxies", oo.class)
 
-context = false
-
 local function newclass(methodmaker)
 	return setmetatable(oo.initclass{
 		__tostring = proxytostring,
@@ -37,7 +35,7 @@ local function newclass(methodmaker)
 		__call = oo.rawnew,
 		__index = function(cache, field)
 			local function invoker(self, ...)                                         --[[VERBOSE]] verbose:proxies("call to ",field," ", ...)
-				return self.__context.requester:newrequest(self.__reference, field, ...)
+				return self.__manager.requester:newrequest(self.__reference, field, ...)
 			end
 			invoker = methodmaker(invoker, field)
 			cache[field] = invoker
@@ -53,7 +51,7 @@ function __init(self, ...)
 end
 
 function fromstring(self, reference, ...)
-	local result, except = self.context.referrer:decode(reference)
+	local result, except = self.referrer:decode(reference)
 	if result then
 		result, except = self:resolve(result, ...)
 	end
@@ -62,10 +60,9 @@ end
 
 function resolve(self, reference, ...)                                          --[[VERBOSE]] verbose:proxies(true, "resolve reference for ",reference)
 	local result, except
-	local context = self.context
-	local servants = context.servants
+	local servants = self.servants
 	if servants then
-		result, except = context.referrer:islocal(reference, servants.accesspoint)
+		result, except = self.referrer:islocal(reference, servants.accesspoint)
 		if result then                                                              --[[VERBOSE]] verbose:proxies("local object with key '",result,"' restored")
 			result = servants:retrieve(result)
 		end
@@ -78,7 +75,7 @@ end
 
 function newproxy(self, reference)                                              --[[VERBOSE]] verbose:proxies("new proxy to ",reference)
 	return self.class{
-		__context = self.context,
+		__manager = self,
 		__reference = reference,
 	}
 end

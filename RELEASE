@@ -45,7 +45,8 @@ OiL 0.5 beta
 - Bugfix to invoke interceptors when exceptions are raised.
 - Bugfix to prevent '_non_existent' to raise exceptions like 'COMM_FAILURE'.
 - Bugfix to prevent that marshal errors stop the 'orb:run()' method.
-- Bugfix to prevent that marshal errors result in memory leak.
+- Bugfix to prevent that invocation parameters marshal errors cause memory leak.
+- Bugfix in marshalling of TypeCode/Anys that used CDR indirection.
 - Bugfix when unknown repIDs are imported from a remote IR.
 - Bugfix to make 'idl2lua.lua' script raise errors when there are problems with
   the contents of the IDL file.

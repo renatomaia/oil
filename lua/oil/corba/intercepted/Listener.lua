@@ -9,8 +9,6 @@ module "oil.corba.intercepted.Listener"
 
 oo.class(_M, Listener)
 
-context = false
-
 --------------------------------------------------------------------------------
 
 local LocationForwardTypes = { giop.IOR }
@@ -21,8 +19,7 @@ local Empty = {}
 --------------------------------------------------------------------------------
 
 function interceptrequest(self, request)
-	local context = self.context
-	local interceptor = context.interceptor
+	local interceptor = self.interceptor
 	if interceptor then
 		local intercepted = {
 			service_context   = request.service_context,
@@ -92,7 +89,7 @@ function interceptreply(self, request, body)
 	local intercepted = request.intercepted
 	if intercepted then
 		request.intercepted = nil
-		local interceptor = self.context.interceptor
+		local interceptor = self.interceptor
 		if interceptor and interceptor.sendreply then
 			intercepted.reply_status = request.reply_status
 			intercepted.success      = request.success

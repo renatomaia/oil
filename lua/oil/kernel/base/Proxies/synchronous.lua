@@ -8,7 +8,7 @@ return function(invoker, operation)
 	return function(self, ...)
 		local request, except = invoker(self, ...)
 		if request then
-			assertresults(self, operation, self.__context.requester:getreply(request))
+			assertresults(self, operation, self.__manager.requester:getreply(request))
 			return assertresults(self, operation, unpackrequest(request))
 		else
 			return callhandler(self, except, operation)

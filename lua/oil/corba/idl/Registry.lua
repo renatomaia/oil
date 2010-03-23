@@ -59,7 +59,7 @@ module "oil.corba.idl.Registry"
 --WstringDef              = oo.class({ __type = "IDL:omg.org/CORBA/WstringDef:1.0"              }, IDLType)
 --FixedDef                = oo.class({ __type = "IDL:omg.org/CORBA/FixedDef:1.0"                }, IDLType)
   
-  MemberDef               = oo.class(nil                                                            , Contained)
+  MemberDef               = oo.class(nil                                                         , Contained)
   
   AttributeDef            = oo.class({ __type = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, MemberDef)
   OperationDef            = oo.class({ __type = "IDL:omg.org/CORBA/OperationDef:1.0"            }, MemberDef)
@@ -90,6 +90,13 @@ module "oil.corba.idl.Registry"
 --ExtLocalInterfaceDef    = oo.class({ __type = "IDL:omg.org/CORBA/ExtLocalInterfaceDef:1.0"    }, LocalInterfaceDef, InterfaceAttrExtension)
   
   ObjectRef               = oo.class() -- fake class
+
+--[[VERBOSE]] local ClassName = {}
+--[[VERBOSE]] for name, class in pairs(_M) do
+--[[VERBOSE]] 	if oo.isclass(class) then
+--[[VERBOSE]] 		ClassName[class] = name
+--[[VERBOSE]] 	end
+--[[VERBOSE]] end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -1307,7 +1314,7 @@ local function iconstruct(class)
 	return topdown, stack, OrderedSet.firstkey
 end
 
-local function getupdate(self, value, name, typespec)
+local function getupdate(self, value, name, typespec)                           --[[VERBOSE]] verbose:repository("[attribute ",name,"]")
 	if type(typespec) == "string" then
 		assert.type(value, typespec, name)
 	elseif type(typespec) == "table" then
@@ -1377,7 +1384,7 @@ function Registry:__index(definition)
 				result.containing_repository = repository
 				self[definition] = result -- to avoid loops in cycles during 'getupdate'
 				self[result] = result
-				for class in iconstruct(class) do                                       --[[VERBOSE]] verbose:repository("[",class.__type,"]")
+				for class in iconstruct(class) do                                       --[[VERBOSE]] verbose:repository("[",ClassName[class],"]")
 					local update = oo.memberof(class, "update")
 					if update then
 						local fields = oo.memberof(class, "definition_fields")

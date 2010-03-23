@@ -47,8 +47,6 @@ module "oil.kernel.cooperative.Receiver"
 
 oo.class(_M, Receiver)
 
-context = false
-
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -70,9 +68,8 @@ function processrequest(self, request)
 end
 
 function getallrequests(self, accesspoint, channel)
-	local context = self.context
-	local listener = context.listener
-	local thread = context.tasks.current
+	local listener = self.listener
+	local thread = self.tasks.current
 	local threads = self.threads[accesspoint]
 	threads[thread] = channel
 	local result, except
@@ -82,7 +79,7 @@ function getallrequests(self, accesspoint, channel)
 			if result == true then
 				break
 			else
-				context.tasks:start(self.processrequest, self, result)
+				self.tasks:start(self.processrequest, self, result)
 			end
 		elseif not self.except then
 			self.except = except
@@ -98,14 +95,13 @@ end
 
 function acceptall(self)
 	local accesspoint = self.accesspoint                                          --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",accesspoint)
-	local context = self.context
-	self.thread[accesspoint] = context.tasks.current
+	self.thread[accesspoint] = self.tasks.current
 	self.threads[accesspoint] = {}
 	local result, except
 	repeat
-		result, except = context.listener:getchannel(accesspoint)
+		result, except = self.listener:getchannel(accesspoint)
 		if result then
-			context.tasks:start(self.getallrequests, self, accesspoint, result)
+			self.tasks:start(self.getallrequests, self, accesspoint, result)
 		end
 	until not result or self.except
 	self.threads[accesspoint] = nil
@@ -115,8 +111,8 @@ end
 
 function halt(self)                                                             --[[VERBOSE]] verbose:acceptor("halt acceptor",accesspoint)
 	local accesspoint = self.accesspoint
-	local tasks = self.context.tasks
-	local listener = self.context.listener
+	local tasks = self.tasks
+	local listener = self.listener
 	local result, except = nil, Exception{
 		reason = "halted",
 		message = "orb already halted",

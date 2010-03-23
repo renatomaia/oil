@@ -49,8 +49,6 @@ module "oil.corba.giop.Requester"
 
 oo.class(_M, Messenger)
 
-context = false
-
 --------------------------------------------------------------------------------
 
 local IOR                = giop.IOR
@@ -99,9 +97,8 @@ function getchannel(self, reference)                                            
 	end
 	for _, profile in ipairs(reference.profiles) do                               --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",profile.tag,"]")
 		local tag = profile.tag
-		local context = self.context
-		local channels = context.channels[tag]
-		local profiler = context.profiler[tag]
+		local channels = self.channels[tag]
+		local profiler = self.profiler[tag]
 		if channels and profiler then
 			profiler, except = profiler:decode(profile.profile_data)
 			if profiler then
@@ -410,12 +407,11 @@ function OperationRequester:_is_equivalent(reference, _, otherref)
 		for _, profile in ipairs(otherref.profiles) do
 			tags[profile.tag] = profile
 		end
-		local context = self.context
 		for _, profile in ipairs(reference.profiles) do
 			local tag = profile.tag
 			local other = tags[tag]
 			if other then
-				local profiler = context.profiler[tag]
+				local profiler = self.profiler[tag]
 				if
 					profiler and
 					profiler:equivalent(profile.profile_data, other.profile_data)

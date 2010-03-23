@@ -41,8 +41,6 @@ module "oil.kernel.base.Connector"
 
 oo.class(_M, Channels)
 
-context = false
-
 --------------------------------------------------------------------------------
 -- connection management
 
@@ -62,7 +60,7 @@ CoSocketOps.close = LuaSocketOps.close
 
 function LuaSocketOps:reset()                                                   --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
-	local sockets = self.factory.context.sockets
+	local sockets = self.sockets
 	local result, errmsg = sockets:tcp()
 	if result then
 		local socket = result
@@ -75,7 +73,7 @@ function LuaSocketOps:reset()                                                   
 end
 function CoSocketOps:reset()                                                    --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
-	local sockets = self.factory.context.sockets
+	local sockets = self.sockets
 	local result, errmsg = sockets:tcp()
 	if result then
 		local socket = result
@@ -90,11 +88,11 @@ end
 local list = {}
 function LuaSocketOps:probe()
 	list[1] = self.__object
-	return self.factory.context.sockets:select(list, nil, 0)[1] == list[1]
+	return self.sockets:select(list, nil, 0)[1] == list[1]
 end
 function CoSocketOps:probe()
 	local list = { self }
-	return self.factory.context.sockets:select(list, nil, 0)[1] == list[1]
+	return self.sockets:select(list, nil, 0)[1] == list[1]
 end
 
 --------------------------------------------------------------------------------
@@ -112,13 +110,14 @@ function __init(self, object)
 	function self.cache.retrieve(_, host)
 		local cache = SocketCache()
 		function cache.retrieve(_, port)
-			local socket, errmsg = self.context.sockets:tcp()
+			local sockets = self.sockets
+			local socket, errmsg = sockets:tcp()
 			if socket then                                                            --[[VERBOSE]] verbose:channels("new socket to ",host,":",port)
 				local success
 				success, errmsg = socket:connect(host, port)
 				if success then
 					socket = self:setupsocket(socket)
-					socket.factory = self
+					socket.sockets = sockets
 					socket.host = host
 					socket.port = port
 					return socket

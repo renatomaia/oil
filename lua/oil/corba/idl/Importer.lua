@@ -130,40 +130,50 @@ function register(self, object, history)
 			history = history or self.DefaultDefs()
 			result = history[desc.id] or registry:lookup_id(desc.id)
 			if not result then                                                        --[[VERBOSE]] verbose:repository(true, "importing definition ",desc.id)
-				desc.repID = desc.id
-				desc.defined_in = nil -- will be resolved later
+				local info = {
+					repID = desc.id,
+					name = desc.name,
+					version = desc.version,
+				}
 				
 				-- import definition specific information
 				if kind == "dk_Typedef" then
-					desc = object:_get_type()
+					info = self:register(object:_get_type(), history)
 				elseif kind == "dk_Alias" then
-					desc.type = self:register(object:_get_original_type_def(), history)
+					info.type = self:register(object:_get_original_type_def(), history)
 				elseif kind == "dk_Enum" then
-					desc.enumvalues = object:_get_members()
+					info.enumvalues = object:_get_members()
 				elseif kind == "dk_Union" then
-					desc.switch = self:register(object:_get_discriminator_type_def(), history)
-				elseif kind == "dk_Interface" then
-					for index, base in ipairs(object:_get_base_interfaces()) do
-						desc.base_interfaces[index] = self:register(base, history)
-					end
+					info.switch = self:register(object:_get_discriminator_type_def(), history)
 				elseif kind == "dk_Attribute" then
-					desc.type = self:register(object:_get_type_def(), history)
-				elseif kind == "dk_Operation" then
-					desc.result = self:register(object:_get_result_def(), history)
-					for _, param in ipairs(desc.parameters) do
-						param.type = self:register(param.type_def, history)
-					end
-					for index, except in ipairs(object:_get_exceptions()) do
-						desc.exceptions[index] = self:register(except, history)
-					end
+					info.type = self:register(object:_get_type_def(), history)
 				end
 				
 				-- registration of the imported definition
-				result = registry:register(Contained[kind].const(desc))
+				result = registry:register(Contained[kind].const(info))                 --[[VERBOSE]] verbose:repository("definition ",desc.id," registered")
 				history[result.repID] = result
 				
-				-- following references may be recursive
-				if kind == "dk_Struct" or kind == "dk_Union" or kind == "dk_Exception" then
+				-- import definition specific information
+				if kind == "dk_Interface" then
+					local bases = object:_get_base_interfaces()
+					for index, base in ipairs(bases) do
+						bases[index] = self:register(base, history)
+					end
+					result:_set_base_interfaces(bases)
+				elseif kind == "dk_Operation" then
+					result:_set_result_def(
+						self:register(object:_get_result_def(), history))
+					local params = desc.parameters
+					for _, param in ipairs(params) do
+						param.type = self:register(param.type_def, history)
+					end
+					result:_set_params(params)
+					local excepts = object:_get_exceptions()
+					for index, except in ipairs(excepts) do
+						excepts[index] = self:register(except, history)
+					end
+					result:_set_exceptions(excepts)
+				elseif kind == "dk_Struct" or kind == "dk_Union" or kind == "dk_Exception" then
 					local members = object:_get_members()
 					for _, member in ipairs(members) do
 						member.type = self:register(member.type_def, history)

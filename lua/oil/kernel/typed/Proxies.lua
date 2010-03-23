@@ -36,19 +36,17 @@ module "oil.kernel.typed.Proxies"
 
 oo.class(_M, Proxies)
 
-context = false
-
 --------------------------------------------------------------------------------
 
 local function newclass(methodmaker)
 	return oo.class{
 		__call = oo.rawnew,
 		__index = function(cache, field)                                            --[[VERBOSE]] verbose:proxies("first attempt to invoke operation ",field)
-			local context = cache.__context
-			local operation = context.indexer:valueof(cache.__type, field)
+			local manager = cache.__manager
+			local operation = manager.indexer:valueof(cache.__type, field)
 			if operation then
 				local function invoker(self, ...)                                       --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-					return context.requester:newrequest(self.__reference, operation, ...)
+					return manager.requester:newrequest(self.__reference, operation, ...)
 				end
 				invoker = methodmaker(invoker, operation)                               --[[VERBOSE]] verbose:proxies("operation named ",field," was created")
 				cache[field] = invoker                                                  --[[VERBOSE]]
@@ -61,7 +59,7 @@ end
 --------------------------------------------------------------------------------
 
 function proxynarrow(self, type)
-	return self.__context.proxies:newproxy(self.__reference, type)
+	return self.__manager.proxies:newproxy(self.__reference, type)
 end
 
 function __init(self, ...)
@@ -73,7 +71,7 @@ function __init(self, ...)
 			local updater = {}
 			function updater.notify()
 				tabop.clear(class)
-				class.__context = self.context
+				class.__manager = self
 				class.__type = type
 				class.__tostring = proxytostring
 				class.__narrow = proxynarrow
@@ -94,12 +92,11 @@ end
 
 function newproxy(self, reference, type)                                        --[[VERBOSE]] verbose:proxies(true, "new proxy to ",reference," with type ",type)
 	local result, except
-	local context = self.context
 	if not type then                                                              --[[VERBOSE]] verbose:proxies(true, "interface of proxy not provided, attempt to discover it")
-		type, except = context.referrer:typeof(reference)                           --[[VERBOSE]] verbose:proxies(false, "interface of proxy",(type and " " or " not "),"found")
+		type, except = self.referrer:typeof(reference)                           --[[VERBOSE]] verbose:proxies(false, "interface of proxy",(type and " " or " not "),"found")
 	end
 	if type then
-		type, except = context.types:resolve(type)
+		type, except = self.types:resolve(type)
 		if type then
 			result = self.classes[type]{ __reference = reference }
 		end
@@ -109,11 +106,10 @@ end
 
 function excepthandler(self, handler, type)                                     --[[VERBOSE]] verbose:proxies("setting exception handler for proxies of ",type)
 	local result, except = true
-	local context = self.context
 	if type == nil then
 		result, except = Proxies.excepthandler(self, handler)
 	else
-		result, except = context.types:resolve(type)
+		result, except = self.types:resolve(type)
 		if result then
 			type = result
 			local class = self.classes[type]

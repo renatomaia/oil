@@ -39,8 +39,6 @@ module "oil.ludo.CodecByRef"
 
 oo.class(_M, Codec)
 
-context = false
-
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
@@ -94,12 +92,12 @@ local LuDOStream = oo.class({
 }, StringStream)
 
 function encoder(self)
-	return LuDOStream(table.copy(self.names, {servants = self.context.servants}))
+	return LuDOStream(table.copy(self.names, {servants = self.servants}))
 end
 
 function decoder(self, stream)
 	return StringStream{
-		environment = table.copy(self.values, {proxies = self.context.proxies}),
+		environment = table.copy(self.values, {proxies = self.proxies}),
 		data = stream,
 	}
 end

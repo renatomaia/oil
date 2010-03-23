@@ -7,7 +7,7 @@ return function(invoker)
 		local success, except = invoker(self, ...)
 		if success then
 			local request = success
-			success, except = self.__context.requester:getreply(request)
+			success, except = self.__manager.requester:getreply(request)
 			if success then
 				return unpackrequest(request)
 			end

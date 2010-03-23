@@ -39,8 +39,6 @@ module("oil.corba.giop.Messenger", oo.class)
 
 pcall = luapcall
 
-context = false
-
 --------------------------------------------------------------------------------
 
 magictag    = giop.MagicTag
@@ -62,8 +60,7 @@ function sendmsg(self, channel, msgtype, message, types, values)                
 	--
 	-- Create GIOP message body
 	--
-	local context = self.context
-	local encoder = context.codec:encoder()
+	local encoder = self.codec:encoder()
 	encoder:shift(self.headersize) -- alignment accordingly to GIOP header size
 	if message then
 		encoder:put(message, self.messagetype[msgtype])
@@ -90,7 +87,7 @@ function sendmsg(self, channel, msgtype, message, types, values)                
 	local header = self.header
 	header.message_size = #stream
 	header.message_type = msgtype
-	encoder = context.codec:encoder()
+	encoder = self.codec:encoder()
 	encoder:struct(header, self.headertype)
 	stream = encoder:getdata()..stream
 	
@@ -139,7 +136,7 @@ end
 function receivemsg(self, channel)                                              --[[VERBOSE]] verbose:message(true, "receive message from channel")
 	local success, except = channel:receive(self.headersize)
 	if success then
-		local decoder = self.context.codec:decoder(success)
+		local decoder = self.codec:decoder(success)
 		--
 		-- Read GIOP message header
 		--

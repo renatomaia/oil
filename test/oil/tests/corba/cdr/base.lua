@@ -139,8 +139,6 @@ local function addcases(suite, testID, type, value, ...)
 				tests["Shift"..shift] = newcase(suite, testID,
 				                                codec, byteorder, shift,
 				                                type, value, expected)
---suite[testID] = tests["Shift"..shift]
---return
 			end
 			case[byteorder.."ByteOrder"] = tests
 		end

@@ -38,8 +38,6 @@ local Exception = require "oil.corba.giop.Exception"                            
 
 module("oil.corba.iiop.Profiler", oo.class)
 
-context = false
-
 --------------------------------------------------------------------------------
 -- IIOP profile structure
 
@@ -86,7 +84,7 @@ function encode(self, profiles, object_key, config, minor)
 				port = port,
 				object_key = object_key
 			}
-			local encoder = self.context.codec:encoder(true)
+			local encoder = self.codec:encoder(true)
 			encoder:struct({major=1, minor=minor}, idl.Version)
 			encoder:struct(profile, profileidl)
 			profiles[#profiles+1] = {
@@ -106,7 +104,7 @@ function encode(self, profiles, object_key, config, minor)
 end
 
 function decode(self, profile)
-	local decoder = self.context.codec:decoder(profile, true)
+	local decoder = self.codec:decoder(profile, true)
 	local version = decoder:struct(idl.Version)
 	local profileidl = ProfileBody_v1_[version.minor]
 
@@ -187,7 +185,7 @@ function decodeurl(self, data)
 		end
 	end
 	
-	temp = self.context.codec:encoder(true)
+	temp = self.codec:encoder(true)
 	temp:struct({major=1,minor=minor}, idl.Version)
 	temp:struct({
 		components = Empty,

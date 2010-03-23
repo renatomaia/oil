@@ -37,22 +37,20 @@ module("oil.ludo.Listener", oo.class)
 
 oo.class(_M, Messenger)
 
-context = false
-
 --------------------------------------------------------------------------------
 
 function setupaccess(self, configs)
-	return self.context.channels:default(configs)
+	return self.channels:default(configs)
 end
 
 function freeaccess(self, accesspoint)                                          --[[VERBOSE]] verbose:listen("closing all channels with configs ",accesspoint)
-	return self.context.channels:dispose(accesspoint)
+	return self.channels:dispose(accesspoint)
 end
 
 --------------------------------------------------------------------------------
 
 function getchannel(self, accesspoint, probe)
-	return self.context.channels:retrieve(accesspoint, probe)
+	return self.channels:retrieve(accesspoint, probe)
 end
 
 function putchannel(self, channel)                                              --[[VERBOSE]] verbose:listen "put channel back"
@@ -86,7 +84,7 @@ function getrequest(self, channel, probe)
 				if result then
 					result, except = channel:receive(result)
 					if result then
-						local decoder = self.context.codec:decoder(result)
+						local decoder = self.codec:decoder(result)
 						result = self:newrequest(decoder:get())
 						result.channel = channel
 						channel[result.requestid] = result
@@ -114,7 +112,7 @@ local MessageFmt = "%d\n%s"
 
 function sendreply(self, request)                                               --[[VERBOSE]] verbose:listen("got reply for request ",request.requestid," to object ",request.objectkey,":",request.operation)
 	local channel = request.channel
-	local encoder = self.context.codec:encoder()
+	local encoder = self.codec:encoder()
 	encoder:put(request.requestid, request.success, unpack(request, 1, request.n))
 	channel[request.requestid] = nil
 	local data = encoder:__tostring()

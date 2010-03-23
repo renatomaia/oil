@@ -38,18 +38,17 @@ local Exception = require "oil.Exception"                                       
 
 module("oil.kernel.base.Servants", oo.class)
 
-context = false
 prefix = "_"
 
 --------------------------------------------------------------------------------
 -- Servant object proxy
 
 local function deactivate(self)
-	return self.__context.servants:removeentry(self.__key)
+	return self.__manager:removeentry(self.__key)
 end
 
 local function wrappertostring(self)
-	return self.__context.referrer:encode(self.__reference)
+	return self.__manager.referrer:encode(self.__reference)
 end
 
 local function wrapperindexer(self, key)
@@ -152,18 +151,17 @@ function resolvekey(self, object)
 end
 
 function register(self, object, key, ...)
-	local context = self.context
 	if key == nil then
 		key = self:resolvekey(object)
 	end
 	local result, except = self:addentry(key, object, ...)
 	if result then
-		result, except = context.referrer:newreference(self.accesspoint, key, ...)
+		result, except = self.referrer:newreference(self.accesspoint, key, ...)
 		if result then
 			result = {
 				_deactivate = deactivate, -- TODO[maia]: DEPRECATED!
 				__deactivate = deactivate,
-				__context = context,
+				__manager = self,
 				__key = key,
 				__tostring = wrappertostring,
 				__index = wrapperindexer,

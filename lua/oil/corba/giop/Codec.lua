@@ -103,11 +103,9 @@ local oo     = require "oil.oo"
 local assert = require "oil.assert"
 local bit    = require "oil.bit"
 local idl    = require "oil.corba.idl"
-local giop   = require "oil.corba.giop"                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local giop   = require "oil.corba.giop"                                         --[[VERBOSE]] local verbose = require "oil.verbose"; local CURSOR, CODEC, verbose_marshal, verbose_unmarshal = {}
 
 module("oil.corba.giop.Codec", oo.class)
-
-context = false
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -301,7 +299,6 @@ Encoder = oo.class {
 function Encoder:__init(object)
 	self = oo.rawnew(self, object)
 	self.format = {}
-	--if self.history == nil then self.history = {} end
 	return self
 end
 
@@ -317,7 +314,7 @@ end
 
 function Encoder:rawput(format, data, size)
 	self.format[#self.format+1] = format
-	self[#self+1] = data
+	self[#self+1] = data                                                          --[[VERBOSE]] CURSOR[self.cursor] = true; if CODEC == nil then CODEC = self end
 	self.cursor = self.cursor + size
 end
 
@@ -348,7 +345,7 @@ local NilEnabledTypes = {
 -- Marshalling functions -------------------------------------------------------
 
 local function numbermarshaller(size, format)
-	return function (self, value)                                                 --[[VERBOSE]] verbose:marshal(self, format, value)
+	return function (self, value)                                                 --[[VERBOSE]] verbose_marshal(self, format, value)
 		assert.type(value, "number", "numeric value", "MARSHAL")
 		alignbuffer(self, size)
 		self:rawput(format, value, size)
@@ -367,14 +364,14 @@ Encoder.float      = numbermarshaller( 4, "f")
 Encoder.double     = numbermarshaller( 8, "d")
 Encoder.longdouble = numbermarshaller(16, "D")
 	
-function Encoder:boolean(value)                                                 --[[VERBOSE]] verbose:marshal(true, self, idl.boolean)
+function Encoder:boolean(value)                                                 --[[VERBOSE]] verbose_marshal(true, self, idl.boolean)
 	if value
 		then self:octet(1)
 		else self:octet(0)
-	end                                                                           --[[VERBOSE]] verbose:marshal(false)
+	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
 
-function Encoder:char(value)                                                    --[[VERBOSE]] verbose:marshal(self, idl.char, value)
+function Encoder:char(value)                                                    --[[VERBOSE]] verbose_marshal(self, idl.char, value)
 	assert.type(value, "string", "character", "MARSHAL")
 	if #value ~= 1 then
 		assert.illegal(value, "character", "MARSHAL")
@@ -382,7 +379,7 @@ function Encoder:char(value)                                                    
 	self:rawput('"', value, 1)
 end
 
-function Encoder:octet(value)                                                   --[[VERBOSE]] verbose:marshal(self, idl.octet, value)
+function Encoder:octet(value)                                                   --[[VERBOSE]] verbose_marshal(self, idl.octet, value)
 	assert.type(value, "number", "octet value", "MARSHAL")
 	self:rawput("B", value, 1)
 end
@@ -393,7 +390,7 @@ local DefaultMapping = {
 	boolean = idl.boolean,
 	["nil"] = idl.null,
 }
-function Encoder:any(value)                                                     --[[VERBOSE]] verbose:marshal(true, self, idl.any)
+function Encoder:any(value)                                                     --[[VERBOSE]] verbose_marshal(true, self, idl.any)
 	local luatype = type(value)
 	local idltype = DefaultMapping[luatype]
 	if not idltype then
@@ -420,13 +417,13 @@ function Encoder:any(value)                                                     
 	end
 	if not idltype then
 		assert.illegal(value, "any, unable to map to an idl type", "MARSHAL")
-	end                                                                           --[[VERBOSE]] verbose:marshal "[type of any]"
-	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose:marshal "[value of any]"
-	self:put(value, idltype)                                                      --[[VERBOSE]] verbose:marshal(false)
+	end                                                                           --[[VERBOSE]] verbose_marshal "[type of any]"
+	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose_marshal "[value of any]"
+	self:put(value, idltype)                                                      --[[VERBOSE]] verbose_marshal(false)
 end
 
 local NullReference = { type_id = "", profiles = { n=0 } }
-function Encoder:Object(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
+function Encoder:Object(value, idltype)                                         --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
 	local reference
 	if value == nil then
 		reference = NullReference
@@ -441,9 +438,9 @@ function Encoder:Object(value, idltype)                                         
 			reference = value.__reference
 			if not reference or reference == value then
 				local servants = self.context.servants
-				if servants then                                                        --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
+				if servants then                                                        --[[VERBOSE]] verbose_marshal(true, "implicit servant creation")
 					local objtype = servants:resolvetype(value) or idltype
-					value = assert.results(servants:register(value, nil, objtype))        --[[VERBOSE]] verbose:marshal(false)
+					value = assert.results(servants:register(value, nil, objtype))        --[[VERBOSE]] verbose_marshal(false)
 					reference = value.__reference
 				else
 					assert.illegal(value, "Object, unable to create from value", "MARHSALL")
@@ -451,22 +448,22 @@ function Encoder:Object(value, idltype)                                         
 			end
 		end
 	end
-	self:struct(reference, giop.IOR)                                              --[[VERBOSE]] verbose:marshal(false)
+	self:struct(reference, giop.IOR)                                              --[[VERBOSE]] verbose_marshal(false)
 end
 
-function Encoder:struct(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype)
+function Encoder:struct(value, idltype)                                         --[[VERBOSE]] verbose_marshal(true, self, idltype)
 	for _, field in ipairs(idltype.fields) do
-		local val = value[field.name]                                               --[[VERBOSE]] verbose:marshal("[field ",field.name,"]")
+		local val = value[field.name]                                               --[[VERBOSE]] verbose_marshal("[field ",field.name,"]")
 		if val == nil and not NilEnabledTypes[field.type._type] then
 			assert.illegal(value,
 			              "struct value (no value for field "..field.name..")",
 			              "MARSHAL")
 		end
 		self:put(val, field.type)
-	end                                                                           --[[VERBOSE]] verbose:marshal(false)
+	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
 
-function Encoder:union(value, idltype)                                          --[[VERBOSE]] verbose:marshal(true, self, idltype)
+function Encoder:union(value, idltype)                                          --[[VERBOSE]] verbose_marshal(true, self, idltype)
 	assert.type(value, "table", "union value", "MARSHAL")
 	local switch = value._switch
 
@@ -487,7 +484,7 @@ function Encoder:union(value, idltype)                                          
 				end
 			end
 		end
-	end                                                                           --[[VERBOSE]] verbose:marshal "[union switch]"
+	end                                                                           --[[VERBOSE]] verbose_marshal "[union switch]"
 	self:put(switch, idltype.switch)
 	
 	local selection = idltype.selection[switch]
@@ -499,26 +496,26 @@ function Encoder:union(value, idltype)                                          
 			if unionvalue == nil then
 				assert.illegal(value, "union value (none contents)", "MARSHAL")
 			end
-		end                                                                         --[[VERBOSE]] verbose:marshal("[field ",selection.name,"]")
+		end                                                                         --[[VERBOSE]] verbose_marshal("[field ",selection.name,"]")
 		self:put(unionvalue, selection.type)
-	end                                                                           --[[VERBOSE]] verbose:marshal(false)
+	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
 
-function Encoder:enum(value, idltype)                                           --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
+function Encoder:enum(value, idltype)                                           --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
 	value = idltype.labelvalue[value] or tonumber(value)
 	if not value then assert.illegal(value, "enum value", "MARSHAL") end
-	self:ulong(value)                                                             --[[VERBOSE]] verbose:marshal(false)
+	self:ulong(value)                                                             --[[VERBOSE]] verbose_marshal(false)
 end
 
-function Encoder:string(value)                                                  --[[VERBOSE]] verbose:marshal(true, self, idl.string, value)
+function Encoder:string(value)                                                  --[[VERBOSE]] verbose_marshal(true, self, idl.string, value)
 	assert.type(value, "string", "string value", "MARSHAL")
 	local length = #value
 	self:ulong(length + 1)
 	self:rawput('"', value, length)
-	self:rawput('"', '\0', 1)                                                     --[[VERBOSE]] verbose:marshal(false)
+	self:rawput('"', '\0', 1)                                                     --[[VERBOSE]] verbose_marshal(false)
 end
 
-function Encoder:sequence(value, idltype)                                       --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
+function Encoder:sequence(value, idltype)                                       --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
 	local elementtype = idltype.elementtype
 	if type(value) == "string" then
 		local length = #value
@@ -534,13 +531,13 @@ function Encoder:sequence(value, idltype)                                       
 		assert.type(value, "table", "sequence value", "MARSHAL")
 		local length = value.n or #value
 		self:ulong(length)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose:marshal("[element ",i,"]")
+		for i = 1, length do                                                        --[[VERBOSE]] verbose_marshal("[element ",i,"]")
 			self:put(value[i], elementtype) 
 		end
-	end                                                                           --[[VERBOSE]] verbose:marshal(false)
+	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
 
-function Encoder:array(value, idltype)                                          --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
+function Encoder:array(value, idltype)                                          --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
 	local elementtype = idltype.elementtype
 	if type(value) == "string" then
 		while elementtype._type == "typedef" do elementtype = elementtype.type end
@@ -556,19 +553,19 @@ function Encoder:array(value, idltype)                                          
 		end
 	else
 		assert.type(value, "table", "array value", "MARSHAL")
-		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose:marshal("[element ",i,"]")
+		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose_marshal("[element ",i,"]")
 			self:put(value[i], elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose:marshal(false)
+	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
 
-function Encoder:typedef(value, idltype)                                        --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
-	self:put(value, idltype.type)                                                 --[[VERBOSE]] verbose:marshal(false)
+function Encoder:typedef(value, idltype)                                        --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+	self:put(value, idltype.type)                                                 --[[VERBOSE]] verbose_marshal(false)
 end
 
-function Encoder:except(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
+function Encoder:except(value, idltype)                                         --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
 	assert.type(value, "table", "except value", "MARSHAL")
-	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose:marshal("[member ", member.name, "]")
+	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose_marshal("[member ", member.name, "]")
 		local val = value[member.name]
 		if val == nil and not NilEnabledTypes[member.type._type] then
 			assert.illegal(value,
@@ -576,7 +573,7 @@ function Encoder:except(value, idltype)                                         
 			              "MARSHAL")
 		end
 		self:put(val, member.type)
-	end                                                                           --[[VERBOSE]] verbose:marshal(false)
+	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
 
 Encoder.interface = Encoder.Object
@@ -592,7 +589,7 @@ local function indirection(self, marshal, value, ...)
 	local previous = history[value]
 	if previous then
 		self:ulong(4294967295) -- indirection marker (0xffffffff)
-		local pos = self.previousend + self.cursor                                  --[[VERBOSE]] verbose:marshal("indirection to "..(pos-previous).." bytes away (",pos,"-",previous,").")
+		local pos = self.previousend + self.cursor                                  --[[VERBOSE]] verbose_marshal("indirection to "..(pos-previous).." bytes away (",pos,"-",previous,").")
 		self:long(previous - pos) -- offset
 	else
 		history[#history+1] = value
@@ -604,12 +601,12 @@ local function rawput(self, format, data, size)
 	local cursor = self.cursor
 	local pos = self.previousend + cursor
 	local history = self.history
-	for index, value in ipairs(history) do                                        --[[VERBOSE]] verbose:marshal("registering position at ",pos," for future indirection")
+	for index, value in ipairs(history) do                                        --[[VERBOSE]] verbose_marshal("registering position at ",pos," for future indirection")
 		history[value] = pos
 		history[index] = nil
 	end
 	self.format[#self.format+1] = format
-	self[#self+1] = data
+	self[#self+1] = data                                                          --[[VERBOSE]] CURSOR[self.cursor] = true; if CODEC == nil then CODEC = self end
 	self.cursor = cursor + size
 end
 
@@ -630,17 +627,17 @@ local function encodetypeinfo(self, value, kind, tcinfo)
 	self:ulong(kind)
 	local tcparams = value.tcparams
 	if tcparams == nil then
-		local temp = self:encapsulate(value)                                        --[[VERBOSE]] verbose:marshal "[parameters values]"
+		local temp = self:encapsulate(value)                                        --[[VERBOSE]] verbose_marshal "[parameters values]"
 		temp:struct(value, tcinfo.parameters)
-		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose:marshal "[mutable parameters values]"
+		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose_marshal "[mutable parameters values]"
 			for _, param in ipairs(tcinfo.mutable:setup(value)) do
 				temp:put(value[param.name], param.type)
 			end
-		end                                                                         --[[VERBOSE]] verbose:marshal(true, "[parameters encapsulation]")
+		end                                                                         --[[VERBOSE]] verbose_marshal(true, "[parameters encapsulation]")
 		tcparams = temp:getdata()
 		if self.history == nil then
 			value.tcparams = tcparams
-		end                                                                         --[[VERBOSE]] verbose:marshal(false)
+		end                                                                         --[[VERBOSE]] verbose_marshal(false)
 	end
 	self:sequence(tcparams, idl.OctetSeq)
 end
@@ -648,7 +645,7 @@ end
 local TypeCodes = { interface = 14 }
 for tcode, info in pairs(TypeCodeInfo) do TypeCodes[info.name] = tcode end
 
-function Encoder:TypeCode(value)                                                --[[VERBOSE]] verbose:marshal(true, self, idl.TypeCode, value)
+function Encoder:TypeCode(value)                                                --[[VERBOSE]] verbose_marshal(true, self, idl.TypeCode, value)
 	assert.type(value, "idl type", "TypeCode value", "MARSHAL")
 	local kind   = TypeCodes[value._type]
 	local tcinfo = TypeCodeInfo[kind]
@@ -659,12 +656,12 @@ function Encoder:TypeCode(value)                                                
 		self:ulong(kind)
 	elseif tcinfo.type == "simple" then
 		self:ulong(kind)
-		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose:marshal("[parameter ",param.name,"]")
+		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose_marshal("[parameter ",param.name,"]")
 			self:put(value[param.name], param.type)
 		end
 	else
 		self:indirection(encodetypeinfo, value, kind, tcinfo)
-	end                                                                           --[[VERBOSE]] verbose:marshal(false)
+	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
 
 --------------------------------------------------------------------------------
@@ -696,7 +693,7 @@ function Decoder:order(value)
 	end
 end
 
-function Decoder:jump(shift)
+function Decoder:jump(shift)                                                    --[[VERBOSE]] CURSOR[self.cursor] = true; if CODEC == nil then CODEC = self end
 	local cursor = self.cursor
 	self.cursor = cursor + shift
 	if self.cursor - 1 > #self.data then
@@ -726,11 +723,9 @@ end
 
 local function numberunmarshaller(size, format)
 	return function (self)
-		alignbuffer(self, size)
-		local value = self.cursor
-		self:jump(size)
-		value = self.unpack(format, self.data, nil, nil, value)                     --[[VERBOSE]] verbose:unmarshal(self, format, value)
-		return value
+		alignbuffer(self, size)                                                     --[[VERBOSE]] verbose_unmarshal(self, format, self.unpack(format, self.data, nil, nil, self.cursor))
+		local cursor = self:jump(size) -- check if there is enougth bytes
+		return self.unpack(format, self.data, nil, nil, cursor)
 	end
 end
 
@@ -746,25 +741,23 @@ Decoder.float      = numberunmarshaller( 4, "f")
 Decoder.double     = numberunmarshaller( 8, "d")
 Decoder.longdouble = numberunmarshaller(16, "D")
 
-function Decoder:boolean()                                                      --[[VERBOSE]] verbose:unmarshal(true, self, idl.boolean)
-	return (self:octet() ~= 0)                                                    --[[VERBOSE]],verbose:unmarshal(false)
+function Decoder:boolean()                                                      --[[VERBOSE]] verbose_unmarshal(true, self, idl.boolean)
+	return (self:octet() ~= 0)                                                    --[[VERBOSE]],verbose_unmarshal(false)
 end
 
 function Decoder:char()
-	local value = self.data:sub(self.cursor, self.cursor)                         --[[VERBOSE]] verbose:unmarshal(self, idl.char, value)
-	self:jump(1)
-	return value
+	local cursor = self:jump(1) --[[check if there is enougth bytes]]             --[[VERBOSE]] verbose_unmarshal(self, idl.char, self.data:sub(cursor, cursor))
+	return self.data:sub(cursor, cursor)
 end
 
 function Decoder:octet()
-	local value = self.unpack("B", self.data, nil, nil, self.cursor)              --[[VERBOSE]] verbose:unmarshal(self, idl.octet, value)
-	self:jump(1)
-	return value
+	local cursor = self:jump(1) --[[check if there is enougth bytes]]             --[[VERBOSE]] verbose_unmarshal(self, idl.octet, self.unpack("B", self.data, nil, nil, cursor))
+	return self.unpack("B", self.data, nil, nil, cursor)
 end
 
-function Decoder:any()                                                          --[[VERBOSE]] verbose:unmarshal(true, self, idl.any) verbose:unmarshal "[type of any]"
-	local idltype = self:TypeCode()                                               --[[VERBOSE]] verbose:unmarshal "[value of any]"
-	local value = self:get(idltype)                                               --[[VERBOSE]] verbose:unmarshal(false)
+function Decoder:any()                                                          --[[VERBOSE]] verbose_unmarshal(true, self, idl.any) verbose:unmarshal "[type of any]"
+	local idltype = self:TypeCode()                                               --[[VERBOSE]] verbose_unmarshal "[value of any]"
+	local value = self:get(idltype)
 	if type(value) == "table" then
 		value._anyval = value
 		value._anytype = idltype
@@ -773,102 +766,102 @@ function Decoder:any()                                                          
 			_anyval = value,
 			_anytype = idltype,
 		}, idltype)
-	end
+	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
 	return value
 end
 
-function Decoder:Object(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+function Decoder:Object(idltype)                                                --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
 	local ior = self:struct(giop.IOR)
-	if ior.type_id == "" then                                                     --[[VERBOSE]] verbose:unmarshal "got a null reference"
+	if ior.type_id == "" then                                                     --[[VERBOSE]] verbose_unmarshal "got a null reference"
 		ior = nil
 	else
 		local proxies = self.context.proxies
-		if proxies then                                                             --[[VERBOSE]] verbose:unmarshal(true, "retrieve proxy for referenced object")
+		if proxies then                                                             --[[VERBOSE]] verbose_unmarshal(true, "retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
-			ior = assert.results(proxies:resolve(ior, idltype), "MARSHAL")            --[[VERBOSE]] verbose:unmarshal(false)
+			ior = assert.results(proxies:resolve(ior, idltype), "MARSHAL")            --[[VERBOSE]] verbose_unmarshal(false)
 		end
-	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
 	return ior
 end
 
-function Decoder:struct(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+function Decoder:struct(idltype)                                                --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
 	local value = {}
-	for _, field in ipairs(idltype.fields) do                                     --[[VERBOSE]] verbose:unmarshal("[field ",field.name,"]")
+	for _, field in ipairs(idltype.fields) do                                     --[[VERBOSE]] verbose_unmarshal("[field ",field.name,"]")
 		value[field.name] = self:get(field.type)
-	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
 	return setmetatable(value, idltype)
 end
 
-function Decoder:union(idltype)                                                 --[[VERBOSE]] verbose:unmarshal(true, self, idltype) verbose:unmarshal "[union switch]"
+function Decoder:union(idltype)                                                 --[[VERBOSE]] verbose_unmarshal(true, self, idltype) verbose:unmarshal "[union switch]"
 	local switch = self:get(idltype.switch)
 	local value = { _switch = switch }
 	local option = idltype.selection[switch] or
 	               idltype.options[idltype.default+1]
-	if option then                                                                --[[VERBOSE]] verbose:unmarshal("[field",option.name,"]")
+	if option then                                                                --[[VERBOSE]] verbose_unmarshal("[field ",option.name,"]")
 		value._field = option.name
 		value._value = self:get(option.type)
-	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
 	return setmetatable(value, idltype)
 end
 
-function Decoder:enum(idltype)                                                  --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
-	local value = self:ulong() + 1                                                --[[VERBOSE]] verbose:unmarshal(false)
+function Decoder:enum(idltype)                                                  --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+	local value = self:ulong() + 1
 	if value > #idltype.enumvalues then
 		assert.illegal(value, "enumeration value", "MARSHAL")
-	end
+	end                                                                           --[[VERBOSE]] verbose_unmarshal(false, "got ",idltype.enumvalues[value])
 	return idltype.enumvalues[value]
 end
 
-function Decoder:string()                                                       --[[VERBOSE]] verbose:unmarshal(true, self, idl.string)
+function Decoder:string()                                                       --[[VERBOSE]] verbose_unmarshal(true, self, idl.string)
 	local length = self:ulong()
-	local value = self.data:sub(self.cursor, self.cursor + length - 2)            --[[VERBOSE]] verbose:unmarshal(false, "got ",verbose.viewer:tostring(value))
-	self:jump(length)
+	local cursor = self:jump(length) -- check if there is enougth bytes
+	local value = self.data:sub(cursor, cursor + length - 2)                      --[[VERBOSE]] verbose_unmarshal(false, "got ",verbose.viewer:tostring(value))
 	return value
 end
 
-function Decoder:sequence(idltype)                                              --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+function Decoder:sequence(idltype)                                              --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
 	local length      = self:ulong()
 	local elementtype = idltype.elementtype
 	local value
 	while elementtype._type == "typecode" do elementtype = elementtype.type end
 	if elementtype == idl.octet or elementtype == idl.char then
-		value = self.data:sub(self.cursor, self.cursor + length - 1)                --[[VERBOSE]] verbose:unmarshal("got ", verbose.viewer:tostring(value))
-		self:jump(length)
+		local cursor = self:jump(length) -- check if there is enougth bytes
+		value = self.data:sub(cursor, cursor + length - 1)                          --[[VERBOSE]] verbose_unmarshal("got ", verbose.viewer:tostring(value))
 	else
 		value = setmetatable({ n = length }, idltype)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshal("[element ",i,"]")
+		for i = 1, length do                                                        --[[VERBOSE]] verbose_unmarshal("[element ",i,"]")
 			value[i] = self:get(elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
 	return value
 end
 
-function Decoder:array(idltype)                                                 --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+function Decoder:array(idltype)                                                 --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
 	local length      = idltype.length
 	local elementtype = idltype.elementtype
 	local value
 	while elementtype._type == "typecode" do elementtype = elementtype.type end
 	if elementtype == idl.octet or elementtype == idl.char then
-		value = self.data:sub(self.cursor, self.cursor + length - 1)                --[[VERBOSE]] verbose:unmarshal("got ",verbose.viewer:tostring(value))
-		self:jump(length)
+		local cursor = self:jump(length) -- check if there is enougth bytes
+		value = self.data:sub(cursor, cursor + length - 1)                          --[[VERBOSE]] verbose_unmarshal("got ",verbose.viewer:tostring(value))
 	else
 		value = setmetatable({}, idltype)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshal("[element ",i,"]")
+		for i = 1, length do                                                        --[[VERBOSE]] verbose_unmarshal("[element ",i,"]")
 			value[i] = self:get(elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
 	return value
 end
 
-function Decoder:typedef(idltype)                                               --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
-	return self:get(idltype.type)                                                 --[[VERBOSE]],verbose:unmarshal(false)
+function Decoder:typedef(idltype)                                               --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+	return self:get(idltype.type)                                                 --[[VERBOSE]],verbose_unmarshal(false)
 end
 
-function Decoder:except(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+function Decoder:except(idltype)                                                --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
 	local value = {}
-	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose:unmarshal("[member ",member.name,"]")
+	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose_unmarshal("[member ",member.name,"]")
 		value[member.name] = self:get(member.type)
-	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
 	return setmetatable(value, idltype)
 end
 
@@ -885,7 +878,7 @@ local function indirection(self, unmarshal, value, tag, ...)
 	local history = self.history
 	if tag == 4294967295 then -- indirection marker (0xffffffff)
 		local pos = self.previousend + self.cursor
-		local offset = self:long()                                                  --[[VERBOSE]] verbose:unmarshal("got indirection to previously unmarshaled value (at ",pos+offset,", current ",pos,").")
+		local offset = self:long()                                                  --[[VERBOSE]] verbose_unmarshal("got indirection to previously unmarshaled value (at ",pos+offset,", current ",pos,").")
 		value = history[pos+offset]
 		if value == nil then
 			assert.illegal(nil, "indirection offset", "MARSHAL")
@@ -893,7 +886,7 @@ local function indirection(self, unmarshal, value, tag, ...)
 	else
 		if value == nil then value = {} end
 		local pos = self.previousend + self.cursor -4 -- size of tag (a ulong)
-		history[pos] = value                                                        --[[VERBOSE]] verbose:unmarshal("registering position at ",pos," for future indirection")
+		history[pos] = value                                                        --[[VERBOSE]] verbose_unmarshal("registering position at ",pos," for future indirection")
 		value = unmarshal(self, value, tag, ...)
 	end
 	return value
@@ -916,40 +909,40 @@ local function decodetypeinfo(self, value, kind, tcinfo)
 	if tcinfo.type == "simple" then
 		-- NOTE: The string type is the only simple type being handled,
 		--       therefore parameters are ignored.
-		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose:unmarshal("[parameter ",param.name,"]")
+		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose_unmarshal("[parameter ",param.name,"]")
 			self:get(param.type)
 		end
-	elseif tcinfo.type == "complex" then                                          --[[VERBOSE]] verbose:unmarshal(true, "[parameters encapsulation]")
+	elseif tcinfo.type == "complex" then                                          --[[VERBOSE]] verbose_unmarshal(true, "[parameters encapsulation]")
 		local tcparams = self:sequence(idl.OctetSeq)
 		value._type = tcinfo.name
 		if self.history == nil then
 			value.tcparams = tcparams
 		end
-		local temp = self:encapsulate(tcparams, value)                              --[[VERBOSE]] verbose:unmarshal "[parameters values]"
-		for _, field in ipairs(tcinfo.parameters.fields) do                         --[[VERBOSE]] verbose:unmarshal("[field ",field.name,"]")
+		local temp = self:encapsulate(tcparams, value)                              --[[VERBOSE]] verbose_unmarshal "[parameters values]"
+		for _, field in ipairs(tcinfo.parameters.fields) do                         --[[VERBOSE]] verbose_unmarshal("[field ",field.name,"]")
 			value[field.name] = temp:get(field.type)
 		end
-		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose:unmarshal "[mutable parameters values]"
+		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose_unmarshal "[mutable parameters values]"
 			for _, param in ipairs(tcinfo.mutable:setup(value)) do
 				value[param.name] = temp:get(param.type)
 			end
-		end                                                                         --[[VERBOSE]] verbose:unmarshal(false)
+		end                                                                         --[[VERBOSE]] verbose_unmarshal(false)
 		value = idl[tcinfo.name](value)
 	end
 	return value
 end
 
-function Decoder:TypeCode()                                                     --[[VERBOSE]] verbose:unmarshal(true, self, idl.TypeCode)
+function Decoder:TypeCode()                                                     --[[VERBOSE]] verbose_unmarshal(true, self, idl.TypeCode)
 	local kind = self:ulong()
 	local tcinfo = TypeCodeInfo[kind]
-	if tcinfo == nil then assert.illegal(kind, "type code", "MARSHAL") end        --[[VERBOSE]] verbose:unmarshal("TypeCode defines a ",tcinfo.name)
+	if tcinfo == nil then assert.illegal(kind, "type code", "MARSHAL") end        --[[VERBOSE]] verbose_unmarshal("TypeCode defines a ",tcinfo.name)
 	if tcinfo.unhandled then
 		assert.illegal(tcinfo.name, "supported type code", "MARSHAL")
 	end
 	local value = tcinfo.idl
 	if tcinfo.type ~= "empty" then
 		value = self:indirection(decodetypeinfo, value, kind, tcinfo)
-	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
 	return value
 end
 
@@ -961,7 +954,7 @@ end
 function decoder(self, octets, getorder)
 	local decoder = self.Decoder{
 		data = octets,
-		context = self.context,
+		context = self,
 	}
 	if getorder then decoder:order(decoder:boolean()) end
 	return decoder
@@ -969,7 +962,7 @@ end
 
 -- NOTE: Presence of a parameter indicates an encapsulated octet-stream.
 function encoder(self, putorder)
-	local encoder = self.Encoder{ context = self.context }
+	local encoder = self.Encoder{ context = self }
 	if putorder then encoder:boolean(NativeEndianess) end
 	return encoder
 end
@@ -994,6 +987,10 @@ end
 --[[VERBOSE]] }
 --[[VERBOSE]] local luatype = type
 --[[VERBOSE]] function verbose.custom:marshal(codec, type, value)
+--[[VERBOSE]] 	if CODEC and self.flags.hexastream then
+--[[VERBOSE]] 		self.custom.hexastream(self, CODEC, CURSOR)
+--[[VERBOSE]] 		CURSOR, CODEC = {}, nil
+--[[VERBOSE]] 	end
 --[[VERBOSE]] 	local viewer = self.viewer
 --[[VERBOSE]] 	local output = viewer.output
 --[[VERBOSE]] 	local op = self.codecop[oo.classof(codec)]
@@ -1012,11 +1009,23 @@ end
 --[[VERBOSE]] 			viewer:write(value)
 --[[VERBOSE]] 			output:write(")")
 --[[VERBOSE]] 		end
---[[VERBOSE]] 		if self:flag("hexastream") then
---[[VERBOSE]] 			self.custom.hexastream(self, codec)
---[[VERBOSE]] 		end
 --[[VERBOSE]] 	else
 --[[VERBOSE]] 		return true -- cancel custom message
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end
 --[[VERBOSE]] verbose.custom.unmarshal = verbose.custom.marshal
+--[[VERBOSE]] 
+--[[VERBOSE]] function verbose_marshal(...)
+--[[VERBOSE]] 	if CODEC and verbose.flags.hexastream then
+--[[VERBOSE]] 		verbose:hexastream(CODEC, CURSOR)
+--[[VERBOSE]] 		CURSOR, CODEC = {}, nil
+--[[VERBOSE]] 	end
+--[[VERBOSE]] 	verbose:marshal(...)
+--[[VERBOSE]] end
+--[[VERBOSE]] function verbose_unmarshal(...)
+--[[VERBOSE]] 	if CODEC and verbose.flags.hexastream then
+--[[VERBOSE]] 		verbose:hexastream(CODEC, CURSOR)
+--[[VERBOSE]] 		CURSOR, CODEC = {}, nil
+--[[VERBOSE]] 	end
+--[[VERBOSE]] 	verbose:unmarshal(...)
+--[[VERBOSE]] end

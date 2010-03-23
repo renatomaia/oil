@@ -10,8 +10,6 @@ module "oil.corba.intercepted.Requester"
 
 oo.class(_M, Requester)
 
-context = false
-
 --------------------------------------------------------------------------------
 
 local RequestID = giop.RequestID
@@ -21,7 +19,7 @@ local Empty = {}
 --------------------------------------------------------------------------------
 
 function interceptrequest(self, reference, operation, request)
-	local interceptor = self.context.interceptor
+	local interceptor = self.interceptor
 	if interceptor then
 		local interface = operation.defined_in
 		local intercepted = {
@@ -151,7 +149,7 @@ function interceptreply(self, request, header)
 	local intercepted = request.intercepted
 	if intercepted then
 		request.intercepted = nil
-		local interceptor = self.context.interceptor
+		local interceptor = self.interceptor
 		if interceptor and interceptor.receivereply then
 			if header.service_context then
 				intercepted.reply_service_context = header.service_context
