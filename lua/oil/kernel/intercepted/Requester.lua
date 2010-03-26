@@ -8,7 +8,7 @@ local oo = require "oil.oo"                                                     
 
 module("oil.kernel.intercepted.Requester", oo.class)
 
-__init = Wrapper.__init
+__new = Wrapper.__new
 __index = Wrapper.__index
 
 function newrequest(self, reference, operation, ...)

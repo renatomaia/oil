@@ -7,7 +7,9 @@ module "oil.arch.basic.common"
 SocketChannels = component.Template{
 	channels = port.Facet,
 	sockets  = port.Receptacle,
+	dns  = port.Receptacle,
 }
 BasicSystem = component.Template{
 	sockets = port.Facet,
+	dns = port.Facet,
 }

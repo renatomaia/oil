@@ -92,7 +92,7 @@ function getreply(self, request, probe)
 						if result then
 							result, except = update(channel, codec:decoder(result):get())
 							if result then
-								channel:signal(result)
+								channel:signal("read", result)
 							end
 						end
 					else

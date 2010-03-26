@@ -24,6 +24,10 @@
 -- sockets:Receptacle
 -- 	socket:object tcp()
 -- 	input:table, output:table select([input:table], [output:table], [timeout:number])
+-- 
+-- dns:Receptacle
+-- 	hostname:string gethostname()
+-- 	address:string toip(hostname:string)
 --------------------------------------------------------------------------------
 
 local ipairs       = ipairs
@@ -36,11 +40,10 @@ local type         = type
 
 local math = require "math"
 
-local tabop             = require "loop.table"
-local ObjectCache       = require "loop.collection.ObjectCache"
-local UnorderedArraySet = require "loop.collection.UnorderedArraySet"
-local OrderedSet        = require "loop.collection.OrderedSet"
-local Wrapper           = require "loop.object.Wrapper"
+local tabop      = require "loop.table"
+local ArrayedSet   = require "loop.collection.ArrayedSet"
+local OrderedSet = require "loop.collection.OrderedSet"
+local Wrapper    = require "loop.object.Wrapper"
 
 local oo        = require "oil.oo"
 local Exception = require "oil.corba.giop.Exception"
@@ -57,11 +60,11 @@ LuaSocketOps = tabop.copy(Channels.LuaSocketOps)
 CoSocketOps = tabop.copy(Channels.CoSocketOps)
 
 function LuaSocketOps:release()
-	UnorderedArraySet.add(self.port, self.__object)
+	ArrayedSet.add(self.port, self.__object)
 end
 
 function CoSocketOps:release()
-	UnorderedArraySet.add(self.port, self)
+	ArrayedSet.add(self.port, self)
 end
 
 local list = {}
@@ -79,18 +82,17 @@ end
 
 Port = oo.class()
 
-function Port:__init(object)
+function Port:__new(object)
 	self = oo.rawnew(self, object)
 	local factory = self.factory
-	self.wrapped = ObjectCache()
-	function self.wrapped.retrieve(_, socket)
+	self.wrapped = tabop.memoize(function(socket)
 		socket = factory:setupsocket(socket)
 		socket.socket = factory.sockets
 		socket.port = self
 		return socket
-	end
+	end, "k")
 	
-	UnorderedArraySet.add(self, self.__object)
+	ArrayedSet.add(self, self.__object)
 	
 	return self
 end
@@ -103,7 +105,7 @@ function Port:accept(probe)                                                     
 			if channel == self.__object then
 				channel, except = channel:accept()
 			else
-				UnorderedArraySet.remove(self, channel)
+				ArrayedSet.remove(self, channel)
 			end
 			OrderedSet.enqueue(self, channel)
 		end
@@ -120,40 +122,29 @@ end
 --------------------------------------------------------------------------------
 -- channel cache for reuse
 
-function __init(self, object)
+function __new(self, object)
 	self = oo.rawnew(self, object)
 	--
 	-- cache of active channels
 	-- self.cache[host][port] == <channel accepted at host:port>
 	--
-	self.cache = setmetatable({}, {
-		__index = function(hosts, host)
-			local cache = ObjectCache()
-			function cache.retrieve(_, port)
-				local socket, errmsg = self.sockets:tcp()
-				if socket then
-					self:setupsocket(socket)
-					_, errmsg = socket:bind(host, port)
-					if _ then
-						_, errmsg = socket:listen()
-						if _ then                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
-							return Port{
-								factory = self,
-								__object = socket,
-							}
-						else
-							self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-								message = "unable to listen to port of host",
-								reason = "listen",
-								error = errmsg,
-								host = host, 
-								port = port,
-							}
-						end
+	self.cache = tabop.memoize(function(host)
+		return tabop.memoize(function(port)
+			local socket, errmsg = self.sockets:tcp()
+			if socket then
+				self:setupsocket(socket)
+				_, errmsg = socket:bind(host, port)
+				if _ then
+					_, errmsg = socket:listen()
+					if _ then                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
+						return Port{
+							factory = self,
+							__object = socket,
+						}
 					else
 						self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-							message = "unable to bind to port of host",
-							reason = "bind",
+							message = "unable to listen to port of host",
+							reason = "listen",
 							error = errmsg,
 							host = host, 
 							port = port,
@@ -161,16 +152,22 @@ function __init(self, object)
 					end
 				else
 					self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-						message = "unable to create new socket due to error",
-						reason = "socket",
-						error = except,
+						message = "unable to bind to port of host",
+						reason = "bind",
+						error = errmsg,
+						host = host, 
+						port = port,
 					}
 				end
+			else
+				self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
+					message = "unable to create new socket due to error",
+					reason = "socket",
+					error = except,
+				}
 			end
-			rawset(hosts, host, cache)
-			return cache
-		end,
-	})
+		end, "k")
+	end)
 	return self
 end
 
@@ -196,9 +193,9 @@ function dispose(self, profile)                                                 
 		end
 		local result, except = port.__object:close()
 		if result then
-			UnorderedArraySet.remove(port, port.__object)
+			ArrayedSet.remove(port, port.__object)
 			while not OrderedSet.empty(port) do
-				UnorderedArraySet.add(port, OrderedSet.dequeue(port))
+				ArrayedSet.add(port, OrderedSet.dequeue(port))
 			end
 			result = port
 		end
@@ -212,14 +209,14 @@ local PortLowerBound = 2809 -- inclusive (never at first attempt)
 local PortUpperBound = 9999 -- inclusive
 
 function default(self, profile)
-	local sockets = self.sockets
+	local dns = self.dns
 	profile = profile or {}
 	
 	-- find a network interface
 	local host = profile.host
 	if host == nil or host == "*" then
 		profile.host = "*"
-		host = sockets.dns.gethostname()
+		host = dns:gethostname()
 	end
 	
 	-- find a socket port
@@ -249,7 +246,7 @@ function default(self, profile)
 	
 	-- collect addresses
 	host = profile.refhost or host
-	local addr, info = sockets.dns.toip(host)
+	local addr, info = dns:toip(host)
 	if addr then
 		addr = info.ip
 		addr[#addr+1] = info.name

@@ -296,7 +296,7 @@ Encoder = oo.class {
 	pack = bit.pack,    -- use current platform native endianess
 }
 
-function Encoder:__init(object)
+function Encoder:__new(object)
 	self = oo.rawnew(self, object)
 	self.format = {}
 	return self
@@ -681,7 +681,7 @@ Decoder = oo.class{
 	unpack = bit.unpack, -- use current platform native endianess
 }
 
-function Decoder:__init(object)
+function Decoder:__new(object)
 	self = oo.rawnew(self, object)
 	--if self.history == nil then self.history = {} end
 	return self
@@ -993,7 +993,7 @@ end
 --[[VERBOSE]] 	end
 --[[VERBOSE]] 	local viewer = self.viewer
 --[[VERBOSE]] 	local output = viewer.output
---[[VERBOSE]] 	local op = self.codecop[oo.classof(codec)]
+--[[VERBOSE]] 	local op = self.codecop[oo.getclass(codec)]
 --[[VERBOSE]] 	if op then
 --[[VERBOSE]] 		type = numtype[type] or type
 --[[VERBOSE]] 		output:write(op," of ",type._type)

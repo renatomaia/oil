@@ -6,7 +6,7 @@ module("oil.corba.services.event.EventQueue", oo.class)
 
 -- filo por enquanto
 
-function __init(class, scheduler)
+function __new(class, scheduler)
   return oo.rawnew(class, {
     count = 0,
     scheduler = scheduler or oil.tasks

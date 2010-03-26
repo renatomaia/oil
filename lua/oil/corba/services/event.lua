@@ -39,7 +39,7 @@ module "oil.corba.services.event"
 
 local EventChannel = oo.class()
 
-function EventChannel.__init(class)
+function EventChannel.__new(class)
   self = oo.rawnew(class, {
     push_consumer_count = 0,
     push_supplier_count = 0,

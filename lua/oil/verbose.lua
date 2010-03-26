@@ -20,29 +20,16 @@ local unpack = unpack
 local math   = require "math"
 local string = require "string"
 local table  = require "table"
+local coroutine  = require "coroutine"
 
-local ObjectCache = require "loop.collection.ObjectCache"
 local Viewer      = require "loop.debug.Viewer"
 local Verbose     = require "loop.debug.Verbose"
-local Inspector   = require "loop.debug.Inspector"
+local inspector   = require "inspector"
 
 module("oil.verbose", Verbose)
 
-viewer = Viewer{
-	maxdepth = 1,
-	labels = ObjectCache(),
-}
-function viewer.labels:retrieve(value)
-  local type = type(value)
-  local id = rawget(self, type) or 0
-  self[type] = id + 1
-  local label = {}
-  repeat
-    label[#label + 1] = string.byte("A") + (id % 26)
-    id = math.floor(id / 26)
-  until id <= 0
-  return string.format("%s:%s", type, string.char(unpack(label)))
-end
+viewer = Viewer{ maxdepth = 1 }
+
 
 function output(self, output)
 	self.viewer.output = output
@@ -111,5 +98,11 @@ end
 _M:flag("debug", true)
 _M:flag("print", true)
 
-I = Inspector{ viewer = viewer }
-function inspect:debug() self.I:stop(4) end
+inspector.showsource = true
+function pause:debug()
+	if coroutine.running() then
+		coroutine.yield("inspect")
+	else
+		inspector.activate(4)
+	end
+end

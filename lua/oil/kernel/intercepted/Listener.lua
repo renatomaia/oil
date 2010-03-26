@@ -7,7 +7,7 @@ local oo = require "oil.oo"                                                     
 
 module("oil.kernel.intercepted.Listener", oo.class)
 
-__init = Wrapper.__init
+__new = Wrapper.__new
 __index = Wrapper.__index
 
 function getrequest(self, channel, probe)

@@ -35,13 +35,13 @@
 --   component of a name is not a context.                                    --
 --------------------------------------------------------------------------------
 
+local next = next
+
 local string = require "string"
 local table  = require "table"
 
-local oo                = require "oil.oo"
-local assert            = require "oil.assert"
-local MapWithArrayOfKey = require "loop.collection.MapWithArrayOfKeys"
-local UnorderedArray    = require "loop.collection.UnorderedArray"              --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo     = require "oil.oo"
+local assert = require "oil.assert"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.corba.services.naming"
 
@@ -132,7 +132,7 @@ end
 
 BindingIterator = oo.class()
 
-function BindingIterator:__init(bindings)
+function BindingIterator:__new(bindings)
   return oo.rawnew(self, {bindings = bindings})
 end
 
@@ -171,13 +171,13 @@ end
 
 NamingContext = oo.class()
 
-function NamingContext:__init()
-  return oo.rawnew(self, {bindings = MapWithArrayOfKey()})
+function NamingContext:__new()
+  return oo.rawnew(self, { bindings = {} })
 end
 
 function NamingContext:bind(n, obj)
   local sn, except = to_string({n[1]})
-  local r = self.bindings:value(sn)
+  local r = self.bindings[sn]
   if #n > 1 then
     if not r then
       assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
@@ -199,14 +199,14 @@ function NamingContext:bind(n, obj)
     if r then
       assert.exception{"IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"}
     else
-      self.bindings:add(sn, {binding_type="nobject", obj=obj})
+      self.bindings[sn] = {binding_type="nobject", obj=obj}
     end
   end
 end
 
 function NamingContext:rebind(n, obj)
   local sn, except = to_string({n[1]})
-  local r = self.bindings:value(sn)
+  local r = self.bindings[sn]
   if #n > 1 then
     if not r then
       assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
@@ -235,7 +235,7 @@ function NamingContext:rebind(n, obj)
         r.obj = obj
       end
     else
-      self.bindings:add(sn, {binding_type="nobject", obj=obj})
+      self.bindings[sn] = {binding_type="nobject", obj=obj}
     end
   end
 end
@@ -243,7 +243,7 @@ end
 function NamingContext:bind_context(n, nc)
   if not nc then assert.exception{"IDL:omg.org/CORBA/BAD_PARAM:1.0"} end
   local sn, except = to_string({n[1]})
-  local r = self.bindings:value(sn)
+  local r = self.bindings[sn]
   if #n > 1 then
     if not r then
       assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
@@ -265,7 +265,7 @@ function NamingContext:bind_context(n, nc)
     if r then
       assert.exception{"IDL:omg.org/CosNaming/NamingContext/AlreadyBound:1.0"}
     else
-      self.bindings:add(sn, {binding_type="ncontext", obj=nc})
+      self.bindings[sn] = {binding_type="ncontext", obj=nc}
     end
   end
 end
@@ -273,7 +273,7 @@ end
 function NamingContext:rebind_context(n, nc)
   if not nc then assert.exception{"IDL:omg.org/CORBA/BAD_PARAM:1.0"} end
   local sn, except = to_string({n[1]})
-  local r = self.bindings:value(sn)
+  local r = self.bindings[sn]
   if #n > 1 then
     if not r then
       assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
@@ -302,14 +302,14 @@ function NamingContext:rebind_context(n, nc)
         r.obj = nc
       end
     else
-      self.bindings:add(sn, {binding_type="ncontext", obj=nc})
+      self.bindings[sn] = {binding_type="ncontext", obj=nc}
     end
   end
 end
 
 function NamingContext:resolve(n)
   local sn, except = to_string({n[1]})
-  local r = self.bindings:value(sn)
+  local r = self.bindings[sn]
   if not r then
     assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
       why = "missing_node",
@@ -332,7 +332,7 @@ end
 
 function NamingContext:unbind(n)
   local sn, except = to_string({n[1]})
-  local r = self.bindings:value(sn)
+  local r = self.bindings[sn]
   if not r then
     assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotFound:1.0",
       why = "missing_node",
@@ -349,7 +349,7 @@ function NamingContext:unbind(n)
       return (r.obj):unbind(n)
     end
   else
-    self.bindings:remove(sn)
+    self.bindings[sn] = nil
   end
 end
 
@@ -365,7 +365,7 @@ function NamingContext:bind_new_context(n)
 end
 
 function NamingContext:destroy()
-  if self.bindings:size() > 0 then
+  if next(self.bindings) ~= nil then
     assert.exception{"IDL:omg.org/CosNaming/NamingContext/NotEmpty:1.0" }
   else
     self.bindings = nil
@@ -380,9 +380,7 @@ function NamingContext:list(how_many)
   local i = 1
   local bl = {}
   local bi = {}
-  for i=1,self.bindings:size() do
-    local k = self.bindings:keyat(i)
-    local v = self.bindings:valueat(i)
+  for k,v in pairs(self.bindings) do
     if i > how_many then
       table.insert(bi, {binding_name=to_name(k), binding_type=v.binding_type})
     else

@@ -30,8 +30,7 @@ local setmetatable = setmetatable
 local luatostring  = tostring
 local type         = type
 
-local table = require "loop.table"
-local ObjectCache = require "loop.collection.ObjectCache"
+local tabop = require "loop.table"
 
 local oo = require "oil.oo"
 local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
@@ -62,7 +61,7 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function __init(self, ...)
+function __new(self, ...)
 	self = oo.rawnew(self, ...)
 	self.map = self.map or {}
 	return self
@@ -167,13 +166,11 @@ function register(self, object, key, ...)
 				__index = wrapperindexer,
 				__newindex = object,
 				__reference = result,
-				__methods = ObjectCache{
-					retrieve = function(_, method)
-						return function(_, ...)
-							return method(object, ...)
-						end
+				__methods = tabop.memoize(function(method)
+					return function(_, ...)
+						return method(object, ...)
 					end
-				}
+				end, "k")
 			}
 			setmetatable(result, result)
 		else

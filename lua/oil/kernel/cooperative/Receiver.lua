@@ -50,7 +50,7 @@ oo.class(_M, Receiver)
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-function __init(self, object)
+function __new(self, object)
 	self = oo.rawnew(self, object)
 	self.thread = {}
 	self.threads = {}
@@ -67,10 +67,9 @@ function processrequest(self, request)
 	end
 end
 
-function getallrequests(self, accesspoint, channel)
+function getallrequests(self, threads, channel)
 	local listener = self.listener
-	local thread = self.tasks.current
-	local threads = self.threads[accesspoint]
+	local thread = self.tasks:current()
 	threads[thread] = channel
 	local result, except
 	repeat
@@ -86,7 +85,6 @@ function getallrequests(self, accesspoint, channel)
 			break
 		end
 	until self.except
-	listener:putchannel(channel)
 	threads[thread] = nil
 end
 
@@ -94,14 +92,15 @@ end
 --------------------------------------------------------------------------------
 
 function acceptall(self)
+	local threads = {}
 	local accesspoint = self.accesspoint                                          --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",accesspoint)
-	self.thread[accesspoint] = self.tasks.current
-	self.threads[accesspoint] = {}
+	self.thread[accesspoint] = self.tasks:current()
+	self.threads[accesspoint] = threads
 	local result, except
 	repeat
 		result, except = self.listener:getchannel(accesspoint)
 		if result then
-			self.tasks:start(self.getallrequests, self, accesspoint, result)
+			self.tasks:start(self.getallrequests, self, threads, result)
 		end
 	until not result or self.except
 	self.threads[accesspoint] = nil

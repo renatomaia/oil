@@ -5,6 +5,5 @@ local base      = require "oil.arch.basic.common"                               
 module "oil.arch.cooperative.common"
 
 BasicSystem = component.Template({
-	control = port.Facet,
 	tasks   = port.Facet,
 }, base.BasicSystem)

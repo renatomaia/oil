@@ -1,8 +1,20 @@
-local error   = error
-local pairs   = pairs
-local pcall   = pcall
-local require = require
-local type    = type                                                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"
+local error = _G.error
+local pairs = _G.pairs
+local pcall = _G.pcall
+local require = _G.require
+local type = _G.type                                                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local traceback = _G.debug and _G.debug.traceback -- only if available
+if traceback then
+	local xpcall = _G.xpcall
+	local func2call, funcarg
+	local function callwith1arg() return func2call(funcarg) end
+	function pcall(func, arg)
+		func2call = func
+		funcarg = arg
+		return xpcall(callwith1arg, traceback)
+	end
+end
 
 module "oil.builder"
 
@@ -15,6 +27,7 @@ function create(factories, comps)
 	end
 	return comps
 end
+
 
 local NamePat    = "[^;]+"
 local FactoryFrm = "oil.builder.%s"

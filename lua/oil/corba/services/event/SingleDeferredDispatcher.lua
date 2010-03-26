@@ -30,7 +30,7 @@ local function waitforresults()
   until next(calls) == nil
 end
 
-function __init(class, event_queue, consumers)
+function __new(class, event_queue, consumers)
   assert.type(event_queue, "table")
   local self = oo.rawnew(class, {
     event_queue = event_queue,

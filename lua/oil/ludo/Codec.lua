@@ -38,7 +38,7 @@ module("oil.ludo.Codec", oo.class)
 local WeakKey    = oo.class{ __mode = "k" }
 local WeakValues = oo.class{ __mode = "v" }
 
-function __init(self, ...)
+function __new(self, ...)
 	self = oo.rawnew(self, ...)
 	self.names = WeakKey(self.names)
 	self.values = WeakValues(self.values)

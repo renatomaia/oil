@@ -46,10 +46,8 @@
 --   init()                                                                   --
 --   main(function)                                                           --
 --   newthread(function, ...)                                                 --
---   pcall(function, ...)                                                     --
 --   sleep(time)                                                              --
 --   time()                                                                   --
---   tasks                                                                    --
 --                                                                            --
 --   writeto(filepath, text)                                                  --
 --   readfrom(filepath)                                                       --
@@ -75,11 +73,13 @@ local io        = require "io"
 local coroutine = require "coroutine"
 local table     = require "table"
 
-local OrderedSet = require "loop.collection.OrderedSet"
+require "cothread.auxiliary" -- to avoid coroutine limitation of Lua 5.1
 
 local oo      = require "oil.oo"
 local builder = require "oil.builder"
 local assert  = require "oil.assert"
+
+local OrderedSet = require "loop.collection.OrderedSet"
 
 --------------------------------------------------------------------------------
 -- OiL main programming interface (API).
@@ -140,7 +140,15 @@ local function makeflavor(flavors)
 		local deps = Dependencies[pack]
 		if deps then
 			for _, dep in ipairs(deps) do
-				packs:remove(dep)
+				if packs:contains(dep) then
+					local place
+					for item in packs:sequence() do
+						if item == dep then
+							packs:removefrom(place)
+						end
+						place = item
+					end
+				end
 				packs:add(dep)
 			end
 		end
@@ -157,7 +165,7 @@ end
 --
 ORB = oo.class()
 
-function ORB:__init(config)
+function ORB:__new(config)
 	self = oo.rawnew(self, builder.build(makeflavor(config.flavor), config))
 	
 	if self.TypeRepository ~= nil then
@@ -705,9 +713,12 @@ end
 
 VERSION = "OiL 0.5 beta"
 
-if BasicSystem == nil then
-	local factories = require "oil.builder.cooperative.common"
-	BasicSystem = factories.BasicSystem()
+if cothread == nil then
+	require "cothread.socket"
+	cothread = require "cothread"
+	--[[VERBOSE]] local verbose = require "oil.verbose"
+	--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
+	--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
 end
 
 --------------------------------------------------------------------------------
@@ -756,54 +767,8 @@ function init(config)
 	if config.flavor == nil then
 		config.flavor = "cooperative;corba"
 	end
-	if BasicSystem and config.BasicSystem == nil then
-		config.BasicSystem = BasicSystem
-	end
 	assert.type(config.flavor, "string", "ORB flavor")
 	return ORB(config)
-end
-
---------------------------------------------------------------------------------
--- Internal coroutine scheduler used by OiL.
---
--- This is a alias for a facet of the Task Manager component of the internal
--- architecture.
--- If the current assembly does not provide this component, this field is 'nil'.
--- It provides the same API of the 'loop.thread.Scheduler' class.
---
--- @usage thread = oil.tasks:current()
--- @usage oil.tasks:suspend()
--- @usage oil.tasks:resume(thread)
---
-tasks = BasicSystem and BasicSystem.tasks
-
---------------------------------------------------------------------------------
--- Function that must be used to perform protected calls in applications.
---
--- It is a 'coroutine-safe' version of the 'pcall' function of the Lua standard
--- library.
---
--- @param func function Function to be executed in protected mode.
--- @param ... any Additional parameters passed to protected function.
---
--- @param success boolean 'true' if function execution did not raised any errors
--- or 'false' otherwise.
--- @param ... any Values returned by the function or an the error raised by the
--- function.
---
-pcall = tasks and tasks.pcall or luapcall
-
-local function extracer(ex)
-	return traceback(tostring(ex))
-end
-
-if tasks then
-	local function maintrap(scheduler, thread, success, exception)
-		if not success then
-			error(traceback(thread, tostring(exception)), 3)
-		end
-	end
-	setmetatable(tasks.traps, { __index = function() return maintrap end })
 end
 
 --------------------------------------------------------------------------------
@@ -818,16 +783,23 @@ end
 -- @usage oil.main(orb.run, orb)
 -- @usage oil.main(function() print(oil.tostring(oil.getLIR())) oil.run() end)
 --
-function main(main)
-	assert.type(main, "function", "main function")
-	if tasks then
-		main = coroutine.create(main)
-		assert.results(tasks:register(main, tasks.currentkey))
-		return BasicSystem.control:run()
+local function extracer(ex)
+	return traceback(tostring(ex))
+end
+
+if cothread then
+	function cothread.error(thread, errmsg)
+		error(traceback(thread, tostring(errmsg)), 3)
 	end
-	local success, except = xpcall(main, extracer)
-	if not success then
-		error(except, 2)
+end
+
+function main(main, ...)
+	assert.type(main, "function", "main function")
+	if cothread then
+		cothread.run(coroutine.create(main), ...)
+	else
+		local success, except = xpcall(main, extracer)
+		if not success then error(except, 2) end
 	end
 end
 
@@ -851,7 +823,7 @@ end
 --
 function newthread(func, ...)
 	assert.type(func, "function", "thread body")
-	return tasks:start(func, ...)
+	return coroutine.yield("resume", coroutine.create(func) , ...)
 end
 
 --------------------------------------------------------------------------------
@@ -861,9 +833,16 @@ end
 --
 -- @usage oil.sleep(5.5)
 --
-function sleep(time)
-	assert.type(time, "number", "time")
-	return BasicSystem.sockets:sleep(time)
+if cothread then
+	function sleep(time)
+		assert.type(time, "number", "time")
+		return coroutine.yield("delay", time)
+	end
+else
+	function sleep(time)
+		assert.type(time, "number", "time")
+		return socket.sleep(time)
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -873,8 +852,14 @@ end
 --
 -- @usage local start = oil.time(); oil.sleep(3); print("I slept for", oil.time() - start)
 --
-function time()
-	return BasicSystem.sockets:gettime()
+if cothread then
+	function time()
+		return coroutine.yield("now")
+	end
+else
+	function time()
+		return socket.gettime()
+	end
 end
 
 --------------------------------------------------------------------------------

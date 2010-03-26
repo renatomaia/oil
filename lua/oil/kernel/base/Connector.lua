@@ -31,9 +31,8 @@ local type         = type
 
 local tabop = require "loop.table"
 
-local ObjectCache = require "loop.collection.ObjectCache"
-local Wrapper     = require "loop.object.Wrapper"
-local Channels    = require "oil.kernel.base.Channels"
+local Wrapper  = require "loop.object.Wrapper"
+local Channels = require "oil.kernel.base.Channels"
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
@@ -48,11 +47,8 @@ LuaSocketOps = tabop.copy(Channels.LuaSocketOps)
 CoSocketOps = tabop.copy(Channels.CoSocketOps)
 
 function LuaSocketOps:close()
-	local ports = self.factory.cache[self.host]
-	ports[self.port] = nil
-	if next(ports) == nil then
-		self.cache[self.host] = nil
-	end
+	local cache = self.cache[self.connid]
+	cache[self.connid] = nil
 	return self.__object:close()
 end
 
@@ -98,39 +94,9 @@ end
 --------------------------------------------------------------------------------
 -- channel cache for reuse
 
-SocketCache = oo.class{ __index = ObjectCache.__index, __mode = "v" }
-
-function __init(self, object)
+function __new(self, object)
 	self = oo.rawnew(self, object)
-	--
-	-- cache of active channels
-	-- self.cache[host][port] == <channel to host:port>
-	--
-	self.cache = ObjectCache()
-	function self.cache.retrieve(_, host)
-		local cache = SocketCache()
-		function cache.retrieve(_, port)
-			local sockets = self.sockets
-			local socket, errmsg = sockets:tcp()
-			if socket then                                                            --[[VERBOSE]] verbose:channels("new socket to ",host,":",port)
-				local success
-				success, errmsg = socket:connect(host, port)
-				if success then
-					socket = self:setupsocket(socket)
-					socket.sockets = sockets
-					socket.host = host
-					socket.port = port
-					return socket
-				else
-					self.except = "connection refused"
-				end
-			else
-				self.except = "too many open connections"
-			end
-		end
-		cache[cache.retrieve] = true -- avoid being collected as unused sockets
-		return cache
-	end
+	self.cache = setmetatable({}, {__mode = "v"})
 	return self
 end
 
@@ -138,10 +104,32 @@ end
 -- channel factory
 
 function retrieve(self, profile)                                                --[[VERBOSE]] verbose:channels("retrieve channel connected to ",profile.host,":",profile.port)
-	local channel = self.cache[profile.host][profile.port]
-	if channel then
-		return channel
-	else
-		return nil, self.except
-	end	
+	local connid = profile.connid
+	if not connid then
+		connid = profile.host..":"..profile.port
+		profile.connid = connid
+	end
+	local cache = self.cache
+	local channel, errmsg = cache[connid]
+	if channel == nil then
+		local sockets = self.sockets
+		channel, errmsg = sockets:tcp()
+		if channel then
+			local host, port = profile.host, profile.port                             --[[VERBOSE]] verbose:channels("new socket to ",host,":",port)
+			local success
+			success, errmsg = channel:connect(host, port)
+			if success then
+				channel = self:setupsocket(channel)
+				channel.sockets = sockets
+				channel.cache = cache
+				channel.connid = connid
+				channel.host = host
+				channel.port = port
+				self.cache[connid] = channel
+			else
+				channel = nil
+			end
+		end
+	end
+	return channel, errmsg
 end

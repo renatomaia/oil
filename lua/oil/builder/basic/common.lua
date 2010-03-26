@@ -4,7 +4,10 @@ local arch    = require "oil.arch.basic.common"
 
 module "oil.builder.basic.common"
 
-BasicSystem = arch.BasicSystem{require "oil.kernel.base.Sockets"}
+BasicSystem = arch.BasicSystem{
+	sockets = require "oil.kernel.base.Sockets",
+	dns     = require "oil.kernel.base.DNS",
+}
 
 function create(comps)
 	return builder.create(_M, comps)

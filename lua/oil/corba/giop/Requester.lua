@@ -93,7 +93,7 @@ end
 function getchannel(self, reference)                                            --[[VERBOSE]] verbose:invoke(true, "get communication channel")
 	local result, except = reference._channel
 	if result then                                                                --[[VERBOSE]] verbose:invoke(false, "reusing channel from preivous calls")
-		return reference._channel, reference._objectkey, reference._profile
+		return reference._channel, reference._objectkey, reference._profiledata
 	end
 	for _, profile in ipairs(reference.profiles) do                               --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",profile.tag,"]")
 		local tag = profile.tag
@@ -108,7 +108,7 @@ function getchannel(self, reference)                                            
 				result, except = channels:retrieve(profiler)
 				if result then
 					reference._channel = result                                           --[[VERBOSE]] verbose:invoke(false, "got channel from profile with tag ",profile.tag,"]")
-					return result, reference._objectkey, reference._profile
+					return result, reference._objectkey, reference._profiledata
 				elseif except == "connection refused" then
 					except = Exception{ "COMM_FAILURE",
 						minor_code_value = 1,
@@ -305,7 +305,7 @@ function resetchannel(self, channel)
 				pending.success = false
 				pending.n = 1
 				pending[1] = except
-				channel:signal(pending)
+				channel:signal("read", pending)
 			end
 		end                                                                         --[[VERBOSE]] verbose:invoke(false, "reissue",success and "d successfully" or " failed")
 	elseif except == "connection refused" then
@@ -343,7 +343,7 @@ function getreply(self, request, probe)
 					local replied = unregister(channel, header.request_id)
 					if replied then
 						success, except = self:doreply(replied, header, decoder)
-						channel:signal(replied)
+						channel:signal("read", replied)
 					else -- replied == nil
 						success, except = nil, Exception{ "INTERNAL",
 							minor_code_value = 0,

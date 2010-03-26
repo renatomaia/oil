@@ -38,6 +38,8 @@ endif
 # Script Files
 
 LOOP_LUA= $(addprefix $(LUASRC_DIR)/, \
+	inspector.lua \
+	\
 	loop/base.lua \
 	loop/cached.lua \
 	loop/collection/MapWithArrayOfKeys.lua \
@@ -54,7 +56,6 @@ LOOP_LUA= $(addprefix $(LUASRC_DIR)/, \
 	loop/component/dynamic.lua \
 	loop/component/intercepted.lua \
 	loop/component/wrapped.lua \
-	loop/debug/Inspector.lua \
 	loop/debug/Matcher.lua \
 	loop/debug/Verbose.lua \
 	loop/debug/Viewer.lua \

@@ -52,7 +52,7 @@ CodeGenerator = oo.class{
 local upvaluefmt = "_up%d_"
 local stackposfmt = "_%d_"
 
-function CodeGenerator:__init(...)
+function CodeGenerator:__new(...)
 	self = oo.rawnew(self, ...)
 	if self.upvalues == nil then self.upvalues = {n=0} end
 	return self
@@ -137,8 +137,8 @@ end
 
 DecoderGenerator = oo.class({}, CodeGenerator)
 
-function DecoderGenerator:__init(...)
-	self = CodeGenerator.__init(self, ...)
+function DecoderGenerator:__new(...)
+	self = CodeGenerator.__new(self, ...)
 	if #self == 0 then self[1] = "return " end
 	return self
 end
@@ -362,8 +362,8 @@ EncoderGenerator = oo.class({
 	stacktop = 1,
 }, CodeGenerator)
 
-function EncoderGenerator:__init(...)
-	self = CodeGenerator.__init(self, ...)
+function EncoderGenerator:__new(...)
+	self = CodeGenerator.__new(self, ...)
 	if #self == 0 then
 		self[1] = [[
 local format = self.format

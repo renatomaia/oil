@@ -50,7 +50,7 @@ function __index(self, key)
     end
 end
 
-function __init(self, parent, default)
+function __new(self, parent, default)
     return oo.rawnew(self, {[PARENT] = parent,
                             [DEFAULT]= default})
 end

@@ -1,15 +1,15 @@
 local oil               = require "oil"
 local oo                = require "oil.oo"
 local assert            = require "oil.assert"
-local UnorderedArraySet = require "loop.collection.UnorderedArraySet"
+local UnorderedArrayedSet = require "loop.collection.ArrayedSet"
 local ProxyPushSupplier = require "oil.corba.services.event.ProxyPushSupplier"
 
 module("oil.corba.services.event.ConsumerAdmin", oo.class)
 
-function __init(class, channel)
+function __new(class, channel)
   return oo.rawnew(class, {
     channel = channel,
-    proxypushsuppliers = UnorderedArraySet()
+    proxypushsuppliers = UnorderedArrayedSet()
   })
 end
 

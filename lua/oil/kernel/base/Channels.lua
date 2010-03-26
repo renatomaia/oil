@@ -12,33 +12,26 @@
 -- Title  : Client-side CORBA GIOP Protocol specific to IIOP                  --
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
--- Notes:                                                                     --
---   See section 15.7 of CORBA 3.0 specification.                             --
---   See section 13.6.10.3 of CORBA 3.0 specification for IIOP corbaloc.      --
---------------------------------------------------------------------------------
--- channels:Facet
--- 	channel:object retieve(configs:table, [probe:boolean])
--- 	channel:object dispose(configs:table)
--- 	configs:table default([configs:table])
--- 
--- sockets:Receptacle
--- 	socket:object tcp()
--- 	input:table, output:table select([input:table], [output:table], [timeout:number])
---------------------------------------------------------------------------------
 
-local pairs = pairs
-local type  = type
+local _G = require "_G"
+local pairs = _G.pairs
+local type = _G.type
 
-local tabop       = require "loop.table"
-local ObjectCache = require "loop.collection.ObjectCache"
-local OrderedSet  = require "loop.collection.OrderedSet"
-local Wrapper     = require "loop.object.Wrapper"
+local coroutine = require "coroutine"
+local running = coroutine.running
+
+local tabop = require "loop.table"
+local copy = tabop.copy
+
+local Wrapper = require "loop.object.Wrapper"
+
+local Mutex = require "cothread.Mutex"
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local class = oo.class
 
-module("oil.kernel.base.Channels", oo.class)
+module("oil.kernel.base.Channels", class)
 
---------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 local function dummy() return true end
@@ -49,51 +42,34 @@ LuaSocketOps = {
 	signal   = dummy,
 }
 
+
 CoSocketOps = {}
 
 function CoSocketOps:trylock(operation, wait, signal)
-	local scheduler = self.cosocket.scheduler
-	local thread = scheduler.current
-	if not self[operation] then                                                   --[[VERBOSE]] verbose:mutex("channel free for ",operation)
-		self[operation] = thread
-	elseif wait and self[operation] ~= thread then                                --[[VERBOSE]] verbose:mutex("channel locked for ",operation,", waiting notification")
-		local waiting = self.waiting[operation]
-		waiting:enqueue(thread)
-		if signal ~= nil then self[signal] = thread end
-		scheduler:suspend()                                                         --[[VERBOSE]] verbose:mutex("notification received")
-		if signal ~= nil then self[signal] = nil end
-		waiting:remove(thread)
-	end
-	return self[operation] == thread
+	local mutex = self[operation]
+	if signal ~= nil then mutex[signal] = running() end
+	local granted = mutex:try(wait)
+	if signal ~= nil then mutex[signal] = nil end
+	return granted
 end
 
-function CoSocketOps:signal(signal)
-	local thread = self[signal]
+function CoSocketOps:signal(operation, signal)
+	local mutex = self[operation]
+	local thread = mutex[signal]
 	if thread then
-		self.cosocket.scheduler:resume(thread)
-		return true
+		return mutex:deny(thread)
 	end
 end
 
 function CoSocketOps:freelock(operation)
-	local scheduler = self.cosocket.scheduler
-	if self[operation] == scheduler.current then
-		local thread = self.waiting[operation]:first()
-		if thread then                                                              --[[VERBOSE]] verbose:mutex("trasfering lock for ",operation," to other thread")
-			self[operation] = thread
-			scheduler:resume(thread)
-		else                                                                        --[[VERBOSE]] verbose:mutex("releasing lock for ",operation)
-			self[operation] = nil
-			-- this would be a bad optimization: self.waiting[operation] = nil
-		end
-	end
+	return self[operation]:free()
 end
 
 --------------------------------------------------------------------------------
--- setup of TCP socket options
 
 function setupsocket(self, socket, ...)
 	if socket then
+		-- setup of TCP socket options
 		local options = self.options
 		if options then
 			for name, value in pairs(options) do
@@ -104,17 +80,11 @@ function setupsocket(self, socket, ...)
 		-- additional socket operations
 		if type(socket) ~= "table" then
 			socket = Wrapper{ __object = socket }
-			customops = self.LuaSocketOps
+			copy(self.LuaSocketOps, socket)
 		else
-			customops = self.CoSocketOps
-			socket.waiting = ObjectCache{
-				retrieve = function()
-					return OrderedSet()
-				end
-			}
-		end
-		if customops then
-			tabop.copy(customops, socket)
+			copy(self.CoSocketOps, socket)
+			socket.read = Mutex()
+			socket.write = Mutex()
 		end
 	end
 	return socket, ...

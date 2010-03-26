@@ -89,7 +89,7 @@ end
 
 --------------------------------------------------------------------------------
 
-function __init(self, ...)
+function __new(self, ...)
 	self = oo.rawnew(self, ...)
 	self.defaults = table.copy(DefaultOptions)
 	return self

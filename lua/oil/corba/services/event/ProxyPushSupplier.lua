@@ -4,7 +4,7 @@ local assert            = require "oil.assert"
 
 module("oil.corba.services.event.ProxyPushSupplier", oo.class)
 
-function __init(class, admin)
+function __new(class, admin)
   return oo.rawnew(class, {
     admin = admin,
     connected = false,

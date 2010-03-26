@@ -110,7 +110,7 @@ local Empty = setmetatable({}, { __newindex = function(_, field) verbose:debug("
 -- Implementation
 --
 
-function IRObject:__init(...)
+function IRObject:__new(...)
 	self = oo.rawnew(self, ...)
 	self.references = self.references or {}
 	self.observer = self.observer or Publisher()
@@ -146,7 +146,7 @@ function IRObject:notify(...)
 		if self.references then
 			for ref in pairs(self.references) do queue:enqueue(ref) end
 		end
-		self = queue[self]
+		self = queue:successor(self)
 	until self == nil
 end
 
@@ -536,7 +536,7 @@ local PrimitiveTypes = {
 
 PrimitiveDef.def_kind = "dk_Primitive"
 
-function PrimitiveDef:__init(object)
+function PrimitiveDef:__new(object)
 	self = oo.rawnew(self, object)
 	IDLType.update(self)
 	return self
@@ -548,7 +548,7 @@ end
 
 --------------------------------------------------------------------------------
 
-function ObjectRef:__init(object, registry)
+function ObjectRef:__new(object, registry)
 	if object.repID ~= PrimitiveTypes.pk_objref.repID then
 		return registry.repository:lookup_id(object.repID) or
 		       assert.illegal(new, "Object type, use interface definition instead")
@@ -976,7 +976,7 @@ Repository.def_kind = "dk_Repository"
 Repository.repID = ""
 Repository.absolute_name = ""
 
-function Repository:__init(object)
+function Repository:__new(object)
 	self = oo.rawnew(self, object)
 	self.containing_repository = self
 	self.definition_map = self.definition_map or {}
@@ -1296,31 +1296,13 @@ Classes = {
 
 --------------------------------------------------------------------------------
 
-local function topdown(stack, class)
-	while stack[class] do
-		local ready = true
-		for _, super in oo.supers(stack[class]) do
-			if stack:insert(super, class) then
-				ready = false
-				break
-			end
-		end
-	 	if ready then return stack[class] end
-	end
-end
-local function iconstruct(class)
-	local stack = OrderedSet()
-	stack:push(class)
-	return topdown, stack, OrderedSet.firstkey
-end
-
 local function getupdate(self, value, name, typespec)                           --[[VERBOSE]] verbose:repository("[attribute ",name,"]")
 	if type(typespec) == "string" then
 		assert.type(value, typespec, name)
 	elseif type(typespec) == "table" then
 		if oo.isclass(typespec) then
 			value = self[value]
-			if not oo.instanceof(value, typespec) then
+			if not oo.isinstanceof(value, typespec) then
 				assert.illegal(value, name)
 			end
 		else
@@ -1348,7 +1330,7 @@ end
 
 Registry = oo.class()
 
-function Registry:__init(object)
+function Registry:__new(object)
 	self = oo.rawnew(self, object)
 	self[PrimitiveTypes.pk_null      ] = PrimitiveTypes.pk_null
 	self[PrimitiveTypes.pk_void      ] = PrimitiveTypes.pk_void
@@ -1384,21 +1366,21 @@ function Registry:__index(definition)
 				result.containing_repository = repository
 				self[definition] = result -- to avoid loops in cycles during 'getupdate'
 				self[result] = result
-				for class in iconstruct(class) do                                       --[[VERBOSE]] verbose:repository("[",ClassName[class],"]")
-					local update = oo.memberof(class, "update")
+				for class in oo.topdown(class) do                                       --[[VERBOSE]] verbose:repository("[",ClassName[class],"]")
+					local update = oo.getmember(class, "update")
 					if update then
-						local fields = oo.memberof(class, "definition_fields")
+						local fields = oo.getmember(class, "definition_fields")
 						local new = fields and getupdate(self, definition, "object", fields)
 						update(result, new, self)
 					end
 				end                                                                     --[[VERBOSE]] verbose:repository(false)
-				if oo.instanceof(result, Container) then
+				if oo.isinstanceof(result, Container) then
 					for _, contained in ipairs(definition.definitions) do
 						getupdate(self, contained, "contained", Contained)
 					end
 				end
 			end
-		elseif oo.classof(definition) == _M then
+		elseif oo.getclass(definition) == _M then
 			result = self.repository
 		end
 		self[definition] = result

@@ -368,6 +368,6 @@ function sendreply(self, request)                                               
 	end
 	if not success and except.reason == "closed" then
 		success, except = true, nil
-	end                                                                           --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully sent" or "failed", except)
+	end                                                                           --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully sent" or "failed", except or "")
 	return success, except
 end

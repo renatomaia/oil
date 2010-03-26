@@ -11,7 +11,7 @@ __tostring = Exception.__tostring
 minor_code_value = 0
 completion_status = 2
 
-function __init(self, except, ...)
+function __new(self, except, ...)
 	if except then
 		local sysex = giop.SystemExceptionIDs[ except[1] ]
 		if sysex then
@@ -19,7 +19,7 @@ function __init(self, except, ...)
 			except.exception_id = sysex
 		end
 	end
-	return Exception.__init(self, except, ...)
+	return Exception.__new(self, except, ...)
 end
 
 assert.Exception = _M -- use GIOP exception as the default exception

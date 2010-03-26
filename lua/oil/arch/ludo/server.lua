@@ -13,6 +13,7 @@ RequestListener = component.Template{
 function assemble(components)
 	arch.start(components)
 	ServerChannels.sockets   = BasicSystem.sockets
+	ServerChannels.dns       = BasicSystem.dns
 	RequestListener.codec    = LuaEncoder.codec
 	RequestListener.channels = ServerChannels.channels
 	arch.finish(components)

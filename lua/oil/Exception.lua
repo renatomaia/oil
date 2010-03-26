@@ -9,7 +9,7 @@ package.loaded["oil.Exception"] = require "loop.object.Exception"
 --
 --module("oil.Exception", oo.class)
 --
---__init = Exception.__init
+--__new = Exception.__new
 --
 --__concat = Exception.__concat
 --

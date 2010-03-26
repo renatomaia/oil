@@ -44,7 +44,7 @@ local function newclass(methodmaker)
 	})
 end
 
-function __init(self, ...)
+function __new(self, ...)
 	self = oo.rawnew(self, ...)
 	self.class = self.class or newclass(self.invoker)
 	return self

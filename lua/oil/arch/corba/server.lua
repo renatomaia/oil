@@ -28,6 +28,7 @@ function assemble(components)
 	-- COMMUNICATION
 	for tag, ServerChannels in pairs(IOPServerChannels) do
 		ServerChannels.sockets        = BasicSystem.sockets
+		ServerChannels.dns            = BasicSystem.dns
 		RequestListener.channels[tag] = ServerChannels.channels
 	end
 	

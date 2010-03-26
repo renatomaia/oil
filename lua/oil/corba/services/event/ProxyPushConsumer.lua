@@ -7,7 +7,7 @@ module("oil.corba.services.event.ProxyPushConsumer", oo.class)
 -- Proxies are in one of three states: disconnected, connected, or destroyed.  
 -- Push/pull operations are only valid in the connected state.
 
-function __init(class, admin)                                        
+function __new(class, admin)                                        
   assert.results(admin)
   return oo.rawnew(class, {
     admin = admin,

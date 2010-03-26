@@ -73,8 +73,8 @@ local match  = require("string").match
 local format = require("string").format
 local table  = require "table"
 
-local OrderedSet        = require "loop.collection.OrderedSet"
-local UnorderedArraySet = require "loop.collection.UnorderedArraySet"
+local OrderedSet = require "loop.collection.OrderedSet"
+local ArrayedSet = require "loop.collection.ArrayedSet"
 
 local oo     = require "oil.oo"
 local assert = require "oil.assert"
@@ -210,13 +210,13 @@ function Contents:__newindex(name, contained)
 end
 
 function Contents:_add(contained)
-	UnorderedArraySet.add(self, contained)
+	ArrayedSet.add(self, contained)
 	rawset(self, contained.name, contained)
 	return contained
 end
 
 function Contents:_remove(contained)
-	contained = UnorderedArraySet.remove(self, contained)
+	contained = ArrayedSet.remove(self, contained)
 	if contained then
 		self[contained.name] = nil
 		return contained
@@ -232,7 +232,7 @@ Contents._removebyname = Contents._removeat
 --------------------------------------------------------------------------------
 
 function Container(self)
-	if not oo.instanceof(self.definitions, Contents) then
+	if not oo.isinstanceof(self.definitions, Contents) then
 		local contents = Contents{ [ContainerKey] = self }
 		if self.definitions then
 			for _, value in ipairs(self.definitions) do
@@ -458,7 +458,7 @@ end
 --------------------------------------------------------------------------------
 
 local function ibases(queue, interface)
-	interface = queue[interface]
+	interface = queue:successor(interface)
 	if interface then
 		for _, base in ipairs(interface.base_interfaces) do
 			queue:enqueue(base)
@@ -469,7 +469,7 @@ end
 function basesof(self)
 	local queue = OrderedSet()
 	queue:enqueue(self)
-	return ibases, queue, OrderedSet.firstkey
+	return ibases, queue
 end
 
 function interface(self)

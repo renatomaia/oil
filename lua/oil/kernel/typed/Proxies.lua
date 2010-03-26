@@ -25,8 +25,7 @@
 
 local rawset = rawset
 
-local tabop       = require "loop.table"                                        --[[VERBOSE]] local select = select
-local ObjectCache = require "loop.collection.ObjectCache"                       --[[VERBOSE]] local type   = type
+local tabop = require "loop.table"                                              --[[VERBOSE]] local select, type = select, type
 
 local oo        = require "oil.oo"
 local Exception = require "oil.Exception"
@@ -62,29 +61,27 @@ function proxynarrow(self, type)
 	return self.__manager.proxies:newproxy(self.__reference, type)
 end
 
-function __init(self, ...)
+function __new(self, ...)
 	self = oo.rawnew(self, ...)
 	self.class = self.class or newclass(self.invoker)
-	self.classes = ObjectCache{
-		retrieve = function(_, type)
-			local class = self.class()
-			local updater = {}
-			function updater.notify()
-				tabop.clear(class)
-				class.__manager = self
-				class.__type = type
-				class.__tostring = proxytostring
-				class.__narrow = proxynarrow
-				class._narrow = proxynarrow -- TODO:[maia] DEPRECATED!
-				oo.initclass(class)
-			end
-			updater:notify()
-			if type.observer then
-				rawset(type.observer, class, updater)
-			end
-			return class
+	self.classes = tabop.memoize(function(type)
+		local class = self.class()
+		local updater = {}
+		function updater.notify()
+			tabop.clear(class)
+			class.__manager = self
+			class.__type = type
+			class.__tostring = proxytostring
+			class.__narrow = proxynarrow
+			class._narrow = proxynarrow -- TODO:[maia] DEPRECATED!
+			oo.initclass(class)
 		end
-	}
+		updater:notify()
+		if type.observer then
+			rawset(type.observer, class, updater)
+		end
+		return class
+	end, "k")
 	return self
 end
 
