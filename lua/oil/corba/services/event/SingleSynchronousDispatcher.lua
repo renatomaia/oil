@@ -2,11 +2,12 @@ local oil             = require "oil"
 local oo              = require "oil.oo"
 local assert          = require "oil.assert"
 local pairs           = pairs
+local pcall           = pcall
 
 module("oil.corba.services.event.SingleSynchronousDispatcher", oo.class)
 
 local function dispatch(consumer, event)
-  local b,e = oil.pcall(consumer.push, consumer, event.data)
+  local b,e = pcall(consumer.push, consumer, event.data)
   assert.results(b)
 end
 
@@ -16,7 +17,7 @@ function __new(class, event_queue, consumers)
     event_queue = event_queue,
     consumers = consumers or {},
   })
-  oil.tasks:start(self.run, self)
+  oil.newthread(self.run, self)
   return self
 end
 

@@ -1,3 +1,5 @@
+local pcall = pcall
+
 local oil               = require "oil"
 local oo                = require "oil.oo"
 local assert            = require "oil.assert"
@@ -42,7 +44,7 @@ end
 function destroy(self)
   for i=#self.proxypushsuppliers,1,-1 do
     local proxy = self.proxypushsuppliers[i]
-    oil.pcall(proxy.disconnect_push_supplier, proxy) 
+    pcall(proxy.disconnect_push_supplier, proxy) 
   end
   self.proxypushsuppliers = nil
   self.channel = nil

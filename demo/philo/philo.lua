@@ -1,7 +1,6 @@
 local oo     = require "loop.simple"
-local socket = require "socket"
 
-math.randomseed(socket.gettime() * 1000)
+math.randomseed(os.time() * 1000)
 
 --------------------------------------------------------------------------------
 -- Philosopher Component
@@ -14,7 +13,7 @@ Philosopher = oo.class{
 	has_right_fork = false,
 }
 
-function Philosopher:__init(name)
+function Philosopher:__new(name)
 	return oo.rawnew(self, {
 		name = name,
 		--time = 1.5 + math.random() * 3.6,

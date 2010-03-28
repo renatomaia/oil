@@ -16,7 +16,7 @@
 -- 	success:boolean, [except:table]|results... dispatch(key:string, operation:string|function, params...)
 --------------------------------------------------------------------------------
 
-local luapcall     = pcall
+local pcall        = pcall
 local setmetatable = setmetatable
 local type         = type
 local select       = select
@@ -27,8 +27,6 @@ local oo          = require "oil.oo"
 local Exception   = require "oil.Exception"                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module("oil.kernel.base.Dispatcher", oo.class)
-
-pcall = luapcall
 
 context = false
 
@@ -49,8 +47,8 @@ function dispatch(self, request)
 	if object then
 		local method = object[request.operation]
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",request.operation,unpack(request, 1, request.n))
-			self:setresults(request, self.pcall(method, object,
-			                                    unpack(request, 1, request.n)))
+			self:setresults(request, pcall(method, object,
+			                               unpack(request, 1, request.n)))
 		else
 			self:setresults(request, false, Exception{
 				reason = "noimplement",

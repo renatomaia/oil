@@ -59,7 +59,6 @@ local error        = error
 local ipairs       = ipairs
 local module       = module
 local pairs        = pairs
-local luapcall     = pcall
 local require      = require
 local tostring     = tostring
 local type         = type
@@ -73,6 +72,7 @@ local io        = require "io"
 local coroutine = require "coroutine"
 local table     = require "table"
 
+--[[DEBUG]] require "inspector" -- must be required before 'cothread.auxiliary'
 require "cothread.auxiliary" -- to avoid coroutine limitation of Lua 5.1
 
 local oo      = require "oil.oo"

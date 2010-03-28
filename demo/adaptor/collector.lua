@@ -2,7 +2,7 @@ local oo = require "oil.oo"
 
 Collector = oo.class{}
 
-function Collector:__init()
+function Collector:__new()
 	return oo.rawnew(self, { emails = {} })
 end
 

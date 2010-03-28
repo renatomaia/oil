@@ -19,6 +19,7 @@
 -- 	[member:string], [implementation:function] valueof(objectkey:string, operation:string)
 --------------------------------------------------------------------------------
 
+local pcall = pcall
 local unpack = unpack
 
 local oo         = require "oil.oo"
@@ -43,8 +44,8 @@ function dispatch(self, request)
 		if opinfo then
 			local method = object[opname] or opinfo.implementation
 			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",opname, unpack(request, 1, request.n))
-				self:setresults(request, self.pcall(method, object,
-				                                    unpack(request, 1, request.n)))
+				self:setresults(request, pcall(method, object,
+				                               unpack(request, 1, request.n)))
 			else
 				self:setresults(request, false, Exception{
 					reason = "noimplement",

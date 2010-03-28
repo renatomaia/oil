@@ -16,7 +16,8 @@
 -- 	success:boolean, [except:table]|results... dispatch(key:string, operation:string|function, params...)
 --------------------------------------------------------------------------------
 
-local unpack       = unpack
+local pcall = pcall
+local unpack = unpack
 
 local oo          = require "oil.oo"
 local Exception   = require "oil.Exception"
@@ -25,6 +26,8 @@ local Dispatcher  = require "oil.kernel.base.Dispatcher"                        
 module "oil.kernel.lua.Dispatcher"
 
 oo.class(_M, Dispatcher)
+
+context = false
 
 --------------------------------------------------------------------------------
 
@@ -50,12 +53,12 @@ local Operations = {
 --------------------------------------------------------------------------------
 
 function dispatch(self, request)
-	local object = self.servants:retrieve(request.objectkey)
+	local object = self.context.servants:retrieve(request.objectkey)
 	if object then
 		local method = Operations[request.operation]
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",request.operation,unpack(request, 1, request.n))
-			self:setresults(request, self.pcall(method, object,
-			                                    unpack(request, 1, request.n)))
+			self:setresults(request, pcall(method, object,
+			                               unpack(request, 1, request.n)))
 		else
 			self:setresults(request, false, Exception{
 				reason = "noimplement",

@@ -1,3 +1,5 @@
+local pcall = pcall
+
 local oil               = require "oil"
 local oo                = require "oil.oo"
 local assert            = require "oil.assert"
@@ -56,7 +58,7 @@ function disconnect_push_supplier(self)
   self.connected = false
   assert.results(self.push_consumer)
   self.admin:rem_push_consumer(self, self.push_consumer)
-  oil.pcall(self.push_consumer.disconnect_push_consumer, self.push_consumer)
+  pcall(self.push_consumer.disconnect_push_consumer, self.push_consumer)
   self.push_consumer = nil
 end
 

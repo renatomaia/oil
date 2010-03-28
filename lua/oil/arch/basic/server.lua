@@ -20,8 +20,5 @@ function assemble(components)
 	ServantManager.referrer    = ObjectReferrer.references
 	RequestReceiver.dispatcher = ServantManager.dispatcher
 	RequestReceiver.listener   = RequestListener.requests
-	
-	-- define 'pcall' used in invocation dispatching.
-	ServantManager.dispatcher.pcall = BasicSystem.pcall
 	arch.finish(components)
 end

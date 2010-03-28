@@ -37,6 +37,7 @@
 local assert   = assert
 local ipairs   = ipairs
 local pairs    = pairs
+local pcall    = pcall
 local select   = select
 local type     = type
 local unpack   = unpack
@@ -180,7 +181,7 @@ function handlerequest(self, channel, header, decoder)
 				header.outputs = member.outputs
 				header.exceptions = member.exceptions
 				for index, input in ipairs(member.inputs) do
-					local ok, result = self.pcall(decoder.get, decoder, input)
+					local ok, result = pcall(decoder.get, decoder, input)
 					if not ok then
 						assert(type(result) == "table", result)
 						header.success = false

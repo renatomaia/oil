@@ -20,7 +20,7 @@ sleep 3
 echo "Starting event channel ..."
 $LUA channeld.lua --name=MyEventChannel \
                   --ir=corbaloc::localhost:3001/InterfaceRepository \
-                  --ns=corbaloc::localhost:3002/NamingService &
+                  --ns=corbaloc::localhost:3002/NameService &
 pids="$pids $!"
 trap "kill $pids > /dev/null 2> /dev/null" 0
 

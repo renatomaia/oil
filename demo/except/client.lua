@@ -14,7 +14,7 @@ oil.main(function()
 	local orb = oil.init()
 	local Server
 	
-	local success, exception = oil.pcall(function()
+	local success, exception = pcall(function()
 		Server = orb:newproxy(oil.readfrom("ref.ior"))
 		print("Value of 'a_number' is ", Server:read("a_number")._anyval)
 		Server:write("a_number", "bad value") -- raises an exception to be captured!
@@ -28,7 +28,7 @@ oil.main(function()
 	
 	orb:setexcatch(returnexception, "Control::Server") -- set an exception handler
 	
-	local success, exception = oil.pcall(function()
+	local success, exception = pcall(function()
 		local value, errmsg = Server:read("unknown") -- exception handled by 'returnexception'
 		if value
 			then print("Value of 'unknown' is ", value._anyval)

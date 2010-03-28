@@ -36,7 +36,7 @@ function __new(class, event_queue, consumers)
     event_queue = event_queue,
     consumers = consumers or {},
   })
-  oil.tasks:start(self.run, self)
+  oil.newthread(self.run, self)
   return self
 end
 

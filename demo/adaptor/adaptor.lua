@@ -23,7 +23,7 @@ local oo = require "oil.oo"
 
 Adaptor = oo.class()
 
-function Adaptor:__init(class)
+function Adaptor:__new(class)
 	return oo.rawnew(self, { class = class })
 end
 

@@ -35,6 +35,7 @@ local assert   = assert
 local ipairs   = ipairs
 local newproxy = newproxy
 local pairs    = pairs
+local pcall    = pcall
 local select   = select
 local type     = type
 local unpack   = unpack
@@ -215,7 +216,7 @@ function doreply(self, replied, header, decoder)
 		replied.success = true
 		replied.n = #outputs
 		for index, output in ipairs(outputs) do
-			local ok, result = self.pcall(decoder.get, decoder, output)
+			local ok, result = pcall(decoder.get, decoder, output)
 			if not ok then
 				assert(type(result) == "table", result)
 				return nil, result
