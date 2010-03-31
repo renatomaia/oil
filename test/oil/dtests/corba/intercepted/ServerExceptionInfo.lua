@@ -173,7 +173,7 @@ prot = orb:newproxy(sync, "protected")
 MyInterface = orb.types:resolve("MyInterface")
 
 Interceptor.lastConcatRequest = nil
-ok, res = oil.pcall(sync.concat, sync, "first", "second")
+ok, res = pcall(sync.concat, sync, "first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
                    	"IDL:omg.org/CORBA/UNKNOWN:1.0",

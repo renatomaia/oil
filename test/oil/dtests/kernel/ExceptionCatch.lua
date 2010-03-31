@@ -46,7 +46,7 @@ raisers = {
 		if oil.dtests.flavor.corba then
 			checks:assert(exception, checks.similar{"IDL:omg.org/CORBA/COMM_FAILURE:1.0"})
 		elseif oil.dtests.flavor.ludo then
-			checks:assert(exception, checks.match("connection refused$", "wrong exception."))
+			checks:assert(exception, checks.match("channel connection failed: host not found$", "wrong exception."))
 		end
 	end,
 }
@@ -59,7 +59,7 @@ for raiser, exchecker in pairs(raisers) do
 	-- pcall exception catch
 	--
 	-- synchronous call
-	ok, exception = oil.pcall(raiser.raisenow, raiser)
+	ok, exception = pcall(raiser.raisenow, raiser)
 	checks:assert(not ok, "exception was not raised.")
 	exchecker(exception)
 	-- asynchronous call
@@ -68,7 +68,7 @@ for raiser, exchecker in pairs(raisers) do
 	ok, exception = future:results()
 	checks:assert(not ok, "exception was not raised.")
 	exchecker(exception)
-	ok, exception = oil.pcall(future.evaluate, future)
+	ok, exception = pcall(future.evaluate, future)
 	checks:assert(not ok, "exception was not raised.")
 	exchecker(exception)
 

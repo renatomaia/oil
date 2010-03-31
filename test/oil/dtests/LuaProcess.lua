@@ -1,3 +1,6 @@
+require "cothread.auxiliary"
+require "cothread.debug"
+
 local socket = require "socket"
 local Results = require "loop.test.Results"
 local Message = "%s\n%d\n%s\n"

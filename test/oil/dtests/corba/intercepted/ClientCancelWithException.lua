@@ -29,7 +29,7 @@ sync = orb:narrow(sync, "MyInterface")
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
-ok, res = oil.pcall(sync.concat, sync, "first", "second")
+ok, res = pcall(sync.concat, sync, "first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.is(Exception))
 

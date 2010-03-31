@@ -1,6 +1,7 @@
 
 local assert = assert
 local error = error
+local pcall = pcall
 local type  = type
 
 local oil = require "oil"
@@ -16,7 +17,7 @@ function resolve(proc, port, objkey, kind, nowait)
 	local proxy = orb:newproxy(Reference:format(objkey, hosts[proc] or proc, port))
 	if nowait then return proxy end
 	for i = 1, timeout/querytime do
-		local success, errmsg = oil.pcall(proxy._non_existent, proxy)
+		local success, errmsg = pcall(proxy._non_existent, proxy)
 		if success or (type(errmsg) == "table" and errmsg.reason == "noimplement")
 		then -- '_non_existent' may not provided but such object exists ;-)
 			return proxy
