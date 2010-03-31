@@ -39,7 +39,7 @@ oo.class(_M, Messenger)
 local MessageFmt = "%d\n%s"
 
 function newrequest(self, reference, operation, ...)
-	local result, except = self.channels:retrieve(reference)
+	local result, except, message = self.channels:retrieve(reference)
 	if result then
 		local channel = result
 		local encoder = self.codec:encoder()
@@ -55,6 +55,8 @@ function newrequest(self, reference, operation, ...)
 		else
 			if except == "closed" then channel:close() end
 		end
+	elseif message then
+		except = except..": "..message
 	end
 	return result, except
 end

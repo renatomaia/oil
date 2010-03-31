@@ -106,24 +106,32 @@ function getchannel(self, reference)                                            
 				reference._profiletag = tag
 				reference._profiledata = profiler
 				reference._objectkey = except
-				result, except = channels:retrieve(profiler)
+				result, except, message = channels:retrieve(profiler)
 				if result then
 					reference._channel = result                                           --[[VERBOSE]] verbose:invoke(false, "got channel from profile with tag ",profile.tag,"]")
 					return result, reference._objectkey, reference._profiledata
-				elseif except == "connection refused" then
+				elseif except == "channel connection failed" then
 					except = Exception{ "COMM_FAILURE",
 						minor_code_value = 1,
 						completion_status = COMPLETED_NO,
 						reason = "closed",
-						message = "connection to profile refused",
+						message = except..": "..message,
 						profile = profiler,
 					}
-				elseif except == "too many open connections" then
+				elseif except == "channel creation failed" then
 					except = Exception{ "NO_RESOURCES",
 						minor_code_value = 0,
 						completion_status = COMPLETED_NO,
 						reason = "resources",
-						message = "too many open connections by protocol",
+						message = except..": "..message,
+						protocol = tag,
+					}
+				else
+					except = Exception{ "INTERNAL",
+						minor_code_value = 0,
+						completion_status = COMPLETED_NO,
+						reason = "unknown",
+						message = except or message,
 						protocol = tag,
 					}
 				end

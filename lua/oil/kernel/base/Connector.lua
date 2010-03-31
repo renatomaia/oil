@@ -76,6 +76,7 @@ function CoSocketOps:reset()                                                    
 		result, errmsg = socket:connect(self.host, self.port)
 		if result then
 			self.__object = socket.__object
+			self.readevent = socket.readevent
 		end
 	end
 	return result, errmsg
@@ -88,7 +89,11 @@ function LuaSocketOps:probe()
 end
 function CoSocketOps:probe()
 	local list = { self }
-	return self.sockets:select(list, nil, 0)[1] == list[1]
+	local res = self.sockets:select(list, nil, 0)[1]
+	if res ~= nil then
+		return res.__object == list[1].__object
+	end
+	return false
 end
 
 --------------------------------------------------------------------------------
@@ -110,7 +115,7 @@ function retrieve(self, profile)                                                
 		profile.connid = connid
 	end
 	local cache = self.cache
-	local channel, errmsg = cache[connid]
+	local channel, errkind, errmsg = cache[connid]
 	if channel == nil then
 		local sockets = self.sockets
 		channel, errmsg = sockets:tcp()
@@ -127,9 +132,12 @@ function retrieve(self, profile)                                                
 				channel.port = port
 				self.cache[connid] = channel
 			else
+				errkind = "channel connection failed"
 				channel = nil
 			end
+		else
+			errkind = "channel creation failed"
 		end
 	end
-	return channel, errmsg
+	return channel, errkind, errmsg
 end
