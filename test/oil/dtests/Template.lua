@@ -31,7 +31,6 @@ local PortLowerBound = 2809 -- inclusive (never at first attempt)
 local PortUpperBound = 9999 -- inclusive
 local Message = "%s\n%d\n%s\n"
 local TableEntry = "[%q]=%q"
-local LuaProcess = 'lua -eHOST=[[%s]]PORT=%d -loil.dtests.LuaProcess'
 local CodeBody = table.concat({
 	"OIL_FLAVOR=%q",
 	"local flavor = {}",
@@ -107,11 +106,11 @@ function newtest(self, infos)
 				command.arguments = { "-eHOST=[["..hostname.."]]PORT="..portno,
 				                      "-loil.dtests.LuaProcess" }
 				command.environment = {
-					PATH = os.getenv("PATH"),
-					LUA_INIT = os.getenv("LUA_INIT"),
-					LUA_PATH = os.getenv("LUA_PATH"),
-					LUA_CPATH = os.getenv("LUA_CPATH"),
-					OIL_HOME = os.getenv("OIL_HOME"),
+					{name="PATH"     , value=os.getenv("PATH")     },
+					{name="LUA_INIT" , value=os.getenv("LUA_INIT") },
+					{name="LUA_PATH" , value=os.getenv("LUA_PATH") },
+					{name="LUA_CPATH", value=os.getenv("LUA_CPATH")},
+					{name="OIL_HOME" , value=os.getenv("OIL_HOME") },
 				}
 				local process = helper:start(command)
 				HostTable[#HostTable+1] = TableEntry:format(name, process:_get_host())
