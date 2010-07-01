@@ -13,13 +13,16 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
 --------------------------------------------------------------------------------
 -- listener:Facet
--- 	configs:table default([configs:table])
+-- 	configs:table setupaccess([configs:table])
 -- 	channel:object, [except:table] getchannel(configs:table)
+-- 	success:boolean, [except:table] freeaccess(configs:table)
+-- 	success:boolean, [except:table] freechannel(channel:object)
 -- 	request:object, [except:table], [requests:table] = getrequest(channel:object, [probe:boolean])
 -- 
 -- channels:Receptacle
--- 	channel:object retieve(configs:table)
--- 	configs:table default([configs:table])
+-- 	configs:table initialize([configs:table])
+-- 	channel:object retieve(configs:table, [probe:boolean])
+-- 	channel:object dispose(configs:table)
 -- 
 -- codec:Receptacle
 -- 	encoder:object encoder()
@@ -40,7 +43,7 @@ oo.class(_M, Messenger)
 --------------------------------------------------------------------------------
 
 function setupaccess(self, configs)
-	return self.channels:default(configs)
+	return self.channels:initialize(configs)
 end
 
 function freeaccess(self, accesspoint)                                          --[[VERBOSE]] verbose:listen("closing all channels with configs ",accesspoint)

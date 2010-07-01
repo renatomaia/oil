@@ -1,5 +1,8 @@
 require "oil"                                           -- Load OiL package
 
+--oil.verbose:level(3)
+--cothread.verbose:level(10)
+
 oil.main(function()
 	local orb = oil.init()
 	

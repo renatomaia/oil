@@ -1,50 +1,34 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua                                                  --
--- Release: 0.5                                                               --
--- Title  : Client-side CORBA GIOP Protocol specific to IIOP                  --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---   See section 15.7 of CORBA 3.0 specification.                             --
---   See section 13.6.10.3 of CORBA 3.0 specification for IIOP corbaloc.      --
---------------------------------------------------------------------------------
--- channels:Facet
--- 	channel:object retieve(configs:table, [probe:boolean])
--- 
--- sockets:Receptacle
--- 	socket:object tcp()
--- 	input:table, output:table select([input:table], [output:table], [timeout:number])
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.5
+-- Title  : Factory of outgoing (client-side) channels
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local next         = next
-local pairs        = pairs
-local setmetatable = setmetatable
-local type         = type
+
+local _G = require "_G"
+local setmetatable = _G.setmetatable
+
+local tuples = require "tuple"
+local tuple = tuples.index
 
 local tabop = require "loop.table"
+local copy = tabop.copy
 
-local Wrapper  = require "loop.object.Wrapper"
-local Channels = require "oil.kernel.base.Channels"
+local oo = require "oil.oo"
+local class = oo.class
+local rawnew = oo.rawnew
 
-local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local Exception = require "oil.Exception"
+local Channels = require "oil.kernel.base.Channels"                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module "oil.kernel.base.Connector"
+module(...)
 
-oo.class(_M, Channels)
+class(_M, Channels)
 
 --------------------------------------------------------------------------------
 -- connection management
 
-LuaSocketOps = tabop.copy(Channels.LuaSocketOps)
-CoSocketOps = tabop.copy(Channels.CoSocketOps)
+LuaSocketOps = copy(Channels.LuaSocketOps)
+CoSocketOps = copy(Channels.CoSocketOps)
 
 function LuaSocketOps:close()
 	local cache = self.cache[self.connid]
@@ -54,53 +38,41 @@ end
 
 CoSocketOps.close = LuaSocketOps.close
 
+
 function LuaSocketOps:reset()                                                   --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
 	local sockets = self.sockets
-	local result, errmsg = sockets:tcp()
+	local result, except = sockets:tcp()
 	if result then
 		local socket = result
-		result, errmsg = socket:connect(self.host, self.port)
+		result, except = socket:connect(self.host, self.port)
 		if result then
 			self.__object = socket
 		end
 	end
-	return result, errmsg
+	return result, except
 end
+
 function CoSocketOps:reset()                                                    --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
 	local sockets = self.sockets
-	local result, errmsg = sockets:tcp()
+	local result, except = sockets:tcp()
 	if result then
 		local socket = result
-		result, errmsg = socket:connect(self.host, self.port)
+		result, except = socket:connect(self.host, self.port)
 		if result then
 			self.__object = socket.__object
 			self.readevent = socket.readevent
 		end
 	end
-	return result, errmsg
-end
-
-local list = {}
-function LuaSocketOps:probe()
-	list[1] = self.__object
-	return self.sockets:select(list, nil, 0)[1] == list[1]
-end
-function CoSocketOps:probe()
-	local list = { self }
-	local res = self.sockets:select(list, nil, 0)[1]
-	if res ~= nil then
-		return res.__object == list[1].__object
-	end
-	return false
+	return result, except
 end
 
 --------------------------------------------------------------------------------
 -- channel cache for reuse
 
 function __new(self, object)
-	self = oo.rawnew(self, object)
+	self = rawnew(self, object)
 	self.cache = setmetatable({}, {__mode = "v"})
 	return self
 end
@@ -109,20 +81,16 @@ end
 -- channel factory
 
 function retrieve(self, profile)                                                --[[VERBOSE]] verbose:channels("retrieve channel connected to ",profile.host,":",profile.port)
-	local connid = profile.connid
-	if not connid then
-		connid = profile.host..":"..profile.port
-		profile.connid = connid
-	end
+	local connid = tuple[profile.host][profile.port]
 	local cache = self.cache
-	local channel, errkind, errmsg = cache[connid]
+	local channel, except = cache[connid]
 	if channel == nil then
 		local sockets = self.sockets
-		channel, errmsg = sockets:tcp()
+		channel, except = sockets:tcp()
 		if channel then
 			local host, port = profile.host, profile.port                             --[[VERBOSE]] verbose:channels("new socket to ",host,":",port)
 			local success
-			success, errmsg = channel:connect(host, port)
+			success, except = channel:connect(host, port)
 			if success then
 				channel = self:setupsocket(channel)
 				channel.sockets = sockets
@@ -130,14 +98,21 @@ function retrieve(self, profile)                                                
 				channel.connid = connid
 				channel.host = host
 				channel.port = port
-				self.cache[connid] = channel
+				cache[connid] = channel
 			else
-				errkind = "channel connection failed"
-				channel = nil
+				channel, except = nil, Exception{ "badconnect",
+					message = "unable to connect to $host:$port ($error)",
+					error = except,
+					host = host,
+					port = port,
+				}
 			end
 		else
-			errkind = "channel creation failed"
+			channel, except = nil, Exception{ "badsocket",
+				message = "unable to create socket ($error)",
+				error = except,
+			}
 		end
 	end
-	return channel, errkind, errmsg
+	return channel, except
 end

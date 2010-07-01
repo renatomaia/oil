@@ -1,55 +1,34 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Object Request Dispatcher                                         --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- dispatcher:Facet
--- 	success:boolean, [except:table]|results... dispatch(objectkey:string, operation:string|function, params...)
--- 
--- indexer:Receptacle
--- 	[member:string], [implementation:function] valueof(objectkey:string, operation:string)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Object Request Dispatcher
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local pcall = pcall
-local unpack = unpack
 
-local oo         = require "oil.oo"
-local Exception  = require "oil.Exception"
-local Dispatcher = require "oil.kernel.base.Dispatcher"                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local pcall = _G.pcall
 
-module "oil.kernel.typed.Dispatcher"
+local oo = require "oil.oo"
+local class = oo.class
 
-oo.class(_M, Dispatcher)
+local Exception = require "oil.Exception"
 
-context = false
+module(...); local _ENV = _M
 
---------------------------------------------------------------------------------
--- Dispatcher facet
+class(_ENV)
 
-function dispatch(self, request)
-	local context = self.context
-	local object, type = context.servants:retrieve(request.objectkey)
+function _ENV:dispatch(request)
+	local object, type = self.servants:retrieve(request.objectkey)
 	if object then
 		local opname = request.operation
 		local opinfo = context.indexer:valueof(type, opname)
 		if opinfo then
 			local method = object[opname] or opinfo.implementation
-			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",opname, unpack(request, 1, request.n))
-				self:setresults(request, pcall(method, object,
-				                               unpack(request, 1, request.n)))
+			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
+				request:setreply(pcall(method, object, request:getparams()))
 			else
-				self:setresults(request, false, Exception{
-					reason = "noimplement",
-					message = "no implementation for operation of object with key",
+				request:setreply(false, Exception{
+					error = "badobjimpl",
+					message = "servant $key does not implement $operation",
 					operationdescription = opinfo,
 					operation = opname,
 					object = object,
@@ -58,9 +37,9 @@ function dispatch(self, request)
 				})
 			end
 		else
-			self:setresults(request, false, Exception{
-				reason = "badoperation",
-				message = "operation is illegal for object with key",
+			request:setreply(false, Exception{
+				error = "badobjop",
+				message = "operation $operation is illegal for servant $key",
 				operation = opname,
 				object = object,
 				type = type,
@@ -68,11 +47,10 @@ function dispatch(self, request)
 			})
 		end
 	else
-		self:setresults(request, false, Exception{
-			reason = "badkey",
-			message = "no object with key",
+		request:setreply(false, Exception{
+			error = "badobjkey",
+			message = "unknown servant (got $key)",
 			key = key,
 		})
 	end
-	return true
 end

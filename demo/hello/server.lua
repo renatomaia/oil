@@ -1,5 +1,9 @@
 require "oil"                                    -- Load OiL package
 
+--oil.verbose:level(5)
+--cothread.verbose:level(1)
+--cothread.verbose:flag("socket", true)
+
 oil.main(function()
 	local hello = { count = 0, quiet = true }      -- Get object implementation
 	function hello:say_hello_to(name)

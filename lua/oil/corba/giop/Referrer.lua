@@ -1,180 +1,140 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Interoperable Object Reference (IOR) support                      --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---   See section 13.6 of CORBA 3.0 specification.                             --
---   See section 13.6.10 of CORBA 3.0 specification for corbaloc.             --
---------------------------------------------------------------------------------
--- references:Facet
--- 	reference:table newreference(objectkey:string, accesspointinfo:table...)
--- 	reference:string encode(reference:table)
--- 	reference:table decode(reference:string)
--- 
--- codec:Receptacle
--- 	encoder:object encoder()
--- 	decoder:object decoder(stream:string)
--- 
--- profiler:HashReceptacle
--- 	profile:table decodeurl(url:string)
--- 	data:string encode(accesspoint:object, key:string, type)
--- 
--- types:Receptacle--[[
--- 	interface:table typeof(objectkey:string)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Interoperable Object Reference (IOR) support
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local ipairs       = ipairs
-local select       = select
-local setmetatable = setmetatable
-local tonumber     = tonumber
+
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
 
 local string = require "string"
+local format = string.format
+local char = string.char
 
-local oo        = require "oil.oo"
-local idl       = require "oil.corba.idl"
-local giop      = require "oil.corba.giop"
-local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
+local class = oo.class
 
-module("oil.corba.giop.Referrer", oo.class)
+local idl = require "oil.corba.idl"
+local objrepID = idl.object.repID
 
---------------------------------------------------------------------------------
--- String/byte conversions -----------------------------------------------------
+local giop = require "oil.corba.giop"
+local ioridl = giop.IOR
+local _interface = giop.ObjectOperations._interface
+
+local Exception = require "oil.corba.giop.Exception"
+
+module(...); local _ENV = _M
+
 
 local function byte2hexa(value)
-	return (string.gsub(value, '(.)', function (char)
+	return (value:gsub('(.)', function (char)
 		-- TODO:[maia] check char to byte conversion
-		return (string.format("%02x", string.byte(char)))
+		return (format("%02x", char:byte()))
 	end))
 end
 
 local function hexa2byte(value)
-	local error
-	value = (string.gsub(value, '(%x%x)', function (hexa)
-		hexa = tonumber(hexa, 16)
-		if hexa
-			-- TODO:[maia] check byte to char conversion
-			then return string.char(hexa)
-			else error = true
-		end
+	return (value:gsub('(%x%x)', function (hexa)
+		-- TODO:[maia] check byte to char conversion
+		return (char(tonumber(hexa, 16)))
 	end))
-	if not error then return value end
 end
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
 
-function IOR(self, stream)
+class(_ENV)
+
+
+function _ENV:IOR(stream)
 	local decoder = self.codec:decoder(hexa2byte(stream), true)
-	return decoder:struct(giop.IOR)
+	return decoder:struct(ioridl)
 end
 
-function corbaloc(self, encoded)
-	for token, data in string.gmatch(encoded, "(%w*):([^,]*)") do
-		local profiler = self.profiler[token]
-		if profiler then
-			local profile, except = profiler:decodeurl(data)
+function _ENV:corbaloc(encoded)
+	for token, data in encoded:gmatch("(%w*):([^,]*)") do
+		if token == "" or token == "iiop" then
+			local profile, except = self.profiler:decodeurl(data)
 			if profile then
 				return setmetatable({
-					type_id = idl.object.repID,
+					type_id = objrepID,
 					profiles = { profile },
-				}, giop.IOR)
+				}, ioridl)
 			else
 				return nil, except
 			end
 		end
 	end
-	return nil, Exception{ "INV_OBJREF",
-		reason = "corbaloc",
-		message = "corbaloc, no supported protocol found",
+	return nil, Exception{
+		error = "badcorbaloc",
+		message = "no supported protocol found in corbaloc (got $reference)",
 		reference = encoded,
 	}
 end
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
 
-function newreference(self, access, key, type)
-	local profiles = {}
-	local tag = access.tag or 0
-	local profiler = self.profiler[tag]
-	if profiler then
-		local ok, except = profiler:encode(profiles, key, access)
-		if not ok then return nil, except end
-	else
-		return nil, Exception{ "IMP_LIMIT", minor_code_value = 1,
-			message = "GIOP profile tag not supported",
-			reason = "profiles",
-			tag = tag,
-		}
-	end
-	return setmetatable({
-		type_id = type.repID,
-		profiles = profiles,
-	}, giop.IOR)
-end
-
-function islocal(self, reference, access)
-	local profilers = self.profiler
-	for _, profile in ipairs(reference.profiles) do
-		local profiler = profilers[profile.tag]
-		if profiler then
-			local result = profiler:belongsto(profile.profile_data, access)
-			if result then
-				return result
-			end
-		end
-	end
-end
-
-local _interface = giop.ObjectOperations._interface
-local NO_IMPLEMENT = giop.SystemExceptionIDs.NO_IMPLEMENT
-function typeof(self, reference)
-	local requester = self.requester
-	local result, except = requester:newrequest(reference, _interface)
+function _ENV:newreference(key, type)
+	local result, except = self.listener:getaddress()
 	if result then
-		local request = result
-		result, except = requester:getreply(request)
+		local profiles = {}
+		result, except = self.profiler:encode(profiles, key, result)
 		if result then
-			result = request[1]
-			if request.success then
-				except = nil
-			else
-				result, except = reference.type_id, nil
-			end
+			result, except = setmetatable({
+				type_id = type.repID,
+				profiles = profiles,
+			}, ioridl)
 		end
 	end
 	return result, except
 end
 
---------------------------------------------------------------------------------
--- Coding ----------------------------------------------------------------------
+function _ENV:islocal(reference)
+	local listener = self.listener
+	if listener then
+		local address = listener:getaddress("probe") -- only if avaliable
+		if address then
+			local profiler = self.profiler
+			local profiles = reference.profiles
+			for i = 1, #profiles do
+				local profile = profiles[i]
+				if profile.tag == 0 then
+					local result = profiler:belongsto(profile.profile_data, address)
+					if result then return result end
+				end
+			end
+		end
+	end
+end
 
-function encode(self, ior)
+function _ENV:typeof(reference, timeout)
+	local requester = self.requester
+	if requester then                                                             --[[VERBOSE]] verbose:proxies(true, "attempt to discover interface a remote object")
+		local request = requester:newrequest(reference, _interface)
+		if request then
+			local ok, type = request:results(timeout)
+			if ok then                                                                --[[VERBOSE]] verbose:proxies(false, "interface discovered")
+				return type
+			end
+		end
+	end                                                                           --[[VERBOSE]] verbose:proxies(false, "discovery failed, using interface defined in the IOR")
+	return reference.type_id
+end
+
+function _ENV:encode(reference)
 	local encoder = self.codec:encoder(true)
-	encoder:struct(ior, giop.IOR)
+	encoder:struct(reference, ioridl)
 	return "IOR:"..byte2hexa(encoder:getdata())
 end
 
-function decode(self, encoded)
+function _ENV:decode(encoded)
 	local token, stream = encoded:match("^(%w+):(.+)$")
 	local decoder = self[token]
-	if not decoder then
-		return nil, Exception{ "INV_OBJREF",
-			reason = "reference",
-			message = "illegal reference format, currently not supported",
-			format = token,
-			reference = enconded,
-		}
+	if decoder then
+		return decoder(self, stream)
 	end
-	return decoder(self, stream)
+	return nil, Exception{
+		error = "badobjref",
+		message = "invalid stringfied reference (got $reference)",
+		reference = enconded,
+		format = token,
+	}
 end

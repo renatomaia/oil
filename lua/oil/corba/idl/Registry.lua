@@ -155,11 +155,11 @@ end
 --
 function IRObject:destroy()
 	if self.observer == nil or next(self.references) ~= nil then
-		assert.exception{ "BAD_INV_ORDER", minor_error_code = 1,
+		error(Exception{ "BAD_INV_ORDER", minor_error_code = 1,
 			message = "attempt to destroy IR definition in use",
 			reason = "irdestroy",
 			object = self,
-		}
+		})
 	end
 	if self.defined_in then
 		self.defined_in.definitions:_remove(self)
@@ -1413,19 +1413,19 @@ function resolve(self, typeref)
 	if result == "string" then
 		result = self:lookup(typeref) or self:lookup_id(typeref)
 		if not result then
-			errmsg = Exception{ "INTERNAL", minor_code_value = 0,
+			errmsg = Exception{ "INTERNAL", minor = 0,
 				reason = "interface",
-				message = "unknown interface",
-				interface = typeref,
+				message = "unknown interface (got $interface_id)",
+				interface_id = typeref,
 			}
 		end
 	elseif result == "table" and typeref._type == "interface" then
 		result, errmsg = self:register(typeref)
 	else
-		result, errmsg = nil, Exception{ "INTERNAL", minor_code_value = 0,
+		result, errmsg = nil, Exception{ "INTERNAL", minor = 0,
 			reason = "interface",
-			message = "illegal IDL type",
-			type = typeref,
+			message = "illegal IDL type (got $idltype)",
+			idltype = typeref,
 		}
 	end
 	return result, errmsg

@@ -19,51 +19,51 @@
 -- 	[results:object], [except:table] invoke(reference, operation, args...)
 --------------------------------------------------------------------------------
 
-local ipairs = ipairs
+local _G = require "_G"
+local ipairs = _G.ipairs
 
-local oo      = require "oil.oo"
+local oo = require "oil.oo"
+local class = oo.class
+local rawnew = oo.rawnew
+
+local utils = require "oil.kernel.base.Proxies.utils"
+local assert = utils.assertresults
+
 local Proxies = require "oil.kernel.base.Proxies"                               --[[VERBOSE]] local verbose = require "oil.verbose"
-local utils   = require "oil.kernel.base.Proxies.utils"
 
 module "oil.kernel.lua.Proxies"
 
-oo.class(_M, Proxies)
+class(_M, Proxies)
 
-local assertresults = utils.assertresults
-local unpackrequest = utils.unpackrequest
-local callhandler   = utils.callhandler
-
-class = oo.class()
-for _, field in ipairs{
-	"tostring",
-	"unm",
-	"len",
-	"add",
-	"sub",
-	"mul",
-	"div",
-	"mod",
-	"pow",
-	"eq",
-	"lt",
-	"le",
-	"concat",
-	"call",
-	"index",
-	"newindex",
-} do
-	class["__"..field] = function(self, ...)                                      --[[VERBOSE]] verbose:proxies("call to ",field," ", ...)
-		local requester = self.__manager.requester
-		local success, except = requester:newrequest(self.__reference, field, ...)
-		if success then
-			local request = success
-			success, except = requester:getreply(request)
-			if success then
-				return assertresults(self, operation, unpackrequest(request))
+function __new(self, ...)
+	self = rawnew(self, ...)
+	if self.class == nil then
+		local ops = class()
+		for _, field in ipairs{
+			"tostring",
+			"unm",
+			"len",
+			"add",
+			"sub",
+			"mul",
+			"div",
+			"mod",
+			"pow",
+			"eq",
+			"lt",
+			"le",
+			"concat",
+			"call",
+			"index",
+			"newindex",
+		} do
+			ops["__"..field] = function(proxy, ...)                                      --[[VERBOSE]] verbose:proxies("call to ",field," ", ...)
+				local request = self.requester:newrequest(proxy, field, ...)
+				return assert(proxy, operation, request:results())
 			end
 		end
-		if not success then
-			return callhandler(self, except, operation)
-		end
+		self.class = ops
 	end
+	return self
 end
+

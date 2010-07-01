@@ -1,56 +1,46 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Remote Object Proxies                                             --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- proxies:Facet
--- 	proxy:object proxyto(reference:table)
---
--- invoker:Receptacle
--- 	[results:object], [except:table] invoke(reference, operation, args...)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Remote Object Proxies
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local setmetatable = setmetatable
+
+local _G = require "_G"
+local setmetatable = _G.setmetatable
+
+local tabop = require "loop.table"
+local memoize = tabop.memoize
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local class = oo.class
 
-module("oil.kernel.base.Proxies", oo.class)
+module(...); local _ENV = _M
 
-local function newclass(methodmaker)
-	return setmetatable(oo.initclass{
-		__tostring = proxytostring,
-	}, {
-		__mode = "v", -- TODO:[maia] can method creation/collection be worse than
-		              --             memory leak due to invocation of constantly
-		              --             changing methods ?
-		__call = oo.rawnew,
-		__index = function(cache, field)
-			local function invoker(self, ...)                                         --[[VERBOSE]] verbose:proxies("call to ",field," ", ...)
-				return self.__manager.requester:newrequest(self.__reference, field, ...)
-			end
-			invoker = methodmaker(invoker, field)
-			cache[field] = invoker
-			return invoker
-		end,
-	})
+class(_ENV)
+
+function _ENV:__init()
+	if self.class == nil then
+		local methodmaker = self.invoker
+		self.class = {
+			__index = memoize(function(operation)
+				local function invoker(proxy, ...)                                      --[[VERBOSE]] verbose:proxies("call to ",operation)
+					return self.requester:newrequest(proxy.__reference, operation, ...)
+				end
+				return methodmaker(invoker, operation)
+			end, "v"), -- TODO:[maia] can method creation/collection be worse than
+			           --             memory leak due to invocation of constantly
+			           --             changing methods ?
+			__tostring = function(proxy)
+				return self.referrer:encode(proxy.__reference)
+			end,
+		}
+	end
 end
 
-function __new(self, ...)
-	self = oo.rawnew(self, ...)
-	self.class = self.class or newclass(self.invoker)
-	return self
+function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies("new proxy to ",reference)
+	return setmetatable(proxy, self.class)
 end
 
-function fromstring(self, reference, ...)
+function _ENV:fromstring(reference, ...)
 	local result, except = self.referrer:decode(reference)
 	if result then
 		result, except = self:resolve(result, ...)
@@ -58,29 +48,21 @@ function fromstring(self, reference, ...)
 	return result, except
 end
 
-function resolve(self, reference, ...)                                          --[[VERBOSE]] verbose:proxies(true, "resolve reference for ",reference)
-	local result, except
-	local servants = self.servants
-	if servants then
-		result, except = self.referrer:islocal(reference, servants.accesspoint)
-		if result then                                                              --[[VERBOSE]] verbose:proxies("local object with key '",result,"' restored")
-			result = servants:retrieve(result)
+function _ENV:resolve(reference, ...)
+	local objkey = self.referrer:islocal(reference)
+	if objkey and self.servants then
+		local servants = self.servants
+		if servants then
+			local registered = servants:retrieve(objkey)
+			if registered then                                                        --[[VERBOSE]] verbose:proxies("local object with key '",objkey,"' restored")
+				return registered
+			end
 		end
 	end
-	if not result then                                                            --[[VERBOSE]] verbose:proxies("new proxy created for reference", reference)
-		result, except = self:newproxy(reference, ...)
-	end                                                                           --[[VERBOSE]] verbose:proxies(false)
-	return result, except
+	return self:newproxy({__reference = reference}, ...)
 end
 
-function newproxy(self, reference)                                              --[[VERBOSE]] verbose:proxies("new proxy to ",reference)
-	return self.class{
-		__manager = self,
-		__reference = reference,
-	}
-end
-
-function excepthandler(self, handler)                                           --[[VERBOSE]] verbose:proxies("setting exception handler for proxies")
-	self.defaulthandler = handler
+function _ENV:excepthandler(handler)                                            --[[VERBOSE]] verbose:proxies("setting exception handler for proxies")
+	self.class.__exceptions = handler
 	return true
 end

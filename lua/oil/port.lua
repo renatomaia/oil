@@ -1,1 +1,1 @@
-package.loaded["oil.port"] = require "loop.component.base"
+return require "loop.component.base"

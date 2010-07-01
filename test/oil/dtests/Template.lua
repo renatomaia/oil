@@ -317,7 +317,7 @@ function newsuite(self, required)
 	if rawget(required, "corba") then protocols[ludo]  = nil end
 	local suite = Suite()
 	
-	---[=[
+	--[=[
 	
 	for protocol in pairs(protocols) do
 		flavors[1] = protocol

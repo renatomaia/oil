@@ -18,11 +18,13 @@ local Empty = {}
 
 --------------------------------------------------------------------------------
 
-function interceptrequest(self, reference, operation, request)
+function interceptrequest(self, proxy, operation, request)
 	local interceptor = self.interceptor
 	if interceptor then
 		local interface = operation.defined_in
+		local reference = proxy.__reference
 		local intercepted = {
+			proxy             = proxy,
 			reference         = reference,
 			operation         = operation,
 			profile_tag       = reference._profiletag,
@@ -78,11 +80,10 @@ function interceptrequest(self, reference, operation, request)
 	end
 end
 
-function sendrequest(self, reference, operation, ...)
-	local result, except = self:getchannel(reference)
-	local channel = result
-	local request = self:makerequest(channel, reference._objectkey, operation,...)--[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",operation.name,"'")
-	local intercepted = self:interceptrequest(reference, operation, request)
+function sendrequest(self, proxy, operation, ...)
+	local channel = self.channelof(proxy)
+	local request = self:makerequest(channel, proxy, operation, ...)              --[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",operation.name,"'")
+	local intercepted = self:interceptrequest(proxy, operation, request)
 	if intercepted then
 		if request.success ~= nil then                                              --[[VERBOSE]] verbose:interceptors(false, "interception ended (results provided!)")
 			channel = nil
@@ -95,7 +96,7 @@ function sendrequest(self, reference, operation, ...)
 				end
 				result, except = self:getchannel(reference)
 				if result then
-					intercepted.object_key = reference._objectkey
+					intercepted.object_key = self.objkeyof[proxy]
 					intercepted.profile_tag = reference._profiletag
 					intercepted.profile_data = reference._profiledata
 					channel = result
@@ -173,9 +174,8 @@ function interceptreply(self, request, header)
 end
 
 function doreply(self, request, header, decoder)
-	local success, except = Requester.doreply(self, request, header, decoder)
-	if success then
+	if Requester.doreply(self, request, header, decoder) then
 		self:interceptreply(request, header)
+		return true
 	end
-	return success, except
 end

@@ -1,3 +1,6 @@
+Channels on proxies are weak values.
+Fixed at-most-one semantics and proper handling of connections errors.
+
 OiL 0.5 beta
 
 [New Features]

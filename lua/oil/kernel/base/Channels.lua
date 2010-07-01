@@ -1,24 +1,21 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua                                                  --
--- Release: 0.5                                                               --
--- Title  : Client-side CORBA GIOP Protocol specific to IIOP                  --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.5
+-- Title  : Enhancements to the standard socket API
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
+
 
 local _G = require "_G"
 local pairs = _G.pairs
 local type = _G.type
 
+local math = require "math"
+local max = math.max
+
 local coroutine = require "coroutine"
 local running = coroutine.running
+
+local socket = require "socket.core"
+local gettime = socket.gettime
 
 local tabop = require "loop.table"
 local copy = tabop.copy
@@ -30,25 +27,54 @@ local Mutex = require "cothread.Mutex"
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local class = oo.class
 
-module("oil.kernel.base.Channels", class)
+module(..., class)
 
---------------------------------------------------------------------------------
 
 local function dummy() return true end
 
 LuaSocketOps = {
+	unlocked = dummy,
 	trylock  = dummy,
 	freelock = dummy,
 	signal   = dummy,
+	bytes    = "",
 }
 
+function LuaSocketOps:settimeout(timeout, timestamp)
+	if timestamp then timeout = max(0, timeout-gettime()) end
+	return self.__object:settimeout(timeout)
+end
 
-CoSocketOps = {}
+function LuaSocketOps:probe(count, timeout)
+	local bytes = self.bytes
+	if #bytes >= count then
+		self.bytes = bytes:sub(count+1)
+		return bytes:sub(1, count)
+	end
+	self:settimeout(timeout, "timestamp")
+	local result, except, partial = self:receive(count-#bytes)
+	if result then
+		self.bytes = ""
+		return bytes..result
+	end
+	self.bytes = bytes..partial
+	return nil, except
+end
 
-function CoSocketOps:trylock(operation, wait, signal)
+
+CoSocketOps = {
+	bytes = LuaSocketOps.bytes,
+	probe = LuaSocketOps.probe,
+}
+
+function CoSocketOps:unlocked(operation)
+	return self[operation]:isfree()
+end
+
+function CoSocketOps:trylock(operation, timeout, signal)
 	local mutex = self[operation]
 	if signal ~= nil then mutex[signal] = running() end
-	local granted = mutex:try(wait)
+	local granted = mutex:try(timeout)
 	if signal ~= nil then mutex[signal] = nil end
 	return granted
 end
@@ -65,7 +91,6 @@ function CoSocketOps:freelock(operation)
 	return self[operation]:free()
 end
 
---------------------------------------------------------------------------------
 
 function setupsocket(self, socket, ...)
 	if socket then

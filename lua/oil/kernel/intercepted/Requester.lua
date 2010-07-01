@@ -42,8 +42,8 @@ function newrequest(self, reference, operation, ...)
 	return result, except
 end
 
-function getreply(self, opreq)
-	local result, except = self.__object:getreply(opreq)
+function getreply(self, opreq, ...)
+	local result, except = self.__object:getreply(opreq, ...)
 	if result then
 		local interceptor = self.interceptor
 		local request = opreq[self]

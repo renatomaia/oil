@@ -1,6 +1,6 @@
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua
 -- Release: 0.5
--- Title  : Socket API Wrapper
+-- Title  : Cooperatibe Threads API Wrapper
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 

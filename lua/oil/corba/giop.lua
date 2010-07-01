@@ -1,30 +1,11 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : General Inter-ORB Protocol (GIOP) IDL specifications              --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---   See in section 15.4 of CORBA 3.0 specification.                          --
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
--- Dependencies ----------------------------------------------------------------
-
-local require = require
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.5
+-- Title  : General Inter-ORB Protocol (GIOP) IDL specifications
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
+-- Notes  :
+--   See in section 15.4 of CORBA 3.0 specification.
 
 local idl = require "oil.corba.idl"
-
---------------------------------------------------------------------------------
--- Module Declaration ----------------------------------------------------------
 
 module "oil.corba.giop"
 
@@ -76,10 +57,15 @@ ObjectOperations = {
 --------------------------------------------------------------------------------
 -- System Exception Structure --------------------------------------------------
 
+CompletionStatus = idl.enum{
+	"COMPLETED_YES",
+	"COMPLETED_NO",
+	"COMPLETED_MAYBE",
+}
 SystemExceptionIDL = idl.struct{
-	{name = "exception_id"     , type = idl.string},
-	{name = "minor_code_value" , type = idl.ulong },
-	{name = "completion_status", type = idl.ulong },
+	{name = "exception_id", type = idl.string}, --TODO:[maia] what about 'name=1'?
+	{name = "minor"       , type = idl.ulong },
+	{name = "completed"   , type = CompletionStatus },
 }
 
 SystemExceptionIDs = {

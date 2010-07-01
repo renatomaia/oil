@@ -112,20 +112,20 @@ function register(self, object, history)
 			local desc
 			-- import definition specific information
 			if kind == "dk_Array" then
-				object = object:_narrow("IDL:omg.org/CORBA/ArrayDef:1.0")
+				object = object:__narrow("IDL:omg.org/CORBA/ArrayDef:1.0")
 				desc = object:_get_type()
 				desc.elementtype = self:register(object:_get_element_type_def(), history)
 			elseif kind == "dk_Sequence" then
-				object = object:_narrow("IDL:omg.org/CORBA/SequenceDef:1.0")
+				object = object:__narrow("IDL:omg.org/CORBA/SequenceDef:1.0")
 				desc = object:_get_type()
 				desc.elementtype = self:register(object:_get_element_type_def(), history)
 			else
-				object = object:_narrow("IDL:omg.org/CORBA/IDLType:1.0")
+				object = object:__narrow("IDL:omg.org/CORBA/IDLType:1.0")
 				desc = object:_get_type()
 			end
 			result = registry:register(desc)
 		elseif Contained[kind] then
-			object = object:_narrow(Contained[kind].iface)
+			object = object:__narrow(Contained[kind].iface)
 			local desc = object:describe().value
 			history = history or self.DefaultDefs()
 			result = history[desc.id] or registry:lookup_id(desc.id)

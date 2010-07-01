@@ -1,134 +1,144 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Request Acceptor                                                  --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- acceptor:Facet
--- 	configs:table, [except:table] setupaccess([configs:table])
--- 	success:boolean, [except:table] hasrequest(configs:table)
--- 	success:boolean, [except:table] acceptone(configs:table)
--- 	success:boolean, [except:table] acceptall(configs:table)
--- 	success:boolean, [except:table] halt(configs:table)
--- 
--- listener:Receptacle
--- 	configs:table default([configs:table])
--- 	channel:object, [except:table] getchannel(configs:table)
--- 	success:boolean, [except:table] freeaccess(configs:table)
--- 	success:boolean, [except:table] freechannel(channel:object)
--- 	request:table, [except:table] = getrequest(channel:object, [probe:boolean])
--- 	success:booelan, [except:table] = sendreply(request:table, success:booelan, results...)
--- 
--- dispatcher:Receptacle
--- 	success:boolean, [except:table]|results... dispatch(objectkey:string, operation:string|function, params...)
--- 
--- tasks:Receptacle
--- 	current:thread
--- 	start(func:function, args...)
--- 	remove(thread:thread)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Cooperative Request Acceptor
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local next  = next
-local pairs = pairs
 
-local oo        = require "oil.oo"
+local _G = require "_G"
+local pairs = _G.pairs
+
+local coroutine = require "coroutine"
+local newthread = coroutine.create
+local running = coroutine.running
+local yield = coroutine.yield
+
+local oo = require "oil.oo"
+local class = oo.class
+
 local Exception = require "oil.Exception"
-local Receiver  = require "oil.kernel.base.Receiver"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local Timeout = Exception.Timeout
+local Terminated = Exception.Terminated
 
-module "oil.kernel.cooperative.Receiver"
+local Receiver = require "oil.kernel.base.Receiver"                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
-oo.class(_M, Receiver)
+module(...); local _ENV = _M
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
+class(_ENV, Receiver)
 
-function __new(self, object)
-	self = oo.rawnew(self, object)
-	self.thread = {}
-	self.threads = {}
-	return self
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function processrequest(self, request)
-	local result, except = Receiver.processrequest(self, request)
-	if not result and not self.except then
-		self.except = except
-	end
-end
-
-function getallrequests(self, threads, channel)
-	local listener = self.listener
-	local thread = self.tasks:current()
-	threads[thread] = channel
-	local result, except
-	repeat
-		result, except = listener:getrequest(channel)
-		if result then
-			if result == true then
-				break
-			else
-				self.tasks:start(self.processrequest, self, result)
+function _ENV:probe(timeout)
+	local readers = self.readers
+	if readers then
+		-- check if any 'channel reader' is ready for execution
+		for thread in yield("ready") do
+			if readers[thread] then return true end
+		end
+		if not timeout or timeout > 0 then
+			-- trap any request processing that might take place during the timeout
+			local pending = {}
+			local thread = running()
+			local dorequest = self.dorequest
+			function self:dorequest(request)
+				yield("resume", thread, pending)
+				return dorequest(self, request)
 			end
-		elseif not self.except then
-			self.except = except
-			break
+			-- suspend this thread for the timeout and let other threads execute
+			pending = (yield(timeout and "defer" or "suspend", timeout) == pending)
+			-- restore original 'dorequest' operation
+			self.dorequest = nil
+			if self.dorequest ~= dorequest then
+				self.dorequest = dorequest
+			end
+			if pending then return true end
 		end
-	until self.except
-	threads[thread] = nil
+		return nil, Timeout
+	end
+	-- 'CoReceiver' was not started yet, then behave as 'Receiver'
+	return Receiver.probe(self, timeout)
 end
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
+function _ENV:step(timeout)
+	if self.thread then
+		local result, except = self:probe(timeout)
+		if result then yield("pause") end -- let other threads execute
+		return result, except
+	end
+	-- 'CoReceiver' was not started yet, then behave as 'Receiver'
+	return Receiver.step(self, timeout)
+end
 
-function acceptall(self)
-	local threads = {}
-	local accesspoint = self.accesspoint                                          --[[VERBOSE]] verbose:acceptor(true, "accept all requests from channel ",accesspoint)
-	self.thread[accesspoint] = self.tasks:current()
-	self.threads[accesspoint] = threads
+function _ENV:dorequest(request)
+	self.dispatcher:dispatch(request)
+	local result, except = request:sendreply()
+	if not result then
+		self:stop(nil, except)
+	end
+end
+
+function _ENV:dochannel(channel)
 	local result, except
 	repeat
-		result, except = self.listener:getchannel(accesspoint)
+		result, except = channel:getrequest()
 		if result then
-			self.tasks:start(self.getallrequests, self, threads, result)
+			local dispatcher = newthread(self.dorequest)
+			yield("resume", dispatcher, self, result)
 		end
-	until not result or self.except
-	self.threads[accesspoint] = nil
-	self.thread[accesspoint] = nil                                                --[[VERBOSE]] verbose:acceptor(false)
-	return nil, self.except or except
+	until not result
+	if except ~= Terminated then
+		self:stop(nil, except)
+	end
 end
 
-function halt(self)                                                             --[[VERBOSE]] verbose:acceptor("halt acceptor",accesspoint)
-	local accesspoint = self.accesspoint
-	local tasks = self.tasks
+function _ENV:dolistener()
 	local listener = self.listener
-	local result, except = nil, Exception{
-		reason = "halted",
-		message = "orb already halted",
-	}
-	local thread = self.thread[accesspoint]
-	if thread then
-		tasks:remove(thread)
-		result, except = listener:freeaccess(accesspoint)
-		self.thread[accesspoint] = nil
-	end
-	local threads = self.threads[accesspoint]
-	if threads then
-		for thread, channel in pairs(threads) do
-			tasks:remove(thread)
-			result, except = listener:freechannel(channel)
+	local readers = {}
+	self.readers = readers
+	local result, except
+	repeat
+		result, except = listener:getchannel()
+		if result then
+			result:acquire()
+			local reader = newthread(self.dochannel)
+			readers[reader] = result
+			yield("resume", reader, self, result)
 		end
-		self.threads[accesspoint] = nil
+	until not result
+	self.readers = nil
+	self:stop(nil, except)
+end
+
+function _ENV:start()
+	if self.thread == nil then
+		-- process any pending request
+		local pending = self.pending
+		if pending then
+			self.pending = nil
+			local dispatcher = newthread(self.dorequest)
+			yield("resume", dispatcher, self, pending)
+		end
+		-- start processing new requests
+		self.thread = running()
+		self.acceptor = newthread(self.dolistener)
+		return yield("yield", self.acceptor, self)
 	end
-	return result, except
+	return nil, Exception.AlreadyStarted
+end
+
+function _ENV:stop(...)
+	local thread = self.thread
+	if thread then
+		-- unschedule 'channel readers' and release their channels
+		for reader, channel in pairs(self.readers) do
+			yield("unschedule", reader)
+			channel:release()
+			readers[reader] = nil
+		end
+		self.readers = nil
+		-- unschedule the acceptor thread
+		yield("unschedule", self.acceptor)
+		self.acceptor = nil
+		-- resume thread that started this 'CoReceiver'
+		self.thread = nil
+		yield("resume", thread, ...)
+		return true
+	end
 end

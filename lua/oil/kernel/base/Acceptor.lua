@@ -1,265 +1,155 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua                                                  --
--- Release: 0.5                                                               --
--- Title  : Client-side CORBA GIOP Protocol specific to IIOP                  --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---   See section 15.7 of CORBA 3.0 specification.                             --
---   See section 13.6.10.3 of CORBA 3.0 specification for IIOP corbaloc.      --
---------------------------------------------------------------------------------
--- channels:Facet
--- 	channel:object retieve(configs:table, [probe:boolean])
--- 	channel:object dispose(configs:table)
--- 	configs:table default([configs:table])
--- 
--- sockets:Receptacle
--- 	socket:object tcp()
--- 	input:table, output:table select([input:table], [output:table], [timeout:number])
--- 
--- dns:Receptacle
--- 	hostname:string gethostname()
--- 	address:string toip(hostname:string)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Factory of incomming (server-side) channels
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local ipairs       = ipairs
-local next         = next
-local pairs        = pairs
-local rawget       = rawget
-local rawset       = rawset
-local setmetatable = setmetatable
-local type         = type
+local _G = require "_G"
+local ipairs = _G.ipairs
+local select = _G.select
 
-local math = require "math"
+local oo = require "oil.oo"
+local class = oo.class
 
-local tabop      = require "loop.table"
-local ArrayedSet   = require "loop.collection.ArrayedSet"
-local OrderedSet = require "loop.collection.OrderedSet"
-local Wrapper    = require "loop.object.Wrapper"
+local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
-local oo        = require "oil.oo"
-local Exception = require "oil.corba.giop.Exception"
-local Channels  = require "oil.kernel.base.Channels"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+module(...); local _ENV = _M
 
-module "oil.kernel.base.Acceptor"
 
-oo.class(_M, Channels)
+AccessPoint = class()
 
---------------------------------------------------------------------------------
--- connection management
-
-LuaSocketOps = tabop.copy(Channels.LuaSocketOps)
-CoSocketOps = tabop.copy(Channels.CoSocketOps)
-
-function LuaSocketOps:release()
-	ArrayedSet.add(self.port, self.__object)
-end
-
-function CoSocketOps:release()
-	ArrayedSet.add(self.port, self)
-end
-
-local list = {}
-function LuaSocketOps:probe()
-	list[1] = self.__object
-	return self.sockets:select(list, nil, 0)[1] == list[1]
-end
-
-function CoSocketOps:probe()
-	local list = { self }
-	return self.sockets:select(list, nil, 0)[1] == list[1]
-end
-
---------------------------------------------------------------------------------
-
-Port = oo.class()
-
-function Port:__new(object)
-	self = oo.rawnew(self, object)
-	local factory = self.factory
-	self.wrapped = tabop.memoize(function(socket)
-		socket = factory:setupsocket(socket)
-		socket.socket = factory.sockets
-		socket.port = self
-		return socket
-	end, "k")
-	
-	ArrayedSet.add(self, self.__object)
-	
-	return self
-end
-
-function Port:accept(probe)                                                     --[[VERBOSE]] verbose:channels("accepting channel from port with ",#self," active channels")
-	local except
-	if OrderedSet.empty(self) then
-		local selected = self.factory.sockets:select(self, nil, probe and 0)
-		for _, channel in ipairs(selected) do
-			if channel == self.__object then
-				channel, except = channel:accept()
-			else
-				ArrayedSet.remove(self, channel)
-			end
-			OrderedSet.enqueue(self, channel)
-		end
-	end
-	if probe then
-		return not OrderedSet.empty(self)
-	elseif not except then
-		return self.wrapped[ OrderedSet.dequeue(self) ]
-	else
-		return nil, except
-	end
-end
-
---------------------------------------------------------------------------------
--- channel cache for reuse
-
-function __new(self, object)
-	self = oo.rawnew(self, object)
-	--
-	-- cache of active channels
-	-- self.cache[host][port] == <channel accepted at host:port>
-	--
-	self.cache = tabop.memoize(function(host)
-		return tabop.memoize(function(port)
-			local socket, errmsg = self.sockets:tcp()
+function AccessPoint:accept(timeout)
+	local poll = self.poll
+	local socket, except
+	repeat
+		socket, except = poll:getready(timeout)
+		if socket == self.socket then
+			socket, except = socket:accept()
 			if socket then
-				self:setupsocket(socket)
-				_, errmsg = socket:bind(host, port)
-				if _ then
-					_, errmsg = socket:listen()
-					if _ then                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
-						return Port{
-							factory = self,
-							__object = socket,
-						}
-					else
-						self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-							message = "unable to listen to port of host",
-							reason = "listen",
-							error = errmsg,
-							host = host, 
-							port = port,
-						}
-					end
-				else
-					self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-						message = "unable to bind to port of host",
-						reason = "bind",
-						error = errmsg,
-						host = host, 
-						port = port,
-					}
-				end
+				socket = self.sockets:setoptions(self.options, socket)
+				poll:add(socket)
+			else                                                                      --[[VERBOSE]] verbose:channels("error when accepting connection (",except,")")
+				except = Exception{
+					error = "badconnect",
+					message = "unable to accept connection ($errmsg)",
+					errmsg = except,
+				}                                                                       --[[VERBOSE]] else verbose:channels "new connection accepted"
+			end
+		elseif socket then
+			socket:settimeout(0)
+			if select(2, socket:receive(0)) == "closed" then
+				poll:remove(socket)
+				socket = nil
 			else
-				self.except = Exception{ "NO_RESOURCES", minor_code_value = 0,
-					message = "unable to create new socket due to error",
-					reason = "socket",
-					error = except,
-				}
+				socket:settimeout(nil)
 			end
-		end, "k")
-	end)
-	return self
-end
-
---------------------------------------------------------------------------------
--- channel factory
-
-function retrieve(self, profile, probe)                                         --[[VERBOSE]] verbose:channels("retrieve channel accepted from ",profile.host,":",profile.port)
-	local port = self.cache[profile.host][profile.port]
-	if port then
-		return port:accept(probe)
-	else
-		return nil, self.except
-	end
-end
-
-function dispose(self, profile)                                                 --[[VERBOSE]] verbose:channels("disposing channels accepted from ",profile.host,":",profile.port)
-	local ports = rawget(self.cache, profile.host)
-	local port = ports and rawget(ports, profile.port)
-	if port then
-		ports[profile.port] = nil
-		if next(ports) == nil then
-			self.cache[profile.host] = nil
+		elseif except == "timeout" then
+			except = Exception.Timeout
+		elseif except == "empty" then
+			except = Exception.Terminated
 		end
-		local result, except = port.__object:close()
-		if result then
-			ArrayedSet.remove(port, port.__object)
-			while not OrderedSet.empty(port) do
-				ArrayedSet.add(port, OrderedSet.dequeue(port))
-			end
-			result = port
-		end
-		return result, except
-	else
-		return nil, "already disposed"
-	end
+	until socket or except
+	return socket, except
 end
 
-local PortLowerBound = 2809 -- inclusive (never at first attempt)
-local PortUpperBound = 9999 -- inclusive
+function AccessPoint:remove(socket)
+	self.poll:remove(socket)
+end
 
-function default(self, profile)
+function AccessPoint:add(socket)
+	self.poll:remove(socket)
+end
+
+function AccessPoint:close()
+	local poll = self.poll
+	local socket = self.socket
+	if socket then
+		poll:remove(socket)
+		socket:close()
+		self.socket = nil
+	end
+	return poll:clear()
+end
+
+function AccessPoint:address()
+	local socket = self.socket
+	local host, port = socket:getsockname()
+	if not host then return nil, port end
+	
 	local dns = self.dns
-	profile = profile or {}
 	
-	-- find a network interface
-	local host = profile.host
-	if host == nil or host == "*" then
-		profile.host = "*"
+	-- find out local host name
+	if host == "0.0.0.0" then
+		local error
 		host = dns:gethostname()
-	end
-	
-	-- find a socket port
-	if not profile.port then
-		local ports = self.cache[profile.host]
-		local start = PortLowerBound + math.random(PortUpperBound - PortLowerBound)
-		local count = start
-		local port
-		repeat
-			if rawget(ports, count) == nil then
-				port = ports[count]
-				if port then
-					profile.port = count
-				else
-					local except = self.except
-					if except.reason ~= "listen" and except.reason ~= "bind" then
-						return nil, except
-					end
-				end
-			end
-			if count >= PortUpperBound
-				then count = PortLowerBound
-				else count = count + 1
-			end
-		until port or count == start
+		if not host then return nil, error end
 	end
 	
 	-- collect addresses
-	host = profile.refhost or host
-	local addr, info = dns:toip(host)
-	if addr then
-		addr = info.ip
-		addr[#addr+1] = info.name
-		for _, alias in ipairs(info.alias) do
-			addr[#addr+1] = alias
+	local addr
+	local ip, extra = dns:toip(host)
+	if ip then
+		host = ip
+		addr = extra.ip
+		addr[#addr+1] = extra.name
+		local aliases = extra.alias
+		for i = 1, #aliases do
+			addr[#addr+1] = aliases[i]
 		end
 	else
 		addr = {host}
 	end
-	for index, name in ipairs(addr) do
-		addr[name] = index
-	end
-	profile.addresses = addr
 	
-	return profile
+	for i = 1, #addr do
+		addr[ addr[i] ] = i
+	end
+	
+	return host, port, addr
+end
+
+
+class(_ENV)
+
+function _ENV:newaccess(configs)
+	local options = self.options
+	local sockets = self.sockets
+	local socket, except = sockets:newsocket(options)
+	if not socket then                                                            --[[VERBOSE]] verbose:channels("unable to create socket (",except,")")
+		return nil, Exception{
+			error = "badsocket",
+			message = "unable to create socket ($errmsg)",
+			errmsg = except,
+		}
+	end
+	local host = configs.host or "*"
+	local port = configs.port or 0
+	local success
+	success, except = socket:bind(host, port)
+	if not success then                                                           --[[VERBOSE]] verbose:channels("unable to bind to ",host,":",port," (",except,")")
+		socket:close()
+		return nil, Exception{
+			error = "badaddress",
+			message = "unable to bind to $host:$port ($errmsg)",
+			errmsg = except,
+			host = host,
+			port = port,
+		}
+	end
+	success, except = socket:listen(options and options.backlog)
+	if not success then                                                           --[[VERBOSE]] verbose:channels("unable to listen to ",host,":",port," (",except,")")
+		socket:close()
+		return nil, Exception{
+			error = "badinitialize",
+			message = "unable to listen to $host:$port ($error)",
+			errmsg = except,
+			host = host,
+			port = port,
+		}
+	end                                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
+	return AccessPoint{
+		options = options,
+		socket = socket,
+		sockets = sockets,
+		dns = self.dns,
+		poll = sockets.newpoll(),
+	}
 end

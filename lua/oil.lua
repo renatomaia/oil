@@ -55,31 +55,40 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local error        = error
-local ipairs       = ipairs
-local module       = module
-local pairs        = pairs
-local require      = require
-local tostring     = tostring
-local type         = type
-local traceback    = debug and debug.traceback
-local xpcall       = xpcall
-local select       = select
-local setmetatable = setmetatable
-local unpack       = unpack
+local _G = require "_G"
+local error = _G.error
+local ipairs = _G.ipairs
+local module = _G.module
+local pairs = _G.pairs
+local require = _G.require
+local tostring = _G.tostring
+local type = _G.type
+local xpcall = _G.xpcall
+local select = _G.select
+local setmetatable = _G.setmetatable
+local unpack = _G.unpack
+local traceback = _G.debug and debug.traceback -- only if available
 
 local io        = require "io"
 local coroutine = require "coroutine"
 local table     = require "table"
 
+local OrderedSet = require "loop.collection.OrderedSet"
+
 --[[DEBUG]] require "inspector" -- must be required before 'cothread.auxiliary'
 require "cothread.auxiliary" -- to avoid coroutine limitation of Lua 5.1
 
-local oo      = require "oil.oo"
-local builder = require "oil.builder"
-local assert  = require "oil.assert"
+local oo = require "oil.oo"
+local class = oo.class
+local rawnew = oo.rawnew
 
-local OrderedSet = require "loop.collection.OrderedSet"
+local builder = require "oil.builder"
+local build = builder.build
+
+local asserter = require "oil.assert"
+local assert = asserter.results
+local asserttype = asserter.type
+local illegal = asserter.illegal
 
 --------------------------------------------------------------------------------
 -- OiL main programming interface (API).
@@ -163,10 +172,10 @@ end
 --------------------------------------------------------------------------------
 -- Class that implements the OiL's broker API.
 --
-ORB = oo.class()
+ORB = class()
 
 function ORB:__new(config)
-	self = oo.rawnew(self, builder.build(makeflavor(config.flavor), config))
+	self = rawnew(self, build(makeflavor(config.flavor), config))
 	
 	if self.TypeRepository ~= nil then
 		----------------------------------------------------------------------------
@@ -194,8 +203,7 @@ function ORB:__new(config)
 		self.ServantManager.prefix = config.keyprefix
 		self.ServantManager.map = config.objectmap or self.ServantManager.map
 	end
-	self.ServantManager.servants.accesspoint = 
-		assert.results(self.RequestReceiver.acceptor:initialize(self))
+	assert(self.RequestReceiver.acceptor:initialize(self))
 	
 	return self
 end
@@ -219,8 +227,8 @@ end
 --        ]]                                                                   .
 --
 function ORB:loadidl(idlspec)
-	assert.type(idlspec, "string", "IDL specification")
-	return assert.results(self.TypeRepository.compiler:load(idlspec))
+	asserttype(idlspec, "string", "IDL specification")
+	return assert(self.TypeRepository.compiler:load(idlspec))
 end
 
 --------------------------------------------------------------------------------
@@ -237,8 +245,8 @@ end
 -- @usage oil.loadidlfile("HelloWorld.idl", "/tmp/preprocessed.idl")           .
 --
 function ORB:loadidlfile(filepath)
-	assert.type(filepath, "string", "IDL file path")
-	return assert.results(self.TypeRepository.compiler:loadfile(filepath))
+	asserttype(filepath, "string", "IDL file path")
+	return assert(self.TypeRepository.compiler:loadfile(filepath))
 end
 
 --------------------------------------------------------------------------------
@@ -323,9 +331,9 @@ function ORB:newproxy(reference, kind, iface)
 		proxies = self.ProxyManager.proxies
 	else
 		proxies = self.extraproxies[kind] or
-		          assert.illegal(kind, "proxy kind")
+		          illegal(kind, "proxy kind")
 	end
-	return assert.results(proxies[operation](proxies, reference, iface))
+	return assert(proxies[operation](proxies, reference, iface))
 end
 
 --------------------------------------------------------------------------------
@@ -359,10 +367,10 @@ end
 -- @see newproxy
 --
 function ORB:narrow(object, type)
-	assert.type(object, "table", "object proxy")
-	if type then assert.type(type, "string", "interface definition") end
+	asserttype(object, "table", "object proxy")
+	if type then asserttype(type, "string", "interface definition") end
 	if object then
-		return assert.results(self.ProxyManager.proxies:newproxy(object.__reference, type))
+		return assert(self.ProxyManager.proxies:newproxy(object.__reference, type))
 	end
 end
 
@@ -397,9 +405,9 @@ end
 -- @usage oil.newservant({say_hello_to=print}, "Key","::HelloWorld::Hello")    .
 --
 function ORB:newservant(impl, key, type)
-	if impl == nil then assert.illegal(impl, "servant's implementation") end
-	if key ~= nil then assert.type(key, "string", "servant's key") end
-	return assert.results(self.ServantManager.servants:register(impl, key, type))
+	if impl == nil then illegal(impl, "servant's implementation") end
+	if key ~= nil then asserttype(key, "string", "servant's key") end
+	return assert(self.ServantManager.servants:register(impl, key, type))
 end
 
 --------------------------------------------------------------------------------
@@ -425,7 +433,7 @@ end
 --
 function ORB:deactivate(object, type)
 	if not object then
-		assert.illegal(object,
+		illegal(object,
 			"object reference (servant, implementation or object key expected)")
 	end
 	return self.ServantManager.servants:remove(object, type)
@@ -444,8 +452,8 @@ end
 -- @usage oil.writeto("ref.ior", oil.tostring(oil.newservant(impl, "::Hello"))).
 --
 function ORB:tostring(object)
-	assert.type(object, "table", "object")
-	return assert.results(self.ObjectReferrer.references:encode(object.__reference))
+	asserttype(object, "table", "object")
+	return assert(self.ObjectReferrer.references:encode(object.__reference))
 end
 
 --------------------------------------------------------------------------------
@@ -461,7 +469,7 @@ end
 -- @usage while oil.pending() do oil.step() end                                .
 --
 function ORB:pending()
-	return assert.results(self.RequestReceiver.acceptor:hasrequest())
+	return assert(self.RequestReceiver.acceptor:hasrequest())
 end
 
 --------------------------------------------------------------------------------
@@ -475,7 +483,7 @@ end
 -- @usage while oil.pending() do oil.step() end                                .
 --
 function ORB:step()
-	return assert.results(self.RequestReceiver.acceptor:acceptone())
+	return assert(self.RequestReceiver.acceptor:acceptone())
 end
 
 --------------------------------------------------------------------------------
@@ -490,7 +498,7 @@ end
 -- @see init
 --
 function ORB:run()
-	return assert.results(self.RequestReceiver.acceptor:acceptall())
+	return assert(self.RequestReceiver.acceptor:acceptall())
 end
 
 --------------------------------------------------------------------------------
@@ -502,7 +510,7 @@ end
 -- @usage oil.shutdown()
 --
 function ORB:shutdown()
-	return assert.results(self.RequestReceiver.acceptor:halt())
+	return assert(self.RequestReceiver.acceptor:halt())
 end
 
 --------------------------------------------------------------------------------
@@ -518,7 +526,7 @@ end
 -- @usage encoder = oil.newencoder(); encoder:put({1,2,3}, oil.types:lookup("MyLongSeq"))
 --
 function ORB:newencoder()
-	return assert.results(self.ValueEncoder.codec:encoder(true))
+	return assert(self.ValueEncoder.codec:encoder(true))
 end
 
 --------------------------------------------------------------------------------
@@ -536,8 +544,8 @@ end
 -- @usage decoder = oil.newdecoder(stream); val = decoder:get(oil.types:lookup("MyLongSeq"))
 --
 function ORB:newdecoder(stream)
-	assert.type(stream, "string", "byte stream")
-	return assert.results(self.ValueEncoder.codec:decoder(stream, true))
+	asserttype(stream, "string", "byte stream")
+	return assert(self.ValueEncoder.codec:decoder(stream, true))
 end
 
 --------------------------------------------------------------------------------
@@ -552,13 +560,13 @@ end
 -- @return object Exception that provides meta-method '__tostring' that provides
 -- a pretty-printing.
 --
--- @usage error(oil.newexcept{ "IDL:omg.org.CORBA/INTERNAL:1.0", minor_code_value = 2 })
+-- @usage error(oil.newexcept{ "IDL:omg.org.CORBA/INTERNAL:1.0", minor = 2 })
 --
 function ORB:newexcept(body)
-	assert.type(body, "table", "exception body")
+	asserttype(body, "table", "exception body")
 	local except = self.types and self.types:resolve(body[1])
 	if except then body[1] = except.repID end
-	return assert.Exception(body)
+	return asserter.Exception(body)
 end
 
 --------------------------------------------------------------------------------
@@ -588,7 +596,7 @@ function ORB:setexcatch(handler, type)
 		managers[#managers+1] = self.extraproxies[name]
 	end
 	for _, manager in pairs(managers) do
-		assert.results(manager.proxies:excepthandler(handler, type))
+		assert(manager.proxies:excepthandler(handler, type))
 	end
 end
 
@@ -767,7 +775,7 @@ function init(config)
 	if config.flavor == nil then
 		config.flavor = "cooperative;corba"
 	end
-	assert.type(config.flavor, "string", "ORB flavor")
+	asserttype(config.flavor, "string", "ORB flavor")
 	return ORB(config)
 end
 
@@ -794,7 +802,7 @@ if cothread then
 end
 
 function main(main, ...)
-	assert.type(main, "function", "main function")
+	asserttype(main, "function", "main function")
 	if cothread then
 		cothread.run(coroutine.create(main), ...)
 	else
@@ -822,7 +830,7 @@ end
 -- @see main
 --
 function newthread(func, ...)
-	assert.type(func, "function", "thread body")
+	asserttype(func, "function", "thread body")
 	return coroutine.yield("resume", coroutine.create(func) , ...)
 end
 
@@ -835,12 +843,12 @@ end
 --
 if cothread then
 	function sleep(time)
-		assert.type(time, "number", "time")
+		asserttype(time, "number", "time")
 		return coroutine.yield("delay", time)
 	end
 else
 	function sleep(time)
-		assert.type(time, "number", "time")
+		asserttype(time, "number", "time")
 		return socket.sleep(time)
 	end
 end

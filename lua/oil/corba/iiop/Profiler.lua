@@ -1,42 +1,22 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua                                                  --
--- Release: 0.5                                                               --
--- Title  : IIOP Profile Encoder/Decoder                                      --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---   See section 15.7 of CORBA 3.0 specification.                             --
---------------------------------------------------------------------------------
--- profiler:Facet
--- 	stream:string encode(profile:table, [version:number])
--- 	profile:table decode(stream:string)
--- 	objkey:string belongsto(profile:string, orbcfg:table)
--- 	result:boolean equivalent(profile1:string, profile2:string)
--- 	profile:table decodeurl(url:string)
--- 
--- codec:Receptacle
--- 	encoder:object encoder([encapsulated:boolean])
--- 	decoder:object decoder(stream:string, [encapsulated:boolean])
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.5
+-- Title  : IIOP Profile Encoder/Decoder
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local ipairs   = ipairs
-local tonumber = tonumber
 
-local string = require "string"
+local _G = require "_G"
+local ipairs = _G.ipairs
+local tonumber = _G.tonumber
 
-local oo        = require "oil.oo"
-local idl       = require "oil.corba.idl"
+local oo = require "oil.oo"
+local class = oo.class
+
+local idl = require "oil.corba.idl"
+local Version = idl.Version
+
 local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module("oil.corba.iiop.Profiler", oo.class)
+module(..., class)
 
 --------------------------------------------------------------------------------
 -- IIOP profile structure
@@ -85,7 +65,7 @@ function encode(self, profiles, object_key, config, minor)
 				object_key = object_key
 			}
 			local encoder = self.codec:encoder(true)
-			encoder:struct({major=1, minor=minor}, idl.Version)
+			encoder:struct({major=1, minor=minor}, Version)
 			encoder:struct(profile, profileidl)
 			profiles[#profiles+1] = {
 				tag          = Tag,
@@ -94,8 +74,8 @@ function encode(self, profiles, object_key, config, minor)
 		end
 		return true
 	else
-		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "IIOP minor version not supported",
+		return nil, Exception{ "INTERNAL", minor = 0,
+			message = "IIOP minor version $version not supported",
 			reason = "version",
 			protocol = "IIOP",
 			version = minor,
@@ -105,13 +85,13 @@ end
 
 function decode(self, profile)
 	local decoder = self.codec:decoder(profile, true)
-	local version = decoder:struct(idl.Version)
+	local version = decoder:struct(Version)
 	local profileidl = ProfileBody_v1_[version.minor]
 
 	if version.major ~= 1 or not profileidl then
-		return nil, Exception{ "INTERNAL", minor_code_value = 0,
+		return nil, Exception{ "INTERNAL", minor = 0,
 			reason = "version",
-			message = "IIOP version not supported",
+			message = "IIOP version not supported (got $version)",
 			protocol = "IIOP",
 			version = version,
 		}
@@ -150,13 +130,13 @@ end
 -- IIOP corbaloc URL decoder
 
 function decodeurl(self, data)
-	local temp, objectkey = string.match(data, "^([^/]*)/(.*)$")
+	local temp, objectkey = data:match("^([^/]*)/(.*)$")
 	if temp
 		then data = temp
 		else objectkey = "" -- TODO:[maia] is this correct?
 	end
 	local major, minor
-	major, minor, temp = string.match(data, "^(%d+).(%d+)@(.+)$")
+	major, minor, temp = data:match("^(%d+).(%d+)@(.+)$")
 	if not minor then
 		minor = 0
 	else
@@ -164,17 +144,16 @@ function decodeurl(self, data)
 	end
 	local profileidl = ProfileBody_v1_[minor]
 	if (major and major ~= "1") or (not profileidl) then
-		return nil, Exception{ "INTERNAL", minor_code_value = 0,
-			message = "IIOP version not supported",
+		return nil, Exception{ "INTERNAL", minor = 0,
+			message = "IIOP $major.$minor not supported",
 			reason = "version",
 			protocol = "IIOP",
 			major = major,
 			minor = minor,
-			version = major.."."..minor
 		}
 	end
 	if temp then data = temp end
-	local host, port = string.match(data, "^([^:]+):(%d*)$")
+	local host, port = data:match("^([^:]+):(%d*)$")
 	if port then
 		port = tonumber(port)
 	else
@@ -186,7 +165,7 @@ function decodeurl(self, data)
 	end
 	
 	temp = self.codec:encoder(true)
-	temp:struct({major=1,minor=minor}, idl.Version)
+	temp:struct({major=1,minor=minor}, Version)
 	temp:struct({
 		components = Empty,
 		host = host,

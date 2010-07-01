@@ -1,124 +1,93 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Remote Object Proxies                                             --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- proxies:Facet
--- 	proxy:object proxyto(reference:table)
---
--- indexer:Facet
--- 	interface:table typeof(reference:table)
--- 	member:table, [islocal:function], [cached:boolean] valueof(interface:table, name:string)
---
--- invoker:Receptacle
--- 	[results:object], [except:table] invoke(reference, operation, args...)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.5
+-- Title  : Remote Object Proxies
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local rawset = rawset
 
-local tabop = require "loop.table"                                              --[[VERBOSE]] local select, type = select, type
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local setmetatable = _G.setmetatable
+local rawset = _G.rawset
 
-local oo        = require "oil.oo"
-local Exception = require "oil.Exception"
-local Proxies   = require "oil.kernel.base.Proxies"                             --[[VERBOSE]] local verbose = require "oil.verbose"
+local tabop = require "loop.table"
+local clear = tabop.clear
+local memoize = tabop.memoize
 
-module "oil.kernel.typed.Proxies"
+local oo = require "oil.oo"
+local class = oo.class
 
-oo.class(_M, Proxies)
+local Proxies = require "oil.kernel.base.Proxies"
 
---------------------------------------------------------------------------------
+module(...); local _ENV = _M
 
-local function newclass(methodmaker)
-	return oo.class{
-		__call = oo.rawnew,
-		__index = function(cache, field)                                            --[[VERBOSE]] verbose:proxies("first attempt to invoke operation ",field)
-			local manager = cache.__manager
-			local operation = manager.indexer:valueof(cache.__type, field)
-			if operation then
-				local function invoker(self, ...)                                       --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-					return manager.requester:newrequest(self.__reference, operation, ...)
+class(_ENV, Proxies)
+
+function _ENV:__init()
+	if self.class == nil then
+		local methodmaker = self.invoker
+		local OpCache = {
+			__index = function(cache, field)                                          --[[VERBOSE]] verbose:proxies("first attempt to invoke operation ",field)
+				local operation = self.indexer:valueof(cache.__type, field)
+				if operation then
+					local function invoker(proxy, ...)                                    --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+						return self.requester:newrequest(proxy.__reference, operation, ...)
+					end
+					invoker = methodmaker(invoker, operation)                             --[[VERBOSE]] verbose:proxies("operation named ",field," was created")
+					cache[field] = invoker
+					return invoker                                                        --[[VERBOSE]] else verbose:proxies("operation named ",field," not found")
 				end
-				invoker = methodmaker(invoker, operation)                               --[[VERBOSE]] verbose:proxies("operation named ",field," was created")
-				cache[field] = invoker                                                  --[[VERBOSE]]
-				return invoker                                                          --[[VERBOSE]] else verbose:proxies("operation named ",field," not found")
 			end
+		}
+		local function proxytostring(proxy)
+			return self.referrer:encode(proxy.__reference)
 		end
-	}
-end
-
---------------------------------------------------------------------------------
-
-function proxynarrow(self, type)
-	return self.__manager.proxies:newproxy(self.__reference, type)
-end
-
-function __new(self, ...)
-	self = oo.rawnew(self, ...)
-	self.class = self.class or newclass(self.invoker)
-	self.classes = tabop.memoize(function(type)
-		local class = self.class()
-		local updater = {}
-		function updater.notify()
-			tabop.clear(class)
-			class.__manager = self
-			class.__type = type
-			class.__tostring = proxytostring
-			class.__narrow = proxynarrow
-			class._narrow = proxynarrow -- TODO:[maia] DEPRECATED!
-			oo.initclass(class)
+		local function proxynarrow(proxy, type)
+			return self:newproxy{
+				__reference = proxy.__reference,
+				__type = type,
+			}
 		end
-		updater:notify()
-		if type.observer then
-			rawset(type.observer, class, updater)
-		end
-		return class
-	end, "k")
-	return self
-end
-
---------------------------------------------------------------------------------
-
-function newproxy(self, reference, type)                                        --[[VERBOSE]] verbose:proxies(true, "new proxy to ",reference," with type ",type)
-	local result, except
-	if not type then                                                              --[[VERBOSE]] verbose:proxies(true, "interface of proxy not provided, attempt to discover it")
-		type, except = self.referrer:typeof(reference)                           --[[VERBOSE]] verbose:proxies(false, "interface of proxy",(type and " " or " not "),"found")
+		self.class = memoize(function(type)
+			local cache = setmetatable({}, OpCache)
+			local updater = {}
+			function updater:notify()
+				clear(cache)
+				cache.__index = cache
+				cache.__type = type
+				cache.__tostring = proxytostring
+				cache.__narrow = proxynarrow
+			end
+			updater:notify()
+			if type.observer then
+				rawset(type.observer, cache, updater)
+			end
+			return cache
+		end, "k")
 	end
-	if type then
-		type, except = self.types:resolve(type)
-		if type then
-			result = self.classes[type]{ __reference = reference }
-		end
+end
+
+function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies(true, "new proxy to ",reference," with type ",type)
+	local type = proxy.__type or self.referrer:typeof(proxy.__reference)
+	local result, except = self.types:resolve(type)
+	if result then
+		result, except = setmetatable(proxy, self.class[type]), nil
 	end                                                                           --[[VERBOSE]] verbose:proxies(false)
 	return result, except
 end
 
-function excepthandler(self, handler, type)                                     --[[VERBOSE]] verbose:proxies("setting exception handler for proxies of ",type)
-	local result, except = true
-	if type == nil then
-		result, except = Proxies.excepthandler(self, handler)
-	else
-		result, except = self.types:resolve(type)
-		if result then
-			type = result
-			local class = self.classes[type]
-			class.__exceptions = handler
-			result, except = class, nil
-		end
+function _ENV:excepthandler(handler, type)                                      --[[VERBOSE]] verbose:proxies("setting exception handler for proxies of ",type)
+	local result, except = self.types:resolve(type)
+	if result then
+		local class = self.class[result]
+		class.__exceptions = handler
+		result, except = true, nil
 	end
 	return result, except
 end
 
 --------------------------------------------------------------------------------
 
+--[[VERBOSE]] local select = _G.select
+--[[VERBOSE]] local type = _G.type
 --[[VERBOSE]] function verbose.custom:proxies(...)
 --[[VERBOSE]] 	local params
 --[[VERBOSE]] 	for i = 1, select("#", ...) do

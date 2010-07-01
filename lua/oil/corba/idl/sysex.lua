@@ -15,7 +15,7 @@ idl.module(_M)
 
 for name, repID in pairs(giop.SystemExceptionIDs) do
 	definitions[name] = idl.except{
-		{name = "minor_code_value" , type = idl.ulong },
-		{name = "completion_status", type = idl.ulong },
+		{name = "minor" , type = idl.ulong },
+		{name = "completed", type = giop.CompletionStatus },
 	}
 end

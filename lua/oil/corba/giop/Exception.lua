@@ -1,22 +1,47 @@
-local oo        = require "oil.oo"
-local Exception = require "oil.Exception"
-local assert    = require "oil.assert"
-local giop      = require "oil.corba.giop"                                      --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
+local class = oo.class
 
-module("oil.corba.giop.Exception", oo.class)
+local Exception = require "oil.Exception"
+
+local giop = require "oil.corba.giop"                                           --[[VERBOSE]] local verbose = require "oil.verbose"
+local SystemExceptionIDs = giop.SystemExceptionIDs
+
+module(...); local _ENV = _M
+
+class(_ENV)
+
+OiLEx2SysEx = {
+	badinitialize = "INITIALIZE",
+	badsocket     = "NO_RESOURCES",
+	badaddress    = "NO_RESOURCES",
+	badconnect    = "TRANSIENT",
+	badchannel    = "COMM_FAILURE",
+	badvalue      = "BAD_PARAM",
+	badstream     = "MARSHAL",
+	badexception  = "UNKNOWN",
+	badmessage    = "INTERNAL",
+	badversion    = "IMP_LIMIT",
+	badgiopimpl   = "IMP_LIMIT",
+	badcorbaloc   = "INV_OBJREF",
+	badobjref     = "INV_OBJREF",
+	badobjimpl    = "NO_IMPLEMENT",
+	badobjop      = "BAD_OPERATION",
+	badobjkey     = "OBJECT_NOT_EXIST",
+	timeout       = "TIMEOUT",
+}
 
 __concat   = Exception.__concat
 __tostring = Exception.__tostring
 
-minor_code_value = 0
-completion_status = 2
+minor = 0
+completed = "COMPLETED_MAYBE"
 
-function __new(self, except, ...)
+function _ENV:__new(except, ...)
 	if except then
-		local sysex = giop.SystemExceptionIDs[ except[1] ]
+		local error = except.error
+		local sysex = SystemExceptionIDs[error]
 		if sysex then
 			except[1] = sysex
-			except.exception_id = sysex
 		end
 	end
 	return Exception.__new(self, except, ...)

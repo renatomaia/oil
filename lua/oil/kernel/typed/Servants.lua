@@ -1,137 +1,47 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Server-Side Broker                                                --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- broker:Facet
--- 	servant:object register(impl:object, [objectkey:string])
--- 	impl:object remove(servant:object|impl:object|objectkey:string)
--- 	impl:object retrieve(objectkey:string)
--- 	reference:string tostring(servant:object)
---
--- referrer:Receptacle
--- 	reference:table newreference(objectkey:string, accesspointinfo:table...)
--- 	stringfiedref:string encode(reference:table)
--- 
--- types:Receptacle
--- 	type:table resolve(type:string)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Server-Side Broker
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local getmetatable = getmetatable
-local rawget       = rawget
-local type         = type
 
-local table = require "loop.table"
+local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local class = oo.class
+local getclass = oo.getclass
 
-local oo       = require "oil.oo"
-local Servants = require "oil.kernel.base.Servants"                             --[[VERBOSE]] local verbose = require "oil.verbose"
+local Servants = require "oil.kernel.base.Servants"
 
-module "oil.kernel.typed.Servants"
+module(...); local _ENV = _M
 
-oo.class(_M, Servants)
+class(_ENV, Servants)
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function addentry(self, key, impl, type)
-	local entry = self.map[key]
-	if entry == nil
-	or entry.object ~= impl
-	or entry.type ~= type
-	then
-		return Servants.addentry(self, key, { object = impl, type = type })
-	end
-	return true
+function _ENV:getkey(servant, type)
+	return getfield(servant, "__objkey")
+	    or self.prefix..hashof(servant)..hashof(type)
 end
 
-function removeentry(self, key)
-	local result, except = Servants.removeentry(self, key)
-	if result then result, except = result.object, result.type end
-	return result, except
+function _ENV:makeentry(entry)
+	local servant = entry.__servant
+	if entry.__type == nil then
+		entry.__type = getfield(servant, "__type")
+	end
+	local type, except = self.types:resolve(entry.__type)
+	if not type then return nil, except end
+	entry.__type = type
+	if entry.__objkey == nil then
+		entry.__objkey = self:getkey(servant, type)
+	end
+	return Servants.makeentry(self, entry)
 end
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function resolvetype(self, object)
-	local objtype = nil
-	local meta = getmetatable(object)
-	if type(object) == "table" or (meta ~= nil and meta.__index) then
-		objtype = object.__type
-	end
-	if objtype == nil and meta ~= nil then
-		 objtype = meta.__type
-	end
-	return objtype
-end
-
-function resolvekey(self, object, objtype)
-	local key = nil
-	local meta = getmetatable(object)
-	if type(object) == "table" or (meta ~= nil and meta.__index) then
-		key = object.__objkey
-	end
-	if key == nil and meta ~= nil then
-		 key = meta.__objkey
-	end
-	if key == nil and objtype ~= nil then
-		key = self.prefix..self:hashof(object)..self:hashof(objtype)
-	end
-	return key
-end
-
-function register(self, object, objkey, objtype)
-	local except
-	if objtype == nil then
-		objtype = self:resolvetype(object)
-	end
-	objtype, except = self.types:resolve(objtype)
-	if not objtype then
-		return nil, except
-	end
-	if objkey == nil then
-		objkey = self:resolvekey(object, objtype)
-	end
-	return Servants.register(self, object, objkey, objtype)
-end
-
-function remove(self, objkey, objtype)
-	local keytype = type(objkey)
-	if keytype ~= "string" then
-		local object = objkey
-		if keytype == "table" then
-			objkey = rawget(object, "__key")
-			keytype = type(objkey)
-		end
-		if keytype ~= "string" then
-			objkey = self:resolvekey(object)
-			if objkey == nil then
-				if objtype == nil then
-					objtype = self:resolvetype(object)
-				end
-				local except
-				objtype, except = self.types:resolve(objtype)
-				if not objtype then                                                     --[[VERBOSE]] verbose:servants("unable to identify type of object ",object)
-					return nil, except
-				end
-				objkey = self.prefix..self:hashof(object)..self:hashof(objtype)
-			end
+function _ENV:unregister(value, type)
+	if type(value) ~= "string" then
+		if getclass(value) == Registered then
+			value = value.__objkey
+		else
+			local result, except = self.types:resolve(type)
+			if not result then return nil, except end
+			value = self:getkey(value, result)
 		end
 	end
-	return self:removeentry(objkey)
-end
-
-function retrieve(self, key)
-	local result, except = Servants.retrieve(self, key)
-	if result then result, except = result.object, result.type end
-	return result, except
+	return self:removeentry(value)
 end

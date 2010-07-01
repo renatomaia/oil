@@ -1,105 +1,64 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Object Request Dispatcher                                         --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- dispatcher:Facet
--- 	success:boolean, [except:table]|results... dispatch(key:string, operation:string|function, params...)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Object Request Dispatcher
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local pcall        = pcall
-local setmetatable = setmetatable
-local type         = type
-local select       = select
-local unpack       = unpack
 
-local table       = require "loop.table"
-local oo          = require "oil.oo"
-local Exception   = require "oil.Exception"                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local pcall = _G.pcall
+local select = _G.select
+local unpack = _G.unpack
 
-module("oil.kernel.base.Dispatcher", oo.class)
+local oo = require "oil.oo"
+local class = oo.class
 
-context = false
+local Exception = require "oil.Exception"
 
-function setresults(self, request, success, ...)
-	local count = select("#", ...)
-	request.success = success
-	request.n = count
-	for i = 1, count do
-		request[i] = select(i, ...)
-	end
-end
+module(...); local _ENV = _M
 
---------------------------------------------------------------------------------
--- Dispatcher facet
 
-function dispatch(self, request)
-	local object = self.context.servants:retrieve(request.objectkey)
+class(_ENV)
+
+function _ENV:dispatch(request)
+	local object = self.servants:retrieve(request.objectkey)
 	if object then
 		local method = object[request.operation]
-		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",request.operation,unpack(request, 1, request.n))
-			self:setresults(request, pcall(method, object,
-			                               unpack(request, 1, request.n)))
+		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
+			request:setreply(pcall(method, object, request:getparams()))
 		else
-			self:setresults(request, false, Exception{
-				reason = "noimplement",
-				message = "no implementation for operation of object with key",
+			request:setreply(false, Exception{
+				error = "badobjimpl",
+				message = "servant $key does not implement $operation",
 				operation = operation,
 				object = object,
 				key = key,
 			})
 		end
 	else
-		self:setresults(request, false, Exception{
-			reason = "badkey",
-			message = "no object with key",
+		request:setreply(false, Exception{
+			error = "badobjkey",
+			message = "unknown servant (got $key)",
 			key = key,
 		})
 	end
-	return true
 end
 
 --------------------------------------------------------------------------------
 
+--[[VERBOSE]] local type = _G.type
 --[[VERBOSE]] function verbose.custom:dispatcher(...)
---[[VERBOSE]] 	local params
+--[[VERBOSE]] 	local viewer = self.viewer
+--[[VERBOSE]] 	local output = viewer.output
 --[[VERBOSE]] 	for i = 1, select("#", ...) do
---[[VERBOSE]] 		local value = select(i, ...)
---[[VERBOSE]] 		local type = type(value)
---[[VERBOSE]] 		if params == true then
---[[VERBOSE]] 			params = "("
---[[VERBOSE]] 			if type == "string" then
---[[VERBOSE]] 				self.viewer.output:write(value)
---[[VERBOSE]] 			else
---[[VERBOSE]] 				self.viewer:write(value)
---[[VERBOSE]] 			end
---[[VERBOSE]] 		elseif type == "string" then
---[[VERBOSE]] 			if params then
---[[VERBOSE]] 				self.viewer.output:write(params)
---[[VERBOSE]] 				params = ", "
---[[VERBOSE]] 				self.viewer:write((value:gsub("[^%w%p%s]", "?")))
---[[VERBOSE]] 			else
---[[VERBOSE]] 				self.viewer.output:write(value)
---[[VERBOSE]] 				if value == ":" then params = true end
---[[VERBOSE]] 			end
+--[[VERBOSE]] 		local val = select(i, ...)
+--[[VERBOSE]] 		if type(val) == "string" then
+--[[VERBOSE]] 			output:write(val)
+--[[VERBOSE]] 		elseif val.objectkey and val.operation and val.getparams then
+--[[VERBOSE]] 			output:write(val.objectkey,":",val.operation,"(")
+--[[VERBOSE]] 			viewer:write(val:getparams())
+--[[VERBOSE]] 			output:write(")")
 --[[VERBOSE]] 		else
---[[VERBOSE]] 			if params then
---[[VERBOSE]] 				self.viewer.output:write(params)
---[[VERBOSE]] 				params = ", "
---[[VERBOSE]] 			end
---[[VERBOSE]] 			self.viewer:write(value)
+--[[VERBOSE]] 			viewer:write(val)
 --[[VERBOSE]] 		end
---[[VERBOSE]] 	end
---[[VERBOSE]] 	if params then
---[[VERBOSE]] 		self.viewer.output:write(params == "(" and "()" or ")")
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end

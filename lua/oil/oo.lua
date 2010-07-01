@@ -2,13 +2,22 @@ local loop = require "loop"
 local multiple = require "loop.multiple"
 local hierarchy = require "loop.hierarchy"
 
+local newclass = multiple.class
+local mutator = hierarchy.mutator
+local function oilclass(...)
+	local class = newclass(...)
+	if class.__new == nil then
+		class.__new = mutator
+	end
+	return class
+end
+
 return {
-	initclass = multiple.initclass,
-	class = multiple.class,
-	rawnew = multiple.rawnew,
+	class = oilclass,
+	rawnew = loop.rawnew,
 	new = loop.new,
 	
-	isclass = multiple.isclass,
+	isclass = loop.isclass,
 	isinstanceof = loop.isinstanceof,
 	issubclassof = loop.issubclassof,
 	

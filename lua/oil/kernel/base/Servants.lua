@@ -1,106 +1,29 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Server-Side Broker                                                --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- broker:Facet
--- 	servant:object register(impl:object, [objectkey:string])
--- 	impl:object remove(servant:object|impl:object|objectkey:string)
--- 	impl:object retrieve(objectkey:string)
--- 	reference:string tostring(servant:object)
--- 
--- referrer:Receptacle
--- 	reference:table newreference(objectkey:string, accesspointinfo:table...)
--- 	stringfiedref:string encode(reference:table)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Server-Side Broker
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local getmetatable = getmetatable
-local rawget       = rawget
-local rawset       = rawset
-local setmetatable = setmetatable
-local luatostring  = tostring
-local type         = type
+
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local getmetatable = _G.getmetatable
+local rawget = _G.rawget
+local rawset = _G.rawset
+local luatostring = _G.tostring
+local type = _G.type
 
 local tabop = require "loop.table"
+local memoize = tabop.memoize
 
 local oo = require "oil.oo"
-local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
+local class = oo.class
+local getclass = oo.getclass
 
-module("oil.kernel.base.Servants", oo.class)
+local Exception = require "oil.Exception"
 
-prefix = "_"
+module(...); local _ENV = _M
 
---------------------------------------------------------------------------------
--- Servant object proxy
 
-local function deactivate(self)
-	return self.__manager:removeentry(self.__key)
-end
-
-local function wrappertostring(self)
-	return self.__manager.referrer:encode(self.__reference)
-end
-
-local function wrapperindexer(self, key)
-	local value = self.__newindex[key]
-	if type(value) == "function"
-		then return self.__methods[value]
-		else return value
-	end
-end
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function __new(self, ...)
-	self = oo.rawnew(self, ...)
-	self.map = self.map or {}
-	return self
-end
-
-function addentry(self, key, entry)
-	local result, except = self.map[key]
-	if result then
-		if result == entry then
-			result = true
-		else
-			result, except = nil, Exception{
-				reason = "usedkey",
-				message = "object key already in use",
-				key = key,
-			}
-		end
-	else                                                                          --[[VERBOSE]] verbose:servants("object ",entry," registered with key ",key)
-		self.map[key] = entry
-		result = true
-	end
-	return result, except
-end
-
-function removeentry(self, key)
-	local map = self.map
-	local entry = map[key]
-	if entry ~= nil then                                                          --[[VERBOSE]] verbose:servants("object ",entry," with key ",key," removed")
-		map[key] = nil
-		return entry
-	end
-	return nil, Exception{
-		reason = "usedkey",
-		message = "unknown object key",
-		key = key,
-	}
-end
-
-function hashof(self, object)
+function hashof(object)
 	local meta = getmetatable(object)
 	local backup
 	if meta then
@@ -113,92 +36,140 @@ function hashof(self, object)
 	end
 	return hash:match("%l+: (%w+)") or hash
 end
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
 
-function setaccessinfo(self, ...)
-	local result, except = true
-	local accessinfo = self.accessinfo
-	if not accessinfo then
-		self.accessinfo = {...}
-	else
-		result, except = nil, Exception{
-			reason = "configuration",
-			message = "attempt to set access info twice",
-			accessinfo = accessinfo,
+local function index(indexable, field)
+	return indexable[field]
+end
+local function pindex(indexable, field)
+	local ok, value = pcall(index, indexable, field)
+	if ok then return value end
+end
+function getfield(object, field)
+	return pindex(object, field)
+	    or pindex(getmetatable(object), field)
+end
+
+
+local MethodWrapper = memoize(function(method)
+	return function(_, ...)
+		return method(self.__servant, ...)
+	end
+end, "k")
+
+
+Registered = class()
+
+function Registered:__index(field)
+	local value = self.__servant[field]
+	if type(value) == "function"
+		then return MethodWrapper[value]
+		else return value
+	end
+end
+
+function Registered:__newindex(field, value)
+	self.__servant[field] = value
+end
+
+function Registered:__deactivate()
+	return self.__manager:removeentry(self.__objkey)
+end
+
+function Registered:__tostring()
+	return self.__manager.referrer:encode(self.__reference)
+end
+
+
+
+class(_ENV)
+
+_ENV.prefix = "_"
+_ENV.fields = {
+	__proxies = false,
+	__objkey = function(self, entry)
+		return 
+	end,
+}
+
+function _ENV:__init()
+	self.map = self.map or {}
+end
+
+function _ENV:getkey(servant)
+	return getfield(servant, "__objkey")
+	    or self.prefix..hashof(servant)
+end
+
+function _ENV:makeentry(entry)
+	local servant = entry.__servant
+	if entry.__objkey == nil then
+		entry.__objkey = self:getkey(servant)
+	end
+	if entry.__proxies == nil then
+		entry.__proxies = getfield(servant, "__proxies")
+	end
+	return entry
+end
+
+function _ENV:addentry(entry)
+	local key = entry.__objkey
+	local map = self.map
+	local current = map[key]
+	if current == nil then
+		map[key] = entry                                                            --[[VERBOSE]] verbose:servants("object ",entry.__servant," registered with key ",key)
+	elseif current ~= entry then
+		return nil, Exception{
+			error = "badobjkey",
+			message = "object key already in use (got $key)",
+			key = key,
 		}
 	end
-	return result, except
+	return entry
 end
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-function resolvekey(self, object)
-	local key = nil
-	local meta = getmetatable(object)
-	if type(object) == "table" or (meta ~= nil and meta.__index) then
-		key = object.__objkey
+function _ENV:removeentry(key)
+	local map = self.map
+	local entry = map[key]
+	if entry == nil then
+		return nil, Exception{
+			error = "badobjkey",
+			message = "unknown object key (got $key)",
+			key = key,
+		}
 	end
-	if key == nil and meta ~= nil then
-		 key = meta.__objkey
-	end
-	if key == nil then
-		key = self.prefix..self:hashof(object)
-	end
-	return key
+	map[key] = nil                                                                --[[VERBOSE]] verbose:servants("object with key ",key," removed")
+	return entry
 end
 
-function register(self, object, key, ...)
-	if key == nil then
-		key = self:resolvekey(object)
-	end
-	local result, except = self:addentry(key, object, ...)
+
+function _ENV:register(...)
+	local result, except = self:makeentry(...)
 	if result then
-		result, except = self.referrer:newreference(self.accesspoint, key, ...)
+		local entry = result
+		result, except = self.referrer:newreference(entry)
 		if result then
-			result = {
-				_deactivate = deactivate, -- TODO[maia]: DEPRECATED!
-				__deactivate = deactivate,
-				__manager = self,
-				__key = key,
-				__tostring = wrappertostring,
-				__index = wrapperindexer,
-				__newindex = object,
-				__reference = result,
-				__methods = tabop.memoize(function(method)
-					return function(_, ...)
-						return method(object, ...)
-					end
-				end, "k")
-			}
-			setmetatable(result, result)
-		else
-			self:removeentry(key)
-		end
-	end
-	return result, except
-end
-
-function remove(self, key)
-	local keytype = type(key)
-	if keytype ~= "string" then
-		local object = key
-		if keytype == "table" then
-			key = rawget(object, "__key") -- is it a servant?
-			keytype = type(key)
-		end
-		if keytype ~= "string" then
-			local except
-			key, except = self:resolvekey(object)
-			if not key then                                                           --[[VERBOSE]] verbose:servants("unbale to identify key of object ",entry)
-				return nil, except
+			entry.__reference = result
+			result, except = self:addentry(entry)
+			if result then
+				entry.__manager = self
+				result = Registered(entry)
 			end
 		end
 	end
-	return self:removeentry(key)
+	return result, except
 end
 
-function retrieve(self, key)
+function _ENV:unregister(value)
+	if type(value) ~= "string" then
+		if getclass(value) == Registered then
+			value = value.__objkey
+		else
+			value = self:getkey(value)
+		end
+	end
+	return self:removeentry(value)
+end
+
+function _ENV:retrieve(key)
 	return self.map[key]
 end

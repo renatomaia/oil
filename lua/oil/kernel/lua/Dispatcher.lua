@@ -62,7 +62,7 @@ function dispatch(self, request)
 		else
 			self:setresults(request, false, Exception{
 				reason = "noimplement",
-				message = "no implementation for operation of object with key",
+				message = "no implementation for operation $operation of object with key $key",
 				operation = operation,
 				object = object,
 				key = key,
@@ -71,7 +71,7 @@ function dispatch(self, request)
 	else
 		self:setresults(request, false, Exception{
 			reason = "badkey",
-			message = "no object with key",
+			message = "no object with key (got $key)",
 			key = key,
 		})
 	end

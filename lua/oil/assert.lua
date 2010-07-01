@@ -1,43 +1,27 @@
-local luaerror = error
-local pairs    = pairs
-local tostring = tostring
-local luatype  = type
-local require  = require                                                        --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"
+local error = _G.error
+local pairs = _G.pairs
+local luatype = _G.type
+local require = _G.require                                                      --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module "oil.assert"
-
---------------------------------------------------------------------------------
+module(...)
 
 Exception = require "oil.Exception"
 
---------------------------------------------------------------------------------
-
-error = luaerror
---function error(exception, level)
---  if luatype(exception) ~= "string" then
---    exception = tostring(exception)
---  end
---  luaerror(exception, (level or 0) + 1)
---end
-
---------------------------------------------------------------------------------
-
-local IllegalValueMsg = "illegal %s"
+function results(result, ...)
+	if result == nil then error(..., 2) end
+	return result, ...
+end
 
 function illegal(value, description, except)
-	exception({ except or "illegal value",
-		reason = "value",
-		message = IllegalValueMsg:format(description),
+	error(Exception{ except or "badvalue",
+		message = "illegal $valuekind",
 		value = value,
-		valuename = description,
+		valuekind = description,
 	}, 2)
 end
 
---------------------------------------------------------------------------------
-
 TypeCheckers = {}
-
-local TypeMismatchMsg = IllegalValueMsg.." (%s expected, got %s)"
 
 function type(value, expected, description, except)
 	local actual = luatype(value)
@@ -52,36 +36,18 @@ function type(value, expected, description, except)
 				local result = expected:match(pattern)
 				if result then
 					checker, result = checker(value, result)
+					if checker then return true end
 					expected = result or expected
-					if checker
-						then return true
-						else break
-					end
+					break
 				end
 			end
 		end
 	end
-	exception({ except or "type mismatch",
-		reason = "type",
-		message = TypeMismatchMsg:format(description, expected, actual),
+	error(Exception{ except or "badvalue",
+		message = "illegal $valuekind ($expectedtype expected, got $actualtype)",
 		expectedtype = expected,
 		actualtype   = actual,
 		value        = value,
+		valuekind    = description,
 	}, 2)
-end
-
---------------------------------------------------------------------------------
-
-function results(result, ...)
-	if result == nil then exception(..., 2) end
-	return result, ...
-end
-
---------------------------------------------------------------------------------
-
-function exception(except, level)
-	if luatype(except) == "string" then
-		except = { except }
-	end
-	error(Exception(except), (level or 0) + 1)
 end
