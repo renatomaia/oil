@@ -580,10 +580,11 @@ tab_firsts.rule_207  = set_firsts { 'TK_ONEWAY', 'TK_VOID', 'TK_STRING', 'TK_ID'
                         'TK_OBJECT', 'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT',
                         'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED','TK_TYPEDEF',
                         'TK_ENUM', 'TK_NATIVE', 'TK_UNION', 'TK_STRUCT',
-                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE',-- 'TK_TYPECODE',
+                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE', 'TK_CONST', -- 'TK_TYPECODE',
                        }
 
 tab_firsts.rule_209  = tab_firsts.rule_14
+tab_firsts.rule_210  = set_firsts { 'TK_CONST' } 
 tab_firsts.rule_211  = set_firsts { 'TK_EXCEPTION' }
 tab_firsts.rule_212  = set_firsts { 'TK_READONLY', 'TK_ATTRIBUTE' }
 tab_firsts.rule_213  = set_firsts { 'TK_ONEWAY', 'TK_VOID', 'TK_STRING', 'TK_ID', ':',
@@ -2610,6 +2611,9 @@ end
 function export()
   if (tab_firsts.rule_209[token]) then
     type_dcl()
+    reconhecer(";")
+  elseif (tab_firsts.rule_210[token]) then
+    const_dcl()
     reconhecer(";")
   elseif (tab_firsts.rule_211[token]) then
     except_dcl()
