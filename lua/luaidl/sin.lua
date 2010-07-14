@@ -567,16 +567,16 @@ tab_firsts.rule_196  = set_firsts { 'TK_VALUETYPE' }
 tab_firsts.rule_198  = set_firsts { ':' }
 tab_firsts.rule_199  = set_firsts { '{' }
 
-tab_firsts.rule_207  = set_firsts {
-  'TK_ONEWAY', 'TK_VOID', 'TK_STRING', 'TK_ID', ':',
-  'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY',
-  'TK_OBJECT', 'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT',
-  'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED','TK_TYPEDEF',
-  'TK_ENUM', 'TK_NATIVE', 'TK_UNION', 'TK_STRUCT',
-  'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE',
-}
+tab_firsts.rule_207  = set_firsts { 'TK_ONEWAY', 'TK_VOID', 'TK_STRING', 'TK_ID', ':',
+                        'TK_CHAR', 'TK_BOOLEAN', 'TK_OCTET', 'TK_ANY',
+                        'TK_OBJECT', 'TK_VALUEBASE', 'TK_LONG', 'TK_FLOAT',
+                        'TK_DOUBLE', 'TK_SHORT', 'TK_UNSIGNED','TK_TYPEDEF',
+                        'TK_ENUM', 'TK_NATIVE', 'TK_UNION', 'TK_STRUCT',
+                        'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE', 'TK_CONST', -- 'TK_TYPECODE',
+                       }
 
 tab_firsts.rule_209  = tab_firsts.rule_14
+tab_firsts.rule_210  = set_firsts { 'TK_CONST' } 
 tab_firsts.rule_211  = set_firsts { 'TK_EXCEPTION' }
 tab_firsts.rule_212  = set_firsts { 'TK_READONLY', 'TK_ATTRIBUTE' }
 tab_firsts.rule_213  = set_firsts {
@@ -2659,6 +2659,9 @@ end
 rules.export = function ()
   if (tab_firsts.rule_209[token]) then
     rules.type_dcl()
+    recognize(";")
+  elseif (tab_firsts.rule_210[token]) then
+    rules.const_dcl()
     recognize(";")
   elseif (tab_firsts.rule_211[token]) then
     rules.except_dcl()
