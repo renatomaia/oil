@@ -63,7 +63,7 @@ module "oil.corba.idl.Registry"
   
   AttributeDef            = oo.class({ __type = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, MemberDef)
   OperationDef            = oo.class({ __type = "IDL:omg.org/CORBA/OperationDef:1.0"            }, MemberDef)
---ValueMemberDef          = oo.class({ __type = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, MemberDef)
+  ValueMemberDef          = oo.class({ __type = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, MemberDef)
 --ConstantDef             = oo.class({ __type = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
   TypedefDef              = oo.class({ __type = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, IDLType, Contained)
   
@@ -72,13 +72,13 @@ module "oil.corba.idl.Registry"
   EnumDef                 = oo.class({ __type = "IDL:omg.org/CORBA/EnumDef:1.0"                 }, TypedefDef)
   AliasDef                = oo.class({ __type = "IDL:omg.org/CORBA/AliasDef:1.0"                }, TypedefDef)
 --NativeDef               = oo.class({ __type = "IDL:omg.org/CORBA/NativeDef:1.0"               }, TypedefDef)
---ValueBoxDef             = oo.class({ __type = "IDL:omg.org/CORBA/ValueBoxDef:1.0"             }, TypedefDef)
+  ValueBoxDef             = oo.class({ __type = "IDL:omg.org/CORBA/ValueBoxDef:1.0"             }, TypedefDef)
   
   Repository              = oo.class({ __type = "IDL:omg.org/CORBA/Repository:1.0"              }, Container)
   ModuleDef               = oo.class({ __type = "IDL:omg.org/CORBA/ModuleDef:1.0"               }, Contained, Container)
   ExceptionDef            = oo.class({ __type = "IDL:omg.org/CORBA/ExceptionDef:1.0"            }, Contained, Container)
   InterfaceDef            = oo.class({ __type = "IDL:omg.org/CORBA/InterfaceDef:1.0"            }, IDLType, Contained, Container)
---ValueDef                = oo.class({ __type = "IDL:omg.org/CORBA/ValueDef:1.0"                }, Container, Contained, IDLType)
+  ValueDef                = oo.class({ __type = "IDL:omg.org/CORBA/ValueDef:1.0"                }, Container, Contained, IDLType)
   
 --AbstractInterfaceDef    = oo.class({ __type = "IDL:omg.org/CORBA/AbstractInterfaceDef:1.0"    }, InterfaceDef)
 --LocalInterfaceDef       = oo.class({ __type = "IDL:omg.org/CORBA/LocalInterfaceDef:1.0"       }, InterfaceDef)
@@ -440,7 +440,7 @@ function Container:create_alias(id, name, version, original_type)
 		name = name,
 		version = version,
 		
-		type = original_type.type
+		original_type = original_type.type
 	}
 	return created
 end
@@ -459,18 +459,48 @@ function Container:create_interface(id, name, version, base_interfaces)
 	return created
 end
 
---function Container:create_value(id, name, version,
---                                is_custom,
---                                is_abstract,
---																base_value,
---																is_truncatable,
---																abstract_base_values,
---																supported_interfaces,
---																initializers)
---end
---
---function Container:create_value_box(id, name, version, original_type_def)
---end
+function Container:create_value(id, name, version,
+                                is_custom,
+                                is_abstract,
+                                base_value,
+                                is_truncatable,
+                                abstract_base_values,
+                                supported_interfaces,
+                                initializers)
+	local created = ValueDef{ containing_repository=self.containing_repository }
+	created:update{
+		defined_in = self,
+		
+		repID = id,
+		name = name,
+		version = version,
+		
+		is_custom = is_custom,
+		is_abstract = is_abstract,
+		is_truncatable = is_truncatable,
+		
+		base_value = base_value,
+		abstract_base_values = abstract_base_values,
+		supported_interfaces = supported_interfaces,
+		
+		initializers = initializers,
+	}
+	return created
+end
+
+function Container:create_value_box(id, name, version, original_type)
+	local created = ValueBoxDef{ containing_repository=self.containing_repository }
+	created:update{
+		defined_in = self,
+	
+		repID = id,
+		name = name,
+		version = version,
+	
+		original_type = original_type.type
+	}
+	return created
+end
 
 function Container:create_exception(id, name, version, members)
 	local created = ExceptionDef{ containing_repository=self.containing_repository }
@@ -610,10 +640,14 @@ StringDef._type = "string"
 StringDef.def_kind = "dk_String"
 StringDef.maxlength = 0
 StringDef.definition_fields = {
-	maxlength   = { type = "number", optional = true },
+	maxlength = { type = "number", optional = true },
 }
 StringDef._set_bound = SequenceDef._set_bound
 StringDef._get_bound = SequenceDef._get_bound
+
+function StringDef:update(new)
+	self.maxlength = new.maxlength
+end
 
 --------------------------------------------------------------------------------
 
@@ -797,6 +831,58 @@ end
 
 --------------------------------------------------------------------------------
 
+ValueMemberDef._type = "value_member"
+ValueMemberDef.def_kind = "dk_ValueMember"
+ValueMemberDef.access = 0
+ValueMemberDef.definition_fields = {
+	defined_in = { type = ValueDef, optional = true },
+	type       = { type = IDLType },
+	access     = { type = "number" },
+}
+
+function ValueMemberDef:update(new, registry)
+	self.access = new.access
+	self:_set_type_def(new.type, registry)
+end
+
+function ValueMemberDef:move(new_container, new_name, new_version)
+	local old_container = self.defined_in
+	if old_container and old_container ~= self.containing_repository then
+		local members = old_container.members
+		for index, member in ipairs(members) do
+			if member == self then
+				table.remove(members, index)
+				break
+			end
+		end
+	end
+	MemberDef.move(self, new_container, new_name, new_version)
+	if new_container._type == "value" then
+		local members = new_container.members
+		members[#members+1] = self
+	elseif new_container ~= self.containing_repository then
+		assert.illegal(new_container, "ValueMemberDef container", "BAD_PARAM", 4)
+	end
+end
+
+function ValueMemberDef:get_description()
+	return setmetatable({
+		type = self.type,
+		type_def = self.type_def,
+		access = self.access,
+	}, iridl.ValueMember)
+end
+
+function ValueMemberDef:_set_type_def(type_def, registry)
+	local old = self.type
+	type_def = self.containing_repository:put(type_def.type, registry)
+	self.type_def = type_def
+	self.type = type_def.type
+	if self.type ~= old then self:notify("type") end
+end
+
+--------------------------------------------------------------------------------
+
 TypedefDef._type = "typedef"
 TypedefDef.def_kind = "dk_Typedef"
 
@@ -955,20 +1041,28 @@ end
 AliasDef._type = "typedef"
 AliasDef.def_kind = "dk_Alias"
 AliasDef.definition_fields = {
-	type = { type = IDLType },
+	original_type = { type = IDLType },
 }
 
 function AliasDef:update(new, registry)
-	self:_set_original_type_def(new.type, registry)
+	self:_set_original_type_def(new.original_type, registry)
 end
 
 function AliasDef:_set_original_type_def(type_def, registry)
 	local old = self.type
 	type_def = self.containing_repository:put(type_def.type, registry)
 	self.original_type_def = type_def
-	self.type = type_def.type
+	self.original_type = type_def.type
 	if self.type ~= old then self:notify("type") end
 end
+
+--------------------------------------------------------------------------------
+
+ValueBoxDef._type = "value_box"
+ValueBoxDef.def_kind = "dk_ValueBox"
+ValueBoxDef.definition_fields = AliasDef.definition_fields
+ValueBoxDef.update = AliasDef.update
+ValueBoxDef._set_original_type_def = AliasDef._set_original_type_def
 
 --------------------------------------------------------------------------------
 
@@ -1083,6 +1177,31 @@ end
 
 --------------------------------------------------------------------------------
 
+local function changeinheritance(container, old, new, type)
+	for _, base in ipairs(new) do
+		assert.type(base, type, "inherited definition", "BAD_PARAM", 4)
+		for _, contained in ipairs(container.definitions) do
+			if #base:lookup_name(contained.name, -1, "dk_All", false) > 0 then
+				assert.illegal(ifaces,
+				               "inheritance, member '"..
+				               member.name..
+				               "' override not allowed",
+				               "BAD_PARAM", 5)
+			end
+		end
+	end
+	for index, base in ipairs(old) do
+		container:nowatch(base, "base "..index)
+	end
+	for index, base in ipairs(new) do
+		container:watch(base, "base "..index)
+	end
+	container:notify("inheritance", type)
+	return new
+end
+
+--------------------------------------------------------------------------------
+
 InterfaceDef._type = "interface"
 InterfaceDef.def_kind = "dk_Interface"
 InterfaceDef.base_interfaces = Empty
@@ -1153,26 +1272,10 @@ end
 --
 
 function InterfaceDef:_set_base_interfaces(bases)
-	for _, interface in ipairs(bases) do
-		assert.type(interface, "idl interface", "BAD_PARAM", 4)
-		for _, contained in ipairs(self.definitions) do
-			if #interface:lookup_name(contained.name, -1, "dk_All", false) > 0 then
-				assert.illegal(bases,
-				               "base interfaces, member '"..
-				               member.name..
-				               "' override not allowed",
-				               "BAD_PARAM", 5)
-			end
-		end
-	end
-	for index, base in ipairs(self.base_interfaces) do
-		self:nowatch(base, "base "..index)
-	end
-	self.base_interfaces = bases
-	for index, base in ipairs(self.base_interfaces) do
-		self:watch(base, "base "..index)
-	end
-	self:notify("bases")
+	self.base_interfaces = changeinheritance(self,
+	                                         self.base_interfaces,
+	                                         bases,
+	                                         "idl interface")
 end
 
 function InterfaceDef:create_attribute(id, name, version, type, mode)
@@ -1230,30 +1333,204 @@ end
 
 --------------------------------------------------------------------------------
 
+ValueDef._type = "value"
+ValueDef.def_kind = "dk_Value"
+ValueDef.supported_interfaces = Empty
+ValueDef.abstract_base_values = Empty
+ValueDef.initializers = Empty
+ValueDef.kind = 0
+ValueDef.definition_fields = {
+	kind                 = { type = "number", optional = true },
+	is_abstract          = { type = "boolean", optional = true },
+	is_custom            = { type = "boolean", optional = true },
+	is_truncatable       = { type = "boolean", optional = true },
+	base_value           = { type = IDLType, optional = true },
+	abstract_base_values = { type = ValueDef, optional = true, list = true },
+	supported_interfaces = { type = InterfaceDef, optional = true, list = true },
+	initializers = {
+		type = {
+			name = { type = "string" },
+			members = {
+				type = {
+					name = { type = "string" },
+					type = { type = IDLType },
+				},
+				list = true,
+			},
+		},
+		optional = true,
+		list = true,
+	},
+}
+
+function ValueDef:update(new)
+	self.members = {}
+	if new.kind then
+		self:_set_is_custom(new.kind==1)
+		self:_set_is_abstract(new.kind==2)
+		self:_set_is_truncatable(new.kind==3)
+	else
+		self:_set_is_custom(new.is_custom)
+		self:_set_is_abstract(new.is_abstract)
+		self:_set_is_truncatable(new.is_truncatable)
+	end
+	if new.base_value == idl.null then
+		self:_set_base_value(nil)
+	else
+		assert.type(new.base_value, "idl value", "base value", "BAD_PARAM", 4)
+		self:_set_base_value(new.base_value)
+	end
+	if new.abstract_base_values then
+		self:_set_abstract_base_values(new.abstract_base_values)
+	end
+	if new.supported_interfaces then
+		self:_set_supported_interfaces(new.supported_interfaces)
+	end
+end
+
+function ValueDef:get_description()
+	local base_value = self.base_value
+	if base_value == idl.null then
+		base_value = idl.ValueBase
+	end
+	local abstract_base_values = {}
+	for index, base in ipairs(self.abstract_base_values) do
+		abstract_base_values[index] = base.repID
+	end
+	local supported_interfaces = {}
+	for index, iface in ipairs(self.supported_interfaces) do
+		supported_interfaces[index] = iface.repID
+	end
+	return setmetatable({
+		is_abstract          = self.is_abstract,
+		is_custom            = self.is_custom,
+		is_truncatable       = self.is_truncatable,
+		base_value           = base_value.repID,
+		abstract_base_values = abstract_base_values,
+		supported_interfaces = supported_interfaces,
+	}, iridl.ValueDescription)
+end
+
 --
 -- Read interface
 --
---
---function ValueDef:is_a(id)
---end
---
---function ValueDef:describe_value()
---end
+
+function ValueDef:is_a(id)
+	if id == self.repID then return true end
+	if self.base_value:is_a(id) then return true end
+	for _, base in ipairs(self.abstract_base_values) do
+		if base:is_a(id) then return true end
+	end
+	for _, iface in ipairs(self.supported_interfaces) do
+		if iface:is_a(id) then return true end
+	end
+	return false
+end
+
+local FullValueDescription = iridl.ValueDef.definitions.FullValueDescription
+function ValueDef:describe_value()
+	local operations = {}
+	local attributes = {}
+	local members = {}
+	for base in self:hierarchy() do
+		for _, contained in ipairs(base.definitions) do
+			if contained._type == "attribute" then
+				attributes[#attributes+1] = contained:describe().value
+			elseif contained._type == "operation" then
+				operations[#operations+1] = contained:describe().value
+			elseif contained._type == "value_member" then
+				members[#members+1] = contained:describe().value
+			end
+		end
+	end
+	local desc = self:get_description()
+	desc.name = self.name
+	desc.id = self.id
+	desc.defined_in = self.defined_in.repID
+	desc.version = self.version
+	desc.type = self
+	desc.operations = operations
+	desc.attributes = attributes
+	desc.members = members
+	desc.initializers = self.initializers
+	return setmetatable(desc, FullValueDescription)
+end
 
 --
 -- Write interface
 --
---
---function ValueDef:create_value_member(id, name, version, type, access)
---end
---
---function ValueDef:create_attribute(id, name, version, type, mode)
---end
---
---function ValueDef:create_operation(id, name, version,
---                                   result, mode, params,
---                                   exceptions, contexts)
---end
+
+function ValueDef:_set_is_custom(value)
+	self.is_custom = value
+	if value then self.kind = 1 end
+end
+
+function ValueDef:_set_is_abstract(value)
+	self.is_abstract = value
+	if value then self.kind = 2 end
+end
+
+function ValueDef:_set_is_truncatable(value)
+	self.is_truncatable = value
+	if value then self.kind = 3 end
+end
+
+function ValueDef:_set_supported_interfaces(ifaces)
+	self.supported_interfaces = changeinheritance(self,
+	                                              self.supported_interfaces,
+	                                              ifaces,
+	                                              "idl interface")
+end
+
+function ValueDef:_set_base_value(base)
+	if base then
+		if base.is_abstract then
+			assert.illegal(base, "invalid base value", "BAD_PARAM", 4)
+		end
+		local list = changeinheritance(self, {self.base_value}, {base}, "idl value")
+		base = list[1]
+	else
+		base = idl.null
+	end
+	self.base_value = base
+end
+
+function ValueDef:_get_base_value()
+	local base = self.base_value
+	if base == idl.null then base = nil end
+	return base
+end
+
+function ValueDef:_set_abstract_base_values(bases)
+	for i = 1, #bases do
+		local base = bases[i]
+		if not base.is_abstract then
+			assert.illegal(base, "invalid abstract base value", "BAD_PARAM", 4)
+		end
+	end
+	self.abstract_base_values = changeinheritance(self,
+	                                              self.abstract_base_values,
+	                                              bases,
+	                                              "idl value")
+end
+
+function ValueDef:create_value_member(id, name, version, type, access)
+	local created = ValueMemberDef{ containing_repository=self.containing_repository }
+	created:update{
+		defined_in = self,
+	
+		repID = id,
+		name = name,
+		version = version,
+	
+		type = type.type,
+		access = access,
+	}
+	return created
+end
+
+ValueDef.create_attribute = InterfaceDef.create_attribute
+ValueDef.create_operation = InterfaceDef.create_operation
 
 --------------------------------------------------------------------------------
 
@@ -1279,19 +1556,22 @@ end
 oo.class(_M, Repository)
 
 Classes = {
-	struct     = StructDef,
-	union      = UnionDef,
-	enum       = EnumDef,
-	sequence   = SequenceDef,
-	array      = ArrayDef,
-	string     = StringDef,
-	typedef    = AliasDef,
-	except     = ExceptionDef,
-	attribute  = AttributeDef,
-	operation  = OperationDef,
-	module     = ModuleDef,
-	interface  = InterfaceDef,
-	Object     = ObjectRef,
+	struct       = StructDef,
+	union        = UnionDef,
+	enum         = EnumDef,
+	sequence     = SequenceDef,
+	array        = ArrayDef,
+	string       = StringDef,
+	typedef      = AliasDef,
+	except       = ExceptionDef,
+	module       = ModuleDef,
+	interface    = InterfaceDef,
+	attribute    = AttributeDef,
+	operation    = OperationDef,
+	value        = ValueDef,
+	value_member = ValueMemberDef,
+	value_box    = ValueBoxDef,
+	Object       = ObjectRef,
 }
 
 --------------------------------------------------------------------------------

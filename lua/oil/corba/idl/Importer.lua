@@ -89,7 +89,6 @@ local IDLTypes = {
 }
 
 local Contained = {
-	dk_Typedef   = { const = idl.typedef,   iface = "IDL:omg.org/CORBA/TypedefDef:1.0"   },
 	dk_Alias     = { const = idl.typedef,   iface = "IDL:omg.org/CORBA/AliasDef:1.0"     },
 	dk_Enum      = { const = idl.enum,      iface = "IDL:omg.org/CORBA/EnumDef:1.0"      },
 	dk_Struct    = { const = idl.struct,    iface = "IDL:omg.org/CORBA/StructDef:1.0"    },
@@ -99,6 +98,8 @@ local Contained = {
 	dk_Interface = { const = idl.interface, iface = "IDL:omg.org/CORBA/InterfaceDef:1.0" },
 	dk_Attribute = { const = idl.attribute, iface = "IDL:omg.org/CORBA/AttributeDef:1.0" },
 	dk_Operation = { const = idl.operation, iface = "IDL:omg.org/CORBA/OperationDef:1.0" },
+	dk_Value     = { const = idl.value    , iface = "IDL:omg.org/CORBA/ValueDef:1.0"     },
+	dk_ValueBox  = { const = idl.value_box, iface = "IDL:omg.org/CORBA/ValueBoxDef:1.0"  },
 }
 
 function register(self, object, history)
@@ -130,27 +131,22 @@ function register(self, object, history)
 			history = history or self.DefaultDefs()
 			result = history[desc.id] or registry:lookup_id(desc.id)
 			if not result then                                                        --[[VERBOSE]] verbose:repository(true, "importing definition ",desc.id)
-				local info = {
-					repID = desc.id,
-					name = desc.name,
-					version = desc.version,
-				}
+				desc.repID = desc.id
+				desc.defined_in = nil
 				
 				-- import definition specific information
-				if kind == "dk_Typedef" then
-					info = self:register(object:_get_type(), history)
-				elseif kind == "dk_Alias" then
-					info.type = self:register(object:_get_original_type_def(), history)
-				elseif kind == "dk_Enum" then
-					info.enumvalues = object:_get_members()
+				if kind == "dk_Enum" then
+					desc.enumvalues = object:_get_members()
 				elseif kind == "dk_Union" then
-					info.switch = self:register(object:_get_discriminator_type_def(), history)
-				elseif kind == "dk_Attribute" then
-					info.type = self:register(object:_get_type_def(), history)
+					desc.switch = self:register(object:_get_discriminator_type_def(), history)
+				elseif kind == "dk_Alias" or kind == "dk_ValueBox" then
+					desc.original_type = self:register(object:_get_original_type_def(), history)
+				elseif kind == "dk_Attribute" or  kind == "dk_ValueMember" then
+					desc.type = self:register(object:_get_type_def(), history)
 				end
 				
 				-- registration of the imported definition
-				result = registry:register(Contained[kind].const(info))                 --[[VERBOSE]] verbose:repository("definition ",desc.id," registered")
+				result = registry:register(Contained[kind].const(desc))                 --[[VERBOSE]] verbose:repository("definition ",desc.id," registered")
 				history[result.repID] = result
 				
 				-- import definition specific information
@@ -160,6 +156,18 @@ function register(self, object, history)
 						bases[index] = self:register(base, history)
 					end
 					result:_set_base_interfaces(bases)
+				elseif kind == "dk_Value" then
+					result:_set_base_value(self:register(object:_get_base_value(), history))
+					local bases = object:_get_abstract_base_values()
+					for index, base in ipairs(bases) do
+						bases[index] = self:register(base, history)
+					end
+					result:_set_abstract_base_values(bases)
+					local ifaces = object:_get_supported_interfaces()
+					for index, iface in ipairs(ifaces) do
+						ifaces[index] = self:register(iface, history)
+					end
+					result:_set_supported_interfaces(ifaces)
 				elseif kind == "dk_Operation" then
 					result:_set_result_def(
 						self:register(object:_get_result_def(), history))
@@ -196,7 +204,6 @@ function register(self, object, history)
 						self:register(contained, history)
 					end
 				end                                                                     --[[VERBOSE]] verbose:repository(false)
-				
 			end
 		else
 			error("unable to import definition of type "..object:_interface():_get_id())
