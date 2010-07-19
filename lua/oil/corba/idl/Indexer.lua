@@ -84,6 +84,9 @@ function valueof(self, interface, name)
 				member, interface = self:findmember(interface, member)
 				if member then
 					member = self.builders[action](self, member, name, action)
+					if member then
+						break
+					end
 				end
 			end
 		end
