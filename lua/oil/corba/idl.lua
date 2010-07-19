@@ -37,6 +37,7 @@
 --   enum(definition)      IDL enumeration type construtor                    --
 --   sequence(definition)  IDL sequence type construtor                       --
 --   array(definition)     IDL array type construtor                          --
+--   value(definition)     IDL value type construtor                           --
 --   typedef(definition)   IDL type definition construtor                     --
 --   except(definition)    IDL expection construtor                           --
 --                                                                            --
@@ -111,6 +112,8 @@ UserTypes = {
 	enum      = true,
 	sequence  = true,
 	array     = true,
+	value     = true,
+	value_box = true,
 	typedef   = true,
 	except    = true,
 	interface = true,
@@ -359,11 +362,73 @@ function array(self)
 	return self
 end
 
+ValueKind = {
+	none = 0,
+	custom = 1,
+	abstract = 2,
+	truncatable = 3,
+}
+ValueMemberAccess = {
+	private = 0,
+	public = 1,
+}
+for list in pairs{[ValueKind]=true, [ValueMemberAccess]=true} do
+	local values = {}
+	for _,value in pairs(list) do values[value] = true end
+	for value in pairs(values) do list[value] = value end
+end
+
+function value_member(self)
+	self = Contained(self)
+	self._type = "value_member"
+	checkfield(self)
+	local access = ValueMemberAccess[self.access]
+	if access == nil then
+		assert.illegal(self.access, "value member access")
+	end
+	self.access = access
+	return self
+end
+
+function value(self)
+	self = Container(Contained(self))
+	self._type = "value"
+	local kind = self.kind or (self.truncatable and ValueKind.truncatable or 0)
+	kind = ValueKind[kind]
+	if kind == nil then
+		assert.illegal(self.kind, "value kind")
+	end
+	self.kind = kind
+	local base = self.base_value
+	if base == nil then
+		self.base_value = null
+	elseif base ~= null then
+		assert.type(base, "idl value", "base in value definition")
+	end
+	if self.members == nil then self.members = self end
+	local members = self.members
+	local definitions = self.definitions
+	for index, member in ipairs(members) do
+		member = value_member(member)
+		members[index] = member
+		definitions:__newindex(member.name, member)
+	end
+	return self
+end
+
+function value_box(self)
+	self = Contained(self)
+	self._type = "value_box"
+	if self.original_type == nil then self.original_type = self[1] end
+	assert.type(self.original_type, "idl type", "type in typedef definition")
+	return self
+end
+
 function typedef(self)
 	self = Contained(self)
 	self._type = "typedef"
-	if self.type == nil then self.type = self[1] end
-	assert.type(self.type, "idl type", "type in typedef definition")
+	if self.original_type == nil then self.original_type = self[1] end
+	assert.type(self.original_type, "idl type", "type in typedef definition")
 	return self
 end
 
@@ -488,6 +553,10 @@ end
 object = interface{
 	repID = "IDL:omg.org/CORBA/Object:1.0",
 	name = "Object",
+}
+ValueBase = value{
+	repID = "IDL:omg.org/CORBA/ValueBase:1.0",
+	name = "ValueBase",
 }
 OctetSeq = sequence{octet}
 Version = struct{{ type = octet, name = "major" },
