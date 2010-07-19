@@ -20,6 +20,7 @@ ValueEncoder = component.Template{
 	codec    = port.Facet,
 	proxies  = port.Receptacle,
 	servants = port.Receptacle,
+	types    = port.Receptacle,
 }
 
 -- REFERENCES
@@ -43,6 +44,7 @@ function assemble(components)
 	-- MARSHALING
 	CDREncoder.proxies   = ProxyManager.proxies
 	CDREncoder.servants  = ServantManager.servants
+	CDREncoder.types     = TypeRepository.types
 
 	-- REFERENCES
 	ObjectReferrer.codec      = CDREncoder.codec
