@@ -5,4 +5,5 @@ return Suite{
 	Structs = require "oil.tests.corba.cdr.Structs",
 	TypeCodes = require "oil.tests.corba.cdr.TypeCodes",
 	Anys = require "oil.tests.corba.cdr.Anys",
+	ValueTypes = require "oil.tests.corba.cdr.ValueTypes",
 }
