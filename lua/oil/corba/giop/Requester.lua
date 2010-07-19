@@ -308,24 +308,35 @@ function resetchannel(self, channel)
 				channel:signal(pending)
 			end
 		end                                                                         --[[VERBOSE]] verbose:invoke(false, "reissue",success and "d successfully" or " failed")
-	elseif except == "connection refused" then
-		except = Exception{ "COMM_FAILURE",
-			minor_code_value = 1,
-			completion_status = COMPLETED_MAYBE,
-			reason = "closed",
-			message = "unable to restablish channel",
-			channel = channel,
-		}
-	elseif except == "too many open connections" then
-		except = Exception{ "NO_RESOURCES",
-			minor_code_value = 0,
-			completion_status = COMPLETED_MAYBE,
-			reason = "resources",
-			message = "unbale to restablish channel, too many open connections",
-			channel = channel,
-		}
-	else -- unknown error
-		return success, except
+	else
+		if except == "connection refused" then
+			except = Exception{ "COMM_FAILURE",
+				minor_code_value = 1,
+				completion_status = COMPLETED_MAYBE,
+				reason = "closed",
+				message = "unable to restablish channel",
+				channel = channel,
+			}
+		elseif except == "too many open connections" then
+			except = Exception{ "NO_RESOURCES",
+				minor_code_value = 0,
+				completion_status = COMPLETED_MAYBE,
+				reason = "resources",
+				message = "unbale to restablish channel, too many open connections",
+				channel = channel,
+			}
+		else -- unknown error
+			return success, except
+		end
+		for id, pending in pairs(channel) do
+			if type(id) == "number" then
+				unregister(channel, id)
+				pending.success = false
+				pending.n = 1
+				pending[1] = except
+				channel:signal(pending)
+			end
+		end
 	end
 	return true
 end
