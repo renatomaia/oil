@@ -22,12 +22,12 @@ error = luaerror
 
 --------------------------------------------------------------------------------
 
-local IllegalValueMsg = "illegal %s"
+local IllegalValueMsg = "%s illegal %s"
 
 function illegal(value, description, except)
 	exception({ except or "illegal value",
 		reason = "value",
-		message = IllegalValueMsg:format(description),
+		message = IllegalValueMsg:format(tostring(value), description),
 		value = value,
 		valuename = description,
 	}, 2)
@@ -46,7 +46,7 @@ function type(value, expected, description, except)
 	else
 		local checker = TypeCheckers[expected]
 		if checker then
-			return checker(value)
+			if checker(value) then return true end
 		else
 			for pattern, checker in pairs(TypeCheckers) do
 				local result = expected:match(pattern)
@@ -63,7 +63,7 @@ function type(value, expected, description, except)
 	end
 	exception({ except or "type mismatch",
 		reason = "type",
-		message = TypeMismatchMsg:format(description, expected, actual),
+		message = TypeMismatchMsg:format(tostring(value), description, expected, actual),
 		expectedtype = expected,
 		actualtype   = actual,
 		value        = value,
