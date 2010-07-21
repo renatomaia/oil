@@ -420,7 +420,12 @@ function value_box(self)
 	self = Contained(self)
 	self._type = "value_box"
 	if self.original_type == nil then self.original_type = self[1] end
-	assert.type(self.original_type, "idl type", "type in typedef definition")
+	local type = self.original_type
+	assert.type(type, "idl type", "type in typedef definition")
+	local kind = type._type
+	if kind == "value" or kind == "value_box" then
+		assert.illegal(type, "type of value box")
+	end
 	return self
 end
 
