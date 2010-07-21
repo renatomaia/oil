@@ -317,9 +317,17 @@ Encoder = oo.class {
 	pack = bit.pack,    -- use current platform native endianess
 }
 
+local function newhistory(history)
+	return setmetatable(history or {}, { __index = function(self, field)
+		local value = {}
+		self[field] = value
+		return value
+	end })
+end
+
 function Encoder:__init(object)
 	self = oo.rawnew(self, object)
-	if self.history == nil then self.history = {} end
+	if self.history == nil then self.history = newhistory() end
 	if self.format == nil then self.format = {} end
 	return self
 end
@@ -330,6 +338,11 @@ end
 
 function Encoder:jump(shift)
 	if shift > 0 then self:rawput('"', self.emptychar:rep(shift), shift) end
+end
+
+function Encoder:align(size)
+	local shift = alignment(self, size)
+	if shift > 0 then self:jump(shift) end
 end
 
 function Encoder:rawput(format, data, size)                                     --[[VERBOSE]] CURSOR[self.cursor] = true; if CODEC == nil then CODEC = self end
@@ -350,13 +363,13 @@ end
 
 function Encoder:indirection(marshal, value, ...)
 	local history = self.history
-	local previous = history[value]
+	local previous = history[marshal][value]
 	if previous then
 		self:ulong(IndirectionTag)
 		self:long(previous - (self.previousend+self.cursor))                        --[[VERBOSE]] verbose_marshal("indirection to "..((self.previousend+self.cursor)-previous).." bytes away (",(self.previousend+self.cursor),"-",previous,").")
 	else
 		local shift = alignment(self, PrimitiveSizes.ulong)
-		history[value] = (self.previousend+self.cursor+shift)                       --[[VERBOSE]] verbose_marshal("registering position at ",history[value]," for future indirection")
+		history[marshal][value] = (self.previousend+self.cursor+shift)               --[[VERBOSE]] verbose_marshal("registering position at ",history[marshal][value]," for future indirection")
 		marshal(self, value, ...)
 	end
 end
@@ -383,7 +396,7 @@ local NilEnabledTypes = {
 local function numbermarshaller(size, format)
 	return function (self, value)
 		assert.type(value, "number", "numeric value", "MARSHAL")
-		self:jump(alignment(self, size))
+		self:align(size)
 		self:rawput(format, value, size)                                            --[[VERBOSE]] verbose_marshal(self, format, value)
 	end
 end
@@ -655,6 +668,11 @@ local function reserve(self, size, noupdate)
 	end
 end
 
+local function reservedalign(self, size)
+	reserve(self, 0)
+	return Encoder.align(self, size)
+end
+
 local function reservedrawput(self, format, data, size)
 	reserve(self, size)
 	return Encoder.rawput(self, format, data, size)
@@ -722,13 +740,13 @@ local function encodevaluetype(self, value, idltype)
 		lstidx = argidx -- can terminate the repID list at a well known type (param)
 	end
 	-- encode tag and typing information
-	local nested = (self.ValueTypeNesting > 0)
+	local nesting = self.ValueTypeNesting
 	self.ChunkSizeIndex = nil -- end current chunk, if any
-	local chunked = nested or truncatable
+	local chunked = nesting > 0 or truncatable
 	local tag = MinValueTag + (chunked and ChunkedFlag or 0)
-	if actualtype == idltype and not nested then                                  --[[VERBOSE]] verbose_marshal("[value tag: no truncatable bases]")
+	if actualtype == idltype and nesting == 0 then                                --[[VERBOSE]] verbose_marshal("[value tag: no truncatable bases]")
 		self:ulong(tag)
-	elseif chunked then --[[nested or truncatable]]                               --[[VERBOSE]] verbose_marshal("[value tag: lists of ",lstidx," truncatable bases]")
+	elseif chunked then --[[nesting > 0 or truncatable]]                          --[[VERBOSE]] verbose_marshal("[value tag: lists of ",lstidx," truncatable bases]")
 		self:ulong(tag+ListOfRepID)
 		self:long(lstidx)
 		for i = 1, lstidx do                                                        --[[VERBOSE]] verbose_marshal("[repID of truncatable base ",i,"]")
@@ -740,17 +758,16 @@ local function encodevaluetype(self, value, idltype)
 	end
 	-- check if chunked encoding is necessary
 	if chunked then
-		-- increase value nesting level
-		self.ValueTypeNesting = self.ValueTypeNesting+1
-		-- enable chunked encoding if this value is not nested in another one
-		if not nested then
+		self.ValueTypeNesting = nesting+1  -- increase value nesting level
+		if nesting == 0 then               -- enable chunked encoding if not nested
+			self.history[reservedstring] = self.history[self.string]
+			self.align = reservedalign
 			self.rawput = reservedrawput
 			self.string = reservedstring
 			self.sequence = reservedsequence
 			self.array = reservedarray
 		end
-		-- get prepared to start a new chunk if necessary
-		self.ChunkSizeIndex = "fake index"
+		self.ChunkSizeIndex = "fake"       -- get prepared to start a new chunk
 	end
 	-- encode value state
 	local membertype, membervalue
@@ -759,31 +776,31 @@ local function encodevaluetype(self, value, idltype)
 		local count = #members
 		for j = 1, count do
 			local member = members[j]                                                 --[[VERBOSE]] verbose_marshal("[field ",member.name,"]")
-			membertype = member.type -- used in optimization below
+			membertype = member.type         -- used in optimization below
 			membervalue = value[member.name]
 			self:put(membervalue, membertype)
 		end
 	end
 	-- finalize encoding of value
 	if chunked then
-		-- terminate current chunk
-		self.ChunkSizeIndex = nil
 		-- encode chunk end tag
-		local endtag = -self.ValueTypeNesting
+		local endtag = -(nesting+1)
 		if membertype and membertype._type == "value" and membervalue ~= nil then
-			-- last member was a ValueType
-			self[self.index-1] = endtag                                               --[[VERBOSE]] verbose_marshal("[end tag of nested value updated to ",endtag,"] (optimized encoding)")
+			self[self.index-1] = endtag      --[[last member was a ValueType]]        --[[VERBOSE]] verbose_marshal("[end tag of nested value updated to ",endtag,"] (optimized encoding)")
 		else                                                                        --[[VERBOSE]] verbose_marshal("[end tag of encoded value]")
+			self.ChunkSizeIndex = nil        -- terminate current chunk
 			self:long(endtag)
 		end
-		-- decrease value nesting level
-		self.ValueTypeNesting = self.ValueTypeNesting-1
-		if not nested then
-			-- disable chunked encoding if this value is not nested in another one
+		self.ValueTypeNesting = nesting    -- restore value nesting level
+		if nesting == 0 then               -- disable chunked encoding if not nested
+			self.align = nil
 			self.rawput = nil
 			self.string = nil
 			self.sequence = nil
 			self.array = nil
+			self.ChunkSizeIndex = nil
+		else
+			self.ChunkSizeIndex = "fake"     -- get prepared to start a new chunk
 		end
 	end
 end
@@ -797,6 +814,37 @@ function Encoder:value(value, idltype)                                          
 	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
 
+-- ValueBox --------------------------------------------------------------------
+
+local function encodevaluebox(self, value, idltype)                            --[[VERBOSE]] verbose_marshal("[value tag: boxed]")
+	local nesting = self.ValueTypeNesting
+	-- encode tag
+	self.ChunkSizeIndex = nil -- end current chunk, if any
+	self:ulong(MinValueTag + (nesting==0 and 0 or ChunkedFlag))
+	-- check if chunked encoding is necessary
+	if nesting > 0 then
+		self.ValueTypeNesting = nesting+1 -- increase value nesting level
+		self.ChunkSizeIndex = "fake"      -- get prepared to start a new chunk
+	end
+	-- encode value
+	self:put(value, idltype.original_type)
+	-- finalize encoding of value
+	if nesting > 0 then                                                           --[[VERBOSE]] verbose_marshal("[end tag of encoded value]")
+		self.ChunkSizeIndex = nil         -- terminate current chunk
+		self:long(-(nesting+1))           -- encode chunk end tag
+		self.ValueTypeNesting = nesting-1 -- decrease value nesting level
+		self.ChunkSizeIndex = "fake"      -- get prepared to start a new chunk
+	end
+end
+
+function Encoder:value_box(value, idltype)                                      --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+	if value == nil then
+		self:ulong(0) -- null tag
+	else
+		self:indirection(encodevaluebox, value, idltype)
+	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+end
+
 -- TypeCodes -------------------------------------------------------------------
 
 local function encodetypeinfo(self, value, kind, tcinfo)
@@ -805,14 +853,20 @@ local function encodetypeinfo(self, value, kind, tcinfo)
 	if tcparams == nil then                                                       --[[VERBOSE]] verbose_marshal "[parameters values]"
 		-- create encoder for encapsulated stream
 		local cursor = self.previousend+self.cursor
+		local history
+		if self.encodingTypeCode then
+			history = self.history
+		else
+			history = newhistory()
+			history[encodetypeinfo][value] = self.history[encodetypeinfo][value]
+		end
 		local encoder = Encoder{
 			context = self.context,
-			history = self.encodingTypeCode and self.history or {},
+			history = history,
 			previousend = cursor-1 + 4, -- adds the size of the OctetSeq count
 			encodingTypeCode = true,
 		}
-		encoder.history[value] = cursor-4 -- before the enconed 'kind' (ulong)
-		encoder:boolean(NativeEndianess)  -- encapsulated stream includes endianess
+		encoder:boolean(NativeEndianess) -- encapsulated stream includes endianess
 		-- encode parameters using the encapsulated encoder
 		encoder:struct(value, tcinfo.parameters)
 		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose_marshal "[mutable parameters values]"
@@ -822,7 +876,7 @@ local function encodetypeinfo(self, value, kind, tcinfo)
 		end                                                                         --[[VERBOSE]] verbose_marshal(true, "[parameters encapsulation]")
 		-- get encapsulated stream and save for future reuse
 		tcparams = encoder:getdata()
-		if self.history == nil then
+		if not self.encodingTypeCode then
 			value.tcparams = tcparams
 		end                                                                         --[[VERBOSE]] verbose_marshal(false)
 	end
@@ -865,6 +919,7 @@ end
 Decoder = oo.class{
 	previousend = 0,
 	cursor = 1,
+	align = Encoder.align,
 	unpack = bit.unpack, -- use current platform native endianess
 }
 
@@ -929,9 +984,8 @@ end
 
 local function numberunmarshaller(size, format)
 	return function(self)
-		self:jump(alignment(self, size))                                            --[[VERBOSE]] verbose_unmarshal(self, format, self.unpack(format, self.data, nil, nil, self.cursor))
-		local cursor = self:jump(size) -- check if there is enougth bytes
-		return self.unpack(format, self.data, nil, nil, cursor)
+		self:align(size)                                                            --[[VERBOSE]] verbose_unmarshal(self, format, self.unpack(format, self.data, nil, nil, self.cursor))
+		return self.unpack(format, self.data, nil, nil, self:jump(size))
 	end
 end
 
@@ -1083,26 +1137,6 @@ Decoder.ValueTypeNesting = 0
 
 local decodevaluetype
 
-local function skipchunks(self, nesting)
-	local chunkend = self.ChunkEnd
-	if chunkend then                                                              --[[VERBOSE]] verbose_unmarshal("skipping the remains of current chunk")
-		self:jump(chunkend - self.cursor)
-	end
-	repeat
-		self.jump = nil
-		local value = self:long()
-		self.jump = reservedjump
-		if value >= MinValueTag then                                                --[[VERBOSE]] verbose_unmarshal(true, "skipping nested value")
-			self.cursor = self.cursor - PrimitiveSizes.long -- rollback cursor
-			self:indirection(decodevaluetype)                                         --[[VERBOSE]] verbose_unmarshal(false)
-		elseif value > 0 then                                                       --[[VERBOSE]] verbose_unmarshal("skipping an entire chunk")
-			self:jump(value)
-		else -- end tag
-			self.ValueTypeNesting = -(value+1)                                        --[[VERBOSE]] verbose_unmarshal("found the end tag of a nested value, restoring to nesting level ",self.ValueTypeNesting)
-		end
-	until self.ValueTypeNesting == nesting
-end
-
 local function reservedjump(self, shift)
 	local result
 	local chunkend = self.ChunkEnd
@@ -1132,6 +1166,26 @@ local function reservedjump(self, shift)
 	return result
 end
 
+local function skipchunks(self, nesting)
+	local chunkend = self.ChunkEnd
+	if chunkend then                                                              --[[VERBOSE]] verbose_unmarshal("skipping the remains of current chunk")
+		self:jump(chunkend - self.cursor)
+	end
+	repeat
+		self.jump = nil
+		local value = self:long()
+		self.jump = reservedjump
+		if value >= MinValueTag then                                                --[[VERBOSE]] verbose_unmarshal(true, "skipping nested value")
+			self.cursor = self.cursor - PrimitiveSizes.long -- rollback cursor
+			self:indirection(decodevaluetype)                                         --[[VERBOSE]] verbose_unmarshal(false)
+		elseif value > 0 then                                                       --[[VERBOSE]] verbose_unmarshal("skipping an entire chunk")
+			self:jump(value)
+		else -- end tag
+			self.ValueTypeNesting = -(value+1)                                        --[[VERBOSE]] verbose_unmarshal("found the end tag of a nested value, restoring to nesting level ",self.ValueTypeNesting)
+		end
+	until self.ValueTypeNesting <= nesting
+end
+
 local truncatable = idl.ValueKind.truncatable
 local function decodevaluestate(self, value, idltype, repidlist, chunked)
 	-- check if chunked decoding is necessary
@@ -1141,7 +1195,7 @@ local function decodevaluestate(self, value, idltype, repidlist, chunked)
 		nesting = self.ValueTypeNesting
 		self.ValueTypeNesting = nesting+1
 		-- enable chunked decoding
-		self:jump(alignment(self, PrimitiveSizes.long))
+		self:align(PrimitiveSizes.long)
 		self.jump = reservedjump
 	end
 	-- find value's type description
@@ -1181,14 +1235,12 @@ local function decodevaluestate(self, value, idltype, repidlist, chunked)
 	end
 	-- finalize decoding of value
 	if nesting and self.ValueTypeNesting > nesting then
-		-- skip the remains of the current value
-		skipchunks(self, nesting)
-		-- disable chunked encoding if this value is not nested in another one
-		if nesting == 0 then self.jump = nil end
+		skipchunks(self, nesting)                -- skip the remains of this value
+		if nesting == 0 then self.jump = nil end -- disable chunking if not nested
 	end
 end
 
-function decodevaluetype(self, pos, tag, idltype)
+local function decodevaluetype(self, pos, tag, idltype)
 	-- check for null tag
 	if tag == 0 then
 		return nil                                                                  --[[VERBOSE]],verbose_unmarshal("got a null")
@@ -1220,6 +1272,7 @@ function decodevaluetype(self, pos, tag, idltype)
 			"type information bit pattern in value tag (only 0, "
 			..SingleRepID.." and "..ListOfRepID.." are valid)", "MARSHAL")
 	end
+	-- create value
 	local value = {}
 	self.history[pos] = value
 	if idltype == nil then                                                        --[[VERBOSE]] verbose_unmarshal(true, "skipping chunks of a nested value inside a trunked value")
@@ -1248,6 +1301,43 @@ function Decoder:value(idltype)                                                 
 	local value = self:indirection(decodevaluetype, idltype)
 	if value and value._complete then value:_complete() end                       --[[VERBOSE]] verbose_unmarshal(false)
 	return value
+end
+
+-- ValueBox --------------------------------------------------------------------
+
+local function decodevaluebox(self, pos, tag, idltype)
+	-- check for null tag
+	if tag == 0 then
+		return nil                                                                  --[[VERBOSE]],verbose_unmarshal("got a null")
+	end
+	-- check tag value
+	local chunked = (tag == MinValueTag+ChunkedFlag)
+	if not chunked and tag ~= MinValueTag then
+		assert.illegal(tag, "value box tag", "MARSHAL")
+	end
+	-- check if chunked decoding is necessary
+	local nesting
+	if chunked then
+		-- increase value nesting level
+		nesting = self.ValueTypeNesting
+		self.ValueTypeNesting = nesting+1
+		-- enable chunked decoding
+		self:align(PrimitiveSizes.long)
+		self.jump = reservedjump
+	end
+	-- decode value state
+	local value = self:get(idltype.original_type)
+	self.history[pos] = value
+	-- finalize decoding of value
+	if chunked then
+		skipchunks(self, nesting)                -- skip the remains of this value
+		if nesting == 0 then self.jump = nil end -- disable chunking if not nested
+	end
+	return value
+end
+
+function Decoder:value_box(idltype)                                             --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+	return self:indirection(decodevaluebox, idltype)                              --[[VERBOSE]],verbose_unmarshal(false)
 end
 
 --------------------------------------------------------------------------------
