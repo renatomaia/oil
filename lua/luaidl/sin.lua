@@ -1,6 +1,5 @@
 --
 -- Project:  LuaIDL
--- Version:  0.9b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: sin.lua
 --
@@ -700,8 +699,8 @@ tab_firsts.rule_377  = set_firsts { 'TK_CONTEXT' }
 tab_firsts.rule_400  = set_firsts { 'TK_ID' }
 tab_firsts.rule_401  = set_firsts { ':' }
 
-tab_follow.rule_32   = set_firsts { 'TK_ID' }
-tab_follow.rule_54   = set_firsts { 'TK_ID', '>' }
+tab_follow.rule_32   = set_firsts { 'TK_ID', ';' }
+tab_follow.rule_54   = set_firsts { 'TK_ID', '>', ';' }
 tab_follow.rule_61   = set_firsts { '>', ',' }
 tab_follow.rule_64   = set_firsts { ',', '>' }
 tab_follow.rule_69   = set_firsts { '>' }
@@ -902,10 +901,12 @@ local tab_define_scope = {
   [TAB_TYPEID.INTERFACE] = true,
   [TAB_TYPEID.EXCEPTION] = true,
   [TAB_TYPEID.OPERATION] = true,
+  [TAB_TYPEID.FACTORY] = true,
   [TAB_TYPEID.STRUCT] = true,
   [TAB_TYPEID.UNION] = true,
   [TAB_TYPEID.MODULE] = true,
   [TAB_TYPEID.COMPONENT] = true,
+  [TAB_TYPEID.VALUETYPE] = true,
 }
 
 local tab_is_contained = {
@@ -2538,7 +2539,6 @@ rules.inter_value_event = function ()
     recognize(lex.tab_tokens.TK_VALUETYPE)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    define(name, TAB_TYPEID.VALUETYPE)
     local tab_valuetypescope = rules.value_tail(name)
     if callbacks.valuetype then
       callbacks.valuetype(tab_valuetypescope)
@@ -2550,7 +2550,6 @@ rules.inter_value_event = function ()
     recognize(lex.tab_tokens.TK_EVENTTYPE)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    define(name, TAB_TYPEID.EVENTTYPE)
     local tab_eventtypescope = rules.eventtype_tail(name)
     if callbacks.eventtype then
       callbacks.eventtype(tab_eventtypescope)
@@ -2573,9 +2572,7 @@ rules.abstract_tail = function ()
     recognize(lex.tab_tokens.TK_VALUETYPE)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    define(name, TAB_TYPEID.VALUETYPE)
-    currentScope.abstract = true
-    local tab_valuetypescope = rules.value_tail(name)
+    local tab_valuetypescope = rules.value_tail(name, "abstract")
     if callbacks.valuetype then
       callbacks.valuetype(tab_valuetypescope)
     end
@@ -2583,9 +2580,7 @@ rules.abstract_tail = function ()
     recognize(lex.tab_tokens.TK_EVENTTYPE)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    define(name, TAB_TYPEID.EVENTTYPE)
-    currentScope.abstract = true
-    local tab_eventtypescope = rules.eventtype_tail(name)
+    local tab_eventtypescope = rules.eventtype_tail(name, "abstract")
     if callbacks.eventtype then
       callbacks.eventtype(tab_eventtypescope)
     end
@@ -3060,7 +3055,7 @@ rules.supp_inter_spec = function (num_follow_rule)
   if tab_firsts.rule_316[token] then
     recognize(lex.tab_tokens.TK_SUPPORTS)
     currentScope.supports = {}
-    local interface = scoped_name(num_follow_rule)
+    local interface = rules.scoped_name(num_follow_rule)
     if (interface._type ~= TAB_TYPEID.INTERFACE) then
       semanticError("The 'SUPPORTS' construction must be reference to an interface")
     end
@@ -3295,47 +3290,42 @@ rules.factory_dcl = function ()
     recognize(lex.tab_tokens.TK_FACTORY)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    local tab_factory = { _type = TAB_TYPEID.FACTORY, name = name }
---    new_name(name, name,
---           currentScope.members, tab_factory, ERRMSG_OPDECLARED, name)
+    define(name, TAB_TYPEID.FACTORY)
     recognize("(")
-    rules.init_param_dcls(tab_factory)
+    rules.init_param_dcls()
     recognize(")")
-    rules.raises_expr_e(tab_factory)
+    rules.raises_expr_e()
   end
 end
 
-rules.init_param_dcls = function (tab_factory)
+rules.init_param_dcls = function ()
   if tab_firsts.rule_366[token] then
-    tab_factory.parameters = {}
-    rules.init_param_dcl(tab_factory)
-    rules.init_param_dcl_list(tab_factory)
+    currentScope.parameters = {}
+    rules.init_param_dcl()
+    rules.init_param_dcl_list()
   elseif tab_follow.rule_367[token] then
     --empty
   end
 end
 
-rules.init_param_dcl = function (tab_factory)
+rules.init_param_dcl = function ()
   if tab_firsts.rule_297[token] then
     recognize(lex.tab_tokens.TK_IN)
     local tab_type_spec = rules.param_type_spec()
     recognize(lex.tab_tokens.TK_ID)
     local param_name = getID()
---    new_name(tab_factory.name..'._parameters.'..param_name,
---           param_name, tab_factory.parameters,
---           { mode = 'PARAM_IN', type = tab_type_spec, name = param_name },
---           ERRMSG_PARAMDECLARED
--- )
+    dclName(param_name, currentScope.parameters, 
+      { mode = 'PARAM_IN', type = tab_type_spec })
   else
     sinError("'in'")
   end
 end
 
-rules.init_param_dcl_list = function (tab_factory)
+rules.init_param_dcl_list = function ()
   if tab_firsts.rule_368[token] then
     recognize(",")
-    rules.init_param_dcl(tab_factory)
-    rules.init_param_dcl_list(tab_factory)
+    rules.init_param_dcl()
+    rules.init_param_dcl_list()
   elseif tab_follow.rule_369[token] then
     --empty
   end
@@ -3363,9 +3353,7 @@ rules.value_or_event = function ()
     recognize(lex.tab_tokens.TK_VALUETYPE)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    define(name, TAB_TYPEID.VALUETYPE)
-    currentScope.custom = true
-    local tab_valuetypescope = rules.value_tail(name)
+    local tab_valuetypescope = rules.value_tail(name, "custom")
     if callbacks.valuetype then
       callbacks.valuetype(tab_valuetypescope)
     end
@@ -3373,9 +3361,7 @@ rules.value_or_event = function ()
     recognize(lex.tab_tokens.TK_EVENTTYPE)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    define(name, TAB_TYPEID.EVENTTYPE)
-    currentScope.custom = true
-    local tab_eventtypescope = rules.eventtype_tail(name)
+    local tab_eventtypescope = rules.eventtype_tail(name, "custom")
     if callbacks.eventtype then
       callbacks.eventtype(tab_eventtypescope)
     end
@@ -3389,13 +3375,25 @@ end
 -- VALUE DECLARATION
 --------------------------------------------------------------------------
 
-rules.value_tail = function (name)
+rules.value_tail = function (name, modifier)
   if (tab_firsts.rule_299[token]) then
+    define(name, TAB_TYPEID.VALUETYPE)
+    if modifier then
+      currentScope[modifier] = true
+    end
     return rules.value_tail_aux(name)
   elseif (tab_firsts.rule_298[token]) then
+    define(name, TAB_TYPEID.VALUETYPE)
+    if modifier then
+      currentScope[modifier] = true
+    end
     rules.value_inhe_spec()
     return rules.value_tail_aux(name)
   elseif tab_firsts.rule_300[token] then
+    define(name, TAB_TYPEID.VALUETYPE)
+    if modifier then
+      currentScope[modifier] = true
+    end
     currentScope.type = rules.type_spec()
     local tab_valuetypescope = currentScope
     gotoFatherScope()
@@ -3485,7 +3483,7 @@ end
 
 rules.state_member_tail = function ()
   local tab_dcls = {}
-  rules.declarator_l(type_spec(), tab_dcls)
+  rules.declarator_l(rules.type_spec(), tab_dcls)
   recognize(";")
 end
 
@@ -3494,14 +3492,13 @@ rules.init_dcl = function ()
     recognize(lex.tab_tokens.TK_FACTORY)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    local tab_factory = { _type = TAB_TYPEID.FACTORY, name = name }
---    new_name(name, name,
---           currentScope.members, tab_factory, ERRMSG_OPDECLARED, name)
+    define(name, TAB_TYPEID.FACTORY)
     recognize("(")
-    rules.init_param_dcls(tab_factory)
+    rules.init_param_dcls()
     recognize(")")
-    rules.raises_expr_e(tab_factory)
+    rules.raises_expr_e()
     recognize(";")
+    gotoFatherScope()
   end
 end
 
@@ -3512,6 +3509,7 @@ end
 
 rules.eventtype_tail = function (name)
   if tab_firsts.rule_302[token] then
+    define(name, TAB_TYPEID.EVENTTYPE)
     rules.value_inhe_spec()
     recognize("{")
     rules.value_element_l()
@@ -3520,6 +3518,7 @@ rules.eventtype_tail = function (name)
     gotoFatherScope()
     return tab_eventtypescope
   elseif tab_firsts.rule_303[token] then
+    define(name, TAB_TYPEID.EVENTTYPE)
     recognize("{")
     rules.value_element_l()
     recognize("}")
