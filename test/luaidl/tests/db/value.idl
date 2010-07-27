@@ -4,12 +4,15 @@ interface I {
 abstract valuetype VB {
 } ;
 
+valuetype VB3 {
+} ;
+
 custom valuetype VB2 supports I {
 } ;
 
 valuetype VT ;
 
-valuetype V : truncatable ::VB, VB2 supports I {
+valuetype V : truncatable VB2, ::VB supports I {
   attribute char C ;
   typedef long L ;
   public char C1, C2 ;

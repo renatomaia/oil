@@ -824,6 +824,7 @@ local TAB_TYPEID = {
   ['HOME']      = 'home',
   ['FACTORY']   = 'factory',
   ['FINDER']    = 'finder',
+  ['VALUEBOX']  = 'valuebox',
   ['VALUETYPE'] = 'valuetype',
   ['EVENTTYPE'] = 'eventtype',
 }
@@ -924,6 +925,7 @@ local tab_is_contained = {
   [TAB_TYPEID.COMPONENT] = true,
   [TAB_TYPEID.HOME] = true,
   [TAB_TYPEID.VALUETYPE] = true,
+  [TAB_TYPEID.VALUEBOX] = true,
   [TAB_TYPEID.EVENTTYPE] = true,
   [TAB_TYPEID.TYPECODE] = true,
 }
@@ -3390,15 +3392,12 @@ rules.value_tail = function (name, modifier)
     rules.value_inhe_spec()
     return rules.value_tail_aux(name)
   elseif tab_firsts.rule_300[token] then
-    define(name, TAB_TYPEID.VALUETYPE)
-    currentScope.valuebox = true
+    local _, nameSpace = define(name, TAB_TYPEID.VALUEBOX)
     if modifier then
-      currentScope[modifier] = true
+      nameSpace[modifier] = true
     end
-    currentScope.type = rules.type_spec()
-    local tab_valuetypescope = currentScope
-    gotoFatherScope()
-    return tab_valuetypescope
+    nameSpace.original_type = rules.type_spec()
+    return nameSpace
   elseif tab_follow.rule_301[token] then
     return dclForward(name, TAB_TYPEID.VALUETYPE)
   end
@@ -3421,9 +3420,13 @@ rules.value_inhe_spec = function ()
     if (value._type ~= TAB_TYPEID.VALUETYPE and value._type ~= TAB_TYPEID.INTERFACE) then
       semanticError("The previously-defined type is not a VALUETYPE or INTERFACE")
     end
-    currentScope.value_base = {}
-    currentScope.value_base.truncatable = truncatable
-    table.insert(currentScope.value_base, value)
+    currentScope.truncatable = truncatable
+    if (not value.abstract) then
+      currentScope.base_value = value
+    else
+      currentScope.abstract_base_value = {}
+      table.insert(currentScope.abstract_base_value, value)
+    end
     rules.value_name_list()
     rules.supp_inter_spec(308)
   elseif tab_firsts.rule_269[token] then
@@ -3437,7 +3440,16 @@ rules.value_name_list = function ()
   if tab_firsts.rule_277[token] then
     recognize(",")
     local value = rules.scoped_name(268)
-    table.insert(currentScope.value_base, value)
+    if (not value.abstract) then
+      if (currentScope.base_value) then
+        sinError("The single base concrete has been declared.")
+      else
+        sinError("The single base concrete must be the first element specified in the inheritance list.")
+      end        
+    else
+      currentScope.abstract_base_value = currentScope.abstract_base_value or {}
+      table.insert(currentScope.abstract_base_value, value)
+    end  
     rules.value_name_list()
   elseif tab_follow.rule_278[token] then
     --empty

@@ -17,7 +17,7 @@ module 'luaidl.pre'
 
 local tab_macros
 local currNumLine
-local currFilename
+local currFilename = ""
 local isProcessing
 local homedir
 local incpath
