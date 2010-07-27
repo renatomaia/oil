@@ -19,7 +19,7 @@ module 'luaidl'
 local preprocessor  = require 'luaidl.pre'
 local parser        = require 'luaidl.sin'
 
-VERSION = '1.0'
+VERSION = '1.0.1'
 
 ---
 -- Auxiliar functions

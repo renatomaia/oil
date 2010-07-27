@@ -3391,6 +3391,7 @@ rules.value_tail = function (name, modifier)
     return rules.value_tail_aux(name)
   elseif tab_firsts.rule_300[token] then
     define(name, TAB_TYPEID.VALUETYPE)
+    currentScope.valuebox = true
     if modifier then
       currentScope[modifier] = true
     end
