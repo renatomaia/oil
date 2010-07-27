@@ -2425,17 +2425,16 @@ rules.member_r = function ()
   end
 end
 
-rules.declarator_l = function (type)
-  local declarators = {}
-  rules.declarator(type)
-  rules.declarator_l_r(type)
+rules.declarator_l = function (type, access)
+  rules.declarator(type, access)
+  rules.declarator_l_r(type, access)
 end
 
-rules.declarator_l_r = function (type)
+rules.declarator_l_r = function (type, access)
   if (tab_firsts.rule_142[token]) then
     recognize(",")
-    rules.declarator(type)
-    rules.declarator_l_r(type)
+    rules.declarator(type, access)
+    rules.declarator_l_r(type, access)
   elseif (tab_follow.rule_143[token]) then
     --empty
   else
@@ -2443,10 +2442,14 @@ rules.declarator_l_r = function (type)
   end
 end
 
-rules.declarator = function (type)
+rules.declarator = function (type, access)
   recognize(lex.tab_tokens.TK_ID)
   local name = getID()
-  dclName(name, currentScope, {type = rules.fixed_array_size_l(type)})
+  dclName(name, currentScope, 
+  {
+    type = rules.fixed_array_size_l(type),
+    access = access,
+  })
   registerID(name);
 end
 
@@ -3487,16 +3490,15 @@ end
 rules.state_member = function ()
   if (tab_firsts.rule_290[token]) then
     recognize(lex.tab_tokens.TK_PUBLIC)
-    rules.state_member_tail()
+    rules.state_member_tail("public")
   elseif (tab_firsts.rule_291[token]) then
     recognize(lex.tab_tokens.TK_PRIVATE)
-    rules.state_member_tail()
+    rules.state_member_tail("private")
   end
 end
 
-rules.state_member_tail = function ()
-  local tab_dcls = {}
-  rules.declarator_l(rules.type_spec(), tab_dcls)
+rules.state_member_tail = function (access)
+  rules.declarator_l(rules.type_spec(), access)
   recognize(";")
 end
 
