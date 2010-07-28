@@ -1269,6 +1269,9 @@ local function define(name, type, namespace)
 
   if (tab_is_contained[type] and currentScope ~= output) then
     table.insert(currentScope.definitions, namespace)
+  elseif (type == TAB_TYPEID.FACTORY) then
+    currentScope.initializers = currentScope.initializers or {}
+    table.insert(currentScope.initializers, namespace)
   else
     table.insert(currentScope, namespace)
   end
@@ -3305,7 +3308,7 @@ end
 
 rules.init_param_dcls = function ()
   if tab_firsts.rule_366[token] then
-    currentScope.parameters = {}
+    currentScope.members = {}
     rules.init_param_dcl()
     rules.init_param_dcl_list()
   elseif tab_follow.rule_367[token] then
@@ -3319,8 +3322,11 @@ rules.init_param_dcl = function ()
     local tab_type_spec = rules.param_type_spec()
     recognize(lex.tab_tokens.TK_ID)
     local param_name = getID()
-    dclName(param_name, currentScope.parameters, 
-      { mode = 'PARAM_IN', type = tab_type_spec })
+    dclName(param_name, currentScope.members, 
+      {
+        type = tab_type_spec,
+        name = param_name,
+      })
   else
     sinError("'in'")
   end
