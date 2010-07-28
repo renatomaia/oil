@@ -2547,10 +2547,7 @@ rules.inter_value_event = function ()
     recognize(lex.tab_tokens.TK_VALUETYPE)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    local tab_valuetypescope = rules.value_tail(name)
-    if callbacks.valuetype then
-      callbacks.valuetype(tab_valuetypescope)
-    end
+    rules.value_tail(name)
   elseif (tab_firsts.rule_191[token]) then
     recognize(lex.tab_tokens.TK_CUSTOM)
     rules.value_or_event()
@@ -2580,10 +2577,7 @@ rules.abstract_tail = function ()
     recognize(lex.tab_tokens.TK_VALUETYPE)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    local tab_valuetypescope = rules.value_tail(name, "abstract")
-    if callbacks.valuetype then
-      callbacks.valuetype(tab_valuetypescope)
-    end
+    rules.value_tail(name, "abstract")
   elseif tab_firsts.rule_197[token] then
     recognize(lex.tab_tokens.TK_EVENTTYPE)
     recognize(lex.tab_tokens.TK_ID)
@@ -3364,10 +3358,7 @@ rules.value_or_event = function ()
     recognize(lex.tab_tokens.TK_VALUETYPE)
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
-    local tab_valuetypescope = rules.value_tail(name, "custom")
-    if callbacks.valuetype then
-      callbacks.valuetype(tab_valuetypescope)
-    end
+    rules.value_tail(name, "custom")
   elseif (tab_firsts.rule_282[token]) then
     recognize(lex.tab_tokens.TK_EVENTTYPE)
     recognize(lex.tab_tokens.TK_ID)
@@ -3392,20 +3383,31 @@ rules.value_tail = function (name, modifier)
     if modifier then
       currentScope[modifier] = true
     end
-    return rules.value_tail_aux(name)
+    local tab_valuetypescope = rules.value_tail_aux(name)
+    if callbacks.valuetype then
+      callbacks.valuetype(tab_valuetypescope)
+    end
+    return tab_valuetypescope
   elseif (tab_firsts.rule_298[token]) then
     define(name, TAB_TYPEID.VALUETYPE)
     if modifier then
       currentScope[modifier] = true
     end
     rules.value_inhe_spec()
-    return rules.value_tail_aux(name)
+    local tab_valuetypescope = rules.value_tail_aux(name)
+    if callbacks.valuetype then
+      callbacks.valuetype(tab_valuetypescope)
+    end  
+    return tab_valuetypescope
   elseif tab_firsts.rule_300[token] then
     local _, nameSpace = define(name, TAB_TYPEID.VALUEBOX)
     if modifier then
       nameSpace[modifier] = true
     end
     nameSpace.original_type = rules.type_spec()
+    if callbacks.valuebox then
+      callbacks.valuebox(namespace)
+    end  
     return nameSpace
   elseif tab_follow.rule_301[token] then
     return dclForward(name, TAB_TYPEID.VALUETYPE)
