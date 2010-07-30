@@ -82,14 +82,16 @@ stream[idl.Contents]     = "idl.Contents"
 stream[idl.ContainerKey] = "idl.ContainerKey"
 
 local compiler = Compiler()
-compiler.default.incpath = include
-local compiled = stream:serialize(assert(luaidl.parsefile(select(start, ...),
-                                                          compiler.default)))
+compiler.defaults.incpath = include
 
 file:write(broker,[[.TypeRepository.types:register(
 	setfenv(
 		function()
-			return ]],compiled,[[ 
+			return ]])
+
+stream:serialize(assert(luaidl.parsefile(select(start, ...),
+                                         compiler.defaults)))
+file:write([[ 
 		end,
 		{
 			idl = require "oil.corba.idl",
