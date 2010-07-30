@@ -63,15 +63,35 @@ end
 
 --------------------------------------------------------------------------------
 
-local Request = oo.class()
+Request = oo.class{ n = 0 }
+
+function Request:preinvoke()
+	return self.objectkey, self.operation
+end
+
+function Request:params()
+	return unpack(self, 1, self.n)
+end
+
+function Request:results(success, ...)
+	local count = select("#", ...)
+	self.success = success
+	self.n = count
+	for i = 1, count do
+		self[i] = select(i, ...)
+	end
+end
+
+--------------------------------------------------------------------------------
 
 function newrequest(self, requestid, objectkey, operation, ...)                 --[[VERBOSE]] verbose:listen("got request for request ",requestid," to object ",objectkey,":",operation)
-	local request = {...}
-	request.n = select("#", ...)
-	request.requestid = requestid
-	request.objectkey = objectkey
-	request.operation = operation
-	return request
+	return Request{
+		requestid = requestid,
+		objectkey = objectkey,
+		operation = operation,
+		n = select("#", ...),
+		...,
+	}
 end
 
 function getrequest(self, channel, probe)
