@@ -7,7 +7,9 @@ checks = oil.dtests.checks
 
 Object = {}
 function Object:concat(str1, str2)
-	checks:assert(Interceptor.lastConcatRequest, checks.isnot(nil))
+	local info = Interceptor.lastConcatRequest
+	checks:assert(info       , checks.isnot(nil))
+	checks:assert(info.thread, checks.is(oil.tasks.current))
 	return str1.."&"..str2
 end
 
@@ -34,6 +36,7 @@ function Interceptor:receiverequest(request)
 			request_id = request.request_id,
 			parameters = request.parameters,
 			service_context = request.service_context,
+			thread = oil.tasks.current,
 		}
 	end
 end
@@ -60,6 +63,7 @@ function Interceptor:sendreply(reply)
 		checks:assert(#reply.results,              checks.is(1))
 		checks:assert(reply.reply_status,          checks.is("NO_EXCEPTION"))
 		checks:assert(reply.reply_service_context, checks.is(nil))
+		checks:assert(info.thread,                 checks.is(oil.tasks.current))
 		self.lastConcatRequest = nil
 		Object.success = true
 	end
@@ -107,6 +111,7 @@ function Interceptor:sendrequest(request)
 		checks:assert(request.success,               checks.is(nil))
 		checks:assert(request.results,               checks.is(nil))
 		checks:assert(request.reply_service_context, checks.is(nil))
+		checks:assert(self.InvokerThread,            checks.is(oil.tasks.current))
 		self.lastConcatRequest = {
 			request = request,
 			request_id = request.request_id,
@@ -149,6 +154,7 @@ function Interceptor:receivereply(reply)
 		checks:assert(reply.reply_service_context,  checks.isnot(info.service_context))
 		checks:assert(reply.reply_service_context,  checks.similar{n=0})
 		checks:assert(#reply.reply_service_context, checks.is(0))
+		checks:assert(self.InvokerThread,           checks.is(oil.tasks.current))
 		self.lastConcatRequest = false
 	end
 end
@@ -159,6 +165,8 @@ sync = oil.dtests.resolve("Server", 2809, "object")
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 MyInterface = orb.types:resolve("MyInterface")
+
+Interceptor.InvokerThread = oil.tasks.current
 
 Interceptor.lastConcatRequest = nil
 checks:assert(sync:concat("first", "second"), checks.is("first&second"))
