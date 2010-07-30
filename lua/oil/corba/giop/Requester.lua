@@ -74,11 +74,11 @@ function register(channel, request)
 	local id = #channel + 1
 	request.request_id = id
 	request.channel = channel
-	channel[id] = request
+	channel[id] = request                                                         --[[VERBOSE]] verbose:invoke("registering request with id ",id)
 	return id
 end
 
-function unregister(channel, id)
+function unregister(channel, id)                                                --[[VERBOSE]] verbose:invoke("unregistering request with id ",id)
 	local request = channel[id]
 	if request then
 		request.request_id = nil
@@ -291,12 +291,12 @@ function resetchannel(self, channel)
 				requests[#requests+1] = pending
 			end
 		end
-		local index = 1
+		local index = 0
 		repeat
+			index = index + 1
 			local pending = requests[index]
 			if pending == nil then break end
 			success, except = self:reissue(channel, pending)
-			index = index + 1
 		until not success
 		if not success then
 			-- set error for all requests that are still pending in this channel
@@ -308,24 +308,35 @@ function resetchannel(self, channel)
 				channel:signal(pending)
 			end
 		end                                                                         --[[VERBOSE]] verbose:invoke(false, "reissue",success and "d successfully" or " failed")
-	elseif except == "connection refused" then
-		except = Exception{ "COMM_FAILURE",
-			minor_code_value = 1,
-			completion_status = COMPLETED_MAYBE,
-			reason = "closed",
-			message = "unable to restablish channel",
-			channel = channel,
-		}
-	elseif except == "too many open connections" then
-		except = Exception{ "NO_RESOURCES",
-			minor_code_value = 0,
-			completion_status = COMPLETED_MAYBE,
-			reason = "resources",
-			message = "unbale to restablish channel, too many open connections",
-			channel = channel,
-		}
-	else -- unknown error
-		return success, except
+	else
+		if except == "connection refused" then
+			except = Exception{ "COMM_FAILURE",
+				minor_code_value = 1,
+				completion_status = COMPLETED_MAYBE,
+				reason = "closed",
+				message = "unable to restablish channel",
+				channel = channel,
+			}
+		elseif except == "too many open connections" then
+			except = Exception{ "NO_RESOURCES",
+				minor_code_value = 0,
+				completion_status = COMPLETED_MAYBE,
+				reason = "resources",
+				message = "unbale to restablish channel, too many open connections",
+				channel = channel,
+			}
+		else -- unknown error
+			return success, except
+		end
+		for id, pending in pairs(channel) do
+			if type(id) == "number" then
+				unregister(channel, id)
+				pending.success = false
+				pending.n = 1
+				pending[1] = except
+				channel:signal(pending)
+			end
+		end
 	end
 	return true
 end
