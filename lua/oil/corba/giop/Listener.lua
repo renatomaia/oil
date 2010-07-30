@@ -26,12 +26,6 @@
 -- 	channel:object retieve(configs:table)
 -- 	channel:object dispose(configs:table)
 -- 	configs:table default([configs:table])
--- 
--- mapper:Receptacle
--- 	interface:table typeof(objectkey:string)
--- 
--- indexer:Receptacle
--- 	member:table valueof(interface:table, name:string)
 --------------------------------------------------------------------------------
 
 local assert   = assert
