@@ -80,8 +80,8 @@ module "oil.corba.idl.Registry"
   InterfaceDef            = oo.class({ __type = "IDL:omg.org/CORBA/InterfaceDef:1.0"            }, IDLType, Contained, Container)
   ValueDef                = oo.class({ __type = "IDL:omg.org/CORBA/ValueDef:1.0"                }, Container, Contained, IDLType)
   
---AbstractInterfaceDef    = oo.class({ __type = "IDL:omg.org/CORBA/AbstractInterfaceDef:1.0"    }, InterfaceDef)
---LocalInterfaceDef       = oo.class({ __type = "IDL:omg.org/CORBA/LocalInterfaceDef:1.0"       }, InterfaceDef)
+  AbstractInterfaceDef    = oo.class({ __type = "IDL:omg.org/CORBA/AbstractInterfaceDef:1.0"    }, InterfaceDef)
+  LocalInterfaceDef       = oo.class({ __type = "IDL:omg.org/CORBA/LocalInterfaceDef:1.0"       }, InterfaceDef)
   
 --ExtAttributeDef         = oo.class({ __type = "IDL:omg.org/CORBA/ExtAttributeDef:1.0"         }, AttributeDef)
 --ExtValueDef             = oo.class({ __type = "IDL:omg.org/CORBA/ExtValueDef:1.0"             }, ValueDef)
@@ -518,13 +518,35 @@ end
 
 --function Container:create_native(id, name, version)
 --end
---
---function Container:create_abstract_interface(id, name, version, base_interfaces)
---end
---
---function Container:create_local_interface(id, name, version, base_interfaces)
---end
---
+
+function Container:create_abstract_interface(id, name, version, base_interfaces)
+	local created = AbstractInterfaceDef{ containing_repository=self.containing_repository }
+	created:update{
+		defined_in = self,
+		
+		repID = id,
+		name = name,
+		version = version,
+
+		base_interfaces = base_interfaces,
+	}
+	return created
+end
+
+function Container:create_local_interface(id, name, version, base_interfaces)
+	local created = LocalInterfaceDef{ containing_repository=self.containing_repository }
+	created:update{
+		defined_in = self,
+		
+		repID = id,
+		name = name,
+		version = version,
+
+		base_interfaces = base_interfaces,
+	}
+	return created
+end
+
 --function Container:create_ext_value(id, name, version,
 --                                    is_custom,
 --                                    is_abstract,
@@ -664,7 +686,7 @@ end
 AttributeDef._type = "attribute"
 AttributeDef.def_kind = "dk_Attribute"
 AttributeDef.definition_fields = {
-	defined_in = { type = InterfaceDef, optional = true },
+	defined_in = { type = Container, optional = true },
 	readonly   = { type = "boolean", optional = true },
 	type       = { type = IDLType },
 }
@@ -712,7 +734,7 @@ OperationDef.exceptions = Empty
 OperationDef.result = idl.void
 OperationDef.result_def = idl.void
 OperationDef.definition_fields = {
-	defined_in = { type = InterfaceDef, optional = true },
+	defined_in = { type = Container   , optional = true },
 	oneway     = { type = "boolean"   , optional = true },
 	contexts   = { type = "table"     , optional = true },
 	exceptions = { type = ExceptionDef, optional = true, list = true },
@@ -831,7 +853,7 @@ end
 
 --------------------------------------------------------------------------------
 
-ValueMemberDef._type = "value_member"
+ValueMemberDef._type = "valuemember"
 ValueMemberDef.def_kind = "dk_ValueMember"
 ValueMemberDef.access = 0
 ValueMemberDef.definition_fields = {
@@ -857,7 +879,7 @@ function ValueMemberDef:move(new_container, new_name, new_version)
 		end
 	end
 	MemberDef.move(self, new_container, new_name, new_version)
-	if new_container._type == "value" then
+	if new_container._type == "valuetype" then
 		local members = new_container.members
 		members[#members+1] = self
 	elseif new_container ~= self.containing_repository then
@@ -948,7 +970,10 @@ function UnionDef:update(new, registry)
 	
 	if new.options then
 		for _, option in ipairs(new.options) do
-			option.label = setmetatable({ _anyval = option.label }, self.switch)
+			option.label = {
+				_anyval = option.label,
+				_anytype = self.switch,
+			}
 		end
 		self:_set_members(new.options)
 	end
@@ -986,7 +1011,6 @@ function UnionDef:_set_members(members, registry)
 	local options = {}
 	local selector = {}
 	local selection = {}
-	
 	for index, member in ipairs(members) do
 		member.type_def = self.containing_repository:put(member.type, registry)
 		member.type = member.type_def.type
@@ -1058,7 +1082,7 @@ end
 
 --------------------------------------------------------------------------------
 
-ValueBoxDef._type = "value_box"
+ValueBoxDef._type = "valuebox"
 ValueBoxDef.def_kind = "dk_ValueBox"
 ValueBoxDef.definition_fields = AliasDef.definition_fields
 ValueBoxDef.update = AliasDef.update
@@ -1179,7 +1203,9 @@ end
 
 local function changeinheritance(container, old, new, type)
 	for _, base in ipairs(new) do
-		assert.type(base, type, "inherited definition", "BAD_PARAM", 4)
+		if type then
+			assert.type(base, type, "inherited definition", "BAD_PARAM", 4)
+		end
 		for _, contained in ipairs(container.definitions) do
 			if #base:lookup_name(contained.name, -1, "dk_All", false) > 0 then
 				assert.illegal(ifaces,
@@ -1272,10 +1298,14 @@ end
 --
 
 function InterfaceDef:_set_base_interfaces(bases)
+	for _, base in ipairs(bases) do
+		if base._type ~= "interface" and base._type ~= "abstract_interface" then
+			assert.illegal(base, "inherited definition", "BAD_PARAM", 4)
+		end
+	end
 	self.base_interfaces = changeinheritance(self,
 	                                         self.base_interfaces,
-	                                         bases,
-	                                         "idl interface")
+	                                         bases)
 end
 
 function InterfaceDef:create_attribute(id, name, version, type, mode)
@@ -1318,6 +1348,43 @@ end
 --------------------------------------------------------------------------------
 
 --
+-- Write interface
+--
+
+AbstractInterfaceDef._type = "abstract_interface"
+AbstractInterfaceDef.def_kind = "dk_AbstractInterface"
+AbstractInterfaceDef.definition_fields = {
+	base_interfaces = { type = AbstractInterfaceDef, optional = true, list = true },
+}
+function AbstractInterfaceDef:_set_base_interfaces(bases)
+	self.base_interfaces = changeinheritance(self,
+	                                         self.base_interfaces,
+	                                         bases,
+	                                         "idl abstract_interface")
+end
+
+--------------------------------------------------------------------------------
+
+--
+-- Write interface
+--
+
+LocalInterfaceDef._type = "local_interface"
+LocalInterfaceDef.def_kind = "dk_LocalInterface"
+function LocalInterfaceDef:_set_base_interfaces(bases)
+	for _, base in ipairs(bases) do
+		if base._type ~= "interface" and base._type ~= "local_interface" then
+			assert.illegal(base, "inherited definition", "BAD_PARAM", 4)
+		end
+	end
+	self.base_interfaces = changeinheritance(self,
+	                                         self.base_interfaces,
+	                                         bases)
+end
+
+--------------------------------------------------------------------------------
+
+--
 -- Read interface
 --
 --
@@ -1333,7 +1400,7 @@ end
 
 --------------------------------------------------------------------------------
 
-ValueDef._type = "value"
+ValueDef._type = "valuetype"
 ValueDef.def_kind = "dk_Value"
 ValueDef.supported_interfaces = Empty
 ValueDef.abstract_base_values = Empty
@@ -1377,7 +1444,7 @@ function ValueDef:update(new)
 	if new.base_value == idl.null then
 		self:_set_base_value(nil)
 	else
-		assert.type(new.base_value, "idl value", "base value", "BAD_PARAM", 4)
+		assert.type(new.base_value, "idl valuetype", "base value", "BAD_PARAM", 4)
 		self:_set_base_value(new.base_value)
 	end
 	if new.abstract_base_values then
@@ -1417,7 +1484,8 @@ end
 
 function ValueDef:is_a(id)
 	if id == self.repID then return true end
-	if self.base_value:is_a(id) then return true end
+	local base = self.base_value
+	if base ~= idl.null and base:is_a(id) then return true end
 	for _, base in ipairs(self.abstract_base_values) do
 		if base:is_a(id) then return true end
 	end
@@ -1438,7 +1506,7 @@ function ValueDef:describe_value()
 				attributes[#attributes+1] = contained:describe().value
 			elseif contained._type == "operation" then
 				operations[#operations+1] = contained:describe().value
-			elseif contained._type == "value_member" then
+			elseif contained._type == "valuemember" then
 				members[#members+1] = contained:describe().value
 			end
 		end
@@ -1487,7 +1555,7 @@ function ValueDef:_set_base_value(base)
 		if base.is_abstract then
 			assert.illegal(base, "invalid base value", "BAD_PARAM", 4)
 		end
-		local list = changeinheritance(self, {self.base_value}, {base}, "idl value")
+		local list = changeinheritance(self, {self.base_value}, {base}, "idl valuetype")
 		base = list[1]
 	else
 		base = idl.null
@@ -1511,7 +1579,7 @@ function ValueDef:_set_abstract_base_values(bases)
 	self.abstract_base_values = changeinheritance(self,
 	                                              self.abstract_base_values,
 	                                              bases,
-	                                              "idl value")
+	                                              "idl valuetype")
 end
 
 function ValueDef:create_value_member(id, name, version, type, access)
@@ -1556,22 +1624,24 @@ ValueDef.create_operation = InterfaceDef.create_operation
 oo.class(_M, Repository)
 
 Classes = {
-	struct       = StructDef,
-	union        = UnionDef,
-	enum         = EnumDef,
-	sequence     = SequenceDef,
-	array        = ArrayDef,
-	string       = StringDef,
-	typedef      = AliasDef,
-	except       = ExceptionDef,
-	module       = ModuleDef,
-	interface    = InterfaceDef,
-	attribute    = AttributeDef,
-	operation    = OperationDef,
-	value        = ValueDef,
-	value_member = ValueMemberDef,
-	value_box    = ValueBoxDef,
-	Object       = ObjectRef,
+	struct             = StructDef,
+	union              = UnionDef,
+	enum               = EnumDef,
+	sequence           = SequenceDef,
+	array              = ArrayDef,
+	string             = StringDef,
+	typedef            = AliasDef,
+	except             = ExceptionDef,
+	module             = ModuleDef,
+	interface          = InterfaceDef,
+	abstract_interface = AbstractInterfaceDef,
+	local_interface    = LocalInterfaceDef,
+	attribute          = AttributeDef,
+	operation          = OperationDef,
+	valuetype          = ValueDef,
+	valuemember        = ValueMemberDef,
+	valuebox           = ValueBoxDef,
+	Object             = ObjectRef,
 }
 
 --------------------------------------------------------------------------------
@@ -1656,6 +1726,17 @@ function Registry:__index(definition)
 	if definition then
 		local repository = self.repository
 		local class = repository.Classes[definition._type]
+		
+		--<PROBLEM WITH LUAIDL>
+		if class == InterfaceDef then
+			if definition.abstract then
+				class = AbstractInterfaceDef
+			elseif definition["local"] then
+				class = LocalInterfaceDef
+			end
+		end
+		--<\PROBLEM WITH LUAIDL>
+		
 		local result
 		if class then
 			result = repository:lookup_id(definition.repID)
@@ -1706,6 +1787,10 @@ function register(self, ...)
 	return unpack(results, 1, count)
 end
 
+local ValidInterfaces = {
+	interface = true,
+	abstract_interface = true,
+}
 function resolve(self, typeref)
 	local result, errmsg = type(typeref)
 	if result == "string" then
@@ -1717,7 +1802,7 @@ function resolve(self, typeref)
 				interface = typeref,
 			}
 		end
-	elseif result == "table" and typeref._type == "interface" then
+	elseif result == "table" and ValidInterfaces[typeref._type] then
 		result, errmsg = self:register(typeref)
 	else
 		result, errmsg = nil, Exception{ "INTERNAL", minor_code_value = 0,

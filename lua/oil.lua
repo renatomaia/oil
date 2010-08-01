@@ -186,6 +186,12 @@ function ORB:__init(config)
 		self.ServantManager.prefix = config.keyprefix
 		self.ServantManager.map = config.objectmap or self.ServantManager.map
 	end
+	if self.ValueEncoder ~= nil then
+		if config.valuefactories == nil then
+			config.valuefactories = {}
+		end
+		self.ValueEncoder.factories = config.valuefactories
+	end
 	self.ServantManager.servants.accesspoint = 
 		assert.results(self.RequestReceiver.acceptor:initialize(self))
 	

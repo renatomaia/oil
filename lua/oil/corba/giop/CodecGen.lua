@@ -309,9 +309,9 @@ end
 Decoder = oo.class({}, Decoder)
 
 function Decoder:alignedjump(value)
-	local pos = self.cursor - 2
-	pos = pos + 1 + (value - pos % value)
-	self.cursor = pos + value
+	local shift = value - (self.cursor - 2) % value - 1
+	local pos = self.cursor + shift
+	self:jump(shift + value)
 	return pos
 end
 
@@ -374,8 +374,9 @@ local aux
 end
 
 function EncoderGenerator:rawput(format, size, value)
-	self:add("format[#format+1],self[#self+1] = '",format,"',",value or self:top())
-	self:add("\nself.cursor = self.cursor+",size,"\n")
+	self:add("local index = self.index")
+	self:add("\nformat[index],self[index] = '",format,"',",value or self:top())
+	self:add("\nself.index,self.cursor = index+1,self.cursor+",size,"\n")
 end
 
 local function numbermarshaller(size, format)

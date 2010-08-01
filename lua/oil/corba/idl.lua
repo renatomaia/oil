@@ -37,7 +37,7 @@
 --   enum(definition)      IDL enumeration type construtor                    --
 --   sequence(definition)  IDL sequence type construtor                       --
 --   array(definition)     IDL array type construtor                          --
---   value(definition)     IDL value type construtor                           --
+--   valuetype(definition) IDL value type construtor                           --
 --   typedef(definition)   IDL type definition construtor                     --
 --   except(definition)    IDL expection construtor                           --
 --                                                                            --
@@ -112,11 +112,13 @@ UserTypes = {
 	enum      = true,
 	sequence  = true,
 	array     = true,
-	value     = true,
-	value_box = true,
+	valuetype = true,
+	valuebox  = true,
 	typedef   = true,
 	except    = true,
 	interface = true,
+	abstract_interface = true,
+	local_interface = true,
 }
 
 InterfaceElements = {
@@ -378,9 +380,9 @@ for list in pairs{[ValueKind]=true, [ValueMemberAccess]=true} do
 	for value in pairs(values) do list[value] = value end
 end
 
-function value_member(self)
+function valuemember(self)
 	self = Contained(self)
-	self._type = "value_member"
+	self._type = "valuemember"
 	checkfield(self)
 	local access = ValueMemberAccess[self.access]
 	if access == nil then
@@ -390,10 +392,12 @@ function value_member(self)
 	return self
 end
 
-function value(self)
+function valuetype(self)
 	self = Container(Contained(self))
-	self._type = "value"
-	local kind = self.kind or (self.truncatable and ValueKind.truncatable or 0)
+	self._type = "valuetype"
+	local kind = self.kind or (self.truncatable and ValueKind.truncatable)
+	                       or (self.abstract and ValueKind.abstract)
+	                       or ValueKind.none
 	kind = ValueKind[kind]
 	if kind == nil then
 		assert.illegal(self.kind, "value kind")
@@ -403,27 +407,27 @@ function value(self)
 	if base == nil then
 		self.base_value = null
 	elseif base ~= null then
-		assert.type(base, "idl value", "base in value definition")
+		assert.type(base, "idl valuetype", "base in value definition")
 	end
 	if self.members == nil then self.members = self end
 	local members = self.members
 	local definitions = self.definitions
 	for index, member in ipairs(members) do
-		member = value_member(member)
+		member = valuemember(member)
 		members[index] = member
 		definitions:__newindex(member.name, member)
 	end
 	return self
 end
 
-function value_box(self)
+function valuebox(self)
 	self = Contained(self)
-	self._type = "value_box"
+	self._type = "valuebox"
 	if self.original_type == nil then self.original_type = self[1] end
 	local type = self.original_type
 	assert.type(type, "idl type", "type in typedef definition")
 	local kind = type._type
-	if kind == "value" or kind == "value_box" then
+	if kind == "valuetype" or kind == "valuebox" then
 		assert.illegal(type, "type of value box")
 	end
 	return self
@@ -546,11 +550,35 @@ function interface(self)
 	self = Container(Contained(self))
 	self._type = "interface"
 	if self.base_interfaces == nil then self.base_interfaces = self end
-	assert.type(self.base_interfaces, "table", "base interface list")
+	assert.type(self.base_interfaces, "table", "interface base list")
+	for _, base in ipairs(self.base_interfaces) do
+		if base._type ~= "abstract_interface" then
+			assert.type(base, "idl interface", "interface base")
+		end
+	end
 	self.hierarchy = basesof
 	return self
 end
 
+function abstract_interface(self)
+	self = interface(self)
+	for _, base in ipairs(self.base_interfaces) do
+		assert.type(base, "idl abstract_interface", "abstract interface base")
+	end
+	self._type = "abstract_interface"
+	return self
+end
+
+function local_interface(self)
+	self = interface(self)
+	for _, base in ipairs(self.base_interfaces) do
+		if base._type ~= "local_interface" then
+			assert.type(base, "idl interface", "local interface base")
+		end
+	end
+	self._type = "local_interface"
+	return self
+end
 
 --------------------------------------------------------------------------------
 -- IDL types used in the implementation of OiL ---------------------------------
@@ -559,9 +587,10 @@ object = interface{
 	repID = "IDL:omg.org/CORBA/Object:1.0",
 	name = "Object",
 }
-ValueBase = value{
+ValueBase = valuetype{
 	repID = "IDL:omg.org/CORBA/ValueBase:1.0",
 	name = "ValueBase",
+	abstract = true,
 }
 OctetSeq = sequence{octet}
 Version = struct{{ type = octet, name = "major" },
