@@ -1625,7 +1625,7 @@ end
 rules.type_dcl_name = function (type)
   recognize(lex.tab_tokens.TK_ID)
   local name = getID()
-  local typedef = {type = rules.fixed_array_size_l(type)}
+  local typedef = {original_type = rules.fixed_array_size_l(type)}
   define(name, TAB_TYPEID.TYPEDEF, typedef)
   if (callbacks.typedef) then
     callbacks.typedef(typedef)
@@ -1666,7 +1666,7 @@ rules.positive_int_const = function (numrule)
   if tab_firsts.rule_75[token] then
     local const1 = rules.xor_expr(numrule)
     rules.or_expr_l(numrule)
-    if string.find(const1, '[%d]') then
+    if type(const1) == "string" and string.find(const1, '[%d]') then
      const1 = tonumber(const1)
      if const1 < 0 then
         semanticError(tab_ERRORMSG[24])
@@ -1824,10 +1824,10 @@ end
 rules.boolean_literal = function ()
   if tab_firsts.rule_126[token] then
     recognize(lex.tab_tokens.TK_TRUE)
-    return getID()
+    return true
   elseif tab_firsts.rule_127[token] then
     recognize(lex.tab_tokens.TK_FALSE)
-    return getID()
+    return false
 --  else
 --    sinError(tab_ERRORMSG[17])
   end
@@ -3406,7 +3406,7 @@ rules.value_tail = function (name, modifier)
     end
     nameSpace.original_type = rules.type_spec()
     if callbacks.valuebox then
-      callbacks.valuebox(namespace)
+      callbacks.valuebox(nameSpace)
     end  
     return nameSpace
   elseif tab_follow.rule_301[token] then
@@ -3435,8 +3435,8 @@ rules.value_inhe_spec = function ()
     if (not value.abstract) then
       currentScope.base_value = value
     else
-      currentScope.abstract_base_value = {}
-      table.insert(currentScope.abstract_base_value, value)
+      currentScope.abstract_base_values = {}
+      table.insert(currentScope.abstract_base_values, value)
     end
     rules.value_name_list()
     rules.supp_inter_spec(308)
@@ -3458,8 +3458,8 @@ rules.value_name_list = function ()
         sinError("The single base concrete must be the first element specified in the inheritance list.")
       end        
     else
-      currentScope.abstract_base_value = currentScope.abstract_base_value or {}
-      table.insert(currentScope.abstract_base_value, value)
+      currentScope.abstract_base_values = currentScope.abstract_base_values or {}
+      table.insert(currentScope.abstract_base_values, value)
     end  
     rules.value_name_list()
   elseif tab_follow.rule_278[token] then
