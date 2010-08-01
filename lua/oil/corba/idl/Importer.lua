@@ -154,7 +154,7 @@ function register(self, object, history)
 					end
 					local excepts = desc.exceptions
 					for index, except in ipairs(excepts) do
-						excepts[index] = self:register(except, history)
+						excepts[index] = self:register(except.type, history)
 					end
 				elseif kind == "dk_Value" then
 					desc.base_value = nil
