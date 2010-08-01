@@ -291,12 +291,12 @@ function resetchannel(self, channel)
 				requests[#requests+1] = pending
 			end
 		end
-		local index = 1
+		local index = 0
 		repeat
+			index = index + 1
 			local pending = requests[index]
 			if pending == nil then break end
 			success, except = self:reissue(channel, pending)
-			index = index + 1
 		until not success
 		if not success then
 			-- set error for all requests that are still pending in this channel
