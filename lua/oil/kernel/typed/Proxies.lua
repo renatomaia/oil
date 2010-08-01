@@ -93,7 +93,7 @@ end
 function newproxy(self, reference, type)                                        --[[VERBOSE]] verbose:proxies(true, "new proxy to ",reference," with type ",type)
 	local result, except
 	if not type then                                                              --[[VERBOSE]] verbose:proxies(true, "interface of proxy not provided, attempt to discover it")
-		type, except = self.referrer:typeof(reference)                           --[[VERBOSE]] verbose:proxies(false, "interface of proxy",(type and " " or " not "),"found")
+		type, except = self.referrer:typeof(reference)                              --[[VERBOSE]] verbose:proxies(false, "interface of proxy",(type and " " or " not "),"found")
 	end
 	if type then
 		type, except = self.types:resolve(type)

@@ -71,7 +71,7 @@ function resolvetype(self, object)
 	if objtype == nil and meta ~= nil then
 		 objtype = meta.__type
 	end
-	return objtype
+	return self.types:resolve(objtype)
 end
 
 function resolvekey(self, object, objtype)
@@ -92,9 +92,10 @@ end
 function register(self, object, objkey, objtype)
 	local except
 	if objtype == nil then
-		objtype = self:resolvetype(object)
+		objtype, except = self:resolvetype(object)
+	else
+		objtype, except = self.types:resolve(objtype)
 	end
-	objtype, except = self.types:resolve(objtype)
 	if not objtype then
 		return nil, except
 	end
@@ -115,11 +116,10 @@ function remove(self, objkey, objtype)
 		if keytype ~= "string" then
 			objkey = self:resolvekey(object)
 			if objkey == nil then
-				if objtype == nil then
-					objtype = self:resolvetype(object)
-				end
 				local except
-				objtype, except = self.types:resolve(objtype)
+				if objtype == nil then
+					objtype, except = self:resolvetype(object)
+				end
 				if not objtype then                                                     --[[VERBOSE]] verbose:servants("unable to identify type of object ",object)
 					return nil, except
 				end
