@@ -36,8 +36,8 @@ local values = {
 		{ name = "field1", type = idl.string },
 		{ name = "field2", type = idl.string },
 	},
-	value     = base.value{
-		base_value = base.value{
+	valuetype = base.valuetype{
+		base_value = base.valuetype{
 			name = "BaseValue",
 			{ name = "base1", type = idl.string, access = "private" },
 			{ name = "base2", type = idl.string, access = "private" },

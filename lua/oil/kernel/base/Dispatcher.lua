@@ -32,42 +32,34 @@ pcall = luapcall
 
 context = false
 
-function setresults(self, request, success, ...)
-	local count = select("#", ...)
-	request.success = success
-	request.n = count
-	for i = 1, count do
-		request[i] = select(i, ...)
-	end
-end
-
 --------------------------------------------------------------------------------
 -- Dispatcher facet
 
 function dispatch(self, request)
-	local object = self.context.servants:retrieve(request.objectkey)
+	local object, operation = request:preinvoke()
 	if object then
-		local method = object[request.operation]
-		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",request.operation,unpack(request, 1, request.n))
-			self:setresults(request, self.pcall(method, object,
-			                                    unpack(request, 1, request.n)))
-		else
-			self:setresults(request, false, Exception{
-				reason = "noimplement",
-				message = "no implementation for operation of object with key",
-				operation = operation,
-				object = object,
+		object = self.context.servants:retrieve(object)
+		if object then
+			local method = object[operation]
+			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",operation,request:params())
+				request:results(self.pcall(method, object, request:params()))
+			else                                                                      --[[VERBOSE]] verbose:dispatcher("missing implementation of ",opname)
+				request:results(false, Exception{
+					reason = "noimplement",
+					message = "no implementation for operation of object with key",
+					operation = operation,
+					object = object,
+					key = key,
+				})
+			end
+		else                                                                        --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
+			request:results(false, Exception{
+				reason = "badkey",
+				message = "no object with key",
 				key = key,
 			})
 		end
-	else
-		self:setresults(request, false, Exception{
-			reason = "badkey",
-			message = "no object with key",
-			key = key,
-		})
 	end
-	return true
 end
 
 --------------------------------------------------------------------------------

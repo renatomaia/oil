@@ -38,11 +38,8 @@ local Exception = require "oil.Exception"                                       
 module("oil.kernel.base.Receiver", oo.class)
 
 function processrequest(self, request)
-	local result, except = self.dispatcher:dispatch(request)
-	if result then
-		result, except = self.listener:sendreply(request)
-	end
-	return result, except
+	self.dispatcher:dispatch(request)
+	return self.listener:sendreply(request)
 end
 
 --------------------------------------------------------------------------------

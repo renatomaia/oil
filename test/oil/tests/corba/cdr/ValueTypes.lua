@@ -5,7 +5,7 @@ local suite = base.newsuite(...)
 
 --------------------------------------------------------------------------------
 
-local AllValues = base.value{
+local AllValues = base.valuetype{
 	{ name = "short_value"  , type = idl.short  , access = "private" },
 	{ name = "ushort_value" , type = idl.ushort , access = "private" },
 	{ name = "long_value"   , type = idl.long   , access = "private" },
@@ -83,7 +83,7 @@ suite:add("StrangeValues", Struct, StrangeValues, StrangeExpected)
 
 suite:add("nested_indirected_typecodes",
 	function(self)
-		local base = base.value{
+		local base = base.valuetype{
 			{ name = "field1", type = idl.TypeCode, access = "private" },
 			{ name = "field2", type = idl.TypeCode, access = "private" },
 		}
@@ -112,7 +112,7 @@ end
 suite:add("truncatable_with_nested_valuetypes",
 	function(codec)
 		setupcodec(codec)
-		local base_value = base.value{ name = "BaseValue" }
+		local base_value = base.valuetype{ name = "BaseValue" }
 		base_value.members[1] = {
 			name = "nested",
 			type = base_value,
@@ -130,7 +130,7 @@ suite:add("truncatable_with_nested_valuetypes",
 	end,
 	function(codec)
 		local base_value = codec.base_value
-		local type = base.value{
+		local type = base.valuetype{
 			name = "MyValue",
 			base_value = base_value,
 			truncatable = true,

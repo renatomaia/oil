@@ -74,11 +74,11 @@ function register(channel, request)
 	local id = #channel + 1
 	request.request_id = id
 	request.channel = channel
-	channel[id] = request
+	channel[id] = request                                                         --[[VERBOSE]] verbose:invoke("registering request with id ",id)
 	return id
 end
 
-function unregister(channel, id)
+function unregister(channel, id)                                                --[[VERBOSE]] verbose:invoke("unregistering request with id ",id)
 	local request = channel[id]
 	if request then
 		request.request_id = nil

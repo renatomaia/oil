@@ -26,12 +26,6 @@
 -- 	channel:object retieve(configs:table)
 -- 	channel:object dispose(configs:table)
 -- 	configs:table default([configs:table])
--- 
--- mapper:Receptacle
--- 	interface:table typeof(objectkey:string)
--- 
--- indexer:Receptacle
--- 	member:table valueof(interface:table, name:string)
 --------------------------------------------------------------------------------
 
 local assert   = assert
@@ -147,7 +141,7 @@ local SysExReply = {
 local SysExType = { giop.SystemExceptionIDL }
 local SysExBody = { n = 1, --[[defined later]] }
 
-function sysexreply(self, requestid, body)                                      --[[VERBOSE]] verbose:listen("new system exception ",body.exception_id," for request ",requestid)
+function sysexreply(self, requestid, body)                                      --[[VERBOSE]] verbose:listen("new system exception ",body[1]," for request ",requestid)
 	SysExReply.request_id = requestid
 	SysExBody[1] = body
 	body.exception_id = body[1]
@@ -156,88 +150,64 @@ end
 
 --------------------------------------------------------------------------------
 
-local Request = oo.class()
+Request = oo.class{ n = 0, pcall = pcall }
+
+function Request:preinvoke(iface, member)
+	if iface ~= nil then
+		local inputs = member.inputs
+		local count = #inputs
+		self.n = count
+		self.outputs = member.outputs
+		self.exceptions = member.exceptions
+		local decoder = self.decoder
+		for i = 1, count do
+			local ok, result = self.pcall(decoder.get, decoder, inputs[i])
+			if not ok then
+				assert(type(result) == "table", result)
+				self.success = false
+				self.n = 1
+				self[1] = result
+				return -- request cancelled
+			end
+			self[i] = result
+		end
+		return self.object_key, self.operation
+	end
+end
 
 function Request:params()
-	return unpack(self, 1, #self.inputs)
+	return unpack(self, 1, self.n)
+end
+
+function Request:results(success, ...)
+	local count = select("#", ...)
+	self.success = success
+	self.n = count
+	for i = 1, count do
+		self[i] = select(i, ...)
+	end
 end
 
 --------------------------------------------------------------------------------
-
-function handlerequest(self, channel, header, decoder)
-	local requestid = header.request_id
-	if not channel[requestid] then
-		header.objectkey = header.object_key
-		local target, iface = self.servants:retrieve(header.object_key)
-		if target then
-			header.target = target
-			header.interface = iface
-			local member = self.indexer:valueof(iface, header.operation)
-			if member then                                                            --[[VERBOSE]] verbose:listen("got request ",requestid," for ",header.operation)
-				header.member = member
-				header.n = #member.inputs
-				header.inputs = member.inputs
-				header.outputs = member.outputs
-				header.exceptions = member.exceptions
-				for index, input in ipairs(member.inputs) do
-					local ok, result = self.pcall(decoder.get, decoder, input)
-					if not ok then
-						assert(type(result) == "table", result)
-						header.success = false
-						header.n = 1
-						header[1] = result
-						break
-					end
-					header[index] = result
-				end
-			else                                                                      --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
-				header.success = false
-				header.n = 1
-				header[1] = Exception{
-					reason = "badoperation",
-					message = "servant with object_key does not decare operation",
-					object_key = header.object_key,
-					operation = header.operation,
-				}
-			end
-		else                                                                        --[[VERBOSE]] verbose:listen("got illegal object ",header.object_key)
-			header.success = false
-			header.n = 1
-			header[1] = Exception{
-				reason = "badkey",
-				message = "no servant found with object_key",
-				object_key = header.object_key,
-			}
-		end
-	else                                                                          --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
-		header.success = false
-		header.n = 1
-		header[1] = Exception{
-			reason = "badrequestid",
-			message = "provided request_id is already in use by a pending request",
-			request_id = header.request_id,
-		}
-	end
-	if header.response_expected then
-		header.channel = channel
-		channel[requestid] = header                                                 --[[VERBOSE]] else verbose:listen "no response expected"
-	end
-end
 
 function getrequest(self, channel, probe)                                       --[[VERBOSE]] verbose:listen(true, "get request from channel")
 	local result, except = true, nil
 	if channel:trylock("read", not probe) then
 		if not probe or channel:probe() then
 			local bypassed = false
-			
 			local msgid, header, decoder = self:receivemsg(channel)
 			if msgid == RequestID then
-				self:handlerequest(channel, header, decoder)
-				if header.success ~= nil then
-					result, except = self:sendreply(header)
+				local requestid = header.request_id
+				if not channel[requestid] then
+					header.decoder = decoder
+					if header.response_expected then
+						header.channel = channel
+						channel[requestid] = header                                         --[[VERBOSE]] else verbose:listen "no response expected"
+					end
+					result, except = self.Request(header)
+				else                                                                    --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
+					result, except = self:sendmsg(channel, MessageErrorID)
 					bypassed = result
-				else
-					result, except = header, nil
 				end
 			elseif msgid == CancelRequestID then                                      --[[VERBOSE]] verbose:listen("got cancelling of request ",header.request_id)
 				channel[header.request_id] = nil
@@ -363,11 +333,11 @@ function sendreply(self, request)                                               
 			success, except = self:sendmsg(channel, ReplyID,
 			                               self:sysexreply(requestid, except))
 		end
-	else                                                                          --[[VERBOSE]] verbose:listen("no pending request found with id ",requestid,", reply discarted")
+	else                                                                          --[[VERBOSE]] verbose:listen("no pending request found with id ",requestid,", reply discarded")
 		success = true
 	end
 	if not success and except.reason == "closed" then
 		success, except = true, nil
-	end                                                                           --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully sent" or "failed", except)
+	end                                                                           --[[VERBOSE]] verbose:listen(false)
 	return success, except
 end

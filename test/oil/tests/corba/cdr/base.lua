@@ -182,12 +182,12 @@ return {
 		return idl.Object(def)
 	end,
 	
-	value = function(members)
+	valuetype = function(members)
 		setmetatable(members, ValueMembersType)
 		for _, member in ipairs(members) do
 			setmetatable(member, ValueMembersType.elementtype)
 		end
-		return idl.value{
+		return idl.valuetype{
 			name = takefield(members, "name") or "ValueType",
 			base_value = takefield(members, "base_value"),
 			members = members,

@@ -36,28 +36,21 @@ context = false
 
 function dispatch(self, request)
 	local context = self.context
-	local object, type = context.servants:retrieve(request.objectkey)
-	if object then
-		local opname = request.operation
-		local opinfo = context.indexer:valueof(type, opname)
-		if opinfo then
-			local method = object[opname] or opinfo.implementation
-			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",opname, unpack(request, 1, request.n))
-				self:setresults(request, self.pcall(method, object,
-				                                    unpack(request, 1, request.n)))
-			else
-				self:setresults(request, false, Exception{
-					reason = "noimplement",
-					message = "no implementation for operation of object with key",
-					operationdescription = opinfo,
-					operation = opname,
-					object = object,
-					type = type,
-					key = key,
-				})
-			end
-		else
-			self:setresults(request, false, Exception{
+	local servants = context.servants
+	local key = request.object_key
+	local opname = request.operation
+	local opinfo
+	local object, type = servants:retrieve(key)
+	if object == nil then                                                         --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
+		request:results(false, Exception{
+			reason = "badkey",
+			message = "no object with key",
+			key = key,
+		})
+	else
+		opinfo = context.indexer:valueof(type, opname)
+		if opinfo == nil then                                                         --[[VERBOSE]] verbose:dispatcher("got illegal operation ",opname)
+			request:results(false, Exception{
 				reason = "badoperation",
 				message = "operation is illegal for object with key",
 				operation = opname,
@@ -66,12 +59,33 @@ function dispatch(self, request)
 				key = key,
 			})
 		end
-	else
-		self:setresults(request, false, Exception{
-			reason = "badkey",
-			message = "no object with key",
+	end
+	key, opname = request:preinvoke(type, opinfo, object)
+	if key == nil then                                                            --[[VERBOSE]] verbose:dispatcher("pre-invocation failed!")
+		return -- cancel dispatch
+	end
+	if key ~= request.objectkey then
+		object = servants:retrieve(key)
+		if object == nil then                                                       --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
+			request:results(false, Exception{
+				reason = "badkey",
+				message = "no object with key",
+				key = key,
+			})
+			return -- cancel dispatch
+		end
+	end
+	local method = object[opname] or opinfo.implementation
+	if method == nil then                                                         --[[VERBOSE]] verbose:dispatcher("missing implementation of ",opname)
+		return request:results(false, Exception{
+			reason = "noimplement",
+			message = "no implementation for operation of object with key",
+			operationdescription = opinfo,
+			operation = opname,
+			object = object,
+			type = type,
 			key = key,
 		})
-	end
-	return true
+	end                                                                           --[[VERBOSE]] verbose:dispatcher("dispatching operation ",key,":",opname,request:params())
+	request:results(self.pcall(method, object, request:params()))
 end

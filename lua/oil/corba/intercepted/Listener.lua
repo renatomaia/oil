@@ -18,7 +18,26 @@ local Empty = {}
 
 --------------------------------------------------------------------------------
 
-function interceptrequest(self, request)
+function __init(self, ...)
+	self = oo.rawnew(self, ...)
+	local Request = self.Request
+	self.Request = oo.class({}, Request)
+	function self.Request.preinvoke(request, iface, member, object)
+		local objkey, opname = Request.preinvoke(request, iface, member)
+		request.interface = iface
+		request.member = member
+		request.target = object
+		self:interceptrequest(request, objkey == nil)
+		if request.success == nil then
+			return objkey, opname
+		end
+	end
+	return self
+end
+
+--------------------------------------------------------------------------------
+
+function interceptrequest(self, request, failed)
 	local interceptor = self.interceptor
 	if interceptor then
 		local intercepted = {
@@ -31,9 +50,7 @@ function interceptrequest(self, request)
 			interface         = request.interface,
 			interface_name    = request.interface and request.interface.absolute_name,
 			operation         = request.member,
-			parameters        = request.success == nil
-			                    and { n = request.n, unpack(request, 1, request.n) }
-			                     or nil,
+			parameters        = not failed and {n=request.n,request:params()} or nil,
 		}
 		request.intercepted = intercepted
 		if interceptor.receiverequest then                                          --[[VERBOSE]] verbose:interceptors(true, "intercepting request marshaling")
@@ -63,8 +80,8 @@ function interceptrequest(self, request)
 					end
 				end
 				-- update operation being invoked
-				if intercepted.operation ~= operation then                              --[[VERBOSE]] verbose:interceptors("interceptor changed invoked operation")
-					operation = intercepted.operation
+				if intercepted.operation ~= request.member then                         --[[VERBOSE]] verbose:interceptors("interceptor changed invoked operation")
+					local operation = intercepted.operation
 					request.operation  = operation.name
 					request.inputs     = operation.inputs
 					request.outputs    = operation.outputs
@@ -76,11 +93,6 @@ function interceptrequest(self, request)
 			end                                                                       --[[VERBOSE]] verbose:interceptors(false, "interception ended")
 		end
 	end
-end
-
-function handlerequest(self, channel, header, decoder)
-	Listener.handlerequest(self, channel, header, decoder)
-	self:interceptrequest(header)
 end
 
 --------------------------------------------------------------------------------
