@@ -51,7 +51,7 @@ function LuaSocketOps:close()
 	local ports = self.factory.cache[self.host]
 	ports[self.port] = nil
 	if next(ports) == nil then
-		self.cache[self.host] = nil
+		self.factory.cache[self.host] = nil
 	end
 	return self.__object:close()
 end
@@ -60,7 +60,7 @@ CoSocketOps.close = LuaSocketOps.close
 
 function LuaSocketOps:reset()                                                   --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
-	local sockets = self.sockets
+	local sockets = self.factory.sockets
 	local result, errmsg = sockets:tcp()
 	if result then
 		local socket = result
@@ -73,7 +73,7 @@ function LuaSocketOps:reset()                                                   
 end
 function CoSocketOps:reset()                                                    --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
 	self.__object:close()
-	local sockets = self.sockets
+	local sockets = self.factory.sockets
 	local result, errmsg = sockets:tcp()
 	if result then
 		local socket = result
@@ -88,11 +88,11 @@ end
 local list = {}
 function LuaSocketOps:probe()
 	list[1] = self.__object
-	return self.sockets:select(list, nil, 0)[1] == list[1]
+	return self.factory.sockets:select(list, nil, 0)[1] == list[1]
 end
 function CoSocketOps:probe()
 	local list = { self }
-	return self.sockets:select(list, nil, 0)[1] == list[1]
+	return self.factory.sockets:select(list, nil, 0)[1] == list[1]
 end
 
 --------------------------------------------------------------------------------
@@ -117,7 +117,7 @@ function __init(self, object)
 				success, errmsg = socket:connect(host, port)
 				if success then
 					socket = self:setupsocket(socket)
-					socket.sockets = sockets
+					socket.factory = self
 					socket.host = host
 					socket.port = port
 					return socket
