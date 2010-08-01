@@ -1787,13 +1787,21 @@ function register(self, ...)
 	return unpack(results, 1, count)
 end
 
-local ValidInterfaces = {
-	interface = true,
+local TypeCodesOfInterface = {
+	Object = true,
 	abstract_interface = true,
 }
 function resolve(self, typeref)
-	local result, errmsg = type(typeref)
-	if result == "string" then
+	local luatype = type(typeref)
+	local result, errmsg
+	if luatype == "table" then
+		if typeref._type == "interface" then
+			result, errmsg = self:register(typeref)
+		elseif TypeCodesOfInterface[typeref._type] then
+			typeref, luatype = typeref.repID, "string"
+		end
+	end
+	if luatype == "string" then
 		result = self:lookup(typeref) or self:lookup_id(typeref)
 		if not result then
 			errmsg = Exception{ "INTERNAL", minor_code_value = 0,
@@ -1802,9 +1810,7 @@ function resolve(self, typeref)
 				interface = typeref,
 			}
 		end
-	elseif result == "table" and ValidInterfaces[typeref._type] then
-		result, errmsg = self:register(typeref)
-	else
+	elseif result == nil then
 		result, errmsg = nil, Exception{ "INTERNAL", minor_code_value = 0,
 			reason = "interface",
 			message = "illegal IDL type",

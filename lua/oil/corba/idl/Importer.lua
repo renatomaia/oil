@@ -162,7 +162,7 @@ function register(self, object, history)
 					desc.abstract = desc.is_abstract
 					desc.trucatable = desc.is_trucatable
 					desc.custom = desc.is_custom
-				elseif kind == "dk_Interface" then
+				elseif kind == "dk_Interface" or kind == "dk_AbstractInterface" then
 					desc.base_interfaces = nil
 				end
 				
@@ -171,7 +171,7 @@ function register(self, object, history)
 				history[result.repID] = result
 				
 				-- import definition specific information
-				if kind == "dk_Interface" then
+				if kind == "dk_Interface" or kind == "dk_AbstractInterface" then
 					local bases = object:_get_base_interfaces()
 					for index, base in ipairs(bases) do
 						bases[index] = self:register(base, history)
