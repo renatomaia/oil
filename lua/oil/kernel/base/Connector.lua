@@ -20,60 +20,18 @@ local rawnew = oo.rawnew
 local Exception = require "oil.Exception"
 local Channels = require "oil.kernel.base.Channels"                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module(...)
+module(...); local _ENV = _M
 
-class(_M, Channels)
+local WeakValues = class{ __mode = "v" }
 
---------------------------------------------------------------------------------
--- connection management
-
-LuaSocketOps = copy(Channels.LuaSocketOps)
-CoSocketOps = copy(Channels.CoSocketOps)
-
-function LuaSocketOps:close()
-	local cache = self.cache[self.connid]
-	cache[self.connid] = nil
-	return self.__object:close()
-end
-
-CoSocketOps.close = LuaSocketOps.close
-
-
-function LuaSocketOps:reset()                                                   --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
-	self.__object:close()
-	local sockets = self.sockets
-	local result, except = sockets:tcp()
-	if result then
-		local socket = result
-		result, except = socket:connect(self.host, self.port)
-		if result then
-			self.__object = socket
-		end
-	end
-	return result, except
-end
-
-function CoSocketOps:reset()                                                    --[[VERBOSE]] verbose:channels("resetting channel (attempt to reconnect)")
-	self.__object:close()
-	local sockets = self.sockets
-	local result, except = sockets:tcp()
-	if result then
-		local socket = result
-		result, except = socket:connect(self.host, self.port)
-		if result then
-			self.__object = socket.__object
-			self.readevent = socket.readevent
-		end
-	end
-	return result, except
-end
+class(_ENV)
 
 --------------------------------------------------------------------------------
 -- channel cache for reuse
 
 function __new(self, object)
 	self = rawnew(self, object)
-	self.cache = setmetatable({}, {__mode = "v"})
+	self.cache = WeakValues()
 	return self
 end
 
@@ -86,18 +44,12 @@ function retrieve(self, profile)                                                
 	local channel, except = cache[connid]
 	if channel == nil then
 		local sockets = self.sockets
-		channel, except = sockets:tcp()
+		channel, except = sockets:newsocket(self.options)
 		if channel then
 			local host, port = profile.host, profile.port                             --[[VERBOSE]] verbose:channels("new socket to ",host,":",port)
 			local success
 			success, except = channel:connect(host, port)
 			if success then
-				channel = self:setupsocket(channel)
-				channel.sockets = sockets
-				channel.cache = cache
-				channel.connid = connid
-				channel.host = host
-				channel.port = port
 				cache[connid] = channel
 			else
 				channel, except = nil, Exception{ "badconnect",

@@ -52,8 +52,10 @@ end
 
 function _ENV:corbaloc(encoded)
 	for token, data in encoded:gmatch("(%w*):([^,]*)") do
-		if token == "" or token == "iiop" then
-			local profile, except = self.profiler:decodeurl(data)
+		if token == "" then token = "iiop" end
+		local profiler = self.profiler[token]
+		if profiler then
+			local profile, except = profiler:decodeurl(data)
 			if profile then
 				return setmetatable({
 					type_id = objrepID,
@@ -72,14 +74,14 @@ function _ENV:corbaloc(encoded)
 end
 
 
-function _ENV:newreference(key, type)
+function _ENV:newreference(info)
 	local result, except = self.listener:getaddress()
 	if result then
 		local profiles = {}
-		result, except = self.profiler:encode(profiles, key, result)
+		result, except = self.profiler[0]:encode(profiles, info.__objkey, result)
 		if result then
 			result, except = setmetatable({
-				type_id = type.repID,
+				type_id = info.__type.repID,
 				profiles = profiles,
 			}, ioridl)
 		end
@@ -92,17 +94,36 @@ function _ENV:islocal(reference)
 	if listener then
 		local address = listener:getaddress("probe") -- only if avaliable
 		if address then
-			local profiler = self.profiler
 			local profiles = reference.profiles
 			for i = 1, #profiles do
 				local profile = profiles[i]
 				if profile.tag == 0 then
+					local profiler = self.profiler[0]
 					local result = profiler:belongsto(profile.profile_data, address)
 					if result then return result end
 				end
 			end
 		end
 	end
+end
+
+function _ENV:isequivalent(reference, otherref)
+	local tags = {}
+	for _, profile in ipairs(otherref.profiles) do
+		tags[profile.tag] = profile
+	end
+	for _, profile in ipairs(reference.profiles) do
+		local tag = profile.tag
+		local other = tags[tag]
+		if other then
+			local profiler = self.profiler[tag]
+			if profiler
+			and profiler:equivalent(profile.profile_data, other.profile_data) then
+				return true
+			end
+		end
+	end
+	return false
 end
 
 function _ENV:typeof(reference, timeout)
@@ -137,4 +158,19 @@ function _ENV:decode(encoded)
 		reference = enconded,
 		format = token,
 	}
+end
+
+function _ENV:decodeprofile(encoded)
+	local profiler = self.profiler[encoded.tag]
+	if profiler then
+		return profiler:decode(encoded.profile_data)
+	end
+	return nil, Exception{ "badversion",
+		message = "IOR profile tag not supported",
+		error = "unsupported IOR profile",
+		minor = 1,
+		completed = "COMPLETED_NO",
+		profile = encoded,
+	}
+	
 end

@@ -15,7 +15,7 @@ local tcpsocket = socket.tcp
 local selectsockets = socket.select
 local gettime = socket.gettime
 
-local ArraySet = require "loop.collection.ArraySet"
+local ArraySet = require "loop.collection.ArrayedSet"
 local add = ArraySet.add
 local remove = ArraySet.remove
 
@@ -49,10 +49,11 @@ function EventPoll:remove(socket)
 	if remove(self, socket) ~= nil then
 		local ready = self.ready
 		if ready and ready[socket] ~= nil then
-			for i = 1, #ready do
+			local count = #ready
+			for i = 1, count do
 				if ready[i] == socket then
 					ready[socket] = nil
-					remove(ready, i)
+					ready[i], ready[count] = ready[count], nil
 					return true
 				end
 			end
@@ -102,7 +103,7 @@ function _ENV:setoptions(options, socket, ...)
 end
 
 function _ENV:newsocket(options)
-	return self:setup(options, tcpsocket())
+	return self:setoptions(options, tcpsocket())
 end
 
 function _ENV:newpoll()

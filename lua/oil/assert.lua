@@ -14,7 +14,8 @@ function results(result, ...)
 end
 
 function illegal(value, description, except)
-	error(Exception{ except or "badvalue",
+	error(Exception{
+		error = except or "badvalue",
 		message = "illegal $valuekind",
 		value = value,
 		valuekind = description,
@@ -43,7 +44,8 @@ function type(value, expected, description, except)
 			end
 		end
 	end
-	error(Exception{ except or "badvalue",
+	error(Exception{
+		error = except or "badvalue",
 		message = "illegal $valuekind ($expectedtype expected, got $actualtype)",
 		expectedtype = expected,
 		actualtype   = actual,

@@ -128,7 +128,10 @@ function receivemsg(self, channel, timeout)                                     
 				}
 			end
 		elseif except == "timeout" then
-			except = TimeoutException
+			except = Exception{
+				error = "timeout",
+				message = "timeout",
+			}
 		else
 			if except == "closed" then channel:close() end
 			except = Exception{ "badchannel",
@@ -162,7 +165,10 @@ function receivemsg(self, channel, timeout)                                     
 				}
 			end
 		elseif except == "timeout" then
-			except = TimeoutException
+			except = Exception{
+				error = "timeout",
+				message = "timeout",
+			}
 			channel.pendingheadertype = type
 			channel.pendingheadersize = header
 			channel.pendingheaderdecoder = decoder

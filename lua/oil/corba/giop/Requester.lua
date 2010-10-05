@@ -34,11 +34,11 @@ local SystemExceptionIDL = giop.SystemExceptionIDL
 local _non_existent = giop.ObjectOperations._non_existent
 
 local Exception = require "oil.corba.giop.Exception"
-local Messenger = require "oil.corba.giop.Messenger"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local Channel = require "oil.corba.giop.Channel"                                --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module(...)
+module(...); local _ENV = _M
 
-class(_M, Messenger)
+class(_M)
 
 --------------------------------------------------------------------------------
 
@@ -46,7 +46,6 @@ local WeakKeys = oo.class{__mode = "k"}
 local WeakTable = oo.class{__mode = "kv"}
 
 local Empty = {}
-local TimeoutException = Exception{"timeout"}
 
 --------------------------------------------------------------------------------
 -- request id management for channels
@@ -71,10 +70,15 @@ end
 
 --------------------------------------------------------------------------------
 
-function __new(self, ...)
-	self = rawnew(self, ...)
+function __init(self, ...)
 	self.objkeyof = WeakKeys()
 	self.channelof = WeakTable()
+	self.sock2channel = memoize(function(socket)
+		return Channel{
+			socket = socket,
+			codec = self.codec,
+		}
+	end, "k")
 	self.Request = class{
 		ready = function(request, timeout)
 			if request.success ~= nil then return true end
@@ -86,53 +90,57 @@ function __new(self, ...)
 			if success == nil then
 				self:getreply(request, timeout)
 				success = request.success
-				if success == nil then return nil, TimeoutException end
+				if success == nil then
+					return nil, Exception{
+						error = "timeout",
+						message = "timeout",
+					}
+				end
 			end
 			return success, unpack(request, 1, request.n)
 		end,
 	}
-	return self
 end
 
 --------------------------------------------------------------------------------
 
 function newchannel(self, reference)
 	local except
-	for _, profile in ipairs(reference.profiles) do                               --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",profile.tag,"]")
-		local tag = profile.tag
-		local channels = self.channels[tag]
-		local profiler = self.profiler[tag]
-		if channels and profiler then
-			profiler, except = profiler:decode(profile.profile_data)
-			if profiler then
-				local objectkey = except
-				result, except = channels:retrieve(profiler)
-				if result then
-					local ok
-					if result:unlocked("read") then -- channel might be broken
-						repeat ok, except = self:readchannel(result, 0) until not ok
-						if except.what == "timeout" then
-							ok = true
-						else
-							result:close()
-							result, except = channels:retrieve(profiler)
-							if result then ok = true end
-						end
+	for _, encoded in ipairs(reference.profiles) do                               --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",encoded.tag,"]")
+		local channels = self.channels
+		local referrer = self.referrer
+		local result
+		result, except = referrer:decodeprofile(encoded)
+		if result then
+			local profile, objectkey = result, except
+			result, except = channels:retrieve(profile)
+			if result then
+				local sock2channel = self.sock2channel
+				result = sock2channel[result]
+				local ok
+				if result:unlocked("read") then -- channel might be broken
+					repeat ok, except = self:readchannel(result, 0) until not ok
+					if except.what == "timeout" then
+						ok = true
 					else
-						ok = true -- channel is being read, so it should be working fine
+						result:close()
+						result, except = channels:retrieve(profile)
+						if result then
+							ok = true
+							result = sock2channel[result]
+						end
 					end
-					if ok then                                                            --[[VERBOSE]] verbose:invoke("got channel from profile with tag ",tag)
-						reference._profiletag = tag
-						reference._profiledata = profiler
-						return result, objectkey
-					end
+				else
+					ok = true -- channel is being read, so it should be working fine
+				end
+				if ok then                                                            --[[VERBOSE]] verbose:invoke("got channel from profile with tag ",profile.tag)
+					reference._profile = profile
+					return result, objectkey
 				end
 			end
-			except.completed = "COMPLETED_NO"
-			except.profiletag = tag
-			except.profiledata = profiler
-			break
 		end
+		except.completed = "COMPLETED_NO"
+		except.profile = encoded
 	end
 	if except == nil then                                                         --[[VERBOSE]] verbose:invoke("[no supported profile found]")
 		except = Exception{ "badversion",
@@ -201,7 +209,7 @@ function sendrequest(self, reference, operation, ...)
 	local request = self:makerequest(channel, reference, operation, ...)          --[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",operation.name,"'")
 	if channel then
 		local success
-		success, except = self:sendmsg(channel, RequestID, request,
+		success, except = channel:send(RequestID, request,
 		                               request.inputs, request)
 		if success then
 			if not request.response_expected then
@@ -226,7 +234,7 @@ function reissue(self, request, channel, except)
 	if channel then                                                               --[[VERBOSE]] verbose:invoke(true, "reissue request for operation '",request.operation,"'")
 		register(channel, request)
 		local success
-		success, except = self:sendmsg(channel, RequestID, request,
+		success, except = channel:send(RequestID, request,
 		                               request.inputs, request)                     --[[VERBOSE]] verbose:invoke(false, "reissue",success and "d successfully" or " failed")
 		if success then return true end
 		unregister(channel, request.request_id)
@@ -248,7 +256,7 @@ function doreply(self, replied, header, decoder)
 	if status == "NO_EXCEPTION" then                                              --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
 		local outputs = replied.outputs
 		local count = #outputs
-		local ok, result
+		local ok, result = true
 		for i = 1, count do
 			ok, result = pcall(decoder.get, decoder, outputs[i])
 			if not ok then
@@ -307,7 +315,7 @@ function doreply(self, replied, header, decoder)
 end
 
 function readchannel(self, channel, timeout)
-	local msgid, header, decoder = self:receivemsg(channel, timeout)
+	local msgid, header, decoder = channel:receive(timeout)
 	if msgid == ReplyID then
 		local replied = unregister(channel, header.request_id)
 		if replied then
@@ -316,7 +324,7 @@ function readchannel(self, channel, timeout)
 			end
 			return true
 		end                                                                         --[[VERBOSE]] verbose:invoke("got reply for invalid request ID: ",header.request_id)
-		msgid, header = self:sendmsg(channel, MessageErrorID)
+		msgid, header = channel:send(MessageErrorID)
 		if msgid then return true end
 	elseif msgid == CloseConnectionID then                                        --[[VERBOSE]] verbose:invoke("got remote request to close channel")
 		local channelof = self.channelof
@@ -337,7 +345,7 @@ function readchannel(self, channel, timeout)
 			error = "remote message error",
 		}
 	elseif MessageType[msgid]~=nil or (msgid==nil and header.reason=="badversion") then
-		msgid, header = self:sendmsg(channel, MessageErrorID)
+		msgid, header = channel:send(MessageErrorID)
 		if msgid then return true end
 	end
 	if header.what ~= "timeout" then
@@ -379,27 +387,9 @@ local ReplyFalse = {
 }
 
 function OperationRequester:_is_equivalent(reference, operation, other)
-	otherref = other.__reference
-	if otherref then
-		local tags = {}
-		for _, profile in ipairs(otherref.profiles) do
-			tags[profile.tag] = profile
-		end
-		for _, profile in ipairs(reference.profiles) do
-			local tag = profile.tag
-			local other = tags[tag]
-			if other then
-				local profiler = self.profiler[tag]
-				if
-					profiler and
-					profiler:equivalent(profile.profile_data, other.profile_data)
-				then
-					return ReplyTrue
-				end
-			end
-		end
-	end
-	return ReplyFalse
+	return self.referrer:isequivalent(reference, other.__reference)
+	   and ReplyTrue
+	    or ReplyFalse
 end
 
 function OperationReplier:_non_existent(request)

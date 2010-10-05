@@ -9,7 +9,7 @@ module "oil.builder.typed.client"
 ProxyManager = arch.ProxyManager{require "oil.kernel.typed.Proxies"}
 
 function create(comps)
-	setfenv(basic.create, _M)
+	setfenv(basic.create, _M) -- to use the 'ProxyManager' factory above
 	comps = basic.create(comps)
 	setfenv(basic.create, basic)
 	return comps

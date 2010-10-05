@@ -8,22 +8,22 @@ local sysex     = require "oil.corba.idl.sysex"                                 
 
 module "oil.arch.corba.common"
 
--- TYPES
+-- IDL typing information
 TypeRepository = component.Template({
 	registry  = port.Facet,
 	compiler  = port.Facet,
 	delegated = port.Receptacle,
 }, base.TypeRepository)
 
--- MARSHALING
+-- CDR marshaling
 ValueEncoder = component.Template{
 	codec    = port.Facet,
 	proxies  = port.Receptacle,
 	servants = port.Receptacle,
 }
 
--- REFERENCES
-ReferenceProfiler = component.Template{
+-- IOR references
+IORProfiler = component.Template{
 	profiler = port.Facet,
 	codec    = port.Receptacle,
 }
@@ -37,20 +37,16 @@ ObjectReferrer = component.Template{
 function assemble(components)
 	arch.start(components)
 	
-	-- IDL DEFINITIONS
-	TypeRepository.types:register(sysex)
+	TypeRepository.types:register(sysex) -- IDL of standard system exceptions
 	
-	-- MARSHALING
-	CDREncoder.proxies   = ProxyManager.proxies
-	CDREncoder.servants  = ServantManager.servants
-
-	-- REFERENCES
-	ObjectReferrer.codec      = CDREncoder.codec
-	ObjectReferrer.servants   = ServantManager.servants
-	for tag, IORProfiler in pairs(IORProfilers) do
-		IORProfiler.codec            = CDREncoder.codec
-		ObjectReferrer.profiler[tag] = IORProfiler.profiler
-	end
+	ValueEncoder.proxies = proxykind[ proxykind[1] ].proxies
+	ValueEncoder.servants = ServantManager.servants
+	
+	IIOPProfiler.codec = ValueEncoder.codec
+	
+	ObjectReferrer.codec = ValueEncoder.codec
+	ObjectReferrer.profiler[0] = IIOPProfiler.profiler
+	ObjectReferrer.profiler.iiop = IIOPProfiler.profiler
 	
 	arch.finish(components)
 end

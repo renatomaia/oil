@@ -10,20 +10,14 @@ ProxyManager = component.Template{
 	proxies   = port.Facet,
 	requester = port.Receptacle,
 	referrer  = port.Receptacle,
-	servants  = port.Receptacle,
 }
 
 function assemble(components)
 	arch.start(components)
-	ProxyManager.requester = OperationRequester.requests
-	ProxyManager.referrer  = ObjectReferrer.references
-	ProxyManager.servants  = ServantManager.servants
-	
-	for _, proxykind in ipairs(extraproxies) do
-		local ProxyManager = extraproxies[proxykind]
+	for _, kind in ipairs(proxykind) do
+		local ProxyManager = proxykind[kind]
 		ProxyManager.requester = OperationRequester.requests
-		ProxyManager.referrer  = ObjectReferrer.references
-		ProxyManager.servants  = ServantManager.servants
+		ProxyManager.referrer = ObjectReferrer.references
 	end
 	arch.finish(components)
 end

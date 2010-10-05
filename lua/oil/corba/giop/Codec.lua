@@ -23,7 +23,7 @@
 --   long()          Unmarshal an integer type long value                     --
 --   ushort()        Unmarshal an integer type unsigned short value           --
 --   ulong()         Unmarshal an integer type unsigned long value            --
---   float()         Unmarshal a floating-point numeric type value            --
+--   float()         Unmarshal a floating-point nxmeric type value            --
 --   double()        Unmarshal a double-precision floating-point num. value   --
 --   boolean()       Unmarshal a boolean type value                           --
 --   char()          Unmarshal a character type value                         --
@@ -436,14 +436,16 @@ function Encoder:Object(value, idltype)                                         
 		else
 			assert.type(value, "table", "object reference", "MARSHAL")
 			reference = value.__reference
-			if not reference or reference == value then
-				local servants = self.context.servants
+			if not reference then
+				local servants = self.servants
 				if servants then                                                        --[[VERBOSE]] verbose_marshal(true, "implicit servant creation")
-					local objtype = servants:resolvetype(value) or idltype
-					value = assert.results(servants:register(value, nil, objtype))        --[[VERBOSE]] verbose_marshal(false)
+					value = assert.results(servants:register{
+						__servant = value,
+						__type = servants.getfield(value, "__type") or idltype,
+					})                                                                    --[[VERBOSE]] verbose_marshal(false)
 					reference = value.__reference
 				else
-					assert.illegal(value, "Object, unable to create from value", "MARHSALL")
+					assert.illegal(value, "Object, unable to create from value", "MARHSAL")
 				end
 			end
 		end
@@ -612,8 +614,10 @@ end
 
 function Encoder:encapsulate(value)
 	local cursor = (self.previousend or 0) + self.cursor
+	local Encoder = oo.getclass(self)
 	local encoder = Encoder{
-		context = self.context,
+		servants = self.servants,
+		proxies = self.proxies,
 		history = self.history or { [value] = cursor-4 },
 		previousend = cursor-1 + 4, -- adds the size of the OctetSeq count
 		indirection = indirection,
@@ -775,10 +779,20 @@ function Decoder:Object(idltype)                                                
 	if ior.type_id == "" then                                                     --[[VERBOSE]] verbose_unmarshal "got a null reference"
 		ior = nil
 	else
-		local proxies = self.context.proxies
-		if proxies then                                                             --[[VERBOSE]] verbose_unmarshal(true, "retrieve proxy for referenced object")
+		local servants = self.servants
+		if servants ~= nil and self.localrefs == "implementation" then
+			local entry = servants:islocal(ior)
+			if entry ~= nil then                                                      --[[VERBOSE]] verbose_unmarshal("local object with key '",objkey,"' restored") verbose_unmarshal(false)
+				return entry.__servant
+			end
+		end
+		local proxies = self.proxies
+		if proxies ~= nil then                                                      --[[VERBOSE]] verbose_unmarshal(true, "retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
-			ior = assert.results(proxies:resolve(ior, idltype), "MARSHAL")            --[[VERBOSE]] verbose_unmarshal(false)
+			ior = assert.results(proxies:newproxy{
+				__reference = ior,
+				__type = idltype,
+			}, "MARSHAL")                                                             --[[VERBOSE]] verbose_unmarshal(false)
 		end
 	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
 	return ior
@@ -894,8 +908,10 @@ end
 
 function Decoder:encapsulate(stream, value)
 	local cursor = (self.previousend or 0) + self.cursor
+	local Decoder = oo.getclass(self)
 	local decoder = Decoder{
-		context = self.context,
+		servants = self.servants,
+		proxies = self.proxies,
 		data = stream,
 		history = self.history or { [cursor -#stream -4 -4] = value },
 		previousend = cursor-1 - #stream,
@@ -954,7 +970,8 @@ end
 function decoder(self, octets, getorder)
 	local decoder = self.Decoder{
 		data = octets,
-		context = self,
+		servants = self.servants,
+		proxies = self.proxies,
 	}
 	if getorder then decoder:order(decoder:boolean()) end
 	return decoder
@@ -962,7 +979,10 @@ end
 
 -- NOTE: Presence of a parameter indicates an encapsulated octet-stream.
 function encoder(self, putorder)
-	local encoder = self.Encoder{ context = self }
+	local encoder = self.Encoder{
+		servants = self.servants,
+		proxies = self.proxies,
+	}
 	if putorder then encoder:boolean(NativeEndianess) end
 	return encoder
 end

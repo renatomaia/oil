@@ -1,6 +1,7 @@
 local oo = require "oil.oo"
 local class = oo.class
 
+local assert = require "oil.assert"
 local Exception = require "oil.Exception"
 
 local giop = require "oil.corba.giop"                                           --[[VERBOSE]] local verbose = require "oil.verbose"
@@ -38,7 +39,7 @@ completed = "COMPLETED_MAYBE"
 
 function _ENV:__new(except, ...)
 	if except then
-		local error = except.error
+		local error = OiLEx2SysEx[except.error] or except.error
 		local sysex = SystemExceptionIDs[error]
 		if sysex then
 			except[1] = sysex

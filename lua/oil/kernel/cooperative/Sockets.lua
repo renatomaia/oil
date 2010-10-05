@@ -4,8 +4,8 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local _G = require "_G"
-local next = _G.create
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local next = _G.next
 
 local coroutine = require "coroutine"
 local newthread = coroutine.create
@@ -25,6 +25,34 @@ local class = oo.class
 
 local Sockets = require "oil.kernel.base.Sockets"
 
+
+
+local function findupvalue(package, name)
+	local debug = require "debug"
+	local math = require "math"
+	for _, func in pairs(package) do
+		if type(func) == "function" then
+			for i = 1, math.huge do
+				local upname, value = debug.getupvalue(func, i)
+				if upname == nil then break end
+				if upname == name then return value end
+			end
+		end
+	end
+	error("upvalue "..name.." not found!")
+end
+local watchsocket = findupvalue(socket, "watchsocket")
+local forgetsocket = findupvalue(socket, "forgetsocket")
+local readingsockets = findupvalue(socket, "reading")
+
+local indexFunc = _G.getmetatable(findupvalue(socket, "WrapperOf")).__index
+local funcUpVal = findupvalue({indexFunc}, "func")
+local CoSocket = findupvalue({funcUpVal}, "CoSocket")
+function CoSocket:settimelimit(timestamp)
+	self:settimeout(timestamp, "isTimestamp")
+end
+
+
 module(...); local _ENV = _M
 
 
@@ -38,13 +66,14 @@ local EventToken = {}
 local function notifierbody(self, socket)
 	yield() -- initialization finished
 	while true do
+		forgetsocket(socket.__object, readingsockets)
 		readyOf[self][socket] = true
 		yield("yield", threadOf[self], EventToken)
 	end
 end
 
 local function notifier(...)
-	local thread = newthread(getevent)
+	local thread = newthread(notifierbody)
 	resume(thread, ...)
 	return thread
 end
@@ -55,8 +84,9 @@ EventPoll = class()
 function EventPoll:add(socket)
 	local thread = self[socket]
 	if thread == nil then
-		thread = notifier(self, socket)
+		thread = notifier(self, socket)                                             --[[VERBOSE]] verbose.viewer.labels[thread] = "SocketWatcher(".._G.tostring(socket)..")"
 		self[socket] = thread
+		watchsocket(socket.__object, readingsockets) -- register socket for network event watch
 		return yield("schedule", thread, "wait", socket.readevent) ~= nil
 	end
 end
@@ -66,7 +96,7 @@ function EventPoll:remove(socket)
 	if thread then
 		self[socket] = nil
 		readyOf[self][socket] = nil
-		yield("unschedule", thread) ~= nil
+		yield("unschedule", thread)
 		local thread = threadOf[self]
 		if thread and next(self) == nil then
 			yield("resume", thread)
@@ -80,6 +110,7 @@ function EventPoll:getready(timeout)
 		local socket = next(ready)
 		if socket then
 			ready[socket] = nil
+			watchsocket(socket.__object, readingsockets) -- register socket for network event watch
 			yield("schedule", self[socket], "wait", socket.readevent)
 			return socket
 		elseif next(self) == nil then
@@ -113,7 +144,7 @@ end
 class(_ENV, Sockets)
 
 function _ENV:newsocket(options)
-	return self:setup(options, tcpsocket())
+	return self:setoptions(options, tcpsocket())
 end
 
 function _ENV:newpoll()

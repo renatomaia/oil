@@ -15,11 +15,9 @@ local memoize = tabop.memoize
 local oo = require "oil.oo"
 local class = oo.class
 
-local Proxies = require "oil.kernel.base.Proxies"
-
 module(...); local _ENV = _M
 
-class(_ENV, Proxies)
+class(_ENV)
 
 function _ENV:__init()
 	if self.class == nil then
@@ -65,11 +63,11 @@ function _ENV:__init()
 	end
 end
 
-function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies(true, "new proxy to ",reference," with type ",type)
+function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies(true, "creating new proxy")
 	local type = proxy.__type or self.referrer:typeof(proxy.__reference)
 	local result, except = self.types:resolve(type)
-	if result then
-		result, except = setmetatable(proxy, self.class[type]), nil
+	if result then                                                                --[[VERBOSE]] verbose:proxies("using interface ",result.repID)
+		result, except = setmetatable(proxy, self.class[result]), nil
 	end                                                                           --[[VERBOSE]] verbose:proxies(false)
 	return result, except
 end

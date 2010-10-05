@@ -10,18 +10,14 @@ module "oil.arch.typed.client"
 ProxyManager = component.Template({
 	types   = port.Receptacle,
 	indexer = port.Receptacle,
-	caches  = port.Facet, -- TODO:[maia] use it to reset method cache when type
-}, base.ProxyManager)   --             definition changes.
+}, base.ProxyManager)
 
 function assemble(components)
 	arch.start(components)
-	ProxyManager.indexer = TypeRepository.indexer
-	ProxyManager.types   = TypeRepository.types
-	
-	for _, proxykind in ipairs(extraproxies) do
-		local ProxyManager = extraproxies[proxykind]
+	for _, kind in ipairs(proxykind) do
+		local ProxyManager = proxykind[kind]
 		ProxyManager.indexer = TypeRepository.indexer
-		ProxyManager.types   = TypeRepository.types
+		ProxyManager.types = TypeRepository.types
 	end
 	arch.finish(components)
 end

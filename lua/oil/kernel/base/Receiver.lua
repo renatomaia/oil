@@ -4,14 +4,13 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local varargs = require "varargs"
-local pack = varargs.pack
+local vararg = require "vararg"
+local pack = vararg.pack
 
 local oo = require "oil.oo"
 local class = oo.class
 
 local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
-local Timeout = Exception.Timeout
 
 module(...); local _ENV = _M
 
@@ -23,7 +22,7 @@ end
 
 function _ENV:probe(timeout)
 	local result, except = self.pending
-	if not result then
+	if result == nil then
 		local listener = self.listener
 		repeat
 			result, except = listener:getchannel(timeout)
@@ -31,7 +30,7 @@ function _ENV:probe(timeout)
 				result, except = result:getrequest(0)
 				if result then
 					self.pending = result
-				elseif except == Timeout then
+				elseif except.error == "timeout" then
 					except = nil
 				end
 			end
@@ -61,7 +60,10 @@ function _ENV:start()
 		self.stopped = nil
 		return values()
 	end
-	return nil, Exception.AlreadyStarted
+	return nil, Exception{
+		error = "already started",
+		message = "already started",
+	}
 end
 
 function _ENV:stop(...)

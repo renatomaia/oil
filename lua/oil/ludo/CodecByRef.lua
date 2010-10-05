@@ -60,10 +60,10 @@ end
 local function serialproxy(self, value, id)                                     --[[VERBOSE]] verbose:marshal("marshalling proxy for value ",value)
 	self[value] = self.namespace..":value("..id..")"
 	self:write(self.namespace,":value(",id,",'table',")
-	self:write("proxies:resolve(")
+	self:write("proxies:newproxy{__reference=")
 	local reference = self.servants:register(value).__reference
 	StringStream.table(self, reference, getidfor(reference))
-	self:write("))")
+	self:write("})")
 end
 
 local function serialtable(self, value, id)                                     --[[VERBOSE]] verbose:marshal(true, "marshalling of table ",value)
@@ -71,9 +71,9 @@ local function serialtable(self, value, id)                                     
 	if reference then                                                             --[[VERBOSE]] verbose:marshal "table is a proxy"
 		self[value] = self.namespace..":value("..id..")"
 		self:write(self.namespace,":value(",id,",'table',")
-		self:write("proxies:resolve(")
+		self:write("proxies:newproxy{__reference=")
 		StringStream.table(self, reference, getidfor(reference))
-		self:write("))")
+		self:write("})")
 	else
 		local meta = getmetatable(value)
 		if meta and meta.__marshalcopy then                                         --[[VERBOSE]] verbose:marshal "table by copy"

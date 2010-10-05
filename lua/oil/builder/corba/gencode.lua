@@ -4,10 +4,8 @@ local arch    = require "oil.arch.corba.common"
 
 module "oil.builder.corba.gencode"
 
-CDREncoder = arch.ValueEncoder{require "oil.corba.giop.CodecGen"  }
+ValueEncoder = arch.ValueEncoder{require "oil.corba.giop.CodecGen"  }
 
 function create(comps)
-	comps = builder.create(_M, comps)
-	comps.ValueEncoder = comps.CDREncoder
-	return comps
+	return builder.create(_M, comps)
 end

@@ -7,32 +7,24 @@ local arch      = require "oil.arch"                                            
 module "oil.arch.corba.client"
 
 OperationRequester = component.Template{
-	requests  = port.Facet,
-	codec     = port.Receptacle,
-	profiler  = port.HashReceptacle,
-	channels  = port.HashReceptacle,
+	requests = port.Facet,
+	codec    = port.Receptacle,
+	channels = port.Receptacle,
+	profiler = port.HashReceptacle,
 }
 
 function assemble(components)
 	arch.start(components)
 	
-	-- GIOP MAPPINGS
-	local IOPClientChannels  = { [0] = ClientChannels }
+	ClientChannels.sockets = BasicSystem.sockets
 	
-	-- REQUESTER
-	OperationRequester.codec = CDREncoder.codec
-
-	-- COMMUNICATION
-	for tag, ClientChannels in pairs(IOPClientChannels) do
-		ClientChannels.sockets           = BasicSystem.sockets
-		OperationRequester.channels[tag] = ClientChannels.channels
-	end
+	OperationRequester.codec = ValueEncoder.codec
+	OperationRequester.channels = ClientChannels.channels
+	OperationRequester.referrer = ObjectReferrer.references -- open IOR profiles
 	
-	-- REFERENCES
-	ObjectReferrer.requester  = OperationRequester.requests
-	for tag, IORProfiler in pairs(IORProfilers) do
-		OperationRequester.profiler[0] = IIOPProfiler
-	end
+	-- this optional depedency is to allow 'ObjectReferrer' to invoke
+	-- 'get_interface' on references to find out their actual interface
+	ObjectReferrer.requester = OperationRequester.requests
 	
 	arch.finish(components)
 end

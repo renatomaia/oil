@@ -201,9 +201,11 @@ function ORB:__new(config)
 	end
 	if self.ServantManager ~= nil then
 		self.ServantManager.prefix = config.keyprefix
-		self.ServantManager.map = config.objectmap or self.ServantManager.map
+		if config.objectmap ~= nil then
+			self.ServantManager.map = self.ServantManager.map
+		end
 	end
-	assert(self.RequestReceiver.acceptor:initialize(self))
+	assert(self.RequestReceiver.acceptor:setup(self))
 	
 	return self
 end
@@ -318,22 +320,18 @@ end
 -- @usage oil.newproxy("corbaloc::host:8080/Key", "IDL:HelloWorld/Hello:1.0")  .
 --
 function ORB:newproxy(reference, kind, iface)
-	local operation
 	if type(reference) == "string" then
-		operation = "fromstring"
-	else
-		operation = "resolve"
-		iface = iface or reference.__type
-		reference = reference.__reference or reference
+		local except
+		reference, except = self.ObjectReferrer:decode(reference)
+		if reference == nil then return nil, except end
 	end
-	local proxies
-	if kind == nil then
-		proxies = self.ProxyManager.proxies
-	else
-		proxies = self.extraproxies[kind] or
-		          illegal(kind, "proxy kind")
-	end
-	return assert(proxies[operation](proxies, reference, iface))
+	local proxykind = self.proxykind
+	local ProxyManager = proxykind[ kind or proxykind[1] ]
+	if ProxyManager == nil then illegal(kind, "proxy kind") end
+	return assert(ProxyManager.proxies:newproxy{
+		__reference = reference,
+		__type = iface,
+	})
 end
 
 --------------------------------------------------------------------------------
@@ -368,9 +366,13 @@ end
 --
 function ORB:narrow(object, type)
 	asserttype(object, "table", "object proxy")
-	if type then asserttype(type, "string", "interface definition") end
 	if object then
-		return assert(self.ProxyManager.proxies:newproxy(object.__reference, type))
+		local proxykind = self.proxykind
+		local ProxyManager = fatories[fatories[1]]
+		return assert(ProxyManager.proxies:newproxy{
+			__reference = object.__reference,
+			__type = type,
+		})
 	end
 end
 
@@ -407,7 +409,11 @@ end
 function ORB:newservant(impl, key, type)
 	if impl == nil then illegal(impl, "servant's implementation") end
 	if key ~= nil then asserttype(key, "string", "servant's key") end
-	return assert(self.ServantManager.servants:register(impl, key, type))
+	return assert(self.ServantManager.servants:register{
+		__servant = impl,
+		__objkey = key,
+		__type = type,
+	})
 end
 
 --------------------------------------------------------------------------------
@@ -436,7 +442,7 @@ function ORB:deactivate(object, type)
 		illegal(object,
 			"object reference (servant, implementation or object key expected)")
 	end
-	return self.ServantManager.servants:remove(object, type)
+	return self.ServantManager.servants:unregister(object, type)
 end
 
 --------------------------------------------------------------------------------
@@ -468,8 +474,8 @@ end
 --
 -- @usage while oil.pending() do oil.step() end                                .
 --
-function ORB:pending()
-	return assert(self.RequestReceiver.acceptor:hasrequest())
+function ORB:pending(timeout)
+	return assert(self.RequestReceiver.acceptor:probe(timeout))
 end
 
 --------------------------------------------------------------------------------
@@ -482,8 +488,8 @@ end
 --
 -- @usage while oil.pending() do oil.step() end                                .
 --
-function ORB:step()
-	return assert(self.RequestReceiver.acceptor:acceptone())
+function ORB:step(timeout)
+	return assert(self.RequestReceiver.acceptor:step(timeout))
 end
 
 --------------------------------------------------------------------------------
@@ -498,7 +504,7 @@ end
 -- @see init
 --
 function ORB:run()
-	return assert(self.RequestReceiver.acceptor:acceptall())
+	return assert(self.RequestReceiver.acceptor:start())
 end
 
 --------------------------------------------------------------------------------
@@ -510,7 +516,9 @@ end
 -- @usage oil.shutdown()
 --
 function ORB:shutdown()
-	return assert(self.RequestReceiver.acceptor:halt())
+	local acceptor = self.RequestReceiver.acceptor
+	assert(acceptor:stop())
+	return assert(acceptor:shutdown())
 end
 
 --------------------------------------------------------------------------------
@@ -591,9 +599,9 @@ end
 -- @usage oil.setexcatch(function(_, except) error(tostring(except)) end)
 --
 function ORB:setexcatch(handler, type)
-	local managers = { self.ProxyManager }
-	for _, name in ipairs(self.extraproxies) do
-		managers[#managers+1] = self.extraproxies[name]
+	local managers = {}
+	for _, name in ipairs(self.proxykind) do
+		managers[#managers+1] = self.proxykind[name]
 	end
 	for _, manager in pairs(managers) do
 		assert(manager.proxies:excepthandler(handler, type))
@@ -698,9 +706,8 @@ function ORB:setinterceptor(iceptor, kind)
 				__object = self.OperationRequester.requests,
 				interceptor = iceptor,
 			}
-			self.ProxyManager.requester = wrapper
-			for _, proxykind in ipairs(self.extraproxies) do
-				local ProxyManager = self.extraproxies[proxykind]
+			for _, kind in ipairs(self.proxykind) do
+				local ProxyManager = self.proxykind[kind]
 				ProxyManager.requester = wrapper
 			end
 		end
@@ -804,7 +811,8 @@ end
 function main(main, ...)
 	asserttype(main, "function", "main function")
 	if cothread then
-		cothread.run(coroutine.create(main), ...)
+		local thread = coroutine.create(main)                                       --[[VERBOSE]] verbose.viewer.labels[thread] = "OiL main"
+		cothread.run(thread, ...)
 	else
 		local success, except = xpcall(main, extracer)
 		if not success then error(except, 2) end

@@ -16,8 +16,6 @@ local oo = require "oil.oo"
 local class = oo.class
 
 local Exception = require "oil.Exception"
-local Timeout = Exception.Timeout
-local Terminated = Exception.Terminated
 
 local Receiver = require "oil.kernel.base.Receiver"                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
@@ -50,7 +48,10 @@ function _ENV:probe(timeout)
 			end
 			if pending then return true end
 		end
-		return nil, Timeout
+		return nil, Exception{
+			error = "timeout",
+			message = "timeout",
+		}
 	end
 	-- 'CoReceiver' was not started yet, then behave as 'Receiver'
 	return Receiver.probe(self, timeout)
@@ -79,11 +80,11 @@ function _ENV:dochannel(channel)
 	repeat
 		result, except = channel:getrequest()
 		if result then
-			local dispatcher = newthread(self.dorequest)
+			local dispatcher = newthread(self.dorequest)                              --[[VERBOSE]] verbose.viewer.labels[dispatcher] = "Dispatcher('"..result.operation.."')"
 			yield("resume", dispatcher, self, result)
 		end
 	until not result
-	if except ~= Terminated then
+	if except.error ~= "terminated" then
 		self:stop(nil, except)
 	end
 end
@@ -97,12 +98,11 @@ function _ENV:dolistener()
 		result, except = listener:getchannel()
 		if result then
 			result:acquire()
-			local reader = newthread(self.dochannel)
+			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] verbose.viewer.labels[reader] = "Reader(".._G.tostring(result).."->"..self.listener.configs.host..":"..self.listener.configs.port..")"
 			readers[reader] = result
 			yield("resume", reader, self, result)
 		end
 	until not result
-	self.readers = nil
 	self:stop(nil, except)
 end
 
@@ -117,17 +117,21 @@ function _ENV:start()
 		end
 		-- start processing new requests
 		self.thread = running()
-		self.acceptor = newthread(self.dolistener)
+		self.acceptor = newthread(self.dolistener)                                  --[[VERBOSE]] verbose.viewer.labels[self.acceptor] = "Acceptor("..self.listener.configs.host..":"..self.listener.configs.port..")"
 		return yield("yield", self.acceptor, self)
 	end
-	return nil, Exception.AlreadyStarted
+	return nil, Exception{
+		error = "already started",
+		message = "already started",
+	}
 end
 
 function _ENV:stop(...)
 	local thread = self.thread
 	if thread then
 		-- unschedule 'channel readers' and release their channels
-		for reader, channel in pairs(self.readers) do
+		local readers = self.readers
+		for reader, channel in pairs(readers) do
 			yield("unschedule", reader)
 			channel:release()
 			readers[reader] = nil

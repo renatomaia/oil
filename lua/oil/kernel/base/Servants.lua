@@ -6,6 +6,7 @@
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local getmetatable = _G.getmetatable
+local pcall = _G.pcall
 local rawget = _G.rawget
 local rawset = _G.rawset
 local luatostring = _G.tostring
@@ -84,12 +85,6 @@ end
 class(_ENV)
 
 _ENV.prefix = "_"
-_ENV.fields = {
-	__proxies = false,
-	__objkey = function(self, entry)
-		return 
-	end,
-}
 
 function _ENV:__init()
 	self.map = self.map or {}
@@ -117,7 +112,7 @@ function _ENV:addentry(entry)
 	local current = map[key]
 	if current == nil then
 		map[key] = entry                                                            --[[VERBOSE]] verbose:servants("object ",entry.__servant," registered with key ",key)
-	elseif current ~= entry then
+	elseif current.__servant ~= entry.__servant then
 		return nil, Exception{
 			error = "badobjkey",
 			message = "object key already in use (got $key)",
@@ -172,4 +167,11 @@ end
 
 function _ENV:retrieve(key)
 	return self.map[key]
+end
+
+function _ENV:islocal(reference)
+	local key = self.referrer:islocal(reference)
+	if key then
+		return self.map[key]
+	end
 end

@@ -16,12 +16,14 @@ local Exception = require "oil.Exception"
 
 module(...); local _ENV = _M
 
-
 class(_ENV)
 
+context = false
+
 function _ENV:dispatch(request)
-	local object = self.servants:retrieve(request.objectkey)
-	if object then
+	local entry = self.context.servants:retrieve(request.objectkey)
+	if entry then
+		local object = entry.__servant
 		local method = object[request.operation]
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
 			request:setreply(pcall(method, object, request:getparams()))

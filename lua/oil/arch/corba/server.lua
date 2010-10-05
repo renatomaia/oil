@@ -8,28 +8,27 @@ module "oil.arch.corba.server"
 
 RequestListener = component.Template{
 	requests = port.Facet,
-	codec    = port.Receptacle,
+	codec = port.Receptacle,
+	channels = port.Receptacle,
 	servants = port.Receptacle,
-	channels = port.HashReceptacle,
+	indexer = port.Receptacle,
 }
 
 function assemble(components)
 	arch.start(components)
 	
-	-- GIOP MAPPINGS
-	local IOPServerChannels  = { [0] = ServerChannels }
+	ServerChannels.sockets = BasicSystem.sockets
+	ServerChannels.dns = BasicSystem.dns
 	
-	-- LISTENER
-	RequestListener.codec    = CDREncoder.codec
-	RequestListener.servants = ServantManager.servants
-	RequestListener.indexer  = TypeRepository.indexer
+	RequestListener.codec = ValueEncoder.codec
+	RequestListener.channels = ServerChannels.channels
+	RequestListener.servants = ServantManager.servants -- get servant interface
+	RequestListener.indexer = TypeRepository.indexer   -- get interface ops/types
 	
-	-- COMMUNICATION
-	for tag, ServerChannels in pairs(IOPServerChannels) do
-		ServerChannels.sockets        = BasicSystem.sockets
-		ServerChannels.dns            = BasicSystem.dns
-		RequestListener.channels[tag] = ServerChannels.channels
-	end
+	-- this optional dependency is to allow 'ObjectReferrer' to know the address
+	-- the ORB is listening and identify local references (islocal) and create
+	-- references to local servants (newreference).
+	ObjectReferrer.listener = RequestListener.requests
 	
 	arch.finish(components)
 end

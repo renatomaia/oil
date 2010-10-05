@@ -40,28 +40,6 @@ function _ENV:newproxy(proxy)                                                   
 	return setmetatable(proxy, self.class)
 end
 
-function _ENV:fromstring(reference, ...)
-	local result, except = self.referrer:decode(reference)
-	if result then
-		result, except = self:resolve(result, ...)
-	end
-	return result, except
-end
-
-function _ENV:resolve(reference, ...)
-	local objkey = self.referrer:islocal(reference)
-	if objkey and self.servants then
-		local servants = self.servants
-		if servants then
-			local registered = servants:retrieve(objkey)
-			if registered then                                                        --[[VERBOSE]] verbose:proxies("local object with key '",objkey,"' restored")
-				return registered
-			end
-		end
-	end
-	return self:newproxy({__reference = reference}, ...)
-end
-
 function _ENV:excepthandler(handler)                                            --[[VERBOSE]] verbose:proxies("setting exception handler for proxies")
 	self.class.__exceptions = handler
 	return true

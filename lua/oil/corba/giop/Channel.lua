@@ -10,6 +10,9 @@ local ipairs = _G.ipairs
 local pcall = _G.pcall
 local type = _G.type
 
+local coroutine = require "coroutine"
+local running = coroutine.running
+
 local Mutex = require "cothread.Mutex"
 
 local oo = require "oil.oo"
@@ -25,8 +28,6 @@ local Header_v1_ = giop.Header_v1_
 local MessageHeader_v1_ = giop.MessageHeader_v1_
 
 local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
-local TimeoutException = Exception.Timeout
-local TerminatedException = Exception.Terminated
 
 module(...); local _ENV = _M
 
@@ -91,7 +92,7 @@ function _ENV:getbytes(count, timeout)
 	return nil, except
 end
 
-function _ENV:send(msgtype, message, types, values)                          --[[VERBOSE]] verbose:message(true, "send message ",msgtype," ",message)
+function _ENV:send(msgtype, message, types, values)                             --[[VERBOSE]] verbose:message(true, "send message ",msgtype," ",message)
 	--
 	-- Create GIOP message body
 	--
@@ -183,10 +184,16 @@ function _ENV:receive(timeout)                                                  
 				}
 			end
 		elseif except == "timeout" then
-			except = TimeoutException
+			except = Exception{
+				error = "timeout",
+				message = "timeout",
+			}
 		elseif except == "closed" then
 			self.socket:close()
-			except = TerminatedException
+			except = Exception{
+				error = "terminated",
+				message = "terminated",
+			}
 		else
 			except = Exception{
 				error = "badchannel",
@@ -208,7 +215,7 @@ function _ENV:receive(timeout)                                                  
 		if result then
 			decoder:append(result)
 			local header = self.messagetype[type]
-			if header then                                                            --[[VERBOSE]] verbose:message(false, "got message ",type, header)
+			if header then                                                            --[[VERBOSE]] verbose:message(false, "got message ",type)
 				return type, decoder:struct(header), decoder
 			elseif header == nil then
 				except = Exception{
@@ -220,22 +227,28 @@ function _ENV:receive(timeout)                                                  
 				}
 			end
 		elseif except == "timeout" then
-			except = TimeoutException
+			except = Exception{
+				error = "timeout",
+				message = "timeout",
+			}
 			self.pendingheadertype = type
 			self.pendingheadersize = header
 			self.pendingheaderdecoder = decoder
 		elseif except == "closed" then
 			self.socket:close()
-			except = TerminatedException
+			except = Exception{
+				error = "terminated",
+				message = "terminated",
+			}
 		else
 			except = Exception{
 				error = "badchannel",
 				message = "unable to read from $channel ($errmsg)",
-				errmsg = except
+				errmsg = except,
 				channel = self,
 			}
 		end
-	end                                                                           --[[VERBOSE]] verbose:message(false, "error reading message: ",except)
+	end                                                                           --[[VERBOSE]] if except.error ~= "terminated" then verbose:message(false, "error reading message: ",except) end
 	return nil, except, self
 end
 

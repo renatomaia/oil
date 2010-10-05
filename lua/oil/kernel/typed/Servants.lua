@@ -33,6 +33,23 @@ function _ENV:makeentry(entry)
 	return Servants.makeentry(self, entry)
 end
 
+function _ENV:addentry(entry)
+	local key = entry.__objkey
+	local map = self.map
+	local current = map[key]
+	if current == nil then
+		map[key] = entry                                                            --[[VERBOSE]] verbose:servants("object ",entry.__servant," registered with key ",key)
+	elseif current.__servant ~= entry.__servant
+	    or current.__type ~= entry.__type then
+		return nil, Exception{
+			error = "badobjkey",
+			message = "object key already in use (got $key)",
+			key = key,
+		}
+	end
+	return entry
+end
+
 function _ENV:unregister(value, type)
 	if type(value) ~= "string" then
 		if getclass(value) == Registered then

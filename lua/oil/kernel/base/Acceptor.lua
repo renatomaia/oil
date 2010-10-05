@@ -24,15 +24,16 @@ function AccessPoint:accept(timeout)
 		socket, except = poll:getready(timeout)
 		if socket == self.socket then
 			socket, except = socket:accept()
-			if socket then
+			if socket then                                                            --[[VERBOSE]] verbose:channels "new connection accepted"
 				socket = self.sockets:setoptions(self.options, socket)
 				poll:add(socket)
 			else                                                                      --[[VERBOSE]] verbose:channels("error when accepting connection (",except,")")
+				if except == "closed" then poll:remove(socket) end
 				except = Exception{
 					error = "badconnect",
 					message = "unable to accept connection ($errmsg)",
 					errmsg = except,
-				}                                                                       --[[VERBOSE]] else verbose:channels "new connection accepted"
+				}
 			end
 		elseif socket then
 			socket:settimeout(0)
@@ -43,9 +44,15 @@ function AccessPoint:accept(timeout)
 				socket:settimeout(nil)
 			end
 		elseif except == "timeout" then
-			except = Exception.Timeout
+			except = Exception{
+				error = "timeout",
+				message = "timeout",
+			}
 		elseif except == "empty" then
-			except = Exception.Terminated
+			except = Exception{
+				error = "terminated",
+				message = "terminated",
+			}
 		end
 	until socket or except
 	return socket, except
@@ -56,7 +63,7 @@ function AccessPoint:remove(socket)
 end
 
 function AccessPoint:add(socket)
-	self.poll:remove(socket)
+	self.poll:add(socket)
 end
 
 function AccessPoint:close()
@@ -145,11 +152,13 @@ function _ENV:newaccess(configs)
 			port = port,
 		}
 	end                                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
+	local poll = sockets.newpoll()
+	poll:add(socket)
 	return AccessPoint{
 		options = options,
 		socket = socket,
 		sockets = sockets,
 		dns = self.dns,
-		poll = sockets.newpoll(),
+		poll = poll,
 	}
 end

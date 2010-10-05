@@ -16,9 +16,14 @@ module(...); local _ENV = _M
 
 class(_ENV)
 
+context = false
+
 function _ENV:dispatch(request)
-	local object, type = self.servants:retrieve(request.objectkey)
-	if object then
+	local context = self.context
+	local entry = context.servants:retrieve(request.objectkey)
+	if entry then
+		local object = entry.__servant
+		local type = entry.__type
 		local opname = request.operation
 		local opinfo = context.indexer:valueof(type, opname)
 		if opinfo then

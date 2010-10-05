@@ -9,9 +9,13 @@ local assert = _G.assert
 local ipairs = _G.ipairs
 local pairs = _G.pairs
 local pcall = _G.pcall
+local select = _G.select
 local type = _G.type
 local unpack = _G.unpack
 local stderr = _G.io and _G.io.stderr
+
+local tabops = require "loop.table"
+local memoize = tabops.memoize
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -30,8 +34,6 @@ local MessageType = giop.MessageType
 local SystemExceptionIDs = giop.SystemExceptionIDs
 
 local Exception = require "oil.corba.giop.Exception"
-local Terminated = Exception.Terminated
-
 local Channel = require "oil.corba.giop.Channel"                                --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module(...); local _ENV = _M
@@ -108,7 +110,9 @@ function Request:sendreply()                                                    
 	local requestid = self.request_id
 	if channel and channel[requestid] == self then
 		success, except = channel:send(ReplyID, self:getreply())
-		if not success and except~=Terminated and SystemExceptions[except[1]] then  --[[VERBOSE]] verbose:listen("got system exception ",except," during reply")
+		if not success
+		and except.error ~= "terminated"
+		and SystemExceptions[except[1]] then                                        --[[VERBOSE]] verbose:listen("got system exception ",except," during reply")
 			except.completed = "COMPLETED_YES"
 			success, except = channel:send(ReplyID, sysexreply(requestid, except))
 		end
@@ -169,7 +173,10 @@ end
 
 --------------------------------------------------------------------------------
 
-RequestChannel = class({}, Channel)
+RequestChannel = class({
+	pending = 0,
+	closing = false,
+}, Channel)
 
 function RequestChannel:makerequest(header, decoder)
 	header = Request(header)
@@ -177,9 +184,10 @@ function RequestChannel:makerequest(header, decoder)
 	if not self[requestid] then
 		header.objectkey = header.object_key
 		local listener = self.listener
-		local target, iface = listener.servants:retrieve(header.object_key)
-		if target then
-			header.target = target
+		local entry = listener.servants:retrieve(header.object_key)
+		if entry then
+			local iface = entry.__type
+			header.target = entry.__servant
 			header.interface = iface
 			local member = listener.indexer:valueof(iface, header.operation)
 			if member then                                                            --[[VERBOSE]] verbose:listen("got request for ",header.operation)
@@ -242,11 +250,7 @@ function RequestChannel:getrequest(timeout)
 				result, except = self:send(MessageErrorID)
 			elseif header.error == "badversion" then
 				result, except = self:send(MessageErrorID)
-				local socket = self.socket
-				self.listener.access:remove(socket)
-				socket:close()
-			elseif header == Terminated then
-				result, except = nil, nil -- no request, nor error
+				self.socket:close()
 			else
 				result, except = nil, header
 			end
@@ -272,29 +276,36 @@ function _ENV:setup(configs)
 		self.configs = configs -- delay actual initialization (see 'getaccess')
 		return true
 	end
-	return nil, Exception.AlreadyStarted
+	return nil, Exception{
+		error = "already started",
+		message = "already started",
+	}
 end
 
 function _ENV:getaccess(probe)
 	local result, except = self.access
 	if result == nil and not probe then
-		result, except = self.configs, Exception.Terminated
-		if result ~= nil then
-			result, except = self.sockets:newaccess(result)
+		result = self.configs
+		if result == nil then
+			except = Exception{
+				error = "terminated",
+				message = "terminated",
+			}
+		else
+			result, except = self.channels:newaccess(result)
 			if result ~= nil then
 				self.access = result
-				self.channelof = memoize(function(socket)
+				self.sock2channel = memoize(function(socket)
 					return RequestChannel{
-						pending = 0,
 						socket = socket,
 						listener = self,
 						codec = self.codec,
 					}
 				end, "k")
 				local host, port, addresses = result:address()
-				configs.host = host
-				configs.port = port
-				configs.addresses = addresses
+				self.configs.host = host
+				self.configs.port = port
+				self.configs.addresses = addresses
 			end
 		end
 	end
@@ -326,7 +337,7 @@ function _ENV:getchannel(timeout)
 	if result ~= nil then
 		result, except = result:accept(timeout)
 		if result ~= nil then
-			result, except = self.channelof[result], nil
+			result, except = self.sock2channel[result], nil
 		end
 	end
 	return result, except
@@ -335,17 +346,17 @@ end
 function _ENV:shutdown()
 	local result, except = self:getaccess()
 	if result then
-		local channelof = self.channelof
+		local sock2channel = self.sock2channel
 		for _, socket in ipairs(result:close()) do
-			local channel = channelof[socket]
+			local channel = sock2channel[socket]
 			if channel.pending > 0 then
 				channel.closing = true
 			else
 				result, except = channel:send(CloseConnectionID)
-				if not result and except~=Terminated then return nil, except end
+				if not result and except.error~="terminated" then return nil, except end
 			end
 		end
-		self.channelof = nil
+		self.sock2channel = nil
 		self.access = nil
 		self.address = nil
 		self.configs = nil
