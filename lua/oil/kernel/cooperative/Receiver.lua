@@ -65,6 +65,7 @@ function processrequest(self, request)
 	if not result and not self.except then
 		self.except = except
 	end
+	return result, except
 end
 
 function getallrequests(self, accesspoint, channel)
@@ -86,7 +87,9 @@ function getallrequests(self, accesspoint, channel)
 			break
 		end
 	until self.except
-	listener:putchannel(channel)
+	if except.reason ~= "closed" then
+		listener:putchannel(channel)
+	end
 	threads[thread] = nil
 end
 
