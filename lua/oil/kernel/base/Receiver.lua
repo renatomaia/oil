@@ -63,11 +63,12 @@ function acceptone(self)                                                        
 	if result then
 		local channel = result
 		result, except = listener:getrequest(channel)
-		if not result and except.reason ~= "closed" then
+		if (result and result ~= true)
+		or (not result and except.reason ~= "closed") then
 			listener:putchannel(channel)
 		end
 		if result and result ~= true then                                           --[[VERBOSE]] verbose:acceptor(true, "dispatching request from accepted channel")
-			result, except = self:processrequest(result)
+			result, except = self:processrequest(result)                              --[[VERBOSE]] verbose:acceptor(false)
 		end
 	end                                                                           --[[VERBOSE]] verbose:acceptor(false)
 	return result, except
@@ -83,7 +84,8 @@ function acceptall(self)
 		if result then
 			local channel = result
 			result, except = listener:getrequest(channel)
-			if not result and except.reason ~= "closed" then
+			if (result and result ~= true)
+			or (not result and except.reason ~= "closed") then
 				listener:putchannel(channel)
 			end
 			if result and result ~= true then                                         --[[VERBOSE]] verbose:acceptor "dispatching request from accepted channel"

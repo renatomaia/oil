@@ -87,7 +87,8 @@ function getallrequests(self, accesspoint, channel)
 			break
 		end
 	until self.except
-	if except.reason ~= "closed" then
+	if (result and result ~= true)
+	or (not result and except.reason ~= "closed") then
 		listener:putchannel(channel)
 	end
 	threads[thread] = nil

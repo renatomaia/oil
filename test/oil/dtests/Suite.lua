@@ -3,6 +3,7 @@ return Suite{
 	MethodInvocation = require "oil.dtests.kernel.MethodInvocation",
 	ExceptionCatch   = require "oil.dtests.kernel.ExceptionCatch",
 	ORBShutdown      = require "oil.dtests.kernel.ORBShutdown",
+	ORBShutdown2     = require "oil.dtests.kernel.ORBShutdown2",
 	ORBRestart       = require "oil.dtests.kernel.ORBRestart",
 	ServantLocator   = require "oil.dtests.kernel.ServantLocator",
 	ServantManager   = require "oil.dtests.kernel.ServantManager",

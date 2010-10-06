@@ -4,21 +4,27 @@ local template = Template{"Client"} -- master process name
 Server = [=====================================================================[
 orb = oil.dtests.init{ port = 2809 }
 if oil.dtests.flavor.corba then
-	iface = orb:loadidl "interface Terminator { void shutdown(); void idle(); };"
+	iface = orb:loadidl[[
+		interface Terminator {
+			void startup();
+			void shutdown();
+		};
+	]]
 end
 orb:newservant{
 	__objkey = "object",
 	__type = iface,
-	idle = function() oil.sleep(1) end,
+	startup = function() done = true end,
 	shutdown = function() orb:shutdown() end,
 }
+repeat orb:step() until done
 orb:run()
 --[Server]=====================================================================]
 
 Caller = [=====================================================================[
 orb = oil.dtests.init()
 obj = oil.dtests.resolve("Server", 2809, "object")
-obj:idle()
+obj:startup()
 --[Caller]=====================================================================]
 
 Client = [=====================================================================[
