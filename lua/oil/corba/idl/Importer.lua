@@ -152,9 +152,10 @@ function register(self, object, history)
 					for _, param in ipairs(params) do
 						param.type = self:register(param.type_def, history)
 					end
-					local excepts = desc.exceptions
+					local excepts = object:_get_exceptions()
+					desc.exceptions = {}
 					for index, except in ipairs(excepts) do
-						excepts[index] = self:register(except.type, history)
+						desc.exceptions[index] = self:register(except, history)
 					end
 				elseif kind == "dk_Value" then
 					desc.base_value = nil
