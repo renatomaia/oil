@@ -165,9 +165,10 @@ function _ENV:decodeprofile(encoded)
 	if profiler then
 		return profiler:decode(encoded.profile_data)
 	end
-	return nil, Exception{ "badversion",
+	return nil, Exception{
+		error = "badversion",
 		message = "IOR profile tag not supported",
-		error = "unsupported IOR profile",
+		errmsg = "unsupported IOR profile",
 		minor = 1,
 		completed = "COMPLETED_NO",
 		profile = encoded,

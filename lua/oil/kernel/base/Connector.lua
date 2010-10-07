@@ -17,8 +17,7 @@ local oo = require "oil.oo"
 local class = oo.class
 local rawnew = oo.rawnew
 
-local Exception = require "oil.Exception"
-local Channels = require "oil.kernel.base.Channels"                             --[[VERBOSE]] local verbose = require "oil.verbose"
+local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module(...); local _ENV = _M
 
@@ -41,30 +40,41 @@ end
 function retrieve(self, profile)                                                --[[VERBOSE]] verbose:channels("retrieve channel connected to ",profile.host,":",profile.port)
 	local connid = tuple[profile.host][profile.port]
 	local cache = self.cache
-	local channel, except = cache[connid]
-	if channel == nil then
+	local socket, except = cache[connid]
+	if socket ~= nil then
+		socket:settimeout(0)
+		local success, except = socket:receive(0)
+		if not success and except == "closed" then
+			cache[connid] = nil
+			socket = nil
+		else
+			socket:settimeout(nil)
+		end
+	end
+	if socket == nil then
 		local sockets = self.sockets
-		channel, except = sockets:newsocket(self.options)
-		if channel then
+		socket, except = sockets:newsocket(self.options)
+		if socket then
 			local host, port = profile.host, profile.port                             --[[VERBOSE]] verbose:channels("new socket to ",host,":",port)
-			local success
-			success, except = channel:connect(host, port)
+			success, except = socket:connect(host, port)
 			if success then
-				cache[connid] = channel
+				cache[connid] = socket
 			else
-				channel, except = nil, Exception{ "badconnect",
-					message = "unable to connect to $host:$port ($error)",
-					error = except,
+				socket, except = nil, Exception{
+					error = "badconnect",
+					message = "unable to connect to $host:$port ($errmsg)",
+					errmsg = except,
 					host = host,
 					port = port,
 				}
 			end
 		else
-			channel, except = nil, Exception{ "badsocket",
-				message = "unable to create socket ($error)",
-				error = except,
+			socket, except = nil, Exception{
+				error = "badsocket",
+				message = "unable to create socket ($errmsg)",
+				errmsg = except,
 			}
 		end
 	end
-	return channel, except
+	return socket, except
 end

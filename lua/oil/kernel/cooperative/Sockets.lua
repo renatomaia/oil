@@ -5,6 +5,7 @@
 
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local pairs = _G.pairs
 local next = _G.next
 
 local coroutine = require "coroutine"

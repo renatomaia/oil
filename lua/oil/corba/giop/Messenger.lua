@@ -81,9 +81,10 @@ function sendmsg(self, channel, msgtype, message, types, values)                
 	local success, except = channel:send(stream)
 	channel:freelock("write")
 	if not success then
-		except = Exception{ "badchannel",
-			error = except,
-			message = "unable to write into $channel ($error)",
+		except = Exception{
+			error = "badchannel",
+			errmsg = except,
+			message = "unable to write into $channel ($errmsg)",
 			channel = channel,
 		}
 	end                                                                           --[[VERBOSE]] verbose:message(false)
@@ -115,14 +116,17 @@ function receivemsg(self, channel, timeout)                                     
 					type = decoder:octet()
 					size = decoder:ulong()
 				else
-					except = Exception{ "badversion",
+					except = Exception{
+						error = "badversion",
 						message = "illegal GIOP version (got $major.$minor)",
 						major = version.major,
 						minor = version.minor,
 					}
 				end
 			else
-				except = Exception{ "badstream", minor = 8,
+				except = Exception{
+					error = "badstream",
+					minor = 8,
 					message = "illegal GIOP magic tag (got $actualtag)",
 					actualtag = magic,
 				}
@@ -134,9 +138,10 @@ function receivemsg(self, channel, timeout)                                     
 			}
 		else
 			if except == "closed" then channel:close() end
-			except = Exception{ "badchannel",
+			except = Exception{
+				error = "badchannel",
 				message = "unable to read from channel ($error)",
-				error = except,
+				errmsg = except,
 				channel = channel,
 			}
 		end
@@ -156,9 +161,10 @@ function receivemsg(self, channel, timeout)                                     
 			if header then                                                            --[[VERBOSE]] verbose:message(false, "got message ",type, header)
 				return type, decoder:struct(header), decoder
 			elseif header == nil then
-				except = Exception{ "badversion",
-					error = "illegal GIOP message type",
-					message = "$error (got $msgtypeid)",
+				except = Exception{
+					error = "badversion",
+					errmsg = "illegal GIOP message type",
+					message = "$errmsg (got $msgtypeid)",
 					major = version.major,
 					minor = version.minor,
 					msgtypeid = type,
@@ -174,9 +180,10 @@ function receivemsg(self, channel, timeout)                                     
 			channel.pendingheaderdecoder = decoder
 		else
 			if except == "closed" then channel:close() end
-			except = Exception{ "badchannel",
-				message = "unable to read from $channel ($error)",
-				error = except,
+			except = Exception{
+				error = "badchannel",
+				message = "unable to read from $channel ($errmsg)",
+				errmsg = except,
 				channel = channel,
 			}
 		end

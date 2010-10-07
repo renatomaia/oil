@@ -98,7 +98,7 @@ function _ENV:dolistener()
 		result, except = listener:getchannel()
 		if result then
 			result:acquire()
-			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] verbose.viewer.labels[reader] = "Reader(".._G.tostring(result).."->"..self.listener.configs.host..":"..self.listener.configs.port..")"
+			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] local host,port = result.socket:getpeername(); verbose.viewer.labels[reader] = "Reader("..host..":"..port.."->"..self.listener.configs.host..":"..self.listener.configs.port..")"
 			readers[reader] = result
 			yield("resume", reader, self, result)
 		end
@@ -117,8 +117,8 @@ function _ENV:start()
 		end
 		-- start processing new requests
 		self.thread = running()
-		self.acceptor = newthread(self.dolistener)                                  --[[VERBOSE]] verbose.viewer.labels[self.acceptor] = "Acceptor("..self.listener.configs.host..":"..self.listener.configs.port..")"
-		return yield("yield", self.acceptor, self)
+		self.getter = newthread(self.dolistener)                                    --[[VERBOSE]] local address = self.listener:getaddress(); verbose.viewer.labels[self.getter] = "Acceptor("..(address and address.host or "?")..":"..(address and address.port or "?")..")"
+		return yield("yield", self.getter, self)
 	end
 	return nil, Exception{
 		error = "already started",
@@ -137,9 +137,9 @@ function _ENV:stop(...)
 			readers[reader] = nil
 		end
 		self.readers = nil
-		-- unschedule the acceptor thread
-		yield("unschedule", self.acceptor)
-		self.acceptor = nil
+		-- unschedule the getter thread
+		yield("unschedule", self.getter)
+		self.getter = nil
 		-- resume thread that started this 'CoReceiver'
 		self.thread = nil
 		yield("resume", thread, ...)

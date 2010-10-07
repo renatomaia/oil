@@ -22,26 +22,29 @@ function AccessPoint:accept(timeout)
 	local socket, except
 	repeat
 		socket, except = poll:getready(timeout)
-		if socket == self.socket then
-			socket, except = socket:accept()
-			if socket then                                                            --[[VERBOSE]] verbose:channels "new connection accepted"
-				socket = self.sockets:setoptions(self.options, socket)
-				poll:add(socket)
-			else                                                                      --[[VERBOSE]] verbose:channels("error when accepting connection (",except,")")
-				if except == "closed" then poll:remove(socket) end
-				except = Exception{
-					error = "badconnect",
-					message = "unable to accept connection ($errmsg)",
-					errmsg = except,
-				}
-			end
-		elseif socket then
-			socket:settimeout(0)
-			if select(2, socket:receive(0)) == "closed" then
-				poll:remove(socket)
-				socket = nil
+		if socket then
+			if socket == self.socket then
+				socket, except = socket:accept()
+				if socket then                                                            --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("new connection accepted from ",host,":",port)
+					socket = self.sockets:setoptions(self.options, socket)
+					poll:add(socket)
+				else                                                                      --[[VERBOSE]] verbose:channels("error when accepting connection (",except,")")
+					if except == "closed" then poll:remove(socket) end
+					except = Exception{
+						error = "badconnect",
+						message = "unable to accept connection ($errmsg)",
+						errmsg = except,
+					}
+				end
 			else
-				socket:settimeout(nil)
+				socket:settimeout(0)
+				local success, errmsg = socket:receive(0)
+				if not success and errmsg == "closed" then
+					poll:remove(socket)
+					socket = nil
+				else
+					socket:settimeout(nil)
+				end
 			end
 		elseif except == "timeout" then
 			except = Exception{

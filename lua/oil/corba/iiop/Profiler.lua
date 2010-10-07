@@ -75,8 +75,8 @@ function encode(self, profiles, object_key, config, minor)
 		return true
 	else
 		return nil, Exception{ "INTERNAL", minor = 0,
-			message = "IIOP minor version $version not supported",
-			reason = "version",
+			error = "badversion",
+			message = "$protocol minor version $version not supported",
 			protocol = "IIOP",
 			version = minor,
 		}
@@ -90,10 +90,11 @@ function decode(self, profile)
 
 	if version.major ~= 1 or not profileidl then
 		return nil, Exception{ "INTERNAL", minor = 0,
-			reason = "version",
-			message = "IIOP version not supported (got $version)",
+			error = "badversion",
+			message = "$protocol version not supported (got $major.$minor)",
 			protocol = "IIOP",
-			version = version,
+			major = version.major,
+			minor = version.minor,
 		}
 	end
 
@@ -145,8 +146,8 @@ function decodeurl(self, data)
 	local profileidl = ProfileBody_v1_[minor]
 	if (major and major ~= "1") or (not profileidl) then
 		return nil, Exception{ "INTERNAL", minor = 0,
-			message = "IIOP $major.$minor not supported",
-			reason = "version",
+			error = "badversion",
+			message = "$protocol $major.$minor not supported",
 			protocol = "IIOP",
 			major = major,
 			minor = minor,

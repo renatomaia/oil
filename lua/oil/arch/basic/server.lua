@@ -8,7 +8,6 @@ ServantManager = component.Template{
 	servants   = port.Facet,
 	dispatcher = port.Facet,
 	referrer   = port.Receptacle,
-	acceptor   = port.Receptacle,
 }
 RequestReceiver = component.Template{
 	acceptor   = port.Facet,
@@ -19,7 +18,6 @@ RequestReceiver = component.Template{
 function assemble(components)
 	arch.start(components)
 	ServantManager.referrer    = ObjectReferrer.references
-	ServantManager.acceptor    = RequestReceiver.acceptor
 	RequestReceiver.dispatcher = ServantManager.dispatcher
 	RequestReceiver.listener   = RequestListener.requests
 	arch.finish(components)

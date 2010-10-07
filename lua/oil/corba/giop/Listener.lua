@@ -110,14 +110,18 @@ function Request:sendreply()                                                    
 	local requestid = self.request_id
 	if channel and channel[requestid] == self then
 		success, except = channel:send(ReplyID, self:getreply())
-		if not success
-		and except.error ~= "terminated"
-		and SystemExceptions[except[1]] then                                        --[[VERBOSE]] verbose:listen("got system exception ",except," during reply")
-			except.completed = "COMPLETED_YES"
-			success, except = channel:send(ReplyID, sysexreply(requestid, except))
+		if not success then
+			if except.error == "terminated" then                                      --[[VERBOSE]] verbose:listen("unable to send reply, connection terminated")
+				success, except = true, nil
+			else
+				if SystemExceptions[except[1]] then                                     --[[VERBOSE]] verbose:listen("got system exception ",except," during reply")
+					except.completed = "COMPLETED_YES"
+					success, except = channel:send(ReplyID, sysexreply(requestid, except))
+				end
+			end
 		end
 		if success then success, except = self:finish() end                         --[[VERBOSE]] else verbose:listen("no pending request found with id ",requestid,", reply discarded")
-	end                                                                           --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully sent" or "failed: ", except or "")
+	end                                                                           --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully processed" or "failed: ", except or "")
 	return success, except
 end
 

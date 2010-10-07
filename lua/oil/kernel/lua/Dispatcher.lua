@@ -61,7 +61,7 @@ function dispatch(self, request)
 			                               unpack(request, 1, request.n)))
 		else
 			self:setresults(request, false, Exception{
-				reason = "noimplement",
+				error = "badobjimpl",
 				message = "no implementation for operation $operation of object with key $key",
 				operation = operation,
 				object = object,
@@ -70,7 +70,7 @@ function dispatch(self, request)
 		end
 	else
 		self:setresults(request, false, Exception{
-			reason = "badkey",
+			reason = "badobjkey",
 			message = "no object with key (got $key)",
 			key = key,
 		})

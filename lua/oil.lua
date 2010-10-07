@@ -202,7 +202,7 @@ function ORB:__new(config)
 	if self.ServantManager ~= nil then
 		self.ServantManager.prefix = config.keyprefix
 		if config.objectmap ~= nil then
-			self.ServantManager.map = self.ServantManager.map
+			self.ServantManager.map = config.objectmap
 		end
 	end
 	assert(self.RequestReceiver.acceptor:setup(self))
@@ -368,7 +368,7 @@ function ORB:narrow(object, type)
 	asserttype(object, "table", "object proxy")
 	if object then
 		local proxykind = self.proxykind
-		local ProxyManager = fatories[fatories[1]]
+		local ProxyManager = proxykind[ proxykind[1] ]
 		return assert(ProxyManager.proxies:newproxy{
 			__reference = object.__reference,
 			__type = type,
@@ -517,7 +517,7 @@ end
 --
 function ORB:shutdown()
 	local acceptor = self.RequestReceiver.acceptor
-	assert(acceptor:stop())
+	assert(acceptor:stop(true))
 	return assert(acceptor:shutdown())
 end
 

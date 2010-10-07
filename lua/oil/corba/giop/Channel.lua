@@ -74,6 +74,10 @@ function _ENV:freelock(operation)
 	return self[operation]:free()
 end
 
+function _ENV:close()
+	return self.socket:close()
+end
+
 _ENV.bytes = ""
 function _ENV:getbytes(count, timeout)
 	local bytes = self.bytes
@@ -92,7 +96,7 @@ function _ENV:getbytes(count, timeout)
 	return nil, except
 end
 
-function _ENV:send(msgtype, message, types, values)                             --[[VERBOSE]] verbose:message(true, "send message ",msgtype," ",message)
+function _ENV:send(msgtype, message, types, values)                             --[[VERBOSE]] verbose:message(true, "send message ",msgtype)
 	--
 	-- Create GIOP message body
 	--
@@ -134,12 +138,20 @@ function _ENV:send(msgtype, message, types, values)                             
 	local success, except = self.socket:send(stream)
 	self:freelock("write")
 	if not success then
-		except = Exception{
-			error = "badchannel",
-			message = "unable to write into $channel ($errmsg)",
-			errmsg = except,
-			channel = self,
-		}
+		if except == "closed" then
+			self.socket:close()
+			except = Exception{
+				error = "terminated",
+				message = "terminated",
+			}
+		else
+			except = Exception{
+				error = "badchannel",
+				message = "unable to write into $channel ($errmsg)",
+				errmsg = except,
+				channel = self,
+			}
+		end
 	end                                                                           --[[VERBOSE]] verbose:message(false)
 	return success, except
 end
@@ -187,6 +199,7 @@ function _ENV:receive(timeout)                                                  
 			except = Exception{
 				error = "timeout",
 				message = "timeout",
+				timeout = timeout,
 			}
 		elseif except == "closed" then
 			self.socket:close()
@@ -215,9 +228,13 @@ function _ENV:receive(timeout)                                                  
 		if result then
 			decoder:append(result)
 			local header = self.messagetype[type]
-			if header then                                                            --[[VERBOSE]] verbose:message(false, "got message ",type)
-				return type, decoder:struct(header), decoder
-			elseif header == nil then
+			if header ~= nil then                                                     --[[VERBOSE]] verbose:message(false, "got message ",type)
+				if header then
+					return type, decoder:struct(header), decoder
+				else
+					return type
+				end
+			else
 				except = Exception{
 					error = "badversion",
 					message = "illegal GIOP message type (got $msgtypeid)",
@@ -248,7 +265,7 @@ function _ENV:receive(timeout)                                                  
 				channel = self,
 			}
 		end
-	end                                                                           --[[VERBOSE]] if except.error ~= "terminated" then verbose:message(false, "error reading message: ",except) end
+	end                                                                           --[[VERBOSE]] if except.error == "timeout" then verbose:message(false, "receive operation timed out") elseif except.error ~= "terminated" then verbose:message(false, "error reading message: ",except) else verbose:message(false) end
 	return nil, except, self
 end
 

@@ -120,7 +120,7 @@ function newchannel(self, reference)
 				local ok
 				if result:unlocked("read") then -- channel might be broken
 					repeat ok, except = self:readchannel(result, 0) until not ok
-					if except.what == "timeout" then
+					if except.error == "timeout" then
 						ok = true
 					else
 						result:close()
@@ -143,9 +143,9 @@ function newchannel(self, reference)
 		except.profile = encoded
 	end
 	if except == nil then                                                         --[[VERBOSE]] verbose:invoke("[no supported profile found]")
-		except = Exception{ "badversion",
+		except = Exception{
+			error = "badversion",
 			message = "no supported IOR profile found",
-			error = "unsupported IOR profiles",
 			minor = 1,
 			completed = "COMPLETED_NO",
 			profiles = reference.profiles,
@@ -240,7 +240,6 @@ function reissue(self, request, channel, except)
 		unregister(channel, request.request_id)
 	end
 	self:endrequest(request, false, except)
-	channel:signal("read", request)
 end
 
 local SystemExceptionReason = {
@@ -276,8 +275,7 @@ function doreply(self, replied, header, decoder)
 			channel, except = self:newchannel(decoder:struct(IOR))
 			if channel then
 				replied.object_key = except
-				self:reissue(replied, channel)
-				return false -- indicates the reply was not completed
+				return self:reissue(replied, channel)
 			end
 		elseif status == "USER_EXCEPTION" then                                        --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
 			local repId = decoder:string()
@@ -287,10 +285,10 @@ function doreply(self, replied, header, decoder)
 				except[1] = repId
 				except = Exception(except)
 			else
-				except = Exception{ "badexception",
+				except = Exception{
+					error = "badexception",
 					minor_code_value = 1,
-					message = "$error (got $exception)",
-					error = "illegal user exception",
+					message = "illegal user exception (got $exception)",
 					exception = repId,
 				}
 			end
@@ -303,15 +301,14 @@ function doreply(self, replied, header, decoder)
 			except.error = "remote exception"
 			except = Exception(except)
 		else -- status == ???
-			except = Exception{ "badmessage",
-				message = "$error (got $replystatus)",
-				error = "unsupported GIOP reply status",
+			except = Exception{
+				error = "badmessage",
+				message = "unsupported GIOP reply status (got $replystatus)",
 				replystatus = status,
 			}
 		end -- of if status == "LOCATION_FORWARD"
 		self:endrequest(replied, false, except)
 	end -- of if status == "NO_EXCEPTION"
-	return true -- indicates the reply was completed
 end
 
 function readchannel(self, channel, timeout)
@@ -319,9 +316,8 @@ function readchannel(self, channel, timeout)
 	if msgid == ReplyID then
 		local replied = unregister(channel, header.request_id)
 		if replied then
-			if self:doreply(replied, header, decoder) then
-				channel:signal("read", replied)
-			end
+			self:doreply(replied, header, decoder)
+			channel:signal("read", replied)
 			return true
 		end                                                                         --[[VERBOSE]] verbose:invoke("got reply for invalid request ID: ",header.request_id)
 		msgid, header = channel:send(MessageErrorID)
@@ -336,19 +332,20 @@ function readchannel(self, channel, timeout)
 			if type(id) == "number" then                                              --[[VERBOSE]] verbose:invoke(true, "reissuing pending request ",pending.request_id)
 				unregister(channel, id)
 				self:reissue(pending, self:getchannel(pending.reference))               --[[VERBOSE]] verbose:invoke(false)
+				channel:signal("read", replied)
 			end
 		end
 		return true
 	elseif msgid == MessageErrorID then
-		msgid, header = nil, Exception{ "badmessage",
+		msgid, header = nil, Exception{
+			error = "badmessage",
 			message = "error in remote ORB message processing",
-			error = "remote message error",
 		}
 	elseif MessageType[msgid]~=nil or (msgid==nil and header.reason=="badversion") then
 		msgid, header = channel:send(MessageErrorID)
 		if msgid then return true end
 	end
-	if header.what ~= "timeout" then
+	if header.error ~= "timeout" then
 		for id, pending in pairs(channel) do
 			if type(id) == "number" then
 				unregister(channel, id)
@@ -365,7 +362,7 @@ function getreply(self, request, timeout)
 		if channel:trylock("read", timeout, request) then
 			repeat
 				local ok, except = self:readchannel(channel, timeout)
-				if not ok and except.what == "timeout" then return end
+				if not ok and except.error == "timeout" then return end
 			until request.channel ~= channel
 			channel:freelock("read")
 		end

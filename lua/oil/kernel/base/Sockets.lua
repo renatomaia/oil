@@ -24,12 +24,17 @@ local class = oo.class
 local rawnew = oo.rawnew
 
 do -- add new operation 'settimelimit' on sockets
-	local socket = tcpsocket()
-	getmetatable(socket).__index.settimelimit = function(self, timeout)
+	local debug = require "debug"
+	local registry = debug.getregistry()
+	local function settimelimit(self, timeout)
 		if timeout and timeout >= 0 then timeout = max(0, timeout-gettime()) end
 		return self:settimeout(timeout)
 	end
-	socket:close()
+	registry["tcp{client}"].__index.settimelimit = settimelimit
+	registry["tcp{server}"].__index.settimelimit = settimelimit
+	registry["tcp{master}"].__index.settimelimit = settimelimit
+	registry["udp{connected}"].__index.settimelimit = settimelimit
+	registry["udp{unconnected}"].__index.settimelimit = settimelimit
 end
 
 module(...); local _ENV = _M
