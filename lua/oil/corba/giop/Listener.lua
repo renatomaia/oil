@@ -178,12 +178,13 @@ end
 --------------------------------------------------------------------------------
 
 RequestChannel = class({
+	Request = Request,
 	pending = 0,
 	closing = false,
 }, Channel)
 
 function RequestChannel:makerequest(header, decoder)
-	header = Request(header)
+	header = self.Request(header)
 	local requestid = header.request_id
 	if not self[requestid] then
 		header.objectkey = header.object_key
@@ -275,6 +276,16 @@ end
 
 class(_ENV)
 
+function _ENV:__init()
+	self.sock2channel = memoize(function(socket)
+		return self.RequestChannel{
+			socket = socket,
+			listener = self,
+			codec = self.codec,
+		}
+	end, "k")
+end
+
 function _ENV:setup(configs)
 	if self.configs == nil then
 		self.configs = configs -- delay actual initialization (see 'getaccess')
@@ -299,13 +310,6 @@ function _ENV:getaccess(probe)
 			result, except = self.channels:newaccess(result)
 			if result ~= nil then
 				self.access = result
-				self.sock2channel = memoize(function(socket)
-					return RequestChannel{
-						socket = socket,
-						listener = self,
-						codec = self.codec,
-					}
-				end, "k")
 				local host, port, addresses = result:address()
 				self.configs.host = host
 				self.configs.port = port

@@ -1,30 +1,20 @@
+local _G = require "_G"
+local unpack = _G.unpack
 
-local select = select
-local unpack = unpack
+local oo = require "oil.oo"
+local class = oo.class
 
-local oo        = require "oil.oo"
-local giop      = require "oil.corba.giop"
 local Requester = require "oil.corba.giop.Requester"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module "oil.corba.intercepted.Requester"
+module(...); local _ENV = _M
 
-oo.class(_M, Requester)
+class(_ENV, Requester)
 
---------------------------------------------------------------------------------
-
-local RequestID = giop.RequestID
-
-local Empty = {}
-
---------------------------------------------------------------------------------
-
-function interceptrequest(self, proxy, operation, request)
+function interceptrequest(self, reference, operation, request)
 	local interceptor = self.interceptor
 	if interceptor then
 		local interface = operation.defined_in
-		local reference = proxy.__reference
 		local intercepted = {
-			proxy             = proxy,
 			reference         = reference,
 			operation         = operation,
 			profile_tag       = reference._profiletag,
@@ -80,68 +70,41 @@ function interceptrequest(self, proxy, operation, request)
 	end
 end
 
-function sendrequest(self, proxy, operation, ...)
-	local channel = self.channelof(proxy)
-	local request = self:makerequest(channel, proxy, operation, ...)              --[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",operation.name,"'")
-	local intercepted = self:interceptrequest(proxy, operation, request)
+function sendrequest(self, reference, operation, ...)
+	local request, channel, except = self:makerequest(reference, operation, ...)  --[[VERBOSE]] verbose:interceptors(true, "intercepting request")
+	local intercepted = self:interceptrequest(reference, operation, request)
 	if intercepted then
-		if request.success ~= nil then                                              --[[VERBOSE]] verbose:interceptors(false, "interception ended (results provided!)")
-			channel = nil
-			result = request
-		else
-			local reference = intercepted.forward_reference
-			if reference then                                                           --[[VERBOSE]] verbose:interceptors("intercepted request forwarded")
-				if request.channel then
-					unregister(request.channel, request.request_id)
-				end
-				result, except = self:getchannel(reference)
-				if result then
-					intercepted.object_key = self.objkeyof[proxy]
-					intercepted.profile_tag = reference._profiletag
-					intercepted.profile_data = reference._profiledata
-					channel = result
-					request.object_key = except
-					if request.response_expected then
-						register(channel, request)
-					else
-						request.request_id = 0
-					end
-				else
-					channel = nil
-				end
-			elseif not request.response_expected and request.channel then               --[[VERBOSE]] verbose:interceptors("interception canceled expected response")
+		if request.success ~= nil then
+			self:endrequest(request)                                                  --[[VERBOSE]] verbose:interceptors(false, "interception canceled invocation")
+			return request
+		end
+		reference = intercepted.forward_reference
+		if reference then                                                           --[[VERBOSE]] verbose:interceptors("intercepted request forwarded")
+			if request.channel then
 				unregister(request.channel, request.request_id)
-				request.request_id = 0
-			elseif request.response_expected and not request.channel and channel then   --[[VERBOSE]] verbose:interceptors("interception asked for an expected response")
-				register(channel, request)
 			end
-			intercepted.request_id = request.request_id
-		end
-	end
-	if channel then
-		result, except = self:sendmsg(channel, RequestID, request,
-		                              request.inputs, request)
-		if result then
-			if not request.response_expected then
-				request.success = true
-				request.n = 0
+			channel, except = self:getchannel(reference)
+			if channel then
+				intercepted.object_key = self.objkeyof[proxy]
+				intercepted.profile = reference._profile
+				request.object_key = except
+				if request.response_expected then
+					register(channel, request)
+				else
+					request.request_id = 0
+				end
+			else
+				channel = nil
 			end
-			result, except = request, nil
-		else
-			unregister(channel, request.request_id)
+		elseif not request.response_expected and request.channel then               --[[VERBOSE]] verbose:interceptors("interception canceled the expected response")
+			unregister(request.channel, request.request_id)
+			request.request_id = 0
+		elseif request.response_expected and not request.channel and channel then   --[[VERBOSE]] verbose:interceptors("interception asked for an expected response")
+			register(channel, request)
 		end
-	end
-	if not result then
-		request.success = false
-		request.n = 1
-		request[1] = except
-		result, except = request, nil
-	end                                                                           --[[VERBOSE]] verbose:invoke(false)
-	if result and result.success ~= nil then
-		result.service_context = nil
-		self:interceptreply(result, result)
-	end
-	return result, except
+		intercepted.request_id = request.request_id
+	end                                                                           --[[VERBOSE]] verbose:interceptors(false, "interception completed")
+	return self:processrequest(request, channel, except)
 end
 
 --------------------------------------------------------------------------------
@@ -152,11 +115,14 @@ function interceptreply(self, request, header)
 		request.intercepted = nil
 		local interceptor = self.interceptor
 		if interceptor and interceptor.receivereply then
-			if header.service_context then
-				intercepted.reply_service_context = header.service_context
+			local header = request.reply_header
+			if header then
+				if header.service_context then
+					intercepted.reply_service_context = header.service_context
+				end
+				intercepted.reply_status = header.reply_status
 			end
-			intercepted.reply_status          = header.reply_status
-			intercepted.success               = request.success
+			intercepted.success = request.success
 			intercepted.results = {
 				n = request.n,
 				unpack(request, 1, request.n),
@@ -173,9 +139,12 @@ function interceptreply(self, request, header)
 	end
 end
 
-function doreply(self, request, header, decoder)
-	if Requester.doreply(self, request, header, decoder) then
-		self:interceptreply(request, header)
-		return true
-	end
+function endrequest(self, request, success, result)
+	Requester.endrequest(self, request, success, result)
+	self:interceptreply(request)
+end
+
+function doreply(self, replied, header, decoder)
+	replied.reply_header = header
+	return Requester.doreply(self, replied, header, decoder)
 end

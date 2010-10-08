@@ -1,24 +1,68 @@
+local _G = require "_G"
+local unpack = _G.unpack
 
-local unpack = unpack
+local oo = require "oil.oo"
+local class = oo.class
 
-local oo       = require "oil.oo"
-local giop     = require "oil.corba.giop"
+local giop = require "oil.corba.giop"
+local IOR = giop.IOR
+
 local Listener = require "oil.corba.giop.Listener"                              --[[VERBOSE]] local verbose = require "oil.verbose"
+local ListenerRequest = Listener.Request
+local ListenerRequestChannel = Listener.RequestChannel
 
-module "oil.corba.intercepted.Listener"
 
-oo.class(_M, Listener)
+module(...); local _ENV = _M
 
---------------------------------------------------------------------------------
 
-local LocationForwardTypes = { giop.IOR }
-local ReplyID = giop.ReplyID
-
+local LocationForwardTypes = { IOR }
 local Empty = {}
 
---------------------------------------------------------------------------------
 
-function interceptrequest(self, request)
+Request = class({}, ListenerRequest)
+
+local function buildreply(self)
+	local types, body
+	local reference = self.forward_reference
+	if reference then
+		self.reply_status = "LOCATION_FORWARD"
+		self.service_context = Empty
+		return LocationForwardTypes, { reference }
+	end
+	local header, types, body = ListenerRequest.getreply(self)
+	if header ~= self then
+		self.reply_status = header.reply_status
+		self.service_context = header.service_context
+	end
+	return types, body
+end
+function Request:getreply()
+	local types, body = buildreply(self)
+	if self.listener:interceptreply(self, body) then
+		types, body = buildreply(self)
+		if self.reply_service_context then
+			self.service_context = self.reply_service_context
+		end
+	end
+	return self, types, body
+end
+
+
+RequestChannel = class({
+	Request = Request,
+}, ListenerRequestChannel)
+
+function RequestChannel:makerequest(...)
+	local request = ListenerRequestChannel.makerequest(self, ...)
+	request.listener = self.listener
+	self.listener:interceptrequest(request)
+	return request
+end
+
+
+class(_ENV, Listener)
+
+function _ENV:interceptrequest(request)
 	local interceptor = self.interceptor
 	if interceptor then
 		local intercepted = {
@@ -78,14 +122,8 @@ function interceptrequest(self, request)
 	end
 end
 
-function handlerequest(self, channel, header, decoder)
-	Listener.handlerequest(self, channel, header, decoder)
-	self:interceptrequest(header)
-end
 
---------------------------------------------------------------------------------
-
-function interceptreply(self, request, body)
+function _ENV:interceptreply(request, body)
 	local intercepted = request.intercepted
 	if intercepted then
 		request.intercepted = nil
@@ -116,31 +154,4 @@ function interceptreply(self, request, body)
 			return true
 		end
 	end
-end
-
-function makereply(self, request)
-	local types, body
-	local reference = request.forward_reference
-	if reference then
-		request.reply_status = "LOCATION_FORWARD"
-		request.service_context = Empty
-		return LocationForwardTypes, { reference }
-	end
-	local header, types, body = Listener.handlereply(self, request)
-	if header ~= request then
-		request.reply_status    = header.reply_status
-		request.service_context = header.service_context
-	end
-	return types, body
-end
-
-function handlereply(self, request)
-	local types, body = self:makereply(request)
-	if self:interceptreply(request, body) then
-		types, body = self:makereply(request)
-		if request.reply_service_context then
-			request.service_context = request.reply_service_context
-		end
-	end
-	return request, types, body
 end

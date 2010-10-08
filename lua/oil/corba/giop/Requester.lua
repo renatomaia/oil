@@ -169,7 +169,8 @@ end
 
 --------------------------------------------------------------------------------
 
-function makerequest(self, channel, reference, operation, ...)
+function makerequest(self, reference, operation, ...)
+	local channel, except = self:getchannel(reference)
 	local request = self.Request{
 		requester            = self,
 		reference            = reference,
@@ -188,25 +189,25 @@ function makerequest(self, channel, reference, operation, ...)
 	if channel and request.response_expected then
 		register(channel, request) -- defines the 'request_id'
 	end
-	return request
+	return request, channel, except
 end
 
 function endrequest(self, request, success, result)
-	if success then
-		request.success = true
-		request.n = result
-	else
-		request.success = false
-		request.n = 1
-		request[1] = result
+	if success ~= nil then
+		if success then
+			request.success = true
+			request.n = result
+		else
+			request.success = false
+			request.n = 1
+			request[1] = result
+		end
 	end
 	local replier = self.OperationReplier[request.operation]
 	if replier then replier(self, request) end
 end
 
-function sendrequest(self, reference, operation, ...)
-	local channel, except = self:getchannel(reference)
-	local request = self:makerequest(channel, reference, operation, ...)          --[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",operation.name,"'")
+function processrequest(self, request, channel, except)                         --[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",request.operation,"'")
 	if channel then
 		local success
 		success, except = channel:send(RequestID, request,
@@ -221,6 +222,10 @@ function sendrequest(self, reference, operation, ...)
 	end
 	self:endrequest(request, false, except)                                       --[[VERBOSE]] verbose:invoke(false, "request failed")
 	return request
+end
+
+function sendrequest(self, reference, operation, ...)
+	return self:processrequest(self:makerequest(reference, operation, ...))
 end
 
 function newrequest(self, reference, operation, ...)
