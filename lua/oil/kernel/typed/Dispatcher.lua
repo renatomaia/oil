@@ -29,7 +29,7 @@ function _ENV:dispatch(request)
 		if opinfo then
 			local method = object[opname] or opinfo.implementation
 			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
-				request:setreply(pcall(method, object, request:getparams()))
+				request:setreply(pcall(method, object, request:getvalues()))
 			else
 				request:setreply(false, Exception{
 					error = "badobjimpl",

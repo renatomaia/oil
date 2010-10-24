@@ -29,8 +29,8 @@ function _ENV:probe(timeout)
 		-- check if any 'channel reader' is ready for execution
 		for thread in yield("ready") do
 			if readers[thread] then return true end
-		end
-		if not timeout or timeout > 0 then
+		end                                                                         --[[VERBOSE]] verbose:acceptor(true, "checking for invocation requests")
+		if not timeout or timeout > 0 then                                          --[[VERBOSE]] verbose:acceptor("waiting requests for ",timeout and timeout.." seconds" or "ever")
 			-- trap any request processing that might take place during the timeout
 			local pending = {}
 			local thread = running()
@@ -45,7 +45,7 @@ function _ENV:probe(timeout)
 			self.dorequest = nil
 			if self.dorequest ~= dorequest then
 				self.dorequest = dorequest
-			end
+			end                                                                       --[[VERBOSE]] verbose:acceptor(false, pending and "new request received" or "")
 			if pending then return true end
 		end
 		return nil, Exception{
@@ -58,9 +58,9 @@ function _ENV:probe(timeout)
 end
 
 function _ENV:step(timeout)
-	if self.thread then
+	if self.thread then                                                           --[[VERBOSE]] verbose:acceptor(true, "processing one single request")
 		local result, except = self:probe(timeout)
-		if result then yield("pause") end -- let other threads execute
+		if result then yield("pause") end --[[let other threads execute]]           --[[VERBOSE]] verbose:acceptor(false)
 		return result, except
 	end
 	-- 'CoReceiver' was not started yet, then behave as 'Receiver'
@@ -107,7 +107,7 @@ function _ENV:dolistener()
 end
 
 function _ENV:start()
-	if self.thread == nil then
+	if self.thread == nil then                                                    --[[VERBOSE]] verbose:acceptor("start processing invocation requests")
 		-- process any pending request
 		local pending = self.pending
 		if pending then
@@ -128,7 +128,7 @@ end
 
 function _ENV:stop(...)
 	local thread = self.thread
-	if thread then
+	if thread then                                                                --[[VERBOSE]] verbose:acceptor("attempt to stop invocation request processing")
 		-- unschedule 'channel readers' and release their channels
 		local readers = self.readers
 		for reader, channel in pairs(readers) do

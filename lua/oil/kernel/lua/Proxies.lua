@@ -1,25 +1,10 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Remote Object Proxies                                             --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- proxies:Facet
--- 	proxy:object proxyto(reference:table)
---
--- invoker:Receptacle
--- 	[results:object], [except:table] invoke(reference, operation, args...)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Remote Object Proxies
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local _G = require "_G"
+
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local ipairs = _G.ipairs
 
 local oo = require "oil.oo"
@@ -29,14 +14,11 @@ local rawnew = oo.rawnew
 local utils = require "oil.kernel.base.Proxies.utils"
 local assert = utils.assertresults
 
-local Proxies = require "oil.kernel.base.Proxies"                               --[[VERBOSE]] local verbose = require "oil.verbose"
+local Proxies = require "oil.kernel.base.Proxies"
 
-module "oil.kernel.lua.Proxies"
+local LuaProxies = class{ newproxy = Proxies.newproxy }
 
-class(_M, Proxies)
-
-function __new(self, ...)
-	self = rawnew(self, ...)
+function LuaProxies:__init()
 	if self.class == nil then
 		local ops = class()
 		for _, field in ipairs{
@@ -57,13 +39,13 @@ function __new(self, ...)
 			"index",
 			"newindex",
 		} do
-			ops["__"..field] = function(proxy, ...)                                      --[[VERBOSE]] verbose:proxies("call to ",field," ", ...)
-				local request = self.requester:newrequest(proxy, field, ...)
-				return assert(proxy, operation, request:results())
+			ops["__"..field] = function(proxy, ...)                                   --[[VERBOSE]] verbose:proxies("call to ",field)
+				local request = self.requester:newrequest(proxy.__reference, field, ...)
+				return assert(proxy, operation, request:getreply())
 			end
 		end
 		self.class = ops
 	end
-	return self
 end
 
+return LuaProxies

@@ -1,56 +1,45 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua                                                  --
--- Release: 0.5                                                               --
--- Title  : Client-side CORBA GIOP Protocol specific to IIOP                  --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- references:Facet
--- 	reference:table newreference(objectkey:string, accesspointinfo:table...)
--- 	reference:string encode(reference:table)
--- 	reference:table decode(reference:string)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Client-side LuDO Protocol Support
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local tonumber = tonumber
 
-local socket = require "socket.core"
+local _G = require "_G"
+local type = _G.type
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local class = oo.class
 
-module("oil.ludo.Referrer", oo.class)
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
+local Referrer = class()
 
-function newreference(self, access, key)
-	local host = access.host
-	if host == "*" then
-		host = socket.dns.gethostname()
-		host = socket.dns.toip(host) or host
+function Referrer:newreference(entry)
+	local result, except = self.listener:getaddress()
+	if result then
+		result, except = {
+			host = result.host,
+			port = result.port,
+			object = entry.__objkey,
+		}
 	end
-	return {
-		host = host,
-		port = access.port,
-		object = key,
-	}
+	return result, except
 end
 
-function islocal(self, reference, access)
-	if access.addresses[reference.host] and reference.port == access.port then
-		return reference.object
+function Referrer:islocal(reference, access)
+	local result, except = self.listener:getaddress()
+	if result then
+		if result.addresses[reference.host] and reference.port == result.port then
+			result, except = reference.object, nil
+		end
 	end
+	return result, except
 end
 
-function encode(self, reference)
+function Referrer:encode(reference)
 	local object, host, port = reference.object, reference.host, reference.port
-	if object ~= nil and host ~= nil and port ~= nil then
+	if type(object) == "string"
+	and type(host) == "string"
+	and type(port) == "number" then
 		local encoder = self.codec:encoder()
 		encoder:put(object, host, port)
 		return encoder:__tostring()
@@ -58,10 +47,12 @@ function encode(self, reference)
 	return nil, "bad LuDO reference"
 end
 
-function decode(self, reference)
+function Referrer:decode(reference)
 	local decoder = self.codec:decoder(reference)
 	local object, host, port = decoder:get()
-	if object ~= nil and host ~= nil and port ~= nil then
+	if type(object) == "string"
+	and type(host) == "string"
+	and type(port) == "number" then
 		return {
 			host = host,
 			port = port,
@@ -70,3 +61,5 @@ function decode(self, reference)
 	end
 	return nil, "invalid LuDO reference"
 end
+
+return Referrer

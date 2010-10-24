@@ -4,7 +4,7 @@ local arch      = require "oil.arch"
 
 module "oil.arch.ludo.common"
 
-ValueEncoder   = component.Template{ codec = port.Facet }
+ValueEncoder = component.Template{ codec = port.Facet }
 ObjectReferrer = component.Template{
 	references = port.Facet,
 	codec = port.Receptacle,
@@ -12,7 +12,7 @@ ObjectReferrer = component.Template{
 
 function assemble(components)
 	arch.start(components)
-	LuaEncoder.codec:localresources(components)
-	ObjectReferrer.codec = LuaEncoder.codec
+	ValueEncoder.codec:localresources(components)
+	ObjectReferrer.codec = ValueEncoder.codec
 	arch.finish(components)
 end

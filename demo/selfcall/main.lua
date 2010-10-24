@@ -1,7 +1,6 @@
 require "oil"
 
 local orb = oil.init()
-orb.ProxyManager.servants = nil -- disable local reference resolution
 orb:loadidl("interface MyObject { void shutdown(); };")
 
 oil.main(function()
@@ -11,4 +10,5 @@ oil.main(function()
 	assert(prx:_is_a("IDL:MyObject:1.0"), "Oops, wrong interface")
 	prx:shutdown()
 	print("OK")
+	print(pcall(prx.shutdown, prx))
 end)

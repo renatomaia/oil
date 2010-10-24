@@ -1,12 +1,5 @@
 require "oil"                                           -- Load OiL package
 
---oil.verbose:level(2)
---oil.verbose:flag("built", true)
---oil.verbose:flag("idltypes", true)
---cothread.verbose:level(1)
---cothread.verbose:flag("state", true)
---cothread.verbose:flag("socket", true)
-
 oil.main(function()
 	local orb = oil.init()
 	

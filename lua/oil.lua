@@ -205,6 +205,9 @@ function ORB:__new(config)
 			self.ServantManager.map = config.objectmap
 		end
 	end
+	if self.ValueEncoder ~= nil and config.localrefs then
+		self.ValueEncoder.localrefs = config.localrefs
+	end
 	assert(self.RequestReceiver.acceptor:setup(self))
 	
 	return self
@@ -811,7 +814,7 @@ end
 function main(main, ...)
 	asserttype(main, "function", "main function")
 	if cothread then
-		local thread = coroutine.create(main)                                       --[[VERBOSE]] verbose.viewer.labels[thread] = "OiL main"
+		local thread = coroutine.create(main)                                       --[[VERBOSE]] verbose.viewer.labels[thread] = "oil.main"
 		cothread.run(thread, ...)
 	else
 		local success, except = xpcall(main, extracer)

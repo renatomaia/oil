@@ -1,35 +1,20 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Object Request Dispatcher                                         --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- dispatcher:Facet
--- 	success:boolean, [except:table]|results... dispatch(key:string, operation:string|function, params...)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Object Request Dispatcher
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local pcall = pcall
-local unpack = unpack
 
-local oo          = require "oil.oo"
-local Exception   = require "oil.Exception"
-local Dispatcher  = require "oil.kernel.base.Dispatcher"                        --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local pcall = _G.pcall
+local unpack = _G.unpack
 
-module "oil.kernel.lua.Dispatcher"
+local oo = require "oil.oo"
+local class = oo.class
 
-oo.class(_M, Dispatcher)
+local Exception = require "oil.Exception"
+local Dispatcher = require "oil.kernel.base.Dispatcher"
 
-context = false
 
---------------------------------------------------------------------------------
 
 local Operations = {
 	tostring = function(self)               return tostring(self) end,
@@ -50,30 +35,33 @@ local Operations = {
 	newindex = function(self, field, value) self[field] = value end,
 }
 
---------------------------------------------------------------------------------
 
-function dispatch(self, request)
-	local object = self.context.servants:retrieve(request.objectkey)
-	if object then
+
+local LuaDispatcher = class({ context = true }, Dispatcher)
+
+function LuaDispatcher:dispatch(request)
+	local entry = self.context.servants:retrieve(request.objectkey)
+	if entry then
 		local method = Operations[request.operation]
-		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching operation ",object,":",request.operation,unpack(request, 1, request.n))
-			self:setresults(request, pcall(method, object,
-			                               unpack(request, 1, request.n)))
+		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
+			request:setreply(pcall(method, entry.__servant, request:getvalues()))
 		else
-			self:setresults(request, false, Exception{
+			request:setreply(false, Exception{
 				error = "badobjimpl",
-				message = "no implementation for operation $operation of object with key $key",
-				operation = operation,
-				object = object,
-				key = key,
+				message = "no implementation of $operation for object (got $key)",
+				operation = request.operation,
+				object = entry.__servant,
+				key = request.objectkey,
 			})
 		end
 	else
-		self:setresults(request, false, Exception{
+		request:setreply(false, Exception{
 			reason = "badobjkey",
 			message = "no object with key (got $key)",
-			key = key,
+			key = request.objectkey,
 		})
 	end
 	return true
 end
+
+return LuaDispatcher

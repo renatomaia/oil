@@ -16,8 +16,8 @@ oil.main(function()
 	end
 	
 	local defaultEntry = {
-		object = Hello,
-		type = orb:loadidl "interface Hello { string say(); };",
+		__servant = Hello,
+		__type = orb:loadidl "interface Hello { string say(); };",
 	}
 	setmetatable(objectMap, {
 		__index = function(map, objkey)

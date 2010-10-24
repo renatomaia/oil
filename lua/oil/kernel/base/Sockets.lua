@@ -4,7 +4,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local math = require "math"
+local math = require "math"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local max = math.max
 
 local table = require "table"
@@ -69,8 +69,8 @@ function EventPoll:remove(socket)
 end
 
 function EventPoll:getready(timeout)
-	local ready = self.ready
 	repeat
+		local ready = self.ready
 		local count = #ready
 		if count > 0 then
 			local socket = ready[count]

@@ -1,25 +1,19 @@
-local _G = require "_G"
-local unpack = _G.unpack
-
-local oo = require "oil.oo"
+local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local class = oo.class
 
 local giop = require "oil.corba.giop"
 local IOR = giop.IOR
 
-local Listener = require "oil.corba.giop.Listener"                              --[[VERBOSE]] local verbose = require "oil.verbose"
+local Listener = require "oil.corba.giop.Listener"
 local ListenerRequest = Listener.Request
-local ListenerRequestChannel = Listener.RequestChannel
-
-
-module(...); local _ENV = _M
+local ListenerChannel = Listener.Channel
 
 
 local LocationForwardTypes = { IOR }
 local Empty = {}
 
 
-Request = class({}, ListenerRequest)
+local ServerRequest = class({}, ListenerRequest)
 
 local function buildreply(self)
 	local types, body
@@ -36,7 +30,7 @@ local function buildreply(self)
 	end
 	return types, body
 end
-function Request:getreply()
+function ServerRequest:getreply()
 	local types, body = buildreply(self)
 	if self.listener:interceptreply(self, body) then
 		types, body = buildreply(self)
@@ -48,21 +42,22 @@ function Request:getreply()
 end
 
 
-RequestChannel = class({
-	Request = Request,
-}, ListenerRequestChannel)
+ServerChannel = class({}, ListenerChannel)
 
-function RequestChannel:makerequest(...)
-	local request = ListenerRequestChannel.makerequest(self, ...)
+function ServerChannel:makerequest(...)
+	local request = ListenerChannel.makerequest(self, ...)
 	request.listener = self.listener
 	self.listener:interceptrequest(request)
 	return request
 end
 
 
-class(_ENV, Listener)
+local IceptedListener = class({
+	Request = ServerRequest,
+	Channel = ServerChannel,
+}, Listener)
 
-function _ENV:interceptrequest(request)
+function IceptedListener:interceptrequest(request)
 	local interceptor = self.interceptor
 	if interceptor then
 		local intercepted = {
@@ -76,7 +71,7 @@ function _ENV:interceptrequest(request)
 			interface_name    = request.interface and request.interface.absolute_name,
 			operation         = request.member,
 			parameters        = request.success == nil
-			                    and { n = request.n, unpack(request, 1, request.n) }
+			                    and { n = request.n, request:getvalues() }
 			                     or nil,
 		}
 		request.intercepted = intercepted
@@ -123,7 +118,7 @@ function _ENV:interceptrequest(request)
 end
 
 
-function _ENV:interceptreply(request, body)
+function IceptedListener:interceptreply(request, body)
 	local intercepted = request.intercepted
 	if intercepted then
 		request.intercepted = nil
@@ -134,7 +129,7 @@ function _ENV:interceptreply(request, body)
 			if request.reply_status == "SYSTEM_EXCEPTION" then
 				intercepted.results = { n = 1, body[1] }
 			else
-				intercepted.results = { n = request.n, unpack(request, 1, request.n) }
+				intercepted.results = { n = request.n, request:getvalues() }
 			end                                                                       --[[VERBOSE]] verbose:interceptors(true, "intercepting reply marshaling")
 			interceptor:sendreply(intercepted)                                        --[[VERBOSE]] verbose:interceptors(false, "interception ended")
 			local reference = intercepted.forward_reference
@@ -155,3 +150,5 @@ function _ENV:interceptreply(request, body)
 		end
 	end
 end
+
+return IceptedListener

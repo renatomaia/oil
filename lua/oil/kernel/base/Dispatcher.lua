@@ -21,12 +21,13 @@ class(_ENV)
 context = false
 
 function _ENV:dispatch(request)
-	local entry = self.context.servants:retrieve(request.objectkey)
+	local key = request.objectkey
+	local entry = self.context.servants:retrieve(key)
 	if entry then
 		local object = entry.__servant
 		local method = object[request.operation]
 		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
-			request:setreply(pcall(method, object, request:getparams()))
+			request:setreply(pcall(method, object, request:getvalues()))
 		else
 			request:setreply(false, Exception{
 				error = "badobjimpl",
@@ -55,9 +56,9 @@ end
 --[[VERBOSE]] 		local val = select(i, ...)
 --[[VERBOSE]] 		if type(val) == "string" then
 --[[VERBOSE]] 			output:write(val)
---[[VERBOSE]] 		elseif val.objectkey and val.operation and val.getparams then
+--[[VERBOSE]] 		elseif val.objectkey and val.operation and val.getvalues then
 --[[VERBOSE]] 			output:write(val.objectkey,":",val.operation,"(")
---[[VERBOSE]] 			viewer:write(val:getparams())
+--[[VERBOSE]] 			viewer:write(val:getvalues())
 --[[VERBOSE]] 			output:write(")")
 --[[VERBOSE]] 		else
 --[[VERBOSE]] 			viewer:write(val)

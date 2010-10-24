@@ -1,23 +1,25 @@
 require "oil"
 
 oil.main(function()
-	local broker = oil.init{flavor="cooperative;ludo"}
-	broker.ProxyManager.servants = nil -- disable local reference resolution
+	local orb = oil.init{
+		flavor = "cooperative;ludo",
+		localrefs = "proxy", -- disable local reference resolution
+	}
 	
-	oil.newthread(broker.run, broker)
+	oil.newthread(orb.run, orb)
 	
 	local Hello = {}
 	function Hello:say(who)
 		print(string.format("Hello, %s!", tostring(who)))
 	end
 	
-	local Invoker = broker:newproxy(oil.readfrom("ref.ludo"))
-	local proxy = broker:newproxy(
-	              	broker:tostring(
-	              		broker:newservant(Hello)))
+	local Invoker = orb:newproxy(oil.readfrom("ref.ludo"))
+	local proxy = orb:newproxy(
+	              	orb:tostring(
+	              		orb:newservant(Hello)))
 	
 	Invoker:invoke(Hello, "say", "there") -- message appear remotely
 	Invoker:invoke(proxy, "say", "here") -- message appear locally
 	
-	broker:shutdown()
+	orb:shutdown()
 end)

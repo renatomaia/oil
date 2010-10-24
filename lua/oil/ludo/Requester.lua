@@ -1,109 +1,83 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua                                                  --
--- Release: 0.5                                                               --
--- Title  : Client-side LuDO Protocol                                         --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- requests:Facet
--- 	reply:object, [except:table], [requests:table] newrequest(reference:table, operation, args...)
--- 	reply:object, [except:table], [requests:table] getreply(request:object, [probe:boolean])
--- 
--- codec:Receptacle
--- 	encoder:object encoder()
--- 	decoder:object decoder(stream:string)
--- 
--- channels:Receptacle
--- 	channel:object retieve(configs:table)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Client-side LuDO Protocol
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local select  = select
-local tonumber = tonumber
-local unpack = unpack
 
-local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local select  = _G.select
+local tonumber = _G.tonumber
+local unpack = _G.unpack
 
-module "oil.ludo.Requester"
+local oo = require "oil.oo"
+local class = oo.class
 
-oo.class(_M, Messenger)
+local Requester = require "oil.protocol.Requester"
+local LuDOChannel = require "oil.ludo.Channel"
 
---------------------------------------------------------------------------------
 
-local MessageFmt = "%d\n%s"
+local LuDORequester = class({ Channel = LuDOChannel }, Requester)
 
-function newrequest(self, reference, operation, ...)
-	local result, except, message = self.channels:retrieve(reference)
+function LuDORequester:newchannel(reference)
+	local result, except = self.channels:retrieve(reference)
 	if result then
-		local channel = result
-		local encoder = self.codec:encoder()
-		local requestid = #channel+1
-		encoder:put(requestid, reference.object, operation, ...)
-		local data = encoder:__tostring()
-		channel:trylock("write", true)
-		result, except = channel:send(MessageFmt:format(#data, data))
-		channel:freelock("write")
-		if result then
-			result = { channel = channel }
-			channel[requestid] = result
-		else
-			if except == "closed" then channel:close() end
+		result = self.sock2channel[result]
+		if result:unlocked("read") then -- channel might be broken
+			local ok
+			repeat ok, except = self:readchannel(result, 0) until not ok
+			if except.error == "timeout" then
+				except = nil
+			else
+				result:close()
+				result, except = channels:retrieve(profile)
+				if result then result = sock2channel[result] end
+			end
 		end
-	elseif message then
-		except = except..": "..message
 	end
 	return result, except
 end
 
---------------------------------------------------------------------------------
+function LuDORequester:makerequest(channel, except, reference, operation, ...)
+	local request = self.Request{
+		channel = channel,
+		requester = self,
+	}
+	if channel then
+		local requestid = #channel+1
+		channel:trylock("write")
+		local success
+		success, except = channel:sendvalues(requestid,
+		                                     reference.object,
+		                                     operation, ...)
+		channel:freelock("write")
+		if success then
+			channel[requestid] = request
+			return request
+		end
+	end
+	request:setreply(false, except)
+	return request
+end
 
-local function update(channel, requestid, success, ...)
+local function doreply(channel, ok, requestid, success, ...)
+	if not ok then return nil, requestid end
 	local request, except = channel[requestid]
 	if request then
 		channel[requestid] = nil
 		request.channel = nil
-		request.success = success
-		request.n = select("#", ...)
-		for i = 1, request.n do
-			request[i] = select(i, ...)
-		end
+		request:setreply(success, ...)
+		channel:signal("read", request)
 	else
-		except = "LuDO protocol: unexpected reply"
+		except = Exception{
+			error = "badmessage",
+			message = "unexpected LuDO reply ID (got $requestid)",
+			requestid = requestid,
+		}
 	end
 	return request, except
 end
-
-function getreply(self, request, probe)
-	local result, except = true, nil
-	if request.success == nil then
-		local channel = request.channel
-		if channel:trylock("read", not probe, request) then
-			local codec = self.codec
-			while result and (result ~= request) and (not probe or channel:probe()) do
-				result, except = channel:receive()
-				if result then
-					result = tonumber(result)
-					if result then
-						result, except = channel:receive(result)
-						if result then
-							result, except = update(channel, codec:decoder(result):get())
-							if result then
-								channel:signal("read", result)
-							end
-						end
-					else
-						except = "LuDO protocol: invalid message size"
-					end
-				end
-			end
-			channel:freelock("read")
-		end
-	end
-	return result, except
+function LuDORequester:readchannel(channel, timeout)
+	return doreply(channel, channel:receivevalues(timeout))
 end
+
+return LuDORequester

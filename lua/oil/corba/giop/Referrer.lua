@@ -131,7 +131,7 @@ function _ENV:typeof(reference, timeout)
 	if requester then                                                             --[[VERBOSE]] verbose:proxies(true, "attempt to discover interface a remote object")
 		local request = requester:newrequest(reference, _interface)
 		if request then
-			local ok, type = request:results(timeout)
+			local ok, type = request:getreply(timeout)
 			if ok then                                                                --[[VERBOSE]] verbose:proxies(false, "interface discovered")
 				return type
 			end

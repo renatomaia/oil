@@ -4,13 +4,13 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local _G = require "_G"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local setmetatable = _G.setmetatable
 
 local tabop = require "loop.table"
 local memoize = tabop.memoize
 
-local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
 local class = oo.class
 
 module(...); local _ENV = _M
@@ -36,7 +36,7 @@ function _ENV:__init()
 	end
 end
 
-function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies("new proxy to ",reference)
+function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies("new proxy to ",proxy.__reference)
 	return setmetatable(proxy, self.class)
 end
 

@@ -12,8 +12,8 @@ OperationRequester = component.Template{
 
 function assemble(components)
 	arch.start(components)
-	ClientChannels.sockets      = BasicSystem.sockets
-	OperationRequester.codec    = LuaEncoder.codec
+	ClientChannels.sockets = BasicSystem.sockets
+	OperationRequester.codec = ValueEncoder.codec
 	OperationRequester.channels = ClientChannels.channels
 	arch.finish(components)
 end

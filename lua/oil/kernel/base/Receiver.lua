@@ -20,42 +20,42 @@ function _ENV:setup(configs)
 	return self.listener:setup(configs)
 end
 
-function _ENV:probe(timeout)
+function _ENV:probe(timeout)                                                    --[[VERBOSE]] verbose:acceptor(true, "checking for invocation requests")
 	local result, except = self.pending
-	if result == nil then
+	if result == nil then                                                         --[[VERBOSE]] verbose:acceptor("waiting requests for ",timeout and timeout.." seconds" or "ever")
 		local listener = self.listener
 		repeat
 			result, except = listener:getchannel(timeout)
 			if result then
 				result, except = result:getrequest(0)
-				if result then
+				if result then                                                          --[[VERBOSE]] verbose:acceptor("new request received")
 					self.pending = result
 				elseif except.error == "timeout" then
 					except = nil
 				end
 			end
 		until result or except
-	end
+	end                                                                           --[[VERBOSE]] verbose:acceptor(false)
 	return result, except
 end
 
 function _ENV:step(timeout)
 	local result, except = self:probe(timeout)
-	if result then
+	if result then                                                                --[[VERBOSE]] verbose:acceptor(true, "processing one single request")
 		self.pending = nil
 		self.dispatcher:dispatch(result)
-		result, except = result:sendreply()
+		result, except = result:sendreply()                                         --[[VERBOSE]] verbose:acceptor(false, "request completed")
 	end
 	return result, except
 end
 
 function _ENV:start()
-	if self.stopped ~= false then
+	if self.stopped ~= false then                                                 --[[VERBOSE]] verbose:acceptor(true, "start processing invocation requests")
 		self.stopped = false
 		repeat
 			local result, except = self:step()
 			if not result then return nil, except end
-		until self.stopped
+		until self.stopped                                                          --[[VERBOSE]] verbose:acceptor(false, "invocation request processing stopped")
 		local values = self.stopped
 		self.stopped = nil
 		return values()
@@ -67,12 +67,12 @@ function _ENV:start()
 end
 
 function _ENV:stop(...)
-	if self.stopped == false then
+	if self.stopped == false then                                                 --[[VERBOSE]] verbose:acceptor("attempt to stop invocation request processing")
 		self.stopped = pack(...)
 		return true
 	end
 end
 
-function _ENV:shutdown()
+function _ENV:shutdown()                                                        --[[VERBOSE]] verbose:acceptor("attempt to shutdown the ORB")
 	return self.listener:shutdown()
 end

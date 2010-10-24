@@ -1,4 +1,4 @@
-oil = {BasicSystem = false} -- disable multithreading support
+oil = {cothread = false} -- disable multithreading support
 
 require "oil"
 

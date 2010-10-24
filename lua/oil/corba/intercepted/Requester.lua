@@ -4,13 +4,13 @@ local unpack = _G.unpack
 local oo = require "oil.oo"
 local class = oo.class
 
-local Requester = require "oil.corba.giop.Requester"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local GIOPRequester = require "oil.corba.giop.Requester"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module(...); local _ENV = _M
 
-class(_ENV, Requester)
 
-function interceptrequest(self, reference, operation, request)
+local IceptedRequester = class({}, GIOPRequester)
+
+function IceptedRequester:interceptrequest(reference, operation, request)
 	local interceptor = self.interceptor
 	if interceptor then
 		local interface = operation.defined_in
@@ -70,8 +70,8 @@ function interceptrequest(self, reference, operation, request)
 	end
 end
 
-function sendrequest(self, reference, operation, ...)
-	local request, channel, except = self:makerequest(reference, operation, ...)  --[[VERBOSE]] verbose:interceptors(true, "intercepting request")
+function IceptedRequester:makerequest(channel, except, reference, operation, ...)
+	local request = self:buildrequest(channel, except, reference, operation, ...) --[[VERBOSE]] verbose:interceptors(true, "intercepting request")
 	local intercepted = self:interceptrequest(reference, operation, request)
 	if intercepted then
 		if request.success ~= nil then
@@ -104,12 +104,12 @@ function sendrequest(self, reference, operation, ...)
 		end
 		intercepted.request_id = request.request_id
 	end                                                                           --[[VERBOSE]] verbose:interceptors(false, "interception completed")
-	return self:processrequest(request, channel, except)
+	return self:processrequest(channel, except, request)
 end
 
---------------------------------------------------------------------------------
 
-function interceptreply(self, request, header)
+
+function IceptedRequester:interceptreply(request, header)
 	local intercepted = request.intercepted
 	if intercepted then
 		request.intercepted = nil
@@ -139,12 +139,14 @@ function interceptreply(self, request, header)
 	end
 end
 
-function endrequest(self, request, success, result)
-	Requester.endrequest(self, request, success, result)
+function IceptedRequester:endrequest(request, success, result)
+	GIOPRequester.endrequest(self, request, success, result)
 	self:interceptreply(request)
 end
 
-function doreply(self, replied, header, decoder)
+function IceptedRequester:doreply(replied, header, decoder)
 	replied.reply_header = header
-	return Requester.doreply(self, replied, header, decoder)
+	return GIOPRequester.doreply(self, replied, header, decoder)
 end
+
+return IceptedRequester

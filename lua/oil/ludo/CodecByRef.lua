@@ -57,11 +57,22 @@ local function getidfor(value)
 	return tonumber(id, 16) or id
 end
 
+local function resolveref(self, reference)
+	local servants = self.servants
+	if servants ~= nil and self.localrefs == "implementation" then
+		local entry = servants:islocal(reference)
+		if entry ~= nil then                                                          --[[VERBOSE]] verbose:unmarshal("local object with key '",objkey,"' restored")
+			return entry.__servant
+		end
+	end
+	return self.proxies:newproxy{__reference=reference}
+end
+
 local function serialproxy(self, value, id)                                     --[[VERBOSE]] verbose:marshal("marshalling proxy for value ",value)
 	self[value] = self.namespace..":value("..id..")"
 	self:write(self.namespace,":value(",id,",'table',")
 	self:write("proxies:newproxy{__reference=")
-	local reference = self.servants:register(value).__reference
+	local reference = self.servants:register{__servant=value}.__reference
 	StringStream.table(self, reference, getidfor(reference))
 	self:write("})")
 end
@@ -71,9 +82,9 @@ local function serialtable(self, value, id)                                     
 	if reference then                                                             --[[VERBOSE]] verbose:marshal "table is a proxy"
 		self[value] = self.namespace..":value("..id..")"
 		self:write(self.namespace,":value(",id,",'table',")
-		self:write("proxies:newproxy{__reference=")
+		self:write("resolveref(serial.environment,")
 		StringStream.table(self, reference, getidfor(reference))
-		self:write("})")
+		self:write("))")
 	else
 		local meta = getmetatable(value)
 		if meta and meta.__marshalcopy then                                         --[[VERBOSE]] verbose:marshal "table by copy"
@@ -95,9 +106,16 @@ function encoder(self)
 	return LuDOStream(table.copy(self.names, {servants = self.servants}))
 end
 
+localrefs = "implementation"
+
 function decoder(self, stream)
 	return StringStream{
-		environment = table.copy(self.values, {proxies = self.proxies}),
+		environment = table.copy(self.values, {
+			resolveref = resolveref,
+			localrefs = self.localrefs,
+			proxies = self.proxies,
+			servants = self.servants,
+		}),
 		data = stream,
 	}
 end

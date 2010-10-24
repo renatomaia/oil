@@ -56,7 +56,7 @@ oil.main(function()
 				AuthorSeq authors;
 			};
 			interface Collector {
-				long submit(in Paper paper);
+				long submit(in Paper somepaper);
 			};
 		]]
 	)

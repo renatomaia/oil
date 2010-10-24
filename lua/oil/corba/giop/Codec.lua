@@ -680,6 +680,7 @@ end
 -- Unmarshalling buffer class --------------------------------------------------
 
 Decoder = oo.class{
+	localrefs = "implementation",
 	previousend = 0,
 	cursor = 1,
 	unpack = bit.unpack, -- use current platform native endianess
@@ -980,6 +981,7 @@ end
 -- NOTE: Presence of a parameter indicates an encapsulated octet-stream.
 function encoder(self, putorder)
 	local encoder = self.Encoder{
+		localrefs = self.localrefs,
 		servants = self.servants,
 		proxies = self.proxies,
 	}

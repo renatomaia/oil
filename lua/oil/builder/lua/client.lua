@@ -7,5 +7,7 @@ module "oil.builder.lua.client"
 ProxyManager = arch.ProxyManager{require "oil.kernel.lua.Proxies"}
 
 function create(comps)
-	return builder.create(_M, comps)
+	comps.proxykind = comps.proxykind or {"lua"}
+	comps.proxykind.lua = ProxyManager()
+	return comps
 end

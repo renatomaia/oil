@@ -1,6 +1,8 @@
-oil = {BasicSystem = false} -- disable multithreading support
+oil = {cothread = false} -- disable multithreading support
 
 require "oil"
+
+assert(cothread==nil)
 
 oil.main(function()
 	local orb = oil.init{ flavor = "lua;ludo;ludo.byref" }

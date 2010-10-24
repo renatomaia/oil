@@ -5,6 +5,7 @@
 
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local assert = _G.assert
 local getmetatable = _G.getmetatable
 local pcall = _G.pcall
 local rawget = _G.rawget
@@ -140,6 +141,7 @@ end
 function _ENV:register(...)
 	local result, except = self:makeentry(...)
 	if result then
+		assert(result.__servant ~= nil)
 		local entry = result
 		result, except = self.referrer:newreference(entry)
 		if result then

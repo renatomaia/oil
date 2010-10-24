@@ -21,6 +21,8 @@ local oo = require "oil.oo"
 local class = oo.class
 local rawnew = oo.rawnew
 
+local Requester = require "oil.protocol.Requester"
+
 local giop = require "oil.corba.giop"
 local IOR = giop.IOR
 local RequestID = giop.RequestID
@@ -34,23 +36,15 @@ local SystemExceptionIDL = giop.SystemExceptionIDL
 local _non_existent = giop.ObjectOperations._non_existent
 
 local Exception = require "oil.corba.giop.Exception"
-local Channel = require "oil.corba.giop.Channel"                                --[[VERBOSE]] local verbose = require "oil.verbose"
+local GIOPChannel = require "oil.corba.giop.Channel"                                --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module(...); local _ENV = _M
-
-class(_M)
-
---------------------------------------------------------------------------------
 
 local WeakKeys = oo.class{__mode = "k"}
 local WeakTable = oo.class{__mode = "kv"}
 
 local Empty = {}
 
---------------------------------------------------------------------------------
--- request id management for channels
-
-function register(channel, request)
+local function register(channel, request)
 	local id = #channel + 1
 	request.request_id = id
 	request.channel = channel
@@ -58,7 +52,7 @@ function register(channel, request)
 	return id
 end
 
-function unregister(channel, id)
+local function unregister(channel, id)
 	local request = channel[id]
 	if request then
 		request.request_id = nil
@@ -68,43 +62,42 @@ function unregister(channel, id)
 	end
 end
 
---------------------------------------------------------------------------------
 
-function __init(self, ...)
-	self.objkeyof = WeakKeys()
-	self.channelof = WeakTable()
-	self.sock2channel = memoize(function(socket)
-		return Channel{
-			socket = socket,
-			codec = self.codec,
-		}
-	end, "k")
-	self.Request = class{
-		ready = function(request, timeout)
-			if request.success ~= nil then return true end
-			self:getreply(request, timeout or 0)
-			return request.success ~= nil
-		end,
-		results = function(request, timeout)
-			local success = request.success
-			if success == nil then
-				self:getreply(request, timeout)
-				success = request.success
-				if success == nil then
-					return nil, Exception{
-						error = "timeout",
-						message = "timeout",
-					}
-				end
-			end
-			return success, unpack(request, 1, request.n)
-		end,
-	}
+
+local OperationRequester = {}
+local OperationReplier = {}
+
+local ReplyTrue  = { getreply = function() return true, true end }
+local ReplyFalse = { getreply = function() return true, false end }
+function OperationRequester:_is_equivalent(reference, operation, other)
+	return self.referrer:isequivalent(reference, other.__reference)
+	   and ReplyTrue
+	    or ReplyFalse
 end
 
---------------------------------------------------------------------------------
+function OperationReplier:_non_existent(request)
+	local except = request:getvalues()
+	if not request.success
+	and (except.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
+	  or (except.error == "badconnect" and except.errmsg == "connection refused"))
+	then
+		request:setreply(true, true)
+	end
+end
 
-function newchannel(self, reference)
+
+
+local GIOPRequester = class({
+	OperationRequester = OperationRequester,
+	OperationReplier = OperationReplier,
+	Channel = GIOPChannel,
+}, Requester)
+
+function GIOPRequester:__init()
+	self.objkeyof = WeakKeys()
+end
+
+function GIOPRequester:newchannel(reference)
 	local except
 	for _, encoded in ipairs(reference.profiles) do                               --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",encoded.tag,"]")
 		local channels = self.channels
@@ -123,7 +116,6 @@ function newchannel(self, reference)
 					if except.error == "timeout" then
 						ok = true
 					else
-						result:close()
 						result, except = channels:retrieve(profile)
 						if result then
 							ok = true
@@ -133,9 +125,10 @@ function newchannel(self, reference)
 				else
 					ok = true -- channel is being read, so it should be working fine
 				end
-				if ok then                                                            --[[VERBOSE]] verbose:invoke("got channel from profile with tag ",profile.tag)
+				if ok then                                                            --[[VERBOSE]] verbose:invoke("got channel from profile with tag ",encoded.tag)
+					self.objkeyof[reference] = objectkey
 					reference._profile = profile
-					return result, objectkey
+					return result
 				end
 			end
 		end
@@ -154,23 +147,8 @@ function newchannel(self, reference)
 	return nil, except
 end
 
-function getchannel(self, reference)                                                --[[VERBOSE]] verbose:invoke(true, "get communication channel")
-	local channelof, objkeyof = self.channelof, self.objkeyof
-	local channel, objectkey = channelof[reference], objkeyof[reference]
-	if channel == nil then
-		channel, objectkey = self:newchannel(reference)
-		if channel then
-			channelof[reference] = channel
-			objkeyof[reference] = objectkey
-		end
-	end                                                                           --[[VERBOSE]] verbose:invoke(false)
-	return channel, objectkey
-end
-
---------------------------------------------------------------------------------
-
-function makerequest(self, reference, operation, ...)
-	local channel, except = self:getchannel(reference)
+-- this is a separated method to provide pointcut for interception
+function GIOPRequester:buildrequest(channel, except, reference, operation, ...)
 	local request = self.Request{
 		requester            = self,
 		reference            = reference,
@@ -189,28 +167,14 @@ function makerequest(self, reference, operation, ...)
 	if channel and request.response_expected then
 		register(channel, request) -- defines the 'request_id'
 	end
-	return request, channel, except
+	return request
 end
 
-function endrequest(self, request, success, result)
-	if success ~= nil then
-		if success then
-			request.success = true
-			request.n = result
-		else
-			request.success = false
-			request.n = 1
-			request[1] = result
-		end
-	end
-	local replier = self.OperationReplier[request.operation]
-	if replier then replier(self, request) end
-end
-
-function processrequest(self, request, channel, except)                         --[[VERBOSE]] verbose:invoke(true, "request ",request.request_id," for operation '",request.operation,"'")
+-- this is a separated method to provide pointcut for interception
+function GIOPRequester:processrequest(channel, except, request)                 --[[VERBOSE]] verbose:invoke(true, "processing new request")
 	if channel then
 		local success
-		success, except = channel:send(RequestID, request,
+		success, except = channel:sendmsg(RequestID, request,
 		                               request.inputs, request)
 		if success then
 			if not request.response_expected then
@@ -221,25 +185,40 @@ function processrequest(self, request, channel, except)                         
 		unregister(channel, request.request_id)                                     --[[VERBOSE]] else verbose:invoke("unable to contact the servant")
 	end
 	self:endrequest(request, false, except)                                       --[[VERBOSE]] verbose:invoke(false, "request failed")
+end
+
+-- this is a separated method to provide pointcut for interception
+function GIOPRequester:endrequest(request, success, result)
+	if success ~= nil then
+		if success then
+			request.success = true
+			request.n = result
+		else
+			request:setreply(false, result)
+		end
+	end
+	local replier = self.OperationReplier[request.operation]
+	if replier then replier(self, request) end
+end
+
+function GIOPRequester:makerequest(channel, except, ...)
+	local request = self:buildrequest(channel, except, ...)
+	self:processrequest(channel, except, request)
 	return request
 end
 
-function sendrequest(self, reference, operation, ...)
-	return self:processrequest(self:makerequest(reference, operation, ...))
-end
-
-function newrequest(self, reference, operation, ...)
-	local requester = self.OperationRequester[operation] or self.sendrequest
+function GIOPRequester:newrequest(reference, operation, ...)
+	local requester = self.OperationRequester[operation] or Requester.newrequest
 	return requester(self, reference, operation, ...)
 end
 
---------------------------------------------------------------------------------
 
-function reissue(self, request, channel, except)
+
+local function reissue(self, request, channel, except)
 	if channel then                                                               --[[VERBOSE]] verbose:invoke(true, "reissue request for operation '",request.operation,"'")
 		register(channel, request)
 		local success
-		success, except = channel:send(RequestID, request,
+		success, except = channel:sendmsg(RequestID, request,
 		                               request.inputs, request)                     --[[VERBOSE]] verbose:invoke(false, "reissue",success and "d successfully" or " failed")
 		if success then return true end
 		unregister(channel, request.request_id)
@@ -254,8 +233,8 @@ local SystemExceptionReason = {
 	["IDL:omg.org/CORBA/BAD_OPERATION:1.0"   ] = "badobjop",
 	["IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"] = "badobjkey",
 }
-
-function doreply(self, replied, header, decoder)
+-- this is a separated method to provide pointcut for interception
+function GIOPRequester:doreply(replied, header, decoder)
 	local status = header.reply_status
 	if status == "NO_EXCEPTION" then                                              --[[VERBOSE]] verbose:invoke("got successful reply for request ",header.request_id)
 		local outputs = replied.outputs
@@ -280,9 +259,9 @@ function doreply(self, replied, header, decoder)
 			channel, except = self:newchannel(decoder:struct(IOR))
 			if channel then
 				replied.object_key = except
-				return self:reissue(replied, channel)
+				return reissue(self, replied, channel)
 			end
-		elseif status == "USER_EXCEPTION" then                                        --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
+		elseif status == "USER_EXCEPTION" then                                      --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
 			local repId = decoder:string()
 			except = replied.exceptions[repId]
 			if except then
@@ -297,7 +276,7 @@ function doreply(self, replied, header, decoder)
 					exception = repId,
 				}
 			end
-		elseif status == "SYSTEM_EXCEPTION" then                                  --[[VERBOSE]] verbose:invoke("got reply with system exception for ",header.request_id)
+		elseif status == "SYSTEM_EXCEPTION" then                                    --[[VERBOSE]] verbose:invoke("got reply with system exception for ",header.request_id)
 			-- TODO:[maia] set its type to the proper SystemExcep.
 			except = decoder:struct(SystemExceptionIDL)
 			except[1] = except.exception_id
@@ -316,8 +295,8 @@ function doreply(self, replied, header, decoder)
 	end -- of if status == "NO_EXCEPTION"
 end
 
-function readchannel(self, channel, timeout)
-	local msgid, header, decoder = channel:receive(timeout)
+function GIOPRequester:readchannel(channel, timeout)
+	local msgid, header, decoder = channel:receivemsg(timeout)
 	if msgid == ReplyID then
 		local replied = unregister(channel, header.request_id)
 		if replied then
@@ -325,7 +304,7 @@ function readchannel(self, channel, timeout)
 			channel:signal("read", replied)
 			return true
 		end                                                                         --[[VERBOSE]] verbose:invoke("got reply for invalid request ID: ",header.request_id)
-		msgid, header = channel:send(MessageErrorID)
+		msgid, header = channel:sendmsg(MessageErrorID)
 		if msgid then return true end
 	elseif msgid == CloseConnectionID then                                        --[[VERBOSE]] verbose:invoke("got remote request to close channel")
 		local channelof = self.channelof
@@ -336,7 +315,7 @@ function readchannel(self, channel, timeout)
 		for id, pending in pairs(channel) do
 			if type(id) == "number" then                                              --[[VERBOSE]] verbose:invoke(true, "reissuing pending request ",pending.request_id)
 				unregister(channel, id)
-				self:reissue(pending, self:getchannel(pending.reference))               --[[VERBOSE]] verbose:invoke(false)
+				reissue(self, pending, self:getchannel(pending.reference))              --[[VERBOSE]] verbose:invoke(false)
 				channel:signal("read", replied)
 			end
 		end
@@ -347,7 +326,7 @@ function readchannel(self, channel, timeout)
 			message = "error in remote ORB message processing",
 		}
 	elseif MessageType[msgid]~=nil or (msgid==nil and header.reason=="badversion") then
-		msgid, header = channel:send(MessageErrorID)
+		msgid, header = channel:sendmsg(MessageErrorID)
 		if msgid then return true end
 	end
 	if header.error ~= "timeout" then
@@ -361,49 +340,4 @@ function readchannel(self, channel, timeout)
 	return nil, header
 end
 
-function getreply(self, request, timeout)
-	repeat
-		local channel = request.channel
-		if channel:trylock("read", timeout, request) then
-			repeat
-				local ok, except = self:readchannel(channel, timeout)
-				if not ok and except.error == "timeout" then return end
-			until request.channel ~= channel
-			channel:freelock("read")
-		end
-	until request.success ~= nil
-end
-
---------------------------------------------------------------------------------
-
-OperationRequester = {}
-OperationReplier = {}
-
-local ReplyTrue  = {
-	ready = function() return true end,
-	results = function() return true, true end,
-}
-local ReplyFalse = {
-	ready = ReplyTrue.ready,
-	results = function() return true, false end,
-}
-
-function OperationRequester:_is_equivalent(reference, operation, other)
-	return self.referrer:isequivalent(reference, other.__reference)
-	   and ReplyTrue
-	    or ReplyFalse
-end
-
-function OperationReplier:_non_existent(request)
-	local except = request[1]
-	if not request.success
-	and (
-		except.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0" or
-		(except.error == "badconnect" and except.errmsg == "connection refused")
-	)
-	then
-		request.success = true
-		request.n = 1
-		request[1] = true
-	end
-end
+return GIOPRequester

@@ -7,6 +7,6 @@ local assert = utils.assertresults
 return function(invoker, operation)
 	return function(self, ...)
 		local timeout = rawget(self, "__timeout")
-		return assert(self, operation, invoker(self, ...):results(timeout))
+		return assert(self, operation, invoker(self, ...):getreply(timeout))
 	end
 end

@@ -49,7 +49,7 @@ oil.main(function()
 			AuthorSeq authors;
 		};
 		interface Collector {
-			void submit(in Paper paper);
+			void submit(in Paper somepaper);
 		};
 	]]
 	

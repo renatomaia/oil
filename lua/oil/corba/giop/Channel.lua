@@ -4,7 +4,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local _G = require "_G"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local assert = _G.assert
 local ipairs = _G.ipairs
 local pcall = _G.pcall
@@ -27,76 +27,26 @@ local HeaderSize = giop.HeaderSize
 local Header_v1_ = giop.Header_v1_
 local MessageHeader_v1_ = giop.MessageHeader_v1_
 
-local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local Channel = require "oil.protocol.Channel"
+local Exception = require "oil.corba.giop.Exception"
 
-module(...); local _ENV = _M
 
-class(_ENV)
 
-magictag = MagicTag
-headersize = HeaderSize
-headertype = Header_v1_[0]
-messagetype = MessageHeader_v1_[0]
-header = {
-	magic = MagicTag,
-	GIOP_version = {major=1, minor=0},
-	byte_order = (endianess() == "little"),
-	message_type = nil, -- defined later
-	message_size = nil, -- defined later
-}
+local GIOPChannel = class({
+	magictag = MagicTag,
+	headersize = HeaderSize,
+	headertype = Header_v1_[0],
+	messagetype = MessageHeader_v1_[0],
+	header = {
+		magic = MagicTag,
+		GIOP_version = {major=1, minor=0},
+		byte_order = (endianess() == "little"),
+		message_type = nil, -- defined later
+		message_size = nil, -- defined later
+	},
+}, Channel)
 
-function _ENV:__init()
-	self.read = Mutex()
-	self.write = Mutex()
-end
-
-function _ENV:unlocked(operation)
-	return self[operation]:isfree()
-end
-
-function _ENV:trylock(operation, timeout, signal)
-	local mutex = self[operation]
-	if signal ~= nil then mutex[signal] = running() end
-	local granted = mutex:try(timeout)
-	if signal ~= nil then mutex[signal] = nil end
-	return granted
-end
-
-function _ENV:signal(operation, signal)
-	local mutex = self[operation]
-	local thread = mutex[signal]
-	if thread then
-		return mutex:deny(thread)
-	end
-end
-
-function _ENV:freelock(operation)
-	return self[operation]:free()
-end
-
-function _ENV:close()
-	return self.socket:close()
-end
-
-_ENV.bytes = ""
-function _ENV:getbytes(count, timeout)
-	local bytes = self.bytes
-	if #bytes >= count then
-		self.bytes = bytes:sub(count+1)
-		return bytes:sub(1, count)
-	end
-	local socket = self.socket
-	socket:settimelimit(timeout)
-	local result, except, partial = socket:receive(count-#bytes)
-	if result then
-		self.bytes = ""
-		return bytes..result
-	end
-	self.bytes = bytes..partial
-	return nil, except
-end
-
-function _ENV:send(msgtype, message, types, values)                             --[[VERBOSE]] verbose:message(true, "send message ",msgtype)
+function GIOPChannel:sendmsg(msgtype, message, types, values)                   --[[VERBOSE]] verbose:message(true, "send message ",msgtype)
 	--
 	-- Create GIOP message body
 	--
@@ -134,30 +84,11 @@ function _ENV:send(msgtype, message, types, values)                             
 	--
 	-- Send stream over the channel
 	--
-	self:trylock("write")
-	local success, except = self.socket:send(stream)
-	self:freelock("write")
-	if not success then
-		if except == "closed" then
-			self.socket:close()
-			except = Exception{
-				error = "terminated",
-				message = "terminated",
-			}
-		else
-			except = Exception{
-				error = "badchannel",
-				message = "unable to write into $channel ($errmsg)",
-				errmsg = except,
-				channel = self,
-			}
-		end
-	end                                                                           --[[VERBOSE]] verbose:message(false)
-	return success, except
+	return self:send(stream)
 end
 
-function _ENV:receive(timeout)                                                  --[[VERBOSE]] verbose:message(true, "receive message from channel")
-	local result, except
+function GIOPChannel:receivemsg(timeout)                                        --[[VERBOSE]] verbose:message(true, "receive message from channel")
+	local except
 	local type, size, decoder = self.pendingmsgtype
 	if type then
 		size = self.pendingmsgsize
@@ -166,9 +97,10 @@ function _ENV:receive(timeout)                                                  
 		self.pendingmsgsize = nil
 		self.pendingmsgdecoder = nil
 	else
-		result, except = self:getbytes(self.headersize, timeout)
-		if result then
-			decoder = self.codec:decoder(result)
+		local stream
+		stream, except = self:receive(self.headersize, timeout)
+		if stream then
+			decoder = self.codec:decoder(stream)
 			--
 			-- Read GIOP message header
 			--
@@ -195,38 +127,24 @@ function _ENV:receive(timeout)                                                  
 					actualtag = magic,
 				}
 			end
-		elseif except == "timeout" then
-			except = Exception{
-				error = "timeout",
-				message = "timeout",
-				timeout = timeout,
-			}
-		elseif except == "closed" then
-			self.socket:close()
-			except = Exception{
-				error = "terminated",
-				message = "terminated",
-			}
-		else
-			except = Exception{
-				error = "badchannel",
-				message = "unable to read from channel ($errmsg)",
-				errmsg = except,
-				channel = self,
-			}
 		end
 	end
 	if not except then
 		--
 		-- Read GIOP message body
 		--
+		local stream = true
 		if size > 0 then
-			result, except = self:getbytes(size, timeout)
-		else
-			result, except = "", nil
+			stream, except = self:receive(size, timeout)
+			if stream then
+				decoder:append(stream)
+			elseif except.error == "timeout" then
+				self.pendingheadertype = type
+				self.pendingheadersize = header
+				self.pendingheaderdecoder = decoder
+			end
 		end
-		if result then
-			decoder:append(result)
+		if stream then
 			local header = self.messagetype[type]
 			if header ~= nil then                                                     --[[VERBOSE]] verbose:message(false, "got message ",type)
 				if header then
@@ -243,34 +161,12 @@ function _ENV:receive(timeout)                                                  
 					msgtypeid = type,
 				}
 			end
-		elseif except == "timeout" then
-			except = Exception{
-				error = "timeout",
-				message = "timeout",
-			}
-			self.pendingheadertype = type
-			self.pendingheadersize = header
-			self.pendingheaderdecoder = decoder
-		elseif except == "closed" then
-			self.socket:close()
-			except = Exception{
-				error = "terminated",
-				message = "terminated",
-			}
-		else
-			except = Exception{
-				error = "badchannel",
-				message = "unable to read from $channel ($errmsg)",
-				errmsg = except,
-				channel = self,
-			}
 		end
 	end                                                                           --[[VERBOSE]] if except.error == "timeout" then verbose:message(false, "receive operation timed out") elseif except.error ~= "terminated" then verbose:message(false, "error reading message: ",except) else verbose:message(false) end
 	return nil, except, self
 end
 
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
+
 
 --[[VERBOSE]] local select = _G.select
 --[[VERBOSE]] local MessageType = giop.MessageType
@@ -288,3 +184,7 @@ end
 --[[VERBOSE]] 		end
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end
+
+
+
+return GIOPChannel
