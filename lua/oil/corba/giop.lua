@@ -16,8 +16,8 @@ TaggedProfile = idl.struct{
 	{name = "tag"         , type = idl.ulong   },
 	{name = "profile_data", type = idl.OctetSeq},
 }
-                  -- underscore character allows using IOR as proxy objects
-IOR = idl.struct{ -- because it avoids name clashes with object members.
+
+IOR = idl.struct{
 	{name = "type_id" , type = idl.string                 },
 	{name = "profiles", type = idl.sequence{TaggedProfile}},
 }
@@ -113,29 +113,29 @@ SystemExceptionIDs = {
 --------------------------------------------------------------------------------
 -- Message Header Commom to All GIOP Messages ----------------------------------
 
-HeaderSize = 12   -- TODO:[maia] Calculate from IDL specification
-MagicTag = "GIOP" -- TODO:[maia] Garantee that the string "GIOP" is
-                  --             encoded in ISO Latin-1 (8859.1).
-                  --             How can I do this in Lua?!
+HeaderSize = 12               -- TODO:[maia] Calculate from IDL specification
+MagicTag = "\071\073\079\080" -- "GIOP" encoded in ISO Latin-1 (8859.1)
+
+Magicn = idl.array{idl.char; length = 4}
 
 Header_v1_ = { -- Common message header for each GIOP version
 	[0] = idl.struct{ -- GIOP 1.0
-		{name = "magic"       , type = idl.array{idl.char; length = 4}},
-		{name = "GIOP_version", type = idl.Version                    },
-		{name = "byte_order"  , type = idl.boolean                    },
-		{name = "message_type", type = idl.octet                      },
-		{name = "message_size", type = idl.ulong                      },
+		{name = "magic"       , type = Magicn     },
+		{name = "GIOP_version", type = idl.Version},
+		{name = "byte_order"  , type = idl.boolean},
+		{name = "message_type", type = idl.octet  },
+		{name = "message_size", type = idl.ulong  },
 	},
 	[1] = idl.struct{ -- GIOP 1.1
-		{name = "magic"       , type = idl.array{idl.char; length = 4}},
-		{name = "GIOP_version", type = idl.Version                    },
-		{name = "flags"       , type = idl.octet                      },
-		{name = "message_type", type = idl.octet                      },
-		{name = "message_size", type = idl.ulong                      },
+		{name = "magic"       , type = Magicn     },
+		{name = "GIOP_version", type = idl.Version},
+		{name = "flags"       , type = idl.octet  }, -- changed field
+		{name = "message_type", type = idl.octet  },
+		{name = "message_size", type = idl.ulong  },
 	},
 }
 Header_v1_[2] = Header_v1_[1] -- GIOP 1.2, same as GIOP 1.1
-Header_v1_[3] = Header_v1_[1] -- GIOP 1.3, same as GIOP 1.1
+Header_v1_[3] = Header_v1_[2] -- GIOP 1.3, same as GIOP 1.2
 
 --------------------------------------------------------------------------------
 -- Message Header of GIOP Messages ---------------------------------------------
@@ -211,15 +211,17 @@ MessageHeader_v1_[0] = { -- GIOP 1.0
 
 --------------------------------------------------------------------------------
 
+local RequestReserved = idl.array{idl.octet; length = 3}
+
 MessageHeader_v1_[1] = { -- GIOP 1.1
 	[RequestID] = idl.struct{
-		{name = "service_context"     , type = ServiceContextList              },
-		{name = "request_id"          , type = idl.ulong                       },
-		{name = "response_expected"   , type = idl.boolean                     },
-		{name = "reserved"            , type = idl.array{idl.octet; length = 3}},
-		{name = "object_key"          , type = idl.OctetSeq                    },
-		{name = "operation"           , type = idl.string                      },
-		{name = "requesting_principal", type = idl.OctetSeq                    },
+		{name = "service_context"     , type = ServiceContextList},
+		{name = "request_id"          , type = idl.ulong         },
+		{name = "response_expected"   , type = idl.boolean       },
+		{name = "reserved"            , type = RequestReserved   }, -- added field
+		{name = "object_key"          , type = idl.OctetSeq      },
+		{name = "operation"           , type = idl.string        },
+		{name = "requesting_principal", type = idl.OctetSeq      },
 	},
 	[ReplyID          ] = MessageHeader_v1_[0][ReplyID          ],
 	[CancelRequestID  ] = MessageHeader_v1_[0][CancelRequestID  ],
@@ -256,30 +258,33 @@ local TargetAddress = idl.union{
 
 MessageHeader_v1_[2] = { -- GIOP 1.2
 	[RequestID] = idl.struct{
-		{name = "request_id"     , type = idl.ulong                       },
-		{name = "response_flags" , type = idl.octet                       },
-		{name = "reserved"       , type = idl.array{idl.octet; length = 3}},
-		{name = "target"         , type = TargetAddress                   },
-		{name = "operation"      , type = idl.string                      },
-		{name = "service_context", type = ServiceContextList              },
+		{name = "request_id"     , type = idl.ulong         },
+		{name = "response_flags" , type = idl.octet         }, -- changed field
+		{name = "reserved"       , type = RequestReserved   },
+		{name = "target"         , type = TargetAddress     }, -- changed field
+		{name = "operation"      , type = idl.string        },
+		{name = "service_context", type = ServiceContextList}, -- was first field
+		-- no more field 'requesting_principal'
 	},
 	[ReplyID] = idl.struct{
 		{name = "request_id"     , type = idl.ulong          },
-		{name = "reply_status"   , type = ReplyStatusType_1_2},
-		{name = "service_context", type = ServiceContextList },
+		{name = "reply_status"   , type = ReplyStatusType_1_2}, -- changed field
+		{name = "service_context", type = ServiceContextList }, -- was first field
 	},
 	[CancelRequestID] = MessageHeader_v1_[1][CancelRequestID],
 	[LocateRequestID] = idl.struct{
 		{name = "request_id", type = idl.ulong    },
-		{name = "target"    , type = TargetAddress},
+		{name = "target"    , type = TargetAddress}, -- changed field
 	},
 	[LocateReplyID] = idl.struct{
 		{name = "request_id"   , type = idl.ulong           },
-		{name = "locate_status", type = LocateStatusType_1_2},
+		{name = "locate_status", type = LocateStatusType_1_2}, -- changed field
 	},
 	[CloseConnectionID] = MessageHeader_v1_[1][CloseConnectionID],
 	[MessageErrorID   ] = MessageHeader_v1_[1][MessageErrorID   ],
-	[FragmentID       ] = MessageHeader_v1_[1][FragmentID       ],
+	[FragmentID       ] = idl.struct{
+		{name = "request_id", type = idl.ulong}, -- added field
+	},
 }
 
 --------------------------------------------------------------------------------
