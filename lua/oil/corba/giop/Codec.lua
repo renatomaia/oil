@@ -344,7 +344,8 @@ local NilEnabledTypes = {
 --------------------------------------------------------------------------------
 -- Marshalling functions -------------------------------------------------------
 
-local function numbermarshaller(size, format)
+local function numbermarshaller(format, size, align)
+	if align == nil then align = size end
 	return function (self, value)                                                 --[[VERBOSE]] verbose_marshal(self, format, value)
 		assert.type(value, "number", "numeric value", "MARSHAL")
 		alignbuffer(self, size)
@@ -354,15 +355,15 @@ end
 
 Encoder.null       = function() end
 Encoder.void       = Encoder.null
-Encoder.short      = numbermarshaller( 2, "s")
-Encoder.long       = numbermarshaller( 4, "l")
-Encoder.longlong   = numbermarshaller( 8, "g")
-Encoder.ushort     = numbermarshaller( 2, "S")
-Encoder.ulong      = numbermarshaller( 4, "L")
-Encoder.ulonglong  = numbermarshaller( 8, "G")
-Encoder.float      = numbermarshaller( 4, "f")
-Encoder.double     = numbermarshaller( 8, "d")
-Encoder.longdouble = numbermarshaller(16, "D")
+Encoder.short      = numbermarshaller("s",  2)
+Encoder.long       = numbermarshaller("l",  4)
+Encoder.longlong   = numbermarshaller("g",  8)
+Encoder.ushort     = numbermarshaller("S",  2)
+Encoder.ulong      = numbermarshaller("L",  4)
+Encoder.ulonglong  = numbermarshaller("G",  8)
+Encoder.float      = numbermarshaller("f",  4)
+Encoder.double     = numbermarshaller("d",  8)
+Encoder.longdouble = numbermarshaller("D", 16, 8)
 	
 function Encoder:boolean(value)                                                 --[[VERBOSE]] verbose_marshal(true, self, idl.boolean)
 	if value
@@ -726,9 +727,10 @@ end
 --------------------------------------------------------------------------------
 -- Unmarshalling functions -----------------------------------------------------
 
-local function numberunmarshaller(size, format)
+local function numberunmarshaller(format, size, align)
+	if align == nil then align = size end
 	return function (self)
-		alignbuffer(self, size)                                                     --[[VERBOSE]] verbose_unmarshal(self, format, self.unpack(format, self.data, nil, nil, self.cursor))
+		alignbuffer(self, align)                                                    --[[VERBOSE]] verbose_unmarshal(self, format, self.unpack(format, self.data, nil, nil, self.cursor))
 		local cursor = self:jump(size) -- check if there is enougth bytes
 		return self.unpack(format, self.data, nil, nil, cursor)
 	end
@@ -736,15 +738,15 @@ end
 
 Decoder.null       = function() end
 Decoder.void       = Decoder.null
-Decoder.short      = numberunmarshaller( 2, "s")
-Decoder.long       = numberunmarshaller( 4, "l")
-Decoder.longlong   = numberunmarshaller( 8, "g")
-Decoder.ushort     = numberunmarshaller( 2, "S")
-Decoder.ulong      = numberunmarshaller( 4, "L")
-Decoder.ulonglong  = numberunmarshaller( 8, "G")
-Decoder.float      = numberunmarshaller( 4, "f")
-Decoder.double     = numberunmarshaller( 8, "d")
-Decoder.longdouble = numberunmarshaller(16, "D")
+Decoder.short      = numberunmarshaller("s",  2)
+Decoder.long       = numberunmarshaller("l",  4)
+Decoder.longlong   = numberunmarshaller("g",  8)
+Decoder.ushort     = numberunmarshaller("S",  2)
+Decoder.ulong      = numberunmarshaller("L",  4)
+Decoder.ulonglong  = numberunmarshaller("G",  8)
+Decoder.float      = numberunmarshaller("f",  4)
+Decoder.double     = numberunmarshaller("d",  8)
+Decoder.longdouble = numberunmarshaller("D", 16, 8)
 
 function Decoder:boolean()                                                      --[[VERBOSE]] verbose_unmarshal(true, self, idl.boolean)
 	return (self:octet() ~= 0)                                                    --[[VERBOSE]],verbose_unmarshal(false)
