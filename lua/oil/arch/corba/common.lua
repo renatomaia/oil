@@ -20,6 +20,7 @@ ValueEncoder = component.Template{
 	codec    = port.Facet,
 	proxies  = port.Receptacle,
 	servants = port.Receptacle,
+	types    = port.Receptacle,
 }
 
 -- IOR references
@@ -41,6 +42,7 @@ function assemble(components)
 	
 	ValueEncoder.proxies = proxykind[ proxykind[1] ].proxies
 	ValueEncoder.servants = ServantManager.servants
+	ValueEncoder.types = TypeRepository.types
 	
 	IIOPProfiler.codec = ValueEncoder.codec
 	

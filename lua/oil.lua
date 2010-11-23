@@ -69,9 +69,15 @@ local setmetatable = _G.setmetatable
 local unpack = _G.unpack
 local traceback = _G.debug and debug.traceback -- only if available
 
-local io        = require "io"
+local io = require "io"
+local open = io.open
+
 local coroutine = require "coroutine"
-local table     = require "table"
+local newcoroutine = coroutine.create
+local yield = coroutine.yield
+
+local table = require "table"
+local concat = table.concat
 
 local OrderedSet = require "loop.collection.OrderedSet"
 
@@ -79,7 +85,7 @@ local OrderedSet = require "loop.collection.OrderedSet"
 require "cothread.auxiliary" -- to avoid coroutine limitation of Lua 5.1
 
 local oo = require "oil.oo"
-local class = oo.class
+local class = oo.class	
 local rawnew = oo.rawnew
 
 local builder = require "oil.builder"
@@ -98,7 +104,7 @@ local illegal = asserter.illegal
 -- provided by internal components. OiL internal component organization is meant
 -- to be customized for the application.
 
-module "oil"
+module "oil"                                                                    --[[VERBOSE]] verbose = require "oil.verbose"
 
 local Aliases = {
 	["lua"]               = {"lua.client","lua.server"},
@@ -166,7 +172,7 @@ local function makeflavor(flavors)
 	for pack in packs:sequence() do
 		flavors[#flavors+1] = pack
 	end
-	return table.concat(flavors, ";")
+	return concat(flavors, ";")
 end
 
 --------------------------------------------------------------------------------
@@ -205,8 +211,14 @@ function ORB:__new(config)
 			self.ServantManager.map = config.objectmap
 		end
 	end
-	if self.ValueEncoder ~= nil and config.localrefs then
-		self.ValueEncoder.localrefs = config.localrefs
+	if self.ValueEncoder ~= nil then
+		if config.valuefactories == nil then
+			config.valuefactories = {}
+		end
+		self.ValueEncoder.factories = config.valuefactories
+		if config.localrefs ~= nil then
+			self.ValueEncoder.localrefs = config.localrefs
+		end
 	end
 	assert(self.RequestReceiver.acceptor:setup(self))
 	
@@ -734,7 +746,6 @@ VERSION = "OiL 1.0 (working)"
 if cothread == nil then
 	require "cothread.socket"
 	cothread = require "cothread"
-	--[[VERBOSE]] local verbose = require "oil.verbose"
 	--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
 	--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
 end
@@ -814,7 +825,7 @@ end
 function main(main, ...)
 	asserttype(main, "function", "main function")
 	if cothread then
-		local thread = coroutine.create(main)                                       --[[VERBOSE]] verbose.viewer.labels[thread] = "oil.main"
+		local thread = newcoroutine(main)                                           --[[VERBOSE]] verbose.viewer.labels[thread] = "oil.main"
 		cothread.run(thread, ...)
 	else
 		local success, except = xpcall(main, extracer)
@@ -842,7 +853,7 @@ end
 --
 function newthread(func, ...)
 	asserttype(func, "function", "thread body")
-	return coroutine.yield("resume", coroutine.create(func) , ...)
+	return yield("resume", newcoroutine(func) , ...)
 end
 
 --------------------------------------------------------------------------------
@@ -855,7 +866,7 @@ end
 if cothread then
 	function sleep(time)
 		asserttype(time, "number", "time")
-		return coroutine.yield("delay", time)
+		return yield("delay", time)
 	end
 else
 	function sleep(time)
@@ -873,7 +884,7 @@ end
 --
 if cothread then
 	function time()
-		return coroutine.yield("now")
+		return yield("now")
 	end
 else
 	function time()
@@ -887,7 +898,7 @@ end
 -- Utility function for writing stringfied IORs into a file.
 --
 function writeto(filepath, text)
-	local result, errmsg = io.open(filepath, "w")
+	local result, errmsg = open(filepath, "w")
 	if result then
 		local file = result
 		result, errmsg = file:write(tostring(text))
@@ -902,7 +913,7 @@ end
 -- Utility function for reading stringfied IORs from a file.
 --
 function readfrom(filepath)
-	local result, errmsg = io.open(filepath)
+	local result, errmsg = open(filepath)
 	if result then
 		local file = result
 		result, errmsg = file:read("*a")

@@ -12,50 +12,47 @@ local class = oo.class
 
 local Exception = require "oil.Exception"
 
-module(...); local _ENV = _M
+local Dispatcher = class{ context = false }
 
-class(_ENV)
-
-context = false
-
-function _ENV:dispatch(request)
+function Dispatcher:dispatch(request)
 	local context = self.context
-	local entry = context.servants:retrieve(request.objectkey)
-	if entry then
-		local object = entry.__servant
-		local type = entry.__type
-		local opname = request.operation
-		local opinfo = context.indexer:valueof(type, opname)
-		if opinfo then
-			local method = object[opname] or opinfo.implementation
-			if method then                                                            --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
-				request:setreply(pcall(method, object, request:getvalues()))
-			else
-				request:setreply(false, Exception{
-					error = "badobjimpl",
-					message = "servant $key does not implement $operation",
-					operationdescription = opinfo,
-					operation = opname,
-					object = object,
-					type = type,
-					key = key,
-				})
-			end
-		else
-			request:setreply(false, Exception{
-				error = "badobjop",
-				message = "operation $operation is illegal for servant $key",
-				operation = opname,
-				object = object,
-				type = type,
-				key = key,
-			})
-		end
-	else
+	local operation -- defined later if servant exists
+	local key = request.objectkey
+	local entry = context.servants:retrieve(key)
+	if entry == nil then                                                          --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
 		request:setreply(false, Exception{
 			error = "badobjkey",
 			message = "unknown servant (got $key)",
 			key = key,
 		})
+	else
+		operation = context.indexer:valueof(entry.__type, request.operation)
+		if operation == nil then                                                    --[[VERBOSE]] verbose:dispatcher("got illegal operation ",request.operation)
+			request:setreply(false, Exception{
+				error = "badobjop",
+				message = "operation $operation is illegal for servant $key",
+				operation = request.operation,
+				object = object,
+				type = entry.__type,
+				key = key,
+			})
+		end
+	end
+	local object, method = request:preinvoke(entry, operation)
+	if object ~= nil then
+		if method ~= nil then                                                       --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
+			request:setreply(pcall(method, object, request:getvalues()))
+		else                                                                        --[[VERBOSE]] verbose:dispatcher("missing implementation of ",request.operation)
+			request:setreply(false, Exception{
+				error = "badobjimpl",
+				message = "servant $key does not implement $operation",
+				operationdescription = operation,
+				operation = request.operation,
+				object = object,
+				key = key,
+			})
+		end                                                                         --[[VERBOSE]] else verbose:dispatcher("pre-invocation failed!")
 	end
 end
+
+return Dispatcher

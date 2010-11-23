@@ -6,7 +6,6 @@ local IOR = giop.IOR
 
 local Listener = require "oil.corba.giop.Listener"
 local ListenerRequest = Listener.Request
-local ListenerChannel = Listener.Channel
 
 
 local LocationForwardTypes = { IOR }
@@ -14,6 +13,66 @@ local Empty = {}
 
 
 local ServerRequest = class({}, ListenerRequest)
+
+function ServerRequest:preinvoke(entry, member)
+	local object, method = ListenerRequest.preinvoke(self, entry, member)
+	local interceptor = self.interceptor
+	if interceptor then
+		local intercepted = {
+			service_context   = self.service_context,
+			request_id        = self.request_id,
+			response_expected = self.response_expected,
+			object_key        = self.object_key,
+			operation_name    = self.operation,
+			servant           = entry and entry.__servant,
+			interface         = iface,
+			interface_name    = iface and iface.absolute_name,
+			operation         = member,
+			parameters        = member and {n=self.n,self:getvalues()} or nil,
+			method            = method,
+		}
+		self.intercepted = intercepted
+		if interceptor.receiverequest then                                        --[[VERBOSE]] verbose:interceptors(true, "intercepting request marshaling")
+			interceptor:receiverequest(intercepted)
+			if intercepted.success ~= nil then                                      --[[VERBOSE]] verbose:interceptors("interception request was canceled")
+				self.success = intercepted.success
+				-- update returned values
+				local results = intercepted.results or {}
+				self.n = results.n or #results
+				for i = 1, self.n do
+					self[i] = results[i]
+				end
+				self.intercepted = nil -- this should cancel the reply interception
+				self.reply_service_context = intercepted.reply_service_context
+			elseif intercepted.forward_reference then                               --[[VERBOSE]] verbose:interceptors("interceptor forwarded the request")
+				object = nil -- this should cancel the operation dispatch
+				self.intercepted = nil -- this should cancel the reply interception
+				self.reply_service_context = intercepted.reply_service_context
+				self.forward_reference = intercepted.forward_reference
+			else                                                                    --[[VERBOSE]] if intercepted.method~=method then verbose:interceptors("interceptor changed the invoked operation implementation") end
+				method = intercepted.method
+				local servant = intercepted.servant
+				local parameters = intercepted.parameters
+				-- uncancel if the interceptor provided target, method and parameters
+				-- or update invoked object if it was changed
+				if object==nil and servant~=nil and method~=nil and parameters~=nil
+				or object~=nil and servant~=object then                               --[[VERBOSE]] verbose:interceptors("interceptor changed the invoked servant")
+					object = servant
+				end
+				-- update parameter values
+				if parameters then                                                    --[[VERBOSE]] verbose:interceptors("interceptor changed the parameters of the invoked operation")
+					self.n = parameters.n or #parameters
+					for i = 1, self.n do
+						self[i] = parameters[i]
+					end
+				end
+				-- update GIOP message fields
+				self.service_context = intercepted.service_context
+			end
+		end
+	end
+	return object, method
+end
 
 local function buildreply(self)
 	local types, body
@@ -32,122 +91,50 @@ local function buildreply(self)
 end
 function ServerRequest:getreply()
 	local types, body = buildreply(self)
-	if self.listener:interceptreply(self, body) then
-		types, body = buildreply(self)
-		if self.reply_service_context then
-			self.service_context = self.reply_service_context
+	local intercepted = self.intercepted
+	if intercepted then
+		self.intercepted = nil
+		local interceptor = self.interceptor
+		if interceptor and interceptor.sendreply then
+			intercepted.reply_status = self.reply_status
+			intercepted.success      = self.success
+			if self.reply_status == "SYSTEM_EXCEPTION" then
+				intercepted.results = {n=1, body[1]}
+			else
+				intercepted.results = {n=self.n, self:getvalues()}
+			end                                                                       --[[VERBOSE]] verbose:interceptors(true, "intercepting reply marshaling")
+			interceptor:sendreply(intercepted)                                        --[[VERBOSE]] verbose:interceptors(false, "interception ended")
+			local reference = intercepted.forward_reference
+			if reference then
+				self.forward_reference = reference
+			else
+				self.success = intercepted.success
+				-- update returned values
+				local results = intercepted.results or {}
+				self.n = results.n or #results
+				for i = 1, self.n do
+					self[i] = results[i]
+				end
+			end
+			-- update GIOP message fields
+			self.reply_service_context = intercepted.reply_service_context
+			types, body = buildreply(self)
+			if self.reply_service_context then
+				self.service_context = self.reply_service_context
+			end
 		end
 	end
 	return self, types, body
 end
 
 
-ServerChannel = class({}, ListenerChannel)
 
-function ServerChannel:makerequest(...)
-	local request = ListenerChannel.makerequest(self, ...)
-	request.listener = self.listener
-	self.listener:interceptrequest(request)
-	return request
-end
+local IceptedListener = class({}, Listener)
 
-
-local IceptedListener = class({
-	Request = ServerRequest,
-	Channel = ServerChannel,
-}, Listener)
-
-function IceptedListener:interceptrequest(request)
-	local interceptor = self.interceptor
-	if interceptor then
-		local intercepted = {
-			service_context   = request.service_context,
-			request_id        = request.request_id,
-			response_expected = request.response_expected,
-			object_key        = request.object_key,
-			operation_name    = request.operation,
-			servant           = request.target,
-			interface         = request.interface,
-			interface_name    = request.interface and request.interface.absolute_name,
-			operation         = request.member,
-			parameters        = request.success == nil
-			                    and { n = request.n, request:getvalues() }
-			                     or nil,
-		}
-		request.intercepted = intercepted
-		if interceptor.receiverequest then                                          --[[VERBOSE]] verbose:interceptors(true, "intercepting request marshaling")
-			interceptor:receiverequest(intercepted)
-			if intercepted.success ~= nil then                                        --[[VERBOSE]] verbose:interceptors("interception request was canceled")
-				request.success = intercepted.success
-				-- update returned values
-				local results = intercepted.results or {}
-				request.n = results.n or #results
-				for i = 1, request.n do
-					request[i] = results[i]
-				end
-				request.intercepted = nil -- this should cancel the reply interception
-				request.reply_service_context = intercepted.reply_service_context
-			elseif intercepted.forward_reference then                                 --[[VERBOSE]] verbose:interceptors("interceptor forwarded the request")
-				request.success = false   -- this should cancel the operation dispatch
-				request.intercepted = nil -- this should cancel the reply interception
-				request.reply_service_context = intercepted.reply_service_context
-				request.forward_reference = intercepted.forward_reference
-			else
-				-- update parameter values
-				local parameters = intercepted.parameters
-				if parameters then
-					request.n = parameters.n or #parameters
-					for i = 1, request.n do
-						request[i] = parameters[i]
-					end
-				end
-				-- update operation being invoked
-				if intercepted.operation ~= operation then                              --[[VERBOSE]] verbose:interceptors("interceptor changed invoked operation")
-					operation = intercepted.operation
-					request.operation  = operation.name
-					request.inputs     = operation.inputs
-					request.outputs    = operation.outputs
-					request.exceptions = operation.exceptions
-				end
-				-- update GIOP message fields
-				request.service_context = intercepted.service_context
-				request.object_key = intercepted.object_key
-			end                                                                       --[[VERBOSE]] verbose:interceptors(false, "interception ended")
-		end
-	end
-end
-
-
-function IceptedListener:interceptreply(request, body)
-	local intercepted = request.intercepted
-	if intercepted then
-		request.intercepted = nil
-		local interceptor = self.interceptor
-		if interceptor and interceptor.sendreply then
-			intercepted.reply_status = request.reply_status
-			intercepted.success      = request.success
-			if request.reply_status == "SYSTEM_EXCEPTION" then
-				intercepted.results = { n = 1, body[1] }
-			else
-				intercepted.results = { n = request.n, request:getvalues() }
-			end                                                                       --[[VERBOSE]] verbose:interceptors(true, "intercepting reply marshaling")
-			interceptor:sendreply(intercepted)                                        --[[VERBOSE]] verbose:interceptors(false, "interception ended")
-			local reference = intercepted.forward_reference
-			if reference then
-				request.forward_reference = reference
-			else
-				request.success = intercepted.success
-				-- update returned values
-				local results = intercepted.results or {}
-				request.n = results.n or #results
-				for i = 1, request.n do
-					request[i] = results[i]
-				end
-			end
-			-- update GIOP message fields
-			request.reply_service_context = intercepted.reply_service_context
-			return true
-		end
+function IceptedListener:__init()
+	self.Request = function(request)
+		request.interceptor = self.interceptor
+		return ServerRequest(request)
 	end
 end
 

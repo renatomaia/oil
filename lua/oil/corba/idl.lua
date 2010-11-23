@@ -1,5 +1,5 @@
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : Interface Definition Language (IDL) specifications in Lua
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 -- Notes  :
@@ -84,9 +84,13 @@ UserTypes = {
 	enum      = true,
 	sequence  = true,
 	array     = true,
+	valuetype = true,
+	valuebox  = true,
 	typedef   = true,
 	except    = true,
 	interface = true,
+	abstract_interface = true,
+	local_interface = true,
 }
 
 InterfaceElements = {
@@ -318,11 +322,80 @@ function array(self)
 	return self
 end
 
+ValueKind = {
+	none = 0,
+	custom = 1,
+	abstract = 2,
+	truncatable = 3,
+}
+ValueMemberAccess = {
+	private = 0,
+	public = 1,
+}
+for list in pairs{[ValueKind]=true, [ValueMemberAccess]=true} do
+	local values = {}
+	for _,value in pairs(list) do values[value] = true end
+	for value in pairs(values) do list[value] = value end
+end
+
+function valuemember(self)
+	self = Contained(self)
+	self._type = "valuemember"
+	checkfield(self)
+	local access = ValueMemberAccess[self.access]
+	if access == nil then
+		assert.illegal(self.access, "value member access")
+	end
+	self.access = access
+	return self
+end
+
+function valuetype(self)
+	self = Container(Contained(self))
+	self._type = "valuetype"
+	local kind = self.kind or (self.truncatable and ValueKind.truncatable)
+	                       or (self.abstract and ValueKind.abstract)
+	                       or ValueKind.none
+	kind = ValueKind[kind]
+	if kind == nil then
+		assert.illegal(self.kind, "value kind")
+	end
+	self.kind = kind
+	local base = self.base_value
+	if base == nil then
+		self.base_value = null
+	elseif base ~= null then
+		assert.type(base, "idl valuetype", "base in value definition")
+	end
+	if self.members == nil then self.members = self end
+	local members = self.members
+	local definitions = self.definitions
+	for index, member in ipairs(members) do
+		member = valuemember(member)
+		members[index] = member
+		definitions:__newindex(member.name, member)
+	end
+	return self
+end
+
+function valuebox(self)
+	self = Contained(self)
+	self._type = "valuebox"
+	if self.original_type == nil then self.original_type = self[1] end
+	local type = self.original_type
+	assert.type(type, "idl type", "type in typedef definition")
+	local kind = type._type
+	if kind == "valuetype" or kind == "valuebox" then
+		assert.illegal(type, "type of value box")
+	end
+	return self
+end
+
 function typedef(self)
 	self = Contained(self)
 	self._type = "typedef"
-	if self.type == nil then self.type = self[1] end
-	asserttype(self.type, "idl type", "type in typedef definition")
+	if self.original_type == nil then self.original_type = self[1] end
+	asserttype(self.original_type, "idl type", "type in typedef definition")
 	return self
 end
 
@@ -435,11 +508,35 @@ function interface(self)
 	self = Container(Contained(self))
 	self._type = "interface"
 	if self.base_interfaces == nil then self.base_interfaces = self end
-	asserttype(self.base_interfaces, "table", "base interface list")
+	asserttype(self.base_interfaces, "table", "interface base list")
+	for _, base in ipairs(self.base_interfaces) do
+		if base._type ~= "abstract_interface" then
+			assert.type(base, "idl interface", "interface base")
+		end
+	end
 	self.hierarchy = basesof
 	return self
 end
 
+function abstract_interface(self)
+	self = interface(self)
+	for _, base in ipairs(self.base_interfaces) do
+		assert.type(base, "idl abstract_interface", "abstract interface base")
+	end
+	self._type = "abstract_interface"
+	return self
+end
+
+function local_interface(self)
+	self = interface(self)
+	for _, base in ipairs(self.base_interfaces) do
+		if base._type ~= "local_interface" then
+			assert.type(base, "idl interface", "local interface base")
+		end
+	end
+	self._type = "local_interface"
+	return self
+end
 
 --------------------------------------------------------------------------------
 -- IDL types used in the implementation of OiL ---------------------------------
@@ -447,6 +544,11 @@ end
 object = interface{
 	repID = "IDL:omg.org/CORBA/Object:1.0",
 	name = "Object",
+}
+ValueBase = valuetype{
+	repID = "IDL:omg.org/CORBA/ValueBase:1.0",
+	name = "ValueBase",
+	abstract = true,
 }
 OctetSeq = sequence{octet}
 Version = struct{{ type = octet, name = "major" },

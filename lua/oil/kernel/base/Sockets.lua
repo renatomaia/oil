@@ -3,6 +3,8 @@
 -- Title  : Socket API Wrapper
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
+local _G = require "_G"
+local pairs = _G.pairs
 
 local math = require "math"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local max = math.max

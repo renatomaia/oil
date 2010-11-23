@@ -87,7 +87,6 @@ local function sysexreply(requestid, body)                                      
 end
 
 
-
 local ServerRequest = class({}, Listener.Request)
 
 -- this is a separated method to provide pointcut for interception
@@ -127,6 +126,32 @@ function ServerRequest:getreply()
 	end
 end
 
+function ServerRequest:preinvoke(entry, member)
+	if member ~= nil then
+		local inputs = member.inputs
+		local count = #inputs
+		self.n = count
+		self.outputs = member.outputs
+		self.exceptions = member.exceptions
+		local decoder = self.decoder
+		for i = 1, count do
+			local ok, result = pcall(decoder.get, decoder, inputs[i])
+			if not ok then
+				assert(type(result) == "table", result)
+				self:setreply(false, result)
+				return -- request cancelled
+			end
+			self[i] = result
+		end
+		local object = entry.__servant
+		local method = object[member.name]
+		if method == nil then
+			method = member.implementation
+		end
+		return object, method
+	end
+end
+
 
 
 local ServerChannel = class({}, GIOPChannel)
@@ -139,64 +164,25 @@ function ServerChannel:close()
 	return result, except
 end
 
--- this is a separated method to provide pointcut for interception
 local function noresponse() return true end
-function ServerChannel:makerequest(header, decoder)
-	local requestid = header.request_id
-	if not self[requestid] then
-		if header.response_expected then
-			header.channel = self
-		else                                                                        --[[VERBOSE]] verbose:listen "no response expected"
-			header.sendreply = noresponse
-		end
-		header = self.listener.Request(header)
-		header.objectkey = header.object_key
-		local listener = self.listener
-		local entry = listener.servants:retrieve(header.objectkey)
-		if entry then
-			local iface = entry.__type
-			header.target = entry.__servant
-			header.interface = iface
-			local member = listener.indexer:valueof(iface, header.operation)
-			if member then                                                            --[[VERBOSE]] verbose:listen("got request for ",header.operation)
-				header.member = member
-				header.n = #member.inputs
-				header.inputs = member.inputs
-				header.outputs = member.outputs
-				header.exceptions = member.exceptions
-				for index, input in ipairs(member.inputs) do
-					local ok, result = pcall(decoder.get, decoder, input)
-					if not ok then
-						assert(type(result) == "table", result)
-						header:setreply(false, result)
-						break
-					end
-					header[index] = result
-				end
-			else                                                                      --[[VERBOSE]] verbose:listen("got illegal operation ",header.operation)
-				header:setreply(false, OiLEx2SysEx.badobjop)
-			end
-		else                                                                        --[[VERBOSE]] verbose:listen("got illegal object ",header.object_key)
-			header:setreply(false, OiLEx2SysEx.badobjkey)
-		end
-	else                                                                          --[[VERBOSE]] verbose:listen("got replicated request id ",requestid,", ignoring it")
-		header.response_expected = false
-		header.success = true
-		header.n = 0
-	end
-	return header
-end
-
 function ServerChannel:getrequest(timeout)
 	local result, except
 	repeat
 		if self:trylock("read", timeout) then
 			local msgid, header, decoder = self:receivemsg(timeout)
 			self:freelock("read")
-			if msgid == RequestID then                                                --[[VERBOSE]] verbose:listen("got request ",header.request_id)
-				local request = self:makerequest(header, decoder)
-				if request.success == nil then return request end
-				result, except = request:sendreply()
+				if msgid == RequestID then                                              --[[VERBOSE]] verbose:listen("got request ",header.request_id)
+				local requestid = header.request_id
+				if not self[requestid] then
+					header.decoder = decoder
+					if header.response_expected then
+						header.channel = self
+					else                                                                  --[[VERBOSE]] verbose:listen "no response expected"
+						header.sendreply = noresponse
+					end
+					header.objectkey = header.object_key
+					return self.listener.Request(header)                                 --[[VERBOSE]] else verbose:listen("got replicated request id ",requestid,", ignoring it")
+				end
 			elseif msgid == CancelRequestID then
 				local request = self[header.request_id]                                 --[[VERBOSE]] verbose:listen("got cancelation of request ",header.request_id, request and "" or " (not found)")
 				if request then result, except = request:finish() end

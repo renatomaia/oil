@@ -402,15 +402,16 @@ end)
 
 <h2>Multithreading Issues</h2>
 
-<p>OiL guarantees that for each single invocation on both methods of the interceptor is invoked in the same thread.
-However, the same thread can be reused for another invocation after the first has finished.
-Furthermore, while an invocation is being executed, others can be issues and the interceptor again, but in other threads.
-Therefore, you can use the current thread (<code>oil.tasks.current</code>) to identify an invocation.</p>
+<p>OiL guarantees that for each single invocation both methods of the interceptor is invoked in the same thread.
+Moreover, this thread is the same that initiated the invocation (in case of a client interceptor) or the thread that will execute the invocation (in case of a server interceptor).
+However, while an invocation is being executed, others can be issued and the interceptor be invoked again, but it will execute in a different thread.
+Therefore, you can use the current thread (<code>oil.tasks.current</code>) to identify an invocation.
+On the server side, the ORB may reuse a thread that executed a previous invocation that finished to execute other invocations.</p>
 
 <h2>Multiple Interceptors</h2>
 
 <p>Although CORBA brokers only allow one interceptor to be defined on the client side and one on the server side, if you need to define a chain of interceptors, you can register an interceptor that delegates interception to a chain of interceptors.
-The following example illustrates the implementation of a interception chain that does not guarantee the other the interceptors are invoked.
+The following example illustrates the implementation of a interception chain that does not guarantee the order the interceptors are invoked.
 The implementation use class <code><a href="http://loop.luaforge.net/library/object/Publisher.html">loop.object.Publisher</a></code> of <a href="http://loop.luaforge.net/">LOOP</a> library.</p>
 
 <pre>

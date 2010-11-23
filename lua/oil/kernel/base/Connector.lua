@@ -19,25 +19,15 @@ local rawnew = oo.rawnew
 
 local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module(...); local _ENV = _M
-
 local WeakValues = class{ __mode = "v" }
 
-class(_ENV)
+local Connector = class()
 
---------------------------------------------------------------------------------
--- channel cache for reuse
-
-function __new(self, object)
-	self = rawnew(self, object)
+function Connector:__init()
 	self.cache = WeakValues()
-	return self
 end
 
---------------------------------------------------------------------------------
--- channel factory
-
-function retrieve(self, profile)                                                --[[VERBOSE]] verbose:channels("retrieve channel connected to ",profile.host,":",profile.port)
+function Connector:retrieve(profile)                                                --[[VERBOSE]] verbose:channels("retrieve channel connected to ",profile.host,":",profile.port)
 	local connid = tuple[profile.host][profile.port]
 	local cache = self.cache
 	local socket, except = cache[connid]
@@ -78,3 +68,5 @@ function retrieve(self, profile)                                                
 	end
 	return socket, except
 end
+
+return Connector

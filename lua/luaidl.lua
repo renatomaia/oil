@@ -1,10 +1,8 @@
 --
 -- Project:  LuaIDL
--- Version:  0.9b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: init.lua
 -- 
-
 local assert  = assert
 local error   = error
 local pcall   = pcall
@@ -21,7 +19,7 @@ module 'luaidl'
 local preprocessor  = require 'luaidl.pre'
 local parser        = require 'luaidl.sin'
 
-VERSION = '0.9b'
+VERSION = '1.0.5'
 
 ---
 -- Auxiliar functions

@@ -55,6 +55,7 @@ function _ENV:unregister(value, type)
 		if getclass(value) == Registered then
 			value = value.__objkey
 		else
+			if type == nil then type = getfield(value, "__type") end
 			local result, except = self.types:resolve(type)
 			if not result then return nil, except end
 			value = self:getkey(value, result)

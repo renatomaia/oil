@@ -55,19 +55,28 @@ DefaultOptions = {
 		TYPECODE  = idl.TypeCode,
 		STRING    = idl.string,
 		OBJECT    = idl.object,
+		VALUEBASE = idl.ValueBase,
 		operation = idl.operation,
 		attribute = idl.attribute,
 		except    = idl.except,
 		union     = idl.union,
 		struct    = idl.struct,
 		enum      = idl.enum,
-		typedef   = idl.typedef,
 		array     = idl.array,
 		sequence  = idl.sequence,
+		valuetype = idl.valuetype,
+		valuebox  = idl.valuebox,
+		typedef   = idl.typedef,
 	},
 }
+
 function DefaultOptions.callbacks.interface(def)
 	if def.definitions then -- not forward declarations
+		--<PROBLEM WITH LUAIDL>
+		--if def.abstract then
+		--	return idl.abstract_interface(def)
+		--end
+		--</PROBLEM WITH LUAIDL>
 		return idl.interface(def)
 	end
 	return def

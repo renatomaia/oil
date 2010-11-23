@@ -1,6 +1,5 @@
 --
 -- Project:  LuaIDL
--- Version:  0.9b
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: pre.lua
 --
@@ -18,7 +17,7 @@ module 'luaidl.pre'
 
 local tab_macros
 local currNumLine
-local currFilename
+local currFilename = ""
 local isProcessing
 local homedir
 local incpath

@@ -89,16 +89,20 @@ local IDLTypes = {
 }
 
 local Contained = {
-	dk_Typedef   = { const = idl.typedef,   iface = "IDL:omg.org/CORBA/TypedefDef:1.0"   },
-	dk_Alias     = { const = idl.typedef,   iface = "IDL:omg.org/CORBA/AliasDef:1.0"     },
-	dk_Enum      = { const = idl.enum,      iface = "IDL:omg.org/CORBA/EnumDef:1.0"      },
-	dk_Struct    = { const = idl.struct,    iface = "IDL:omg.org/CORBA/StructDef:1.0"    },
-	dk_Union     = { const = idl.union,     iface = "IDL:omg.org/CORBA/UnionDef:1.0"     },
-	dk_Exception = { const = idl.except,    iface = "IDL:omg.org/CORBA/ExceptionDef:1.0" },
-	dk_Module    = { const = idl.module,    iface = "IDL:omg.org/CORBA/ModuleDef:1.0"    },
-	dk_Interface = { const = idl.interface, iface = "IDL:omg.org/CORBA/InterfaceDef:1.0" },
-	dk_Attribute = { const = idl.attribute, iface = "IDL:omg.org/CORBA/AttributeDef:1.0" },
-	dk_Operation = { const = idl.operation, iface = "IDL:omg.org/CORBA/OperationDef:1.0" },
+	dk_Alias             = { const = idl.typedef,            iface = "IDL:omg.org/CORBA/AliasDef:1.0"             },
+	dk_Enum              = { const = idl.enum,               iface = "IDL:omg.org/CORBA/EnumDef:1.0"              },
+	dk_Struct            = { const = idl.struct,             iface = "IDL:omg.org/CORBA/StructDef:1.0"            },
+	dk_Union             = { const = idl.union,              iface = "IDL:omg.org/CORBA/UnionDef:1.0"             },
+	dk_Exception         = { const = idl.except,             iface = "IDL:omg.org/CORBA/ExceptionDef:1.0"         },
+	dk_Module            = { const = idl.module,             iface = "IDL:omg.org/CORBA/ModuleDef:1.0"            },
+	dk_Interface         = { const = idl.interface,          iface = "IDL:omg.org/CORBA/InterfaceDef:1.0"         },
+	dk_AbstractInterface = { const = idl.abstract_interface, iface = "IDL:omg.org/CORBA/AbstractInterfaceDef:1.0" },
+	dk_LocalInterface    = { const = idl.local_interface,    iface = "IDL:omg.org/CORBA/LocalInterfaceDef:1.0"    },
+	dk_Attribute         = { const = idl.attribute,          iface = "IDL:omg.org/CORBA/AttributeDef:1.0"         },
+	dk_Operation         = { const = idl.operation,          iface = "IDL:omg.org/CORBA/OperationDef:1.0"         },
+	dk_ValueBox          = { const = idl.valuebox ,          iface = "IDL:omg.org/CORBA/ValueBoxDef:1.0"          },
+	dk_Value             = { const = idl.valuetype,          iface = "IDL:omg.org/CORBA/ValueDef:1.0"             },
+	dk_ValueMember       = { const = idl.valuemember,        iface = "IDL:omg.org/CORBA/ValueMemberDef:1.0"       },
 }
 
 function register(self, object, history)
@@ -130,49 +134,65 @@ function register(self, object, history)
 			history = history or self.DefaultDefs()
 			result = history[desc.id] or registry:lookup_id(desc.id)
 			if not result then                                                        --[[VERBOSE]] verbose:repository(true, "importing definition ",desc.id)
-				local info = {
-					repID = desc.id,
-					name = desc.name,
-					version = desc.version,
-				}
+				desc.repID = desc.id
+				desc.defined_in = nil
 				
 				-- import definition specific information
-				if kind == "dk_Typedef" then
-					info = self:register(object:_get_type(), history)
-				elseif kind == "dk_Alias" then
-					info.type = self:register(object:_get_original_type_def(), history)
-				elseif kind == "dk_Enum" then
-					info.enumvalues = object:_get_members()
+				if kind == "dk_Enum" then
+					desc.enumvalues = object:_get_members()
 				elseif kind == "dk_Union" then
-					info.switch = self:register(object:_get_discriminator_type_def(), history)
-				elseif kind == "dk_Attribute" then
-					info.type = self:register(object:_get_type_def(), history)
+					desc.switch = self:register(object:_get_discriminator_type_def(), history)
+				elseif kind == "dk_Alias" or kind == "dk_ValueBox" then
+					desc.original_type = self:register(object:_get_original_type_def(), history)
+				elseif kind == "dk_Attribute" or  kind == "dk_ValueMember" then
+					desc.type = self:register(object:_get_type_def(), history)
+				elseif kind == "dk_Operation" then
+					desc.result = self:register(object:_get_result_def(), history)
+					local params = desc.parameters
+					for _, param in ipairs(params) do
+						param.type = self:register(param.type_def, history)
+					end
+					local excepts = object:_get_exceptions()
+					desc.exceptions = {}
+					for index, except in ipairs(excepts) do
+						desc.exceptions[index] = self:register(except, history)
+					end
+				elseif kind == "dk_Value" then
+					desc.base_value = nil
+					desc.abstract_base_values = nil
+					desc.abstract = desc.is_abstract
+					desc.trucatable = desc.is_trucatable
+					desc.custom = desc.is_custom
+				elseif kind == "dk_Interface" or kind == "dk_AbstractInterface" then
+					desc.base_interfaces = nil
 				end
 				
 				-- registration of the imported definition
-				result = registry:register(Contained[kind].const(info))                 --[[VERBOSE]] verbose:repository("definition ",desc.id," registered")
+				result = registry:register(Contained[kind].const(desc))                 --[[VERBOSE]] verbose:repository("definition ",desc.id," registered")
 				history[result.repID] = result
 				
 				-- import definition specific information
-				if kind == "dk_Interface" then
+				if kind == "dk_Interface" or kind == "dk_AbstractInterface" then
 					local bases = object:_get_base_interfaces()
 					for index, base in ipairs(bases) do
 						bases[index] = self:register(base, history)
 					end
 					result:_set_base_interfaces(bases)
-				elseif kind == "dk_Operation" then
-					result:_set_result_def(
-						self:register(object:_get_result_def(), history))
-					local params = desc.parameters
-					for _, param in ipairs(params) do
-						param.type = self:register(param.type_def, history)
+				elseif kind == "dk_Value" then
+					local base = object:_get_base_value()
+					if base then
+						result:_set_base_value(self:register(base, history))
 					end
-					result:_set_params(params)
-					local excepts = object:_get_exceptions()
-					for index, except in ipairs(excepts) do
-						excepts[index] = self:register(except, history)
+					local bases = object:_get_abstract_base_values()
+					for index, base in ipairs(bases) do
+						bases[index] = self:register(base, history)
 					end
-					result:_set_exceptions(excepts)
+					result:_set_abstract_base_values(bases)
+					local ifaces = object:_get_supported_interfaces()
+					for index, iface in ipairs(ifaces) do
+						ifaces[index] = self:register(iface, history)
+					end
+					result:_set_supported_interfaces(ifaces)
 				elseif kind == "dk_Struct" or kind == "dk_Union" or kind == "dk_Exception" then
 					local members = object:_get_members()
 					for _, member in ipairs(members) do
@@ -196,7 +216,6 @@ function register(self, object, history)
 						self:register(contained, history)
 					end
 				end                                                                     --[[VERBOSE]] verbose:repository(false)
-				
 			end
 		else
 			error("unable to import definition of type "..object:_interface():_get_id())

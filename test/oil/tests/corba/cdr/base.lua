@@ -72,9 +72,9 @@ local function newcase(suite, testID, codec, byteorder, shift, idltype, value, e
 	local fileID = string.gsub(suite.ID..testID..byteorder..shift, "%W", "_")
 	return function(checks)
 		if type(idltype) == "function" then
-			idltype = {idltype()}
-			value = {value()}
-			expected = {expected()}
+			idltype = {idltype(codec)}
+			value = {value(codec)}
+			expected = {expected(codec)}
 		elseif getmetatable(idltype) ~= SequenceTestKey then
 			idltype = {idltype}
 			value = {value}
@@ -127,7 +127,8 @@ local function addcases(suite, testID, type, value, ...)
 		expected = value
 	end
 	local impls = Suite()
-	for implname, factory in pairs{ Codec = Codec, CodecGen = CodecGen } do
+	--for implname, factory in pairs{ Codec = Codec, CodecGen = CodecGen } do
+	for implname, factory in pairs{ Codec = Codec, --[[CodecGen = CodecGen]] } do
 		local codec = factory()
 		codec.context = codec
 		codec.__component = codec
@@ -150,12 +151,15 @@ end
 local StructFieldsType = Codec.TypeCodeInfo[15].parameters.fields[3].type
 local UnionOptionsType = Codec.TypeCodeInfo[16].mutable[1].type
 local EnumValuesType = Codec.TypeCodeInfo[17].parameters.fields[3].type
-local ExceptFieldsType = Codec.TypeCodeInfo[22].parameters.fields[3].type
+local ExceptMembersType = Codec.TypeCodeInfo[22].parameters.fields[3].type
+local ValueMembersType = Codec.TypeCodeInfo[29].parameters.fields[5].type
 
-local function getname(def)
-	local name = def.name
-	def.name = nil
-	return name
+local function takefield(def, field)
+	local value = def[field]
+	if value ~= nil then
+		def[field] = nil
+		return value
+	end
 end
 
 return {
@@ -177,12 +181,28 @@ return {
 		def.name = def.name or "ObjectType"
 		return idl.Object(def)
 	end,
+	
+	valuetype = function(members)
+		setmetatable(members, ValueMembersType)
+		for _, member in ipairs(members) do
+			setmetatable(member, ValueMembersType.elementtype)
+		end
+		return idl.valuetype{
+			name = takefield(members, "name") or "ValueType",
+			base_value = takefield(members, "base_value"),
+			members = members,
+		}
+	end,
+	
 	struct = function(fields)
 		setmetatable(fields, StructFieldsType)
 		for _, field in ipairs(fields) do
 			setmetatable(field, StructFieldsType.elementtype)
 		end
-		return idl.struct{ name = getname(fields) or "Structure", fields = fields }
+		return idl.struct{
+			name = takefield(fields, "name") or "Structure",
+			fields = fields,
+		}
 	end,
 	union = function(def)
 		setmetatable(def.options, UnionOptionsType)
@@ -198,7 +218,10 @@ return {
 	end,
 	enum = function(values)
 		setmetatable(values, EnumValuesType)
-		return idl.enum{ name = getname(values) or "Enumeration", enumvalues = values }
+		return idl.enum{
+			name = takefield(values, "name") or "Enumeration",
+			enumvalues = values,
+		}
 	end,
 	sequence = idl.sequence,
 	array = idl.array,
@@ -206,11 +229,14 @@ return {
 		def.name = def.name or "TypeDefinition"
 		return idl.typedef(def)
 	end,
-	except = function(fields)
-		setmetatable(fields, ExceptFieldsType)
-		for _, field in ipairs(fields) do
-			setmetatable(field, ExceptFieldsType.elementtype)
+	except = function(members)
+		setmetatable(members, ExceptMembersType)
+		for _, field in ipairs(members) do
+			setmetatable(field, ExceptMembersType.elementtype)
 		end
-		return idl.struct{ name = getname(fields) or "Exception", fields = fields }
+		return idl.except{
+			name = takefield(members, "name") or "Exception",
+			members = members,
+		}
 	end,
 }

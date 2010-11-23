@@ -31,10 +31,19 @@ local values = {
 	enum      = base.enum{ "a", "e", "i", "o", "u" },
 	sequence  = base.sequence{ elementtype = idl.string, maxlength = 2 },
 	array     = base.array{ elementtype = idl.string, length = 2 },
-	typedef   = base.typedef{ type = idl.string },
+	typedef   = base.typedef{ original_type = idl.string },
 	except    = base.except{
 		{ name = "field1", type = idl.string },
 		{ name = "field2", type = idl.string },
+	},
+	valuetype = base.valuetype{
+		base_value = base.valuetype{
+			name = "BaseValue",
+			{ name = "base1", type = idl.string, access = "private" },
+			{ name = "base2", type = idl.string, access = "private" },
+		},
+		{ name = "field1", type = idl.string, access = "private" },
+		{ name = "field2", type = idl.string, access = "private" },
 	},
 }
 

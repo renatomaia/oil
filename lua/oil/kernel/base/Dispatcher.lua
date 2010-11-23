@@ -14,21 +14,17 @@ local class = oo.class
 
 local Exception = require "oil.Exception"
 
-module(...); local _ENV = _M
+local Dispatcher = class{ context = false }
 
-class(_ENV)
-
-context = false
-
-function _ENV:dispatch(request)
+function Dispatcher:dispatch(request)
 	local key = request.objectkey
 	local entry = self.context.servants:retrieve(key)
-	if entry then
+	if entry ~= nil then
 		local object = entry.__servant
 		local method = object[request.operation]
-		if method then                                                              --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
+		if method ~= nil then                                                       --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
 			request:setreply(pcall(method, object, request:getvalues()))
-		else
+		else                                                                        --[[VERBOSE]] verbose:dispatcher("missing implementation of ",request.operation)
 			request:setreply(false, Exception{
 				error = "badobjimpl",
 				message = "servant $key does not implement $operation",
@@ -37,7 +33,7 @@ function _ENV:dispatch(request)
 				key = key,
 			})
 		end
-	else
+	else                                                                          --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
 		request:setreply(false, Exception{
 			error = "badobjkey",
 			message = "unknown servant (got $key)",
@@ -45,8 +41,6 @@ function _ENV:dispatch(request)
 		})
 	end
 end
-
---------------------------------------------------------------------------------
 
 --[[VERBOSE]] local type = _G.type
 --[[VERBOSE]] function verbose.custom:dispatcher(...)
@@ -65,3 +59,5 @@ end
 --[[VERBOSE]] 		end
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end
+
+return Dispatcher

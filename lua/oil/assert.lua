@@ -4,34 +4,32 @@ local pairs = _G.pairs
 local luatype = _G.type
 local require = _G.require                                                      --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module(...)
+local Exception = require "oil.Exception"
 
-Exception = require "oil.Exception"
-
-function results(result, ...)
+local function results(result, ...)
 	if result == nil then error(..., 2) end
 	return result, ...
 end
 
-function illegal(value, description, except)
+local function illegal(value, description, except)
 	error(Exception{
 		error = except or "badvalue",
-		message = "illegal $valuekind",
+		message = "$value is a illegal $valuekind",
 		value = value,
 		valuekind = description,
 	}, 2)
 end
 
-TypeCheckers = {}
+local TypeCheckers = {}
 
-function type(value, expected, description, except)
+local function type(value, expected, description, except)
 	local actual = luatype(value)
 	if actual == expected then
 		return true
 	else
 		local checker = TypeCheckers[expected]
 		if checker then
-			return checker(value)
+			if checker(value) then return true end
 		else
 			for pattern, checker in pairs(TypeCheckers) do
 				local result = expected:match(pattern)
@@ -46,10 +44,17 @@ function type(value, expected, description, except)
 	end
 	error(Exception{
 		error = except or "badvalue",
-		message = "illegal $valuekind ($expectedtype expected, got $actualtype)",
+		message = "$value is a illegal $valuekind ($expectedtype expected, got $actualtype)",
 		expectedtype = expected,
 		actualtype   = actual,
 		value        = value,
 		valuekind    = description,
 	}, 2)
 end
+
+return {
+	TypeCheckers = TypeCheckers,
+	results = results,
+	illegal = illegal,
+	type = type,
+}
