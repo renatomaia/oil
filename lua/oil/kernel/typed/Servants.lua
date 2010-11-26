@@ -4,22 +4,25 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
+local _G = require "_G"
+local luatype = _G.type
+
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local class = oo.class
 local getclass = oo.getclass
 
 local Servants = require "oil.kernel.base.Servants"
+local getfield = Servants.getfield
+local hashof = Servants.hashof
 
-module(...); local _ENV = _M
+local TypedServants = class({}, Servants)
 
-class(_ENV, Servants)
-
-function _ENV:getkey(servant, type)
+function TypedServants:getkey(servant, type)
 	return getfield(servant, "__objkey")
 	    or self.prefix..hashof(servant)..hashof(type)
 end
 
-function _ENV:makeentry(entry)
+function TypedServants:makeentry(entry)
 	local servant = entry.__servant
 	if entry.__type == nil then
 		entry.__type = getfield(servant, "__type")
@@ -33,7 +36,7 @@ function _ENV:makeentry(entry)
 	return Servants.makeentry(self, entry)
 end
 
-function _ENV:addentry(entry)
+function TypedServants:addentry(entry)
 	local key = entry.__objkey
 	local map = self.map
 	local current = map[key]
@@ -50,16 +53,22 @@ function _ENV:addentry(entry)
 	return entry
 end
 
-function _ENV:unregister(value, type)
-	if type(value) ~= "string" then
+function TypedServants:unregister(value, type)
+	if luatype(value) ~= "string" then
 		if getclass(value) == Registered then
 			value = value.__objkey
 		else
-			if type == nil then type = getfield(value, "__type") end
-			local result, except = self.types:resolve(type)
-			if not result then return nil, except end
-			value = self:getkey(value, result)
+			local objkey = getfield(value, "__objkey")
+			if objkey == nil then
+				if type == nil then type = getfield(value, "__type") end
+				local result, except = self.types:resolve(type)
+				if not result then return nil, except end
+				objkey = self:getkey(value, result)
+			end
+			value = objkey
 		end
 	end
 	return self:removeentry(value)
 end
+
+return TypedServants

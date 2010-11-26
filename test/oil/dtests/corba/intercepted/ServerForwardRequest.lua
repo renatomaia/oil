@@ -25,8 +25,7 @@ checks = oil.dtests.checks
 
 Interceptor = {}
 function Interceptor:receiverequest(request)
-	if request.object_key == "object"
-	then
+	if request.object_key == "object" then
 		request.forward_reference = forward.__reference
 	end
 end

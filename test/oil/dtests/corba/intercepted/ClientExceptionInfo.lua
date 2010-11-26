@@ -19,7 +19,6 @@ function Interceptor:sendrequest(request)
 		                                             	port = 2809,
 		                                             	object_key = "object",
 		                                             })
-		checks:assert(request.interface_name,        checks.is("::MyInterface"))
 		checks:assert(request.interface,             checks.is(MyInterface))
 		checks:assert(request.operation,             checks.is(MyInterface.definitions.concat))
 		checks:assert(request.parameters,            checks.similar{"first", "second", n=2})
@@ -52,7 +51,6 @@ function Interceptor:receivereply(reply)
 		                                           	port = 2809,
 		                                           	object_key = "object",
 		                                           })
-		checks:assert(reply.interface_name,        checks.is("::MyInterface"))
 		checks:assert(reply.interface,             checks.is(MyInterface))
 		checks:assert(reply.operation_name,        checks.is("concat"))
 		checks:assert(reply.operation,             checks.is(MyInterface.definitions.concat))
@@ -63,9 +61,14 @@ function Interceptor:receivereply(reply)
 		checks:assert(reply.success,               checks.is(false))
 		checks:assert(reply.results,               checks.similar{
 		                                           	{
-		                                           		"IDL:omg.org/CORBA/COMM_FAILURE:1.0",
-		                                           		completion_status = 1,
-		                                           		minor_code_value = 1,
+		                                           		"IDL:omg.org/CORBA/TRANSIENT:1.0",
+		                                           		completed = "COMPLETED_NO",
+		                                           		minor = 2,
+		                                           		error = "badconnect",
+		                                           		errmsg = "host not found",
+		                                           		host = "Fake",
+		                                           		port = 2809,
+		                                           		profile = {tag=0},
 		                                           	},
 		                                           	n = 1,
 		                                           })
@@ -77,6 +80,7 @@ end
 
 orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
 orb:setclientinterceptor(Interceptor)
+
 sync = oil.dtests.resolve("Fake", 2809, "object", nil, true, true)
 MyInterface = orb:loadidl[[
 	interface MyInterface {
@@ -91,9 +95,9 @@ Interceptor.lastConcatRequest = nil
 ok, res = pcall(sync.concat, sync, "first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
-                   	"IDL:omg.org/CORBA/COMM_FAILURE:1.0",
-                   	completion_status = 1,
-                   	minor_code_value = 1,
+                   	"IDL:omg.org/CORBA/TRANSIENT:1.0",
+                   	completed = "COMPLETED_NO",
+                   	minor = 2,
                    })
 checks:assert(Interceptor.lastConcatRequest, checks.is(false))
 
@@ -101,9 +105,9 @@ Interceptor.lastConcatRequest = nil
 ok, res = async:concat("first", "second"):results()
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
-                   	"IDL:omg.org/CORBA/COMM_FAILURE:1.0",
-                   	completion_status = 1,
-                   	minor_code_value = 1,
+                   	"IDL:omg.org/CORBA/TRANSIENT:1.0",
+                   	completed = "COMPLETED_NO",
+                   	minor = 2,
                    })
 checks:assert(Interceptor.lastConcatRequest, checks.is(false))
 
@@ -111,9 +115,9 @@ Interceptor.lastConcatRequest = nil
 ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
-                   	"IDL:omg.org/CORBA/COMM_FAILURE:1.0",
-                   	completion_status = 1,
-                   	minor_code_value = 1,
+                   	"IDL:omg.org/CORBA/TRANSIENT:1.0",
+                   	completed = "COMPLETED_NO",
+                   	minor = 2,
                    })
 checks:assert(Interceptor.lastConcatRequest, checks.is(false))
 

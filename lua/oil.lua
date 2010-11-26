@@ -96,6 +96,8 @@ local assert = asserter.results
 local asserttype = asserter.type
 local illegal = asserter.illegal
 
+local Exception = require "oil.Exception"
+
 --------------------------------------------------------------------------------
 -- OiL main programming interface (API).
 
@@ -336,9 +338,10 @@ end
 --
 function ORB:newproxy(reference, kind, iface)
 	if type(reference) == "string" then
-		local except
-		reference, except = self.ObjectReferrer:decode(reference)
-		if reference == nil then return nil, except end
+		reference = assert(self.ObjectReferrer.references:decode(reference))
+	else
+		iface = iface or reference.__type
+		reference = reference.__reference
 	end
 	local proxykind = self.proxykind
 	local ProxyManager = proxykind[ kind or proxykind[1] ]
@@ -533,7 +536,8 @@ end
 function ORB:shutdown()
 	local acceptor = self.RequestReceiver.acceptor
 	assert(acceptor:stop(true))
-	return assert(acceptor:shutdown())
+	assert(acceptor:shutdown())
+	assert(acceptor:setup(self)) -- so it can be started again
 end
 
 --------------------------------------------------------------------------------
@@ -589,7 +593,7 @@ function ORB:newexcept(body)
 	asserttype(body, "table", "exception body")
 	local except = self.types and self.types:resolve(body[1])
 	if except then body[1] = except.repID end
-	return asserter.Exception(body)
+	return Exception(body)
 end
 
 --------------------------------------------------------------------------------

@@ -49,12 +49,12 @@ function Channel:send(...)
 	local socket = self.socket
 	local result, except = socket:send(...)
 	if result == nil then
-		if except == "closed" then                                                  --[[VERBOSE]] verbose:listen("client closed the connection, discarding results")
+		if except == "closed" then
 			except = Exception{
 				error = "terminated",
 				message = "terminated",
 			}
-		elseif except == "timeout" then                                             --[[VERBOSE]] verbose:listen("connection operation timeout")
+		elseif except == "timeout" then
 			except = Exception{
 				error = "timeout",
 				message = "timeout",
@@ -95,12 +95,12 @@ function Channel:receive(count, timeout)
 		return bytes..result
 	end
 	self.bytes = bytes..partial
-	if except == "closed" then                                                    --[[VERBOSE]] verbose:listen("client closed the connection")
+	if except == "closed" then
 		except = Exception{
 			error = "terminated",
 			message = "terminated",
 		}
-	elseif except == "timeout" then                                               --[[VERBOSE]] verbose:listen("connection operation timeout")
+	elseif except == "timeout" then
 		except = Exception{
 			error = "timeout",
 			message = "timeout",

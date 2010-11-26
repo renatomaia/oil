@@ -11,7 +11,11 @@ function Interceptor:receiverequest(request)
 	and request.operation_name == "concat"
 	then
 		request.success = false
-		request.results = { orb:newexcept{ "NO_PERMISSION" } }
+		request.results = { orb:newexcept{
+			"CORBA::NO_PERMISSION",
+			completed = "COMPLETED_NO",
+			minor = 123,
+		} }
 	end
 end
 
@@ -36,15 +40,30 @@ prot = orb:newproxy(sync, "protected")
 
 ok, res = pcall(sync.concat, sync, "first", "second")
 checks:assert(ok, checks.is(false))
-checks:assert(res[1], checks.is("IDL:omg.org/CORBA/NO_PERMISSION:1.0"))
+checks:assert(res, checks.similar{
+                   	"IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+                   	exception_id = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+                   	completed = "COMPLETED_NO",
+                   	minor = 123,
+                   })
 
 ok, res = async:concat("first", "second"):results()
 checks:assert(ok, checks.is(false))
-checks:assert(res[1], checks.is("IDL:omg.org/CORBA/NO_PERMISSION:1.0"))
+checks:assert(res, checks.similar{
+                   	"IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+                   	exception_id = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+                   	completed = "COMPLETED_NO",
+                   	minor = 123,
+                   })
 
 ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(false))
-checks:assert(res[1], checks.is("IDL:omg.org/CORBA/NO_PERMISSION:1.0"))
+checks:assert(res, checks.similar{
+                   	"IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+                   	exception_id = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+                   	completed = "COMPLETED_NO",
+                   	minor = 123,
+                   })
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

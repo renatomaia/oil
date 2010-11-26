@@ -1,10 +1,12 @@
-local _G = require "_G"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local unpack = _G.unpack
 
 local oo = require "oil.oo"
 local class = oo.class
 
-local GIOPRequester = require "oil.corba.giop.Requester"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local GIOPRequester = require "oil.corba.giop.Requester"
+local register = GIOPRequester.register
+local unregister = GIOPRequester.unregister
 
 
 
@@ -17,10 +19,9 @@ function IceptedRequester:interceptrequest(reference, operation, request)
 		local intercepted = {
 			reference         = reference,
 			operation         = operation,
-			profile_tag       = reference._profiletag,
-			profile_data      = reference._profiledata,
+			profile_tag       = reference.ior_profile_tag,
+			profile_data      = reference.ior_profile_data,
 			interface         = interface,
-			interface_name    = interface and interface.absolute_name,
 			request_id        = request.request_id,
 			response_expected = request.response_expected,
 			object_key        = request.object_key,
@@ -28,9 +29,9 @@ function IceptedRequester:interceptrequest(reference, operation, request)
 			parameters        = { n = request.n, unpack(request, 1, request.n) },
 		}
 		request.intercepted = intercepted
-		if interceptor.sendrequest then                                             --[[VERBOSE]] verbose:interceptors(true, "intercepting request being sent")
-			interceptor:sendrequest(intercepted)
-			if intercepted.success ~= nil then                                        --[[VERBOSE]] verbose:interceptors("interception request was canceled")
+		if interceptor.sendrequest then                                             --[[VERBOSE]] verbose:interceptors(true, "invoking sendrequest")
+			interceptor:sendrequest(intercepted)                                      --[[VERBOSE]] verbose:interceptors(false, "sendrequest ended")
+			if intercepted.success ~= nil then                                        --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
 				request.success = intercepted.success
 				-- update returned values
 				local results = intercepted.results or {}
@@ -49,8 +50,7 @@ function IceptedRequester:interceptrequest(reference, operation, request)
 				if intercepted.operation and intercepted.operation ~= operation then
 					operation = intercepted.operation
 					interface = operation.defined_in
-					intercepted.interface      = interface
-					intercepted.interface_name = interface and interface.absolute_name
+					intercepted.interface = interface
 					intercepted.operation_name = operation.name
 					request.operation  = operation.name
 					request.inputs     = operation.inputs
@@ -63,15 +63,15 @@ function IceptedRequester:interceptrequest(reference, operation, request)
 				request.service_context      = intercepted.service_context or
 				                               request.service_context
 				request.requesting_principal = intercepted.requesting_principal or
-				                               request.requesting_principal             --[[VERBOSE]] verbose:interceptors(false, "interception ended")
+				                               request.requesting_principal
 			end
 		end
 		return intercepted
 	end
 end
 
-function IceptedRequester:makerequest(channel, except, reference, operation, ...)
-	local request = self:buildrequest(channel, except, reference, operation, ...) --[[VERBOSE]] verbose:interceptors(true, "intercepting request")
+function IceptedRequester:makerequest(channel,except,reference,operation,...)
+	local request = self:buildrequest(channel, except, reference, operation, ...) --[[VERBOSE]] verbose:interceptors(true, "intercepting outgoing request")
 	local intercepted = self:interceptrequest(reference, operation, request)
 	if intercepted then
 		if request.success ~= nil then
@@ -85,9 +85,9 @@ function IceptedRequester:makerequest(channel, except, reference, operation, ...
 			end
 			channel, except = self:getchannel(reference)
 			if channel then
-				intercepted.object_key = self.objkeyof[proxy]
-				intercepted.profile = reference._profile
-				request.object_key = except
+				request.object_key = reference.object_key
+				intercepted.object_key = reference.object_key
+				intercepted.profile = reference.ior_profile_data
 				if request.response_expected then
 					register(channel, request)
 				else
@@ -103,15 +103,17 @@ function IceptedRequester:makerequest(channel, except, reference, operation, ...
 			register(channel, request)
 		end
 		intercepted.request_id = request.request_id
-	end                                                                           --[[VERBOSE]] verbose:interceptors(false, "interception completed")
-	return self:processrequest(channel, except, request)
+	end                                                                           --[[VERBOSE]] verbose:interceptors(false, "interception of outgoing request completed")
+	self:processrequest(channel, except, request)
+	return request
 end
 
 
 
-function IceptedRequester:interceptreply(request, header)
+function IceptedRequester:endrequest(request, success, result)
+	GIOPRequester.endrequest(self, request, success, result)
 	local intercepted = request.intercepted
-	if intercepted then
+	if intercepted then                                                           --[[VERBOSE]] verbose:interceptors(true, "intercepting incoming reply")
 		request.intercepted = nil
 		local interceptor = self.interceptor
 		if interceptor and interceptor.receivereply then
@@ -126,8 +128,8 @@ function IceptedRequester:interceptreply(request, header)
 			intercepted.results = {
 				n = request.n,
 				unpack(request, 1, request.n),
-			}
-			interceptor:receivereply(intercepted)
+			}                                                                         --[[VERBOSE]] verbose:interceptors(true, "invoking receivereply")
+			interceptor:receivereply(intercepted)                                     --[[VERBOSE]] verbose:interceptors(false, "receivereply ended")
 			request.success = intercepted.success
 			-- update returned values
 			local results = intercepted.results or {}
@@ -135,13 +137,8 @@ function IceptedRequester:interceptreply(request, header)
 			for i = 1, request.n do
 				request[i] = results[i]
 			end
-		end
+		end                                                                         --[[VERBOSE]] verbose:interceptors(false, "interception of incoming reply completed")
 	end
-end
-
-function IceptedRequester:endrequest(request, success, result)
-	GIOPRequester.endrequest(self, request, success, result)
-	self:interceptreply(request)
 end
 
 function IceptedRequester:doreply(replied, header, decoder)

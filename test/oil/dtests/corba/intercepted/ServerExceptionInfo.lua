@@ -19,7 +19,6 @@ function Interceptor:receiverequest(request)
 		checks:assert(request.request_id,            checks.typeis("number"))
 		checks:assert(request.response_expected,     checks.is(true))
 		checks:assert(request.servant,               checks.is(Object))
-		checks:assert(request.interface_name,        checks.is("::MyInterface"))
 		checks:assert(request.interface,             checks.is(MyInterface))
 		checks:assert(request.operation,             checks.is(MyInterface.definitions.concat))
 		checks:assert(request.parameters,            checks.similar{"first", "second", n=2})
@@ -45,7 +44,6 @@ function Interceptor:sendreply(reply)
 		checks:assert(reply.response_expected,     checks.is(true))
 		checks:assert(reply.object_key,            checks.is("object"))
 		checks:assert(reply.servant,               checks.is(Object))
-		checks:assert(reply.interface_name,        checks.is("::MyInterface"))
 		checks:assert(reply.interface,             checks.is(MyInterface))
 		checks:assert(reply.operation_name,        checks.is("concat"))
 		checks:assert(reply.operation,             checks.is(MyInterface.definitions.concat))
@@ -59,8 +57,9 @@ function Interceptor:sendreply(reply)
 		checks:assert(reply.results,               checks.similar{
 		                                           	{
 		                                           		"IDL:omg.org/CORBA/UNKNOWN:1.0",
-		                                           		completion_status = 2,
-		                                           		minor_code_value = 0,
+		                                           		exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
+		                                           		completed = "COMPLETED_MAYBE",
+		                                           		minor = 0,
 		                                           		error = '[string "Server"]:6: Oops!',
 		                                           	},
 		                                           	n = 1,
@@ -103,7 +102,6 @@ function Interceptor:sendrequest(request)
 		                                             		minor = 0,
 		                                             	}
 		                                             })
-		checks:assert(request.interface_name,        checks.is("::MyInterface"))
 		checks:assert(request.interface,             checks.is(MyInterface))
 		checks:assert(request.operation,             checks.is(MyInterface.definitions.concat))
 		checks:assert(request.parameters,            checks.similar{"first", "second", n=2})
@@ -139,7 +137,6 @@ function Interceptor:receivereply(reply)
 		                                            		minor = 0,
 		                                            	}
 		                                            })
-		checks:assert(reply.interface_name,         checks.is("::MyInterface"))
 		checks:assert(reply.interface,              checks.is(MyInterface))
 		checks:assert(reply.operation_name,         checks.is("concat"))
 		checks:assert(reply.operation,              checks.is(MyInterface.definitions.concat))
@@ -151,8 +148,9 @@ function Interceptor:receivereply(reply)
 		checks:assert(reply.results,                checks.similar{
 		                                            	{
 		                                            		"IDL:omg.org/CORBA/UNKNOWN:1.0",
-		                                            		completion_status = 2,
-		                                            		minor_code_value = 0,
+		                                            		exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
+		                                            		completed = "COMPLETED_MAYBE",
+		                                            		minor = 0,
 		                                            	},
 		                                            	n = 1,
 		                                            })
@@ -177,8 +175,9 @@ ok, res = pcall(sync.concat, sync, "first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
                    	"IDL:omg.org/CORBA/UNKNOWN:1.0",
-                   	completion_status = 2,
-                   	minor_code_value = 0,
+                   	exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
+                   	completed = "COMPLETED_MAYBE",
+                   	minor = 0,
                    })
 checks:assert(Interceptor.lastConcatRequest, checks.is(false))
 
@@ -187,8 +186,9 @@ ok, res = async:concat("first", "second"):results()
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
                    	"IDL:omg.org/CORBA/UNKNOWN:1.0",
-                   	completion_status = 2,
-                   	minor_code_value = 0,
+                   	exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
+                   	completed = "COMPLETED_MAYBE",
+                   	minor = 0,
                    })
 checks:assert(Interceptor.lastConcatRequest, checks.is(false))
 
@@ -197,8 +197,9 @@ ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
                    	"IDL:omg.org/CORBA/UNKNOWN:1.0",
-                   	completion_status = 2,
-                   	minor_code_value = 0,
+                   	exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
+                   	completed = "COMPLETED_MAYBE",
+                   	minor = 0,
                    })
 checks:assert(Interceptor.lastConcatRequest, checks.is(false))
 

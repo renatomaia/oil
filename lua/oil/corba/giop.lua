@@ -27,6 +27,7 @@ IOR = idl.struct{
 
 ObjectOperations = {
 	_interface = idl.operation{
+		defined_in = idl.object,
 		name = "_interface",
 		result = idl.Object{
 			repID = "IDL:omg.org/CORBA/InterfaceDef:1.0",
@@ -34,19 +35,23 @@ ObjectOperations = {
 		},
 	},
 	_component = idl.operation{
+		defined_in = idl.object,
 		name = "_component",
 		result = idl.object,
 	},
 	_is_a = idl.operation{
+		defined_in = idl.object,
 		name = "_is_a",
 		result = idl.boolean,
 		parameters = {{ type = idl.string, name = "interface" }},
 	},
 	_non_existent = idl.operation{
+		defined_in = idl.object,
 		name = "_non_existent",
 		result = idl.boolean,
 	},
 	_is_equivalent = idl.operation{
+		defined_in = idl.object,
 		name = "_is_equivalent",
 		parameters = {{ type = idl.object, name = "reference" }},
 		result = idl.boolean,

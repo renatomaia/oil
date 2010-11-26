@@ -46,9 +46,9 @@ local function type(value, expected, description, except)
 		error = except or "badvalue",
 		message = "$value is a illegal $valuekind ($expectedtype expected, got $actualtype)",
 		expectedtype = expected,
-		actualtype   = actual,
-		value        = value,
-		valuekind    = description,
+		actualtype = actual,
+		value = value,
+		valuekind = description,
 	}, 2)
 end
 

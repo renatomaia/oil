@@ -9,7 +9,7 @@ Object = {}
 function Object:concat(str1, str2)
 	local info = Interceptor.lastConcatRequest
 	checks:assert(info       , checks.isnot(nil))
-	checks:assert(info.thread, checks.is(oil.tasks.current))
+	checks:assert(info.thread, checks.is(coroutine.running()))
 	return str1.."&"..str2
 end
 
@@ -21,7 +21,6 @@ function Interceptor:receiverequest(request)
 		checks:assert(request.request_id,            checks.typeis("number"))
 		checks:assert(request.response_expected,     checks.is(true))
 		checks:assert(request.servant,               checks.is(Object))
-		checks:assert(request.interface_name,        checks.is("::MyInterface"))
 		checks:assert(request.interface,             checks.is(MyInterface))
 		checks:assert(request.operation,             checks.is(MyInterface.definitions.concat))
 		checks:assert(request.parameters,            checks.similar{"first", "second", n=2})
@@ -36,7 +35,7 @@ function Interceptor:receiverequest(request)
 			request_id = request.request_id,
 			parameters = request.parameters,
 			service_context = request.service_context,
-			thread = oil.tasks.current,
+			thread = coroutine.running(),
 		}
 	end
 end
@@ -48,7 +47,6 @@ function Interceptor:sendreply(reply)
 		checks:assert(reply.response_expected,     checks.is(true))
 		checks:assert(reply.object_key,            checks.is("object"))
 		checks:assert(reply.servant,               checks.is(Object))
-		checks:assert(reply.interface_name,        checks.is("::MyInterface"))
 		checks:assert(reply.interface,             checks.is(MyInterface))
 		checks:assert(reply.operation_name,        checks.is("concat"))
 		checks:assert(reply.operation,             checks.is(MyInterface.definitions.concat))
@@ -63,7 +61,7 @@ function Interceptor:sendreply(reply)
 		checks:assert(#reply.results,              checks.is(1))
 		checks:assert(reply.reply_status,          checks.is("NO_EXCEPTION"))
 		checks:assert(reply.reply_service_context, checks.is(nil))
-		checks:assert(info.thread,                 checks.is(oil.tasks.current))
+		checks:assert(info.thread,                 checks.is(coroutine.running()))
 		self.lastConcatRequest = nil
 		Object.success = true
 	end
@@ -102,7 +100,6 @@ function Interceptor:sendrequest(request)
 		                                             		minor = 0,
 		                                             	}
 		                                             })
-		checks:assert(request.interface_name,        checks.is("::MyInterface"))
 		checks:assert(request.interface,             checks.is(MyInterface))
 		checks:assert(request.operation,             checks.is(MyInterface.definitions.concat))
 		checks:assert(request.parameters,            checks.similar{"first", "second", n=2})
@@ -111,7 +108,7 @@ function Interceptor:sendrequest(request)
 		checks:assert(request.success,               checks.is(nil))
 		checks:assert(request.results,               checks.is(nil))
 		checks:assert(request.reply_service_context, checks.is(nil))
-		checks:assert(self.InvokerThread,            checks.is(oil.tasks.current))
+		checks:assert(self.InvokerThread,            checks.is(coroutine.running()))
 		self.lastConcatRequest = {
 			request = request,
 			request_id = request.request_id,
@@ -139,7 +136,6 @@ function Interceptor:receivereply(reply)
 		                                            		minor = 0,
 		                                            	}
 		                                            })
-		checks:assert(reply.interface_name,         checks.is("::MyInterface"))
 		checks:assert(reply.interface,              checks.is(MyInterface))
 		checks:assert(reply.operation_name,         checks.is("concat"))
 		checks:assert(reply.operation,              checks.is(MyInterface.definitions.concat))
@@ -154,7 +150,7 @@ function Interceptor:receivereply(reply)
 		checks:assert(reply.reply_service_context,  checks.isnot(info.service_context))
 		checks:assert(reply.reply_service_context,  checks.similar{n=0})
 		checks:assert(#reply.reply_service_context, checks.is(0))
-		checks:assert(self.InvokerThread,           checks.is(oil.tasks.current))
+		checks:assert(self.InvokerThread,           checks.is(coroutine.running()))
 		self.lastConcatRequest = false
 	end
 end
@@ -166,7 +162,7 @@ async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 MyInterface = orb.types:resolve("MyInterface")
 
-Interceptor.InvokerThread = oil.tasks.current
+Interceptor.InvokerThread = coroutine.running()
 
 Interceptor.lastConcatRequest = nil
 checks:assert(sync:concat("first", "second"), checks.is("first&second"))

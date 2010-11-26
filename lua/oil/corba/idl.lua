@@ -237,7 +237,7 @@ function Object(self)
 	if self.repID == nil then setnameof(self, self.name) end
 	asserttype(self.name, "string", "Object type name")
 	asserttype(self.repID, "string", "Object type repository ID")
-	if self.repID == "IDL:omg.org/CORBA/Object:1.0"
+	if self.repID == object.repID
 		then self = object
 		else self._type = "Object"
 	end

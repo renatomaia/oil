@@ -77,10 +77,10 @@ end
 
 function OperationReplier:_non_existent(request)
 	local except = request:getvalues()
-	if not request.success
-	and (except.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
-	  or (except.error == "badconnect" and except.errmsg == "connection refused"))
-	then
+	if not request.success and (
+		except.error == "badconnect" or
+		except.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
+	) then
 		request:setreply(true, true)
 	end
 end
@@ -88,55 +88,40 @@ end
 
 
 local GIOPRequester = class({
+	register = register,
+	unregiter = unregister,
 	OperationRequester = OperationRequester,
 	OperationReplier = OperationReplier,
 	Channel = GIOPChannel,
 }, Requester)
 
-function GIOPRequester:__init()
-	self.objkeyof = WeakKeys()
-end
-
-function GIOPRequester:newchannel(reference)
-	local except
+function GIOPRequester:getchannel(reference)
+	local result, except = reference.ior_profile_data
+	if result ~= nil then
+		result, except = Requester.getchannel(self, result)
+		if result then                                                              --[[VERBOSE]] verbose:invoke("reusing channel from previous IOR profile with tag ",reference.ior_profile_tag)
+			return result
+		end
+	end
 	for _, encoded in ipairs(reference.profiles) do                               --[[VERBOSE]] verbose:invoke("[IOR profile with tag ",encoded.tag,"]")
 		local channels = self.channels
 		local referrer = self.referrer
-		local result
 		result, except = referrer:decodeprofile(encoded)
 		if result then
-			local profile, objectkey = result, except
-			result, except = channels:retrieve(profile)
-			if result then
-				local sock2channel = self.sock2channel
-				result = sock2channel[result]
-				local ok
-				if result:unlocked("read") then -- channel might be broken
-					repeat ok, except = self:readchannel(result, 0) until not ok
-					if except.error == "timeout" then
-						ok = true
-					else
-						result, except = channels:retrieve(profile)
-						if result then
-							ok = true
-							result = sock2channel[result]
-						end
-					end
-				else
-					ok = true -- channel is being read, so it should be working fine
-				end
-				if ok then                                                            --[[VERBOSE]] verbose:invoke("got channel from profile with tag ",encoded.tag)
-					self.objkeyof[reference] = objectkey
-					reference._profile = profile
-					return result
-				end
+			local profile = result
+			reference.object_key = except
+			reference.ior_profile_tag = encoded.tag
+			reference.ior_profile_data = profile
+			result, except = Requester.getchannel(self, profile)
+			if result then                                                            --[[VERBOSE]] verbose:invoke("got channel from profile with tag ",encoded.tag)
+				return result
 			end
 		end
 		except.completed = "COMPLETED_NO"
 		except.profile = encoded
 	end
 	if except == nil then                                                         --[[VERBOSE]] verbose:invoke("[no supported profile found]")
-		except = Exception{
+		except = {
 			error = "badversion",
 			message = "no supported IOR profile found",
 			minor = 1,
@@ -144,7 +129,7 @@ function GIOPRequester:newchannel(reference)
 			profiles = reference.profiles,
 		}
 	end
-	return nil, except
+	return nil, Exception(except)
 end
 
 -- this is a separated method to provide pointcut for interception
@@ -156,7 +141,7 @@ function GIOPRequester:buildrequest(channel, except, reference, operation, ...)
 		response_expected    = not operation.oneway,
 		service_context      = Empty,
 		requesting_principal = Empty,
-		object_key           = self.objkeyof[reference],
+		object_key           = reference.object_key,
 		operation            = operation.name,
 		inputs               = operation.inputs,
 		outputs              = operation.outputs,
@@ -175,7 +160,7 @@ function GIOPRequester:processrequest(channel, except, request)                 
 	if channel then
 		local success
 		success, except = channel:sendmsg(RequestID, request,
-		                               request.inputs, request)
+		                                  request.inputs, request)
 		if success then
 			if not request.response_expected then
 				self:endrequest(request, true, 0)
@@ -184,6 +169,7 @@ function GIOPRequester:processrequest(channel, except, request)                 
 		end                                                                         --[[VERBOSE]] verbose:invoke("unable to send the request")
 		unregister(channel, request.request_id)                                     --[[VERBOSE]] else verbose:invoke("unable to contact the servant")
 	end
+	except.completed = "COMPLETED_NO"
 	self:endrequest(request, false, except)                                       --[[VERBOSE]] verbose:invoke(false, "request failed")
 end
 
@@ -208,7 +194,8 @@ function GIOPRequester:makerequest(channel, except, ...)
 end
 
 function GIOPRequester:newrequest(reference, operation, ...)
-	local requester = self.OperationRequester[operation] or Requester.newrequest
+	local requester = self.OperationRequester[operation.name]
+	               or Requester.newrequest
 	return requester(self, reference, operation, ...)
 end
 
@@ -219,7 +206,7 @@ local function reissue(self, request, channel, except)
 		register(channel, request)
 		local success
 		success, except = channel:sendmsg(RequestID, request,
-		                               request.inputs, request)                     --[[VERBOSE]] verbose:invoke(false, "reissue",success and "d successfully" or " failed")
+		                                  request.inputs, request)                  --[[VERBOSE]] verbose:invoke(false, "reissue",success and "d successfully" or " failed")
 		if success then return true end
 		unregister(channel, request.request_id)
 	end
@@ -256,9 +243,10 @@ function GIOPRequester:doreply(replied, header, decoder)
 		local except
 		if status == "LOCATION_FORWARD" then                                        --[[VERBOSE]] verbose:invoke("forwarding request ",header.request_id," through other channel")
 			local channel
-			channel, except = self:newchannel(decoder:struct(IOR))
+			local reference = decoder:struct(IOR)
+			channel, except = self:getchannel(reference)
 			if channel then
-				replied.object_key = except
+				replied.object_key = reference.object_key
 				return reissue(self, replied, channel)
 			end
 		elseif status == "USER_EXCEPTION" then                                      --[[VERBOSE]] verbose:invoke("got reply with exception for ",header.request_id)
@@ -307,10 +295,6 @@ function GIOPRequester:readchannel(channel, timeout)
 		msgid, header = channel:sendmsg(MessageErrorID)
 		if msgid then return true end
 	elseif msgid == CloseConnectionID then                                        --[[VERBOSE]] verbose:invoke("got remote request to close channel")
-		local channelof = self.channelof
-		for reference, achannel in pairs(channelof) do
-			if channel == achannel then channelof[reference] = nil end
-		end
 		channel:close()
 		for id, pending in pairs(channel) do
 			if type(id) == "number" then                                              --[[VERBOSE]] verbose:invoke(true, "reissuing pending request ",pending.request_id)
@@ -337,7 +321,7 @@ function GIOPRequester:readchannel(channel, timeout)
 			end
 		end
 	end
-	return nil, header
+	return nil, Exception(header)
 end
 
 return GIOPRequester

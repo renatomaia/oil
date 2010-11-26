@@ -18,25 +18,6 @@ local LuDOChannel = require "oil.ludo.Channel"
 
 local LuDORequester = class({ Channel = LuDOChannel }, Requester)
 
-function LuDORequester:newchannel(reference)
-	local result, except = self.channels:retrieve(reference)
-	if result then
-		result = self.sock2channel[result]
-		if result:unlocked("read") then -- channel might be broken
-			local ok
-			repeat ok, except = self:readchannel(result, 0) until not ok
-			if except.error == "timeout" then
-				except = nil
-			else
-				result:close()
-				result, except = channels:retrieve(profile)
-				if result then result = sock2channel[result] end
-			end
-		end
-	end
-	return result, except
-end
-
 function LuDORequester:makerequest(channel, except, reference, operation, ...)
 	local request = self.Request{
 		channel = channel,

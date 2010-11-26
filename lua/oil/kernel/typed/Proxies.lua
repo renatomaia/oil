@@ -6,6 +6,7 @@
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local setmetatable = _G.setmetatable
+local rawget = _G.rawget
 local rawset = _G.rawset
 
 local tabop = require "loop.table"
@@ -48,11 +49,13 @@ function _ENV:__init()
 			local cache = setmetatable({}, OpCache)
 			local updater = {}
 			function updater:notify()
+				local handler = rawget(cache, "__exceptions")
 				clear(cache)
 				cache.__index = cache
 				cache.__type = type
 				cache.__tostring = proxytostring
 				cache.__narrow = proxynarrow
+				cache.__exceptions = handler
 			end
 			updater:notify()
 			if type.observer then

@@ -10,6 +10,7 @@ local ipairs = _G.ipairs
 local pairs = _G.pairs
 local pcall = _G.pcall
 local select = _G.select
+local tostring = _G.tostring
 local type = _G.type
 local unpack = _G.unpack
 local stderr = _G.io and _G.io.stderr
@@ -39,22 +40,25 @@ local GIOPChannel = require "oil.corba.giop.Channel"
 
 
 
-local UnknownSysEx = {
-	"IDL:omg.org/CORBA/UNKNOWN:1.0",
-	minor = 0,
-	completed = "COMPLETED_MAYBE",
-}
+local function unknownex(error)
+	if stderr then stderr:write(tostring(except), "\n") end
+	return Exception{ SystemExceptionIDs.UNKNOWN,
+		minor = 0,
+		completed = "COMPLETED_MAYBE",
+		error = error,
+	}
+end
 
 local OiLEx2SysEx = {
-	badobjkey = Exception{ SystemExceptionIDs.OBJECT_NOT_EXIST,
+	badobjkey = { SystemExceptionIDs.OBJECT_NOT_EXIST,
 		minor = 1,
 		completed = "COMPLETED_NO",
 	},
-	badobjimpl = Exception{ SystemExceptionIDs.NO_IMPLEMENT,
+	badobjimpl = { SystemExceptionIDs.NO_IMPLEMENT,
 		minor = 1,
 		completed = "COMPLETED_NO",
 	},
-	badobjop = Exception{ SystemExceptionIDs.BAD_OPERATION,
+	badobjop = { SystemExceptionIDs.BAD_OPERATION,
 		minor = 1,
 		completed = "COMPLETED_NO",
 	},
@@ -111,16 +115,11 @@ function ServerRequest:getreply()
 				ExceptionReplyBody[1] = except[1]
 				ExceptionReplyBody[2] = except
 				return self, ExceptionReplyTypes, ExceptionReplyBody
-			else
-				if not SystemExceptions[ except[1] ] then                               --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
-					except = OiLEx2SysEx[except.error] or UnknownSysEx                    --[[VERBOSE]] else verbose:listen("got system exception ",except)
-				end
+			elseif not SystemExceptions[ except[1] ] then                             --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
+				except = OiLEx2SysEx[except.error] or unknownex(except)                 --[[VERBOSE]] else verbose:listen("got system exception ",except)
 			end
-		elseif extype == "string" then                                              --[[VERBOSE]] verbose:listen("got unexpected error: ", except)
-			if stderr then stderr:write(except, "\n") end
-			except = UnknownSysEx
-		else                                                                        --[[VERBOSE]] verbose:listen("got illegal exception: ", except)
-			except = UnknownSysEx
+		else
+			except = unknownex(except)
 		end
 		return sysexreply(requestid, except)
 	end
@@ -159,7 +158,7 @@ local ServerChannel = class({}, GIOPChannel)
 function ServerChannel:close()
 	local result, except = self:sendmsg(CloseConnectionID)
 	if result or except.error == "terminated" then
-		result, except = true
+		result, except = GIOPChannel.close(self)
 	end
 	return result, except
 end
@@ -195,7 +194,7 @@ function ServerChannel:getrequest(timeout)
 				reply[1] = reply
 				result, except = self:sendmsg(LocateReplyID, reply)
 			elseif msgid == MessageErrorID then                                       --[[VERBOSE]] verbose:listen "got message error notification"
-				result, except = self:sendmsg(CloseConnectionID)
+				result, except = self:close()
 			elseif MessageType[msgid] then                                            --[[VERBOSE]] verbose:listen("got unknown message ",msgid,", sending message error notification")
 				result, except = self:sendmsg(MessageErrorID)
 			elseif header.error == "badversion" then

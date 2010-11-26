@@ -31,7 +31,7 @@ orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
 checks = oil.dtests.checks
 
 raiser = oil.dtests.resolve("Server", 2809, "raiser")
-badobj = oil.dtests.resolve("", 0, "", nil, true, true)
+badobj = oil.dtests.resolve("_", 0, "", nil, true, true)
 
 if oil.dtests.flavor.corba then
 	badobj = orb:narrow(badobj, "ExceptionRaiser")
@@ -44,10 +44,18 @@ raisers = {
 	end,
 	[badobj] = function(exception)
 		if oil.dtests.flavor.corba then
-			checks:assert(exception, checks.similar{"IDL:omg.org/CORBA/COMM_FAILURE:1.0"})
-		elseif oil.dtests.flavor.ludo then
-			checks:assert(exception, checks.match("channel connection failed: host not found$", "wrong exception."))
+			checks:assert(exception, checks.similar{
+				"IDL:omg.org/CORBA/TRANSIENT:1.0",
+				completed = "COMPLETED_NO",
+				profile = {tag=0},
+			})
 		end
+		checks:assert(exception, checks.similar{
+			host = "_",
+			port = 0,
+			errmsg = "host not found",
+			error = "badconnect",
+		})
 	end,
 }
 
@@ -84,14 +92,11 @@ for raiser, exchecker in pairs(raisers) do
 		excount = excount + 1
 		return excount
 	end
-	for case = 1, 3 do
+	for case = 1, 2 do
 		if case == 1 then
 			raiser.__exceptions = handler
 			async.__exceptions = handler
 		elseif case == 2 then
-			orb:setexcatch(handler)
-		elseif case == 3 then
-			if not oil.dtests.flavor.corba then break end
 			orb:setexcatch(handler, "ExceptionRaiser")
 		end
 		
@@ -114,8 +119,6 @@ for raiser, exchecker in pairs(raisers) do
 			raiser.__exceptions = nil
 			async.__exceptions = nil
 		elseif case == 2 then
-			orb:setexcatch(nil)
-		elseif case == 3 and oil.dtests.flavor.corba then
 			orb:setexcatch(nil, "ExceptionRaiser")
 		end
 	end

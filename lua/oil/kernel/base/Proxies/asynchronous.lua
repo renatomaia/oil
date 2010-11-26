@@ -9,14 +9,14 @@ local function results(self, timeout)
 	return self:getreply(timeout)
 end
 local function evaluate(self, timeout)
-	return assert(self.proxy, self.operation, self:getreply(timeout))
+	return assert(self.proxy, self.opinfo, self:getreply(timeout))
 end
 
 return function(invoker, operation)
 	return function(self, ...)
 		local request = invoker(self, ...)
 		request.proxy = self
-		request.operation = operation
+		request.opinfo = operation
 		request.ready = ready
 		request.results = results
 		request.evaluate = evaluate

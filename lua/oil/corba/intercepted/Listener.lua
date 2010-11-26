@@ -25,16 +25,15 @@ function ServerRequest:preinvoke(entry, member)
 			object_key        = self.object_key,
 			operation_name    = self.operation,
 			servant           = entry and entry.__servant,
-			interface         = iface,
-			interface_name    = iface and iface.absolute_name,
+			interface         = member and member.defined_in,
 			operation         = member,
 			parameters        = member and {n=self.n,self:getvalues()} or nil,
 			method            = method,
 		}
 		self.intercepted = intercepted
-		if interceptor.receiverequest then                                        --[[VERBOSE]] verbose:interceptors(true, "intercepting request marshaling")
+		if interceptor.receiverequest then                                          --[[VERBOSE]] verbose:interceptors(true, "intercepting request marshaling")
 			interceptor:receiverequest(intercepted)
-			if intercepted.success ~= nil then                                      --[[VERBOSE]] verbose:interceptors("interception request was canceled")
+			if intercepted.success ~= nil then                                        --[[VERBOSE]] verbose:interceptors("interception request was canceled")
 				self.success = intercepted.success
 				-- update returned values
 				local results = intercepted.results or {}
@@ -42,25 +41,26 @@ function ServerRequest:preinvoke(entry, member)
 				for i = 1, self.n do
 					self[i] = results[i]
 				end
+				object = nil -- this should cancel the operation dispatch
 				self.intercepted = nil -- this should cancel the reply interception
 				self.reply_service_context = intercepted.reply_service_context
-			elseif intercepted.forward_reference then                               --[[VERBOSE]] verbose:interceptors("interceptor forwarded the request")
+			elseif intercepted.forward_reference then                                 --[[VERBOSE]] verbose:interceptors("interceptor forwarded the request")
 				object = nil -- this should cancel the operation dispatch
 				self.intercepted = nil -- this should cancel the reply interception
 				self.reply_service_context = intercepted.reply_service_context
 				self.forward_reference = intercepted.forward_reference
-			else                                                                    --[[VERBOSE]] if intercepted.method~=method then verbose:interceptors("interceptor changed the invoked operation implementation") end
+			else                                                                      --[[VERBOSE]] if intercepted.method~=method then verbose:interceptors("interceptor changed the invoked operation implementation") end
 				method = intercepted.method
 				local servant = intercepted.servant
 				local parameters = intercepted.parameters
 				-- uncancel if the interceptor provided target, method and parameters
 				-- or update invoked object if it was changed
 				if object==nil and servant~=nil and method~=nil and parameters~=nil
-				or object~=nil and servant~=object then                               --[[VERBOSE]] verbose:interceptors("interceptor changed the invoked servant")
+				or object~=nil and servant~=object then                                 --[[VERBOSE]] verbose:interceptors("interceptor changed the invoked servant")
 					object = servant
 				end
 				-- update parameter values
-				if parameters then                                                    --[[VERBOSE]] verbose:interceptors("interceptor changed the parameters of the invoked operation")
+				if parameters then                                                      --[[VERBOSE]] verbose:interceptors("interceptor changed the parameters of the invoked operation")
 					self.n = parameters.n or #parameters
 					for i = 1, self.n do
 						self[i] = parameters[i]

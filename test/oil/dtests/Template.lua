@@ -317,7 +317,7 @@ function newsuite(self, required)
 	if rawget(required, "corba") then protocols[ludo]  = nil end
 	local suite = Suite()
 	
-	--[=[
+	---[=[
 	
 	for protocol in pairs(protocols) do
 		flavors[1] = protocol
@@ -340,8 +340,8 @@ function newsuite(self, required)
 	end
 	
 	--[[]=]
-	local client = "corba"
-	local server = "corba"
+	local client = "cooperative;corba.intercepted"
+	local server = "cooperative;corba.intercepted"
 	local config = {
 		Client = { flavor = client },
 		Server = { flavor = server },

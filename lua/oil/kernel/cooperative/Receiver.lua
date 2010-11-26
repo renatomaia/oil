@@ -121,7 +121,7 @@ function _ENV:start()
 		return yield("yield", self.getter, self)
 	end
 	return nil, Exception{
-		error = "already started",
+		error = "badinitialize",
 		message = "already started",
 	}
 end

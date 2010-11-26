@@ -9,19 +9,19 @@ Nevertheless, OiL relies on three fundamental concepts that define the programmi
 <dl>
 	<dt><%=link("Brokers", "Broker")%></dt>
 	<dd>
-		Is the medium remote invocations are sent through.
+		is the medium remote invocations are sent through.
 		To perform remote invocations, it is necessary to create at least one broker.
 		Multiple brokers can be used to define multiple ways to perform or receive invocations.
 	</dd>
 	<dt><%=link("Servants", "Servant")%></dt>
 	<dd>
-		Is an object registered in a broker to receive remote invocations.
+		is an object registered in a broker to receive remote invocations.
 		The services provided by a servant can be accessed by remote clients.
 	</dd>
 	<dt><%=link("Proxies", "Proxy")%></dt>
 	<dd>
-		Is a local object that represents a remote servant.
-		All method invocations on a proxy perform as a direct invocation on the remote servant it represents.
+		is a local object that represents a remote servant.
+		All method invocations on a proxy result in a similar invocation on the remote servant it represents.
 	</dd>
 </dl>
 

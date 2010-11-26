@@ -18,7 +18,7 @@ function resolve(proc, port, objkey, kind, nowait)
 	if nowait then return proxy end
 	for i = 1, timeout/querytime do
 		local success, errmsg = pcall(proxy._non_existent, proxy)
-		if success or (type(errmsg) == "table" and errmsg.reason == "noimplement")
+		if success or (type(errmsg) == "table" and errmsg.error == "badobjimpl")
 		then -- '_non_existent' may not provided but such object exists ;-)
 			return proxy
 		end

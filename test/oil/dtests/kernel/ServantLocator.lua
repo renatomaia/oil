@@ -23,7 +23,7 @@ orb = oil.dtests.init{
 }
 
 if oil.dtests.flavor.corba then
-	Holder.__type = orb:loadidl[[interface Holder {
+	HolderType = orb:loadidl[[interface Holder {
 		string get();
 		void set(in string value);
 		void dispose();
@@ -32,12 +32,14 @@ end
 
 function ObjectMapMeta:__index(objkey)
 	if objkey:sub(1, 1) ~= "_" then
-		local holder = Holder{ __objkey = objkey }
+		local entry = {
+			__servant = Holder{__objkey = objkey},
+		}
 		if oil.dtests.flavor.corba then
-			holder = { object = holder, type = holder.__type }
+			entry.__type = HolderType
 		end
-		rawset(self, objkey, holder)
-		return holder
+		rawset(self, objkey, entry)
+		return entry
 	end
 end
 

@@ -42,7 +42,6 @@ local WeakTable = class{ __mode = "kv" }
 local Requester = class{ Request = ClientRequest }
 
 function Requester:__init()
-	self.channelof = WeakTable()
 	self.sock2channel = memoize(function(socket)
 		return self.Channel{
 			socket = socket,
@@ -52,15 +51,23 @@ function Requester:__init()
 end
 
 function Requester:getchannel(reference)
-	local channelof = self.channelof
-	local channel, except = channelof[reference]
-	if channel == nil then
-		channel, except = self:newchannel(reference)
-		if channel then
-			channelof[reference] = channel
+	local channels = self.channels
+	local result, except = channels:retrieve(reference)
+	if result then
+		result = self.sock2channel[result]
+		if result:unlocked("read") then -- channel might be broken
+			local ok
+			repeat ok, except = self:readchannel(result, 0) until not ok
+			if except.error == "timeout" then
+				except = nil
+			else
+				result:close()
+				result, except = channels:retrieve(reference)
+				if result then result = sock2channel[result] end
+			end
 		end
 	end
-	return channel, except
+	return result, except
 end
 
 function Requester:newrequest(reference, ...)
