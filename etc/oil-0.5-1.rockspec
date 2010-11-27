@@ -1,7 +1,7 @@
 package = "OiL"
 version = "0.5-1"
 source = {
-	url = "http://www.tecgraf.puc-rio.br/~maia/oil/packs/v05/oil-0.5-beta.tar.gz",
+	url = "http://luaforge.net/frs/download.php/4720/oil-0.5.tar.gz",
 }
 description = {
 	summary = "An Object Request Broker in Lua",
