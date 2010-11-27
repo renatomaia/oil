@@ -1,5 +1,5 @@
 package = "LuaIDL"
-version = "0.9beta-1"
+version = "1.0.5-1"
 source = {
 	url = "http://www.tecgraf.puc-rio.br/~maia/oil/packs/v05/luaidl-0.9-beta.tar.gz",
 }

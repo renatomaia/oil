@@ -1,11 +1,10 @@
 #!/bin/sh
 
-#SVNBASE=https://subversion.tecgraf.puc-rio.br/engsoftware/
-SVNBASE=/Users/maia/Work/proj/
+SVNBASE=https://subversion.tecgraf.puc-rio.br/engdist/
 
-LUAIDL_VERSION=0.9
-LUAIDL_RELEASE=beta
-LUAIDL_PACKAGE=luaidl-$LUAIDL_VERSION-$LUAIDL_RELEASE
+LUAIDL_VERSION=1.0.5
+LUAIDL_RELEASE=
+LUAIDL_PACKAGE=luaidl-$LUAIDL_VERSION$LUAIDL_RELEASE
 
 mkdir $LUAIDL_PACKAGE
 cd $LUAIDL_PACKAGE
@@ -17,8 +16,8 @@ zip -r $LUAIDL_PACKAGE.zip $LUAIDL_PACKAGE/
 rm -fR $LUAIDL_PACKAGE/
 
 OIL_VERSION=0.5
-OIL_RELEASE=beta
-OIL_PACKAGE=oil-$OIL_VERSION-$OIL_RELEASE
+OIL_RELEASE=
+OIL_PACKAGE=oil-$OIL_VERSION$OIL_RELEASE
 
 curl -C - -O http://luaforge.net/frs/download.php/2664/luasocket-2.0.2.tar.gz
 tar -xzvf luasocket-2.0.2.tar.gz
@@ -36,7 +35,7 @@ mv src/*.lua lua/socket/
 rm -f src/makefile
 cd ..
 
-svn export --force $SVNBASE/oil/trunk $OIL_PACKAGE
+svn export --force $SVNBASE/oil/branches/OIL_0_5 $OIL_PACKAGE
 svn export --force $SVNBASE/loop/branches/LOOP_2_3/lua $OIL_PACKAGE/lua
 svn export --force $SVNBASE/loop/branches/LOOP_2_3/doc/build.lua $OIL_PACKAGE/doc/build.lua
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 VERSION=0.5
-RELEASE=beta
+RELEASE=
 
 PACKAGE=oil-$VERSION-$RELEASE
 

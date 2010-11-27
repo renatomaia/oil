@@ -709,7 +709,7 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-VERSION = "OiL 0.5 beta"
+VERSION = "OiL 0.5"
 
 if BasicSystem == nil then
 	local factories = require "oil.builder.cooperative.common"

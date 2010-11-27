@@ -1,5 +1,5 @@
 package = "OiL"
-version = "0.5beta-1"
+version = "0.5-1"
 source = {
 	url = "http://www.tecgraf.puc-rio.br/~maia/oil/packs/v05/oil-0.5-beta.tar.gz",
 }
@@ -22,7 +22,7 @@ dependencies = {
 	"lua >= 5.1",
 	"luasocket >= 2.0",
 	"loop == 2.3beta",
-	"luaidl == 0.9beta",
+	"luaidl == 1.0.5",
 }
 build = {
 	type = "module",
