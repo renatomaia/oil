@@ -50,8 +50,6 @@ rm -fR etc
 cd doc; lua build.lua sitemap.lua .; cd ..
 rm -f doc/build.lua
 rm -f doc/sitemap.lua
-# remove file with history of the project
-rm -f HISTORY
 # remove MS-NMake support for Windows
 rm -f config.win32
 find . -type f -name Makefile.win32 | xargs rm -f
@@ -59,6 +57,11 @@ find . -type f -name Makefile.win32 | xargs rm -f
 rm -fR demo/hello_ssl
 rm -fR demo/minimal
 rm -fR demo/proxy
+rm -fR demo/c++
+rm -fR demo/tolua++
+rm -fR demo/run
+rm -fR demo/nocollocated
+rm -fR demo/doubleserver
 # remove test suite
 rm -fR test
 # remote LOOP classes that are still draft

@@ -64,7 +64,7 @@ OILBIT= oilbit
 OILALL= oilall
 
 vLOOP= 2.3
-vLIDL= 0.9
+vLIDL= 1.0.5
 vSOCK= 2.0.2
 vOIL=  0.5
 
