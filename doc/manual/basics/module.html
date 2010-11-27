@@ -37,7 +37,7 @@ It provides a set of helper functions that are used to <%=link("Brokers","create
 	<dd>
 	<p>
 		<b>Internal coroutine scheduler used by OiL.</b>
-		This field holds a reference to the object that implement the API described in <a href="http://loop.luaforge.net/library/thread/Scheduler.html">loop.thread.Scheduler</a>.<br>
+		This scheduler implements the API described in <a href="http://loop.luaforge.net/library/thread/Scheduler.html">loop.thread.Scheduler</a>.<br>
 	<p>
 		<i>Usage:</i>
 		<pre>
@@ -51,7 +51,7 @@ oil.tasks:run()
 	<p>
 		<b>Executes the main function of the application.</b>
 		The application's main function is executed in a new thread if the current assembly provides thread support.
-		This may only return when the application terminates.<br>
+		This function only returns when the application terminates.<br>
 	<p>
 		<i>Parameters:</i>
 		<table>
@@ -74,8 +74,9 @@ oil.main(function() oil.init():run() end)
 	<p>
 		<b>Creates and starts the execution of a new the thread.</b>
 		Creates a new thread to execute the function <code>func</code> with the extra parameters provided.
-		This function imediately starts the execution of the new thread and the original thread is only resumed again acordingly to the the scheduler's internal policy.
-		This function can only be invocated from others threads, including the one executing the application's main function (see <code>main</code>).<br>
+		This function immediately starts the execution of the new thread.
+		The original thread will be resumed again accordingly to the the scheduler's internal policy.
+		This function can only be invoked from others threads, including the one executing the application's main function (see <code>main</code>).<br>
 	<p>
 		<i>Parameters:</i>
 		<table>
@@ -104,7 +105,7 @@ oil.newthread(broker.run, broker) -- runs in another thread
 	<dt><a name="sleep"><b><code>oil.sleep</code></b></a><code>(time)</code></dt>
 	<dd>
 	<p>
-		<b>Suspends the execution of the current thread for some time.</b>
+		<b>Suspends the execution of the current thread for at least <code>time</code> seconds.</b>
 	<p>
 		<i>Parameters:</i>
 		<table>
@@ -112,7 +113,7 @@ oil.newthread(broker.run, broker) -- runs in another thread
 			<td valign="top"><code>time</code></td>
 			<td valign="top"><b>number</b></td>
 			<td valign="top"></td>
-			<td>Delay in seconds that the execution must be resumed.</td>
+			<td>Time in seconds that the current thread must be suspended.</td>
 		</tr>
 		</table>
 	<p>
@@ -125,7 +126,7 @@ oil.sleep(5.5)
 	<dt><a name="time"><b><code>oil.time</code></b></a><code>()</code></dt>
 	<dd>
 	<p>
-		<b>Get the current system time.</b>
+		<b>Get the current time of the system.</b>
 	<p>
 		<i>Return values:</i>
 		<table>
@@ -146,8 +147,7 @@ local start = oil.time(); oil.sleep(3); print("I slept for", oil.time() - start)
 	<dt><a name="pcall"><b><code>oil.pcall</code></b></a><code>(func, ...)</code></dt>
 	<dd>
 	<p>
-		<b>Function that must be used to perform protected calls in applications.</b>
-		It is a "coroutine-safe" version of the <code>pcall</code> function of the Lua standard library.<br>
+		<b>A "coroutine-safe" version of the <code>pcall</code> function of the Lua standard library.<br>
 	<p>
 		<i>Parameters:</i>
 		<table>
@@ -262,11 +262,11 @@ local start = oil.time(); oil.sleep(3); print("I slept for", oil.time() - start)
 	<dd>
 	<p>
 		<b>Initialize a broker.</b>
-		Initialize an ORB instance with the provided configurations.
+		Initialize an ORB instance with the provided configuration.
 		The actual configuration options varies accordingly to the <%=link("Flavors","ORB flavor")%>.
 		For more information about broker initialization, see section <%=link"Brokers"%>.
-		If the parameter <code>config</code> is not provide, the same ORB is returned, which is initialized with default configurations.
-		To create other ORBs with the default configurations, use an empty table as parameter <code>config</code>.<br>
+		If the parameter <code>config</code> is not provided, the same ORB is returned, which is initialized with a default configuration.
+		To create other ORBs with the default configuration, use an empty table as parameter <code>config</code>.<br>
 	<p>
 		<i>Parameters</i>
 		<table>
@@ -292,7 +292,7 @@ local start = oil.time(); oil.sleep(3); print("I slept for", oil.time() - start)
 		<pre>
 oil.init{ host = "middleware.inf.puc-rio.br" }
 oil.init{ host = "10.223.10.56", port = 8080 }
-print("ORB post:", oil.init().port)
+print("ORB port:", oil.init().port)
 		</pre>
 	</dd>
 	

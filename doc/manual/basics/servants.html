@@ -6,16 +6,16 @@ See section <%=link"Brokers"%>.</p>
 <h2><a name="creation">Creation</a></h2>
 
 <p>Servants are created by method <%=link("Brokers","<code>newservant</code>","#newservant")%><code>(object [, key, type])</code> of a broker.
-It returns an objet that represents the new servant registered.
+It returns an objet that represents the new registered servant.
 Parameter <code>object</code> is the local object that will receive the invocations destined to the servant being created.
 This object only have to implement the methods when they are actually invoked by a remote client.
 Therefore, a servant's invocations are very late bound.</p>
 
 <p>Every servant has an unique name in a broker.
 This name is called the <code>key</code>, which can be provided as the second parameter of operation <%=link("Brokers", "<code>newservant</code>", "#newservant")%>.
-If no key is provided, an automatic one is generated based on the memory position the object is allocated.
-Furthermore, keys starting with the null character (<code>'\0'</code>) are reserved for internal use.
-Keys are necessarily string values.
+If no key is provided, an automatic one is generated based on the memory position where the object is allocated.
+All automatically generated keys starts with a special prefix that can be defined by field <code>keyprefix</code> in the <code>configs</code> table passed to function <%=link("Module","<code>oil.init</code>","#init")%>.
+The default prefix is <code>"_"</code>.
 If two servants are created with the same key, an error is raised.
 A single object can be used as the implementation of multiple servants.
 But, in such case, the key of each additional servant must be provided.
@@ -32,7 +32,7 @@ oil.main(function()
 	end
 	
 	-- initialize a LuDO ORB
-	local broker = oil.init{flavor="ludo;base"}
+	local broker = oil.init{flavor="ludo"}
 	
 	-- registers a servant and save a textual
 	-- reference for it in a file 'hello.ref'.

@@ -449,9 +449,8 @@ Basic types are represented by pre-defined tables exported by module <code>oil.c
 	</tbody>
 </table>
 
-<p>Constructed types descriptors must present a pre-defined structure.
-Module <code>oil.corba.idl</code> provides constructors for creating descriptors for these types.
-Below, there are examples of how to use these construtors to create descriptors that can be used as TypeCodes.</p>
+<p>Constructed types follow a pre-defined structure.
+Module <code>oil.corba.idl</code> provides auxiliary functions to construct TypeCodes for constructed types, as illustrated below:</p>
 
 <h3>Enumeration</h3>
 <pre>
@@ -527,15 +526,8 @@ local HelloObjectRef = oil.corba.idl.Object{
 
 <h2><a name="any">Anys</a></h2>
 
-<p><code>any</code> values are mapped as a table containing the actual value at field <code>_anyval</code>.
-The descriptor of the actual CORBA type of a <code>any</code> is the metatable of this container table.
-This way, unmashaled <code>any</code> values can be used forward as the value of function arguments of type <code>any</code> and be marshaled with the proper CORBA type.
-The same approach is used to marshal values as <code>any</code> values, that is, the metatable of these values must be the descriptor of its actual CORBA type.
-Every unmarshaled value created by OiL that is mapped into a table (e.g. struct, union, sequence, arrays, etc) already defines its metatable as the related IDL type descriptor.</p>
-
-<p>In order to marshal some value as an <code>any</code> you must set its meta-table to the type descritor of its proper CORBA type.
-For values mapped to Lua types other than table, OiL defines a default mapping to allow these values to be marshaled as <code>any</code>s.
-These default mapping is illustrated in the table below.</p>
+<p>Some Lua values can be automatically mapped to <code>any</code>s because OiL defines a default mapping for them.
+This default mapping is illustrated in the table below.</p>
 
 <table align="center" width="300">
 	<!--<caption>Basic type IDL descriptors</caption>-->
@@ -550,27 +542,38 @@ These default mapping is illustrated in the table below.</p>
 	</tbody>
 </table>
 
-<p>To marshal values of these types as <code>any</code>s with a CORBA type different from the default one, you must create a table that contains a field <code>_anyval</code> with the actual value of the <code>any</code> and then set the metatable of this wrapping table to the proper CORBA type.
+<p>To marshal other values as <code>any</code>s or to encode any of the values of the table above with a different IDL type than the default one, you must create a table to represent the <code>any</code>.
+This table must contain a field <code>_anyval</code> with the actual value of the <code>any</code> and a field <code>_anytype</code> with the type of the any.
 Alternatively, the application may create values with custom metatables.
-In that case, the actual CORBA type is defined by the field <code>__type</code> of the custom metatable.
-For illustrative purpose, the code below can be used to create <code>any</code>s with values of different types.</p>
+In that case, the <code>any</code> type is defined by the field <code>__type</code> of the custom metatable.
+Finally, the type of the any can be defined as the metatable of the table containing the actual value.
+For illustrative purpose, the code below creates different <code>any</code>s using the different possibilities allowed by OiL.</p>
 
 <pre>
 -- any value containing a long
 local longany = setmetatable({ _anyval = 4 }, oil.corba.idl.long)
 
 -- any value containing a struct
-local mystruct = { ... }
-local structany1 = setmetatable(mystruct, oil.corba.idl.struct{ ... })
+local MyStruct = oil.corba.idl.struct{
+  repID = "IDL:MyStruct:1.0",
+  name = "MyStruct",
+  { type = oil.corba.idl.string , name = "text"   },
+  { type = oil.corba.idl.double , name = "number" },
+  { type = oil.corba.idl.boolean, name = "logic"  },
+}
+local structany1 = setmetatable({
+  text = "some text",
+  number = 123,
+  logic = true,
+}, MyStruct)
 
 -- any value containing a struct with a custom metatable
-local mystruct = setmetatable({ ... }, {
-       __index = function(tab, key) ... end,
-       __type  = oil.corba.idl.struct{ ... },
+local structany2 = setmetatable({}, {
+  __index = structany1,
+  __type  = MyStruct,
 })
-local structany2 = mystruct
 
 -- any value containing a sequence of anys
 local myanyseq = { longany, structany1, structany2 }
-local seqany = setmetatable(myanyseq, oil.corba.idl.sequence{ oil.corba.idl.any })
+local seqany = setmetatable(myanyseq, oil.corba.idl.sequence{oil.corba.idl.any})
 </pre>
