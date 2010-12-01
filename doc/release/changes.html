@@ -28,11 +28,7 @@
 		<ul>
 			<li>Module <code>oil.compat</code> is no more available.</li>
 			<li>Alternative proxies (<code>__deferred</code> and <code>__try</code>) are not created automatically.
-				Instead, initialize the ORB with:
-				<ul>
-					<li><code>orb = oil.init{ extraproxies = { "asynchronous", "protected" } }</code></li>
-				</ul>
-				Then use the following commands to explicitly create such proxies whenever necessary.
+				Instead, use the following commands to explicitly create such proxies whenever necessary.
 				<ul>
 					<li><code>deferred = orb:newproxy(proxy, "asynchronous")</code></li>
 					<li><code>try = orb:newproxy(proxy, "protected")</code></li>

@@ -9,7 +9,7 @@ ProxyManager = arch.ProxyManager{require "oil.kernel.base.Proxies"}
 
 function create(comps)
 	comps = comps or {}
-	comps.extraproxies = comps.extraproxies or {}
+	comps.extraproxies = comps.extraproxies or {"asynchronous", "protected"}
 	
 	if comps.ProxyManager == nil then
 		local proxykind = comps.proxykind or "synchronous"
