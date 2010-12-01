@@ -1,0 +1,102 @@
+#ifndef __TECGRAF_OPENBUS_PROJECT_IDL__
+#define __TECGRAF_OPENBUS_PROJECT_IDL__
+
+#include "data_service.idl"
+
+module tecgraf {
+
+module openbus {
+
+/**
+ * \brief Manipulação de dados armazenados em uma estrutura de projeto.
+ *
+ * Um projeto é um agrupador de dados relacionados a uma determinada atividade,
+ * armazenados sob a forma de uma árvore.
+ * <br>
+ * Cada um dos dados pertencentes a um projeto é denominado Item de Projeto.
+ */
+module project {
+/**
+ * \brief O separador utilizado no caminho de um item de projeto.
+ *
+ * \see ProjectItemDescription::fPath
+ */
+const string PATH_SEPARATOR = "/";
+/**
+ * \brief Descrição de um item de projeto.
+ *
+ * Um item de projeto é um dado armazenado dentro da estrutura de um projeto.
+ * Ex.: um arquivo ou um diretório.
+ *
+ * Um item de projeto pode ser um contêiner que é um agrupador de outros itens.
+ */
+valuetype ProjectItemDescription :
+    tecgraf::openbus::data_service::DataDescription { 
+  /**
+   * \brief O dono do item.
+   *
+   * O dono do item de projeto é, em geral, o usuário responsável pela criacão
+   * do item.
+   */
+  public string fOwner;
+  /**
+   * \brief A descrição do item.
+   *
+   * Um texto explicativo sobre o que o item representa.
+   */
+  public string fDescription;
+  /**
+   * \brief O caminho do item.
+   *
+   * O caminho na árvore que representa o projeto.
+   * <br>
+   * É iniciado pelo nome da raiz da hierarquia que representa o projeto ao
+   * qual o item pertence.
+   * Este caminho deve ser relativo à raiz do projeto. Por exemplo, caso um
+   * item de nome ABCD esteja dentro de um contêiner de nome EFGH, o caminho
+   * do item ABCD é EFGH/ABCD, onde / é a string definida por #PATH_SEPARATOR.
+   */
+  public string fPath;
+  /**
+   * \brief O tipo do item.
+   *
+   * Caso o item seja um arquivo, por exemplo, o tipo poderá  ser a extensão
+   * deste.
+   */
+  public string fType;
+  /**
+   * \brief O tamanho do item (em \c \b bytes).
+   *
+   * Caso o item seja um contêiner, o tamanho do item deve ser a soma de todos
+   * os seus itens.
+   */
+  public long long fSize;
+  /**
+   * \brief Indica se o item é um contêiner.
+   */
+  public boolean fIsContainer;
+  /**
+   * \brief Indica se o conteúdo do item pode ser lido.
+   */
+  public boolean fCanRead;
+  /**
+   * \brief Indica se o item pode ser alterado.
+   */
+  public boolean fCanWrite;
+  /**
+   * \brief A data de criação do item.
+   */
+  public tecgraf::openbus::data_service::TimeStamp fCreationDate;
+  /**
+   * \brief A data da última modificação realizada no item.
+   */
+  public tecgraf::openbus::data_service::TimeStamp fModificationDate;
+};
+
+}; // project
+
+}; // openbus
+
+}; // tecgraf
+
+#endif

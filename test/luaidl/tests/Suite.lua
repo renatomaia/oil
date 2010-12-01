@@ -58,7 +58,7 @@ local files = {
 	--"mpacomponents",
 	--"home",
   "value",
-  "TestOBV",
+  "TestOBV", -- from Orbacus tests
 	--"event",
 	--"CCM",
 	--"interfaces",
@@ -76,6 +76,7 @@ local files = {
 	"server",
 	"echo",
 	"UndeclaredException",
+	"project", -- from OpenBus
 }
 
 local Suite = Suite()

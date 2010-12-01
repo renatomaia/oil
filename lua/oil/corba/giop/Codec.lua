@@ -470,12 +470,13 @@ function Encoder:any(value)                                                     
 		if luatype == "table" then
 			if not idltype then
 				idltype = value._anytype
-				if idl.istype(idltype) then
-					if value._anyval ~= nil or NilEnabledTypes[idltype._type] then
-						value = value._anyval
-					end
-				else
+				if not idl.istype(idltype) then
 					idltype = nil
+				end
+			end
+			if idltype then
+				if (value._anyval ~= nil or NilEnabledTypes[idltype._type]) then
+					value = value._anyval
 				end
 			end
 		end

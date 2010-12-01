@@ -17,42 +17,39 @@ To get details about these additional fields, see the specific documentation of 
 <pre>require "oil"
 
 oil.main(function()
-	local broker = oil.init{
-		flavor = "intercepted;corba;typed;base",
+	local orb = oil.init{
+		flavor = "cooperative;corba.intercepted",
 		host = "127.0.0.1",
 		port = 80,
 	}
-	broker:run()
+	orb:run()
 end)</pre>
 
 <h2>Start Up</h2>
 
 <p>Typically, the application calls method <a href="#run"><code>run</code></a> to start processing invocations sent to the broker.
-This method executes a continuously processing every invocation destined to a servant registered in the broker.
+This method executes a continuously processing every invocation destined to the servants registered in the broker.
 The <a href="#run"><code>run</code></a> method only returns when the broker is shutdown.</p>
 
-<p>It is important to notice that no invocation will be performed until the method <a href="#run"><code>run</code></a> starts its execution.
-Therefore, if a remote operation requires some service provided by a local servant, then this operation should only be started after the <a href="#run"><code>run</code></a> is running.
-Otherwise, a deadlock shall take place.</p>
-
-<p>For example, suppose a <code>registry</code> servant that provides method <code>register(user)</code>.
-The implementation of this method accesses some fields of the object <code>user</code>.
-In such case, if <code>register(user)</code> is invoked before the method <a href="#run"><code>run</code></a> starts to execute and <code>user</code> is a local servant, then the <code>registry</code> will never be able to complete because <code>user</code>'s broker is not processing remote invocations yet.
+<p>It is important to notice that no invocation will be dispatched to local servants until the method <a href="#run"><code>run</code></a> of the ORB starts its execution.
+For instance, suppose a remove servant <code>registry</code> that provides method <code>register(user)</code>.
+Moreover, suppose the implementation of this method accesses some fields of the object <code>user</code> passed as parameter.
+In such case, if we invoke <code>register(user)</code>, where <code>user</code> is a local servant, then all the attempts of the remote servant to access the object <code>user</code> will be held up while method <a href="#run"><code>run</code></a> and the operation will never complete, resulting in a deadlock.
 To avoid, this problem, a possible solution is to execute method <a href="#run"><code>run</code></a> in a separate thread like in the example below.
 For more information about threads, check section <%=link"Threads"%></p>
 
 <pre>require "oil"
 
 oil.main(function()
-	local broker = oil.init()
+	local orb = oil.init()
 	
-	-- call broker:run() in a new thread
-	oil.newthread(broker.run, broker)
-	
+	-- call orb:run() in a new thread
+	oil.newthread(orb.run, orb)
 	
 	-- continue execution while other thread
 	-- processes remote invocations.
-	
+	registry = orb:newproxy(oil.readfrom("registry.ref"))
+	registry:register(user)
 end)</pre>
 
 <h2>Processing</h2>
@@ -64,12 +61,12 @@ If no invocation request is pending then <a href="#step"><code>step</code></a> b
 The following code is somewhat equivalent to invoke method <a href="#run"><code>run</code></a>:</p>
 
 <pre>
-while broker:pending() do
-	broker:step()
+while orb:pending() do
+	orb:step()
 end
 </pre>
 
-<p>This model of execution is usefull to integrate OiL with other event loops when multithreading is not available.
+<p>This model of execution is useful to integrate OiL with other event loops when multithreading is not available.
 Note however, that while method <a href="#run"><code>run</code></a> is executing, there is not need to call method <a href="#step"><code>step</code></a>.</p>
 
 <h2>Shut Down</h2>
@@ -103,27 +100,27 @@ This method can be called at any time when method <a href="#run"><code>run</code
 	<dt><a href="#narrow"><b><code>narrow</code></b></a><code>(proxy, [interface])</code></dt>
 	<dd>Narrows an object reference into some more specific interface.</dd>
 	<dt><a href="#newdecoder"><b><code>newdecoder</code></b></a><code>(stream)</code></dt>
-	<dd>Creates a new value decoder that marshal values into strings.</dd>
+	<dd>Creates a new value decoder that unmarshal values from an encoded stream.</dd>
 	<dt><a href="#newencoder"><b><code>newencoder</code></b></a><code>()</code></dt>
 	<dd>Creates a new value encoder that marshal values into strings.</dd>
 	<dt><a href="#newexcept"><b><code>newexcept</code></b></a><code>(body)</code></dt>
 	<dd>Creates a new exception object with the given body.</dd>
-	<dt><a href="#newproxy"><b><code>newproxy</code></b></a><code>(reference, [interface])</code></dt>
-	<dd>Creates a proxy for a remote object defined by a textual reference.</dd>
-	<dt><a href="#newservant"><b><code>newservant</code></b></a><code>(impl [, key, interface])</code></dt>
+	<dt><a href="#newproxy"><b><code>newproxy</code></b></a><code>(reference [, kind, [interface]])</code></dt>
+	<dd>Creates a proxy for a remote object from a textual reference.</dd>
+	<dt><a href="#newservant"><b><code>newservant</code></b></a><code>(impl [, key [, interface]])</code></dt>
 	<dd>Creates a new servant implemented in Lua that supports some interface.</dd>
 	<dt><a href="#pending"><b><code>pending</code></b></a><code>()</code></dt>
 	<dd>Checks whether there is some request pending.</dd>
 	<dt><a href="#run"><b><code>run</code></b></a><code>()</code></dt>
-	<dd>Runs the ORB main loop.</dd>
+	<dd>Process incoming requests continuously.</dd>
 	<dt><a href="#setinterceptor"><b><code>setinterceptor</code></b></a><code>([interceptor [, point]])</code></dt>
-	<dd>Sets a CORBA-specific interceptor for operation invocations in the client-size.</dd>
-	<dt><a href="#setexcatch"><b><code>setexcatch</code></b></a><code>(function, [interface])</code></dt>
+	<dd>Defines an interceptor for invocations.</dd>
+	<dt><a href="#setexcatch"><b><code>setexcatch</code></b></a><code>(function [, interface])</code></dt>
 	<dd>Defines a exception handling function for proxies.</dd>
 	<dt><a href="#setIR"><b><code>setIR</code></b></a><code>(remoteIR)</code></dt>
 	<dd>Sets the Interface Repository used to retrieve interface definitions.</dd>
 	<dt><a href="#shutdown"><b><code>shutdown</code></b></a><code>()</code></dt>
-	<dd>Shuts down the ORB.</dd>
+	<dd>Stop processing requests and frees all resources used by the ORB.</dd>
 	<dt><a href="#step"><b><code>step</code></b></a><code>()</code></dt>
 	<dd>Waits for an ORB request and process it.</dd>
 	<dt><a href="#tostring"><b><code>tostring</code></b></a><code>(object)</code></dt>
@@ -152,8 +149,8 @@ This method can be called at any time when method <a href="#run"><code>run</code
 	<p>
 		<i>Usage:</i>
 		<pre>
-while broker:pending() do
-	broker:step()
+while orb:pending() do
+	orb:step()
 end
 		</pre>
 	</dd>
@@ -184,7 +181,7 @@ end
 	<p>
 		<i>Usage:</i>
 		<pre>
-while broker:step() do
+while orb:step() do
  print "One more request successfully processed!"
 end
 		</pre>
@@ -193,23 +190,23 @@ end
 	<dt><a name="run"><b><code>run</code></b></a><code>()</code></dt>
 	<dd>
 	<p>
-		<b>Runs the ORB main loop.</b>
+		<dd>Process incoming requests continuously.</dd>
 		Method used to process all remote requisitions continuously until some exception is raised.
 		This method implicitly initiates the ORB if it was not initialized yet.<br>
 	<p>
 		<i>Usage:</i>
-		<pre>broker:run()</pre>
+		<pre>orb:run()</pre>
 	</dd>
 	
 	<dt><a name="shutdown"><b><code>shutdown</code></b></a><code>()</code></dt>
 	<dd>
 	<p>
-		<b>Shuts down the ORB.</b>
+		<dd>Stop processing requests and frees all resources used by the ORB.</dd>
 		Stops the ORB main loop if it is executing.
 		All pending requests will be properly handled by the ORB after this method returns.<br>
 	<p>
 		<i>Usage:</i>
-		<pre>broker:shutdown()</pre>
+		<pre>orb:shutdown()</pre>
 	</dd>
 	
 	<dt><a name="types"><b><code>types</code></b></a></dt>
@@ -221,8 +218,8 @@ end
 	<p>
 		<i>Usage:</i>
 		<pre>
-local iface = broker.types:lookup("MyModule::MyInterface")
-local iface = broker.types:lookup_id("IDL:MyModule/MyInterface:1.0")
+local iface = orb.types:lookup("MyModule::MyInterface")
+local iface = orb.types:lookup_id("IDL:MyModule/MyInterface:1.0")
 		</pre>
 	</dd>
 	
@@ -256,7 +253,7 @@ local iface = broker.types:lookup_id("IDL:MyModule/MyInterface:1.0")
 	<p>
 		<i>Usage:</i>
 		<pre>
-broker:loadidl [[
+orb:loadidl [[
 	interface Hello {
 		attribute boolean quiet;
 		readonly attribute unsigned long count;
@@ -296,7 +293,7 @@ broker:loadidl [[
 	<p>
 		<i>Usage:</i>
 		<pre>
-broker:loadidlfile "/usr/local/corba/idl/CosNaming.idl"
+orb:loadidlfile "/usr/local/corba/idl/CosNaming.idl"
 		</pre>
 	</dd>
 	
@@ -319,7 +316,7 @@ broker:loadidlfile "/usr/local/corba/idl/CosNaming.idl"
 	<p>
 		<i>Usage:</i>
 		<pre>
-print("Local IR IOR is:", broker:tostring(broker:getLIR()))
+print("Local IR IOR is:", orb:tostring(orb:getLIR()))
 		</pre>
 	</dd>
 	
@@ -342,7 +339,7 @@ print("Local IR IOR is:", broker:tostring(broker:getLIR()))
 	<p>
 		<i>Usage:</i>
 		<pre>
-broker:setIR(broker:newproxy("corbaloc::coshost:8080/InterfaceRepository"))
+orb:setIR(orb:newproxy("corbaloc::coshost:8080/InterfaceRepository"))
 		</pre>
 	</dd>
 	
@@ -364,7 +361,7 @@ broker:setIR(broker:newproxy("corbaloc::coshost:8080/InterfaceRepository"))
 	<p>
 		<i>Usage:</i>
 		<pre>
-broker:getIR():lookup("::MyModule::MyInterface")
+orb:getIR():lookup("::MyModule::MyInterface")
 		</pre>
 	</dd>
 	
@@ -412,9 +409,9 @@ broker:getIR():lookup("::MyModule::MyInterface")
 	<p>
 		<i>Usage:</i>
 		<pre>
-broker:newservant({say_hello_to=print}, "Key", "::HelloWorld::Hello")
-broker:newservant({say_hello_to=print}, nil, "::HelloWorld::Hello")
-broker:newservant({say_hello_to=print}, nil, "IDL:HelloWorld/Hello:1.0")
+orb:newservant({say_hello_to=print}, "Key", "::HelloWorld::Hello")
+orb:newservant({say_hello_to=print}, nil, "::HelloWorld::Hello")
+orb:newservant({say_hello_to=print}, nil, "IDL:HelloWorld/Hello:1.0")
 		</pre>
 	</dd>
 	
@@ -445,9 +442,9 @@ broker:newservant({say_hello_to=print}, nil, "IDL:HelloWorld/Hello:1.0")
 	<p>
 		<i>Usage:</i>
 		<pre>
-broker:deactivate(broker:newservant(impl, "::MyInterface", "objkey"))
-broker:deactivate("objkey")
-broker:deactivate(impl, "MyInterface")
+orb:deactivate(orb:newservant(impl, "::MyInterface", "objkey"))
+orb:deactivate("objkey")
+orb:deactivate(impl, "MyInterface")
 		</pre>
 	</dd>
 	
@@ -479,7 +476,7 @@ broker:deactivate(impl, "MyInterface")
 	<p>
 		<i>Usage:</i>
 		<pre>
-oil.writeto("ref.ior", broker:tostring(broker:newservant(impl, "::Hello")))
+oil.writeto("ref.ior", orb:tostring(orb:newservant(impl, "::Hello")))
 		</pre>
 	</dd>
 	
@@ -524,10 +521,10 @@ oil.writeto("ref.ior", broker:tostring(broker:newservant(impl, "::Hello")))
 	<p>
 		<i>Usage:</i>
 		<pre>
-broker:newproxy("IOR:00000002B494...")
-broker:newproxy("IOR:00000002B494...", "synchronous", "HelloWorld::Hello")
-broker:newproxy("IOR:00000002B494...", "asynchronous", "IDL:HelloWorld/Hello:1.0")
-broker:newproxy("corbaloc::host:8080/Key", "protected", "IDL:HelloWorld/Hello:1.0")
+orb:newproxy("IOR:00000002B494...")
+orb:newproxy("IOR:00000002B494...", "synchronous", "HelloWorld::Hello")
+orb:newproxy("IOR:00000002B494...", "asynchronous", "IDL:HelloWorld/Hello:1.0")
+orb:newproxy("corbaloc::host:8080/Key", "protected", "IDL:HelloWorld/Hello:1.0")
 		</pre>
 	</dd>
 
@@ -569,9 +566,9 @@ broker:newproxy("corbaloc::host:8080/Key", "protected", "IDL:HelloWorld/Hello:1.
 	<p>
 		<i>Usage:</i>
 		<pre>
-broker:narrow(ns:resolve_str("HelloWorld"))
-broker:narrow(ns:resolve_str("HelloWorld"), "IDL:HelloWorld/Hello:1.0")
-broker:narrow(ns:resolve_str("HelloWorld"), "::HelloWorld::Hello")
+orb:narrow(ns:resolve_str("HelloWorld"))
+orb:narrow(ns:resolve_str("HelloWorld"), "IDL:HelloWorld/Hello:1.0")
+orb:narrow(ns:resolve_str("HelloWorld"), "::HelloWorld::Hello")
 		</pre>
 	<p>
 		<i>See also:</i> <a href="#newproxy"><b><code>newproxy</code></b></a>
@@ -605,9 +602,9 @@ broker:narrow(ns:resolve_str("HelloWorld"), "::HelloWorld::Hello")
 	<p>
 		<i>Usage:</i>
 		<pre>
-local decoder = broker:newdecoder(stream)
+local decoder = orb:newdecoder(stream)
 val = decoder:get(oil.corba.idl.sequence{oil.corba.idl.long})
-val = decoder:get(broker.types:lookup("MyLongSeq"))
+val = decoder:get(orb.types:lookup("MyLongSeq"))
 		</pre>
 	</dd>
 	
@@ -629,9 +626,9 @@ val = decoder:get(broker.types:lookup("MyLongSeq"))
 	<p>
 		<i>Usage:</i>
 		<pre>
-local encoder = broker:newencoder()
+local encoder = orb:newencoder()
 encoder:put({1,2,3}, oil.corba.idl.sequence{oil.corba.idl.long})
-encoder:put({1,2,3}, broker.types:lookup("MyLongSeq"))
+encoder:put({1,2,3}, orb.types:lookup("MyLongSeq"))
 io.write(encoder:getdata())
 		</pre>
 	</dd>
@@ -664,7 +661,7 @@ io.write(encoder:getdata())
 	<p>
 		<i>Usage:</i>
 		<pre>
-error(broker:newexcept{ "::CORBA::INTERNAL", minor_code_value = 2 })
+error(orb:newexcept{ "::CORBA::INTERNAL", minor_code_value = 2 })
 		</pre>
 	</dd>
 	
@@ -676,9 +673,9 @@ error(broker:newexcept{ "::CORBA::INTERNAL", minor_code_value = 2 })
 		<b>proxy</b>: object proxy that performed the operation.<br>
 		<b>exception</b>: exception/error raised.<br>
 		<b>operation</b>: descriptor of the operation that raised the exception.<br>
-		If the parameter <code>type</code> is provided, then the exception handling function will be applied only to proxies of that type (i.e. interface).
+		If the parameter <code>interface</code> is provided, then the exception handling function will be applied only to proxies of that interface.
 		Exception handling functions are not cumulative.
-		For example, is the is an exception handling function defined for all proxies and other only for proxies of a given type, then the later will be used for proxies of that given type.
+		For example, if there is an exception handling function defined for all proxies and another one only for proxies of a given type, then the later will be used for proxies of that given type.
 		Additionally, exceptions handlers are not inherited through interface hierarchies.<br>
 	<p>
 		<i>Parameters:</i>
@@ -703,7 +700,7 @@ error(broker:newexcept{ "::CORBA::INTERNAL", minor_code_value = 2 })
 	<p>
 		<i>Usage:</i>
 		<pre>
-broker:setexcatch(function(_, except) error(tostring(except)) end)
+orb:setexcatch(function(_, except) error(tostring(except)) end)
 		</pre>
 	</dd>
 	

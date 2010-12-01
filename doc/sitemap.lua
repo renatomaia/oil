@@ -76,7 +76,7 @@ outputdir = "website",
 
 <div class="content">
 <p><small><strong>Copyright (C) 2004-2008 Tecgraf, PUC-Rio</strong></small></p>
-<small>This project is currently being maintained by <a href="http://www.tecgraf.puc-rio.br">Tecgraf</a> at <a href="http://www.puc-rio.br">PUC-Rio</a> with grants from <a href="http://www.capes.gov.br">CAPES</a> and <a href="http://www.cnpq.br">CNPq</a>.</small>
+<small>This project is currently being maintained by <a href="http://www.tecgraf.puc-rio.br">Tecgraf</a> at <a href="http://www.puc-rio.br">PUC-Rio</a>.</small>
 </div>
 
 <%

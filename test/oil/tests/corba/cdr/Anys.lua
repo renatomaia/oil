@@ -33,10 +33,20 @@ suite:add("False" , idl.any, false, setmetatable({ _anyval = false, _anytype = i
 suite:add("Number", idl.any, 123  , setmetatable({ _anyval = 123  , _anytype = idl.double  }, idl.double ))
 suite:add("String", idl.any, "s"  , setmetatable({ _anyval = "s"  , _anytype = idl.string  }, idl.string ))
 
-suite:add("ExplicitFalse" , idl.any, { _anyval = nil, _anytype = idl.boolean }, setmetatable({ _anyval = false, _anytype = idl.boolean }, idl.boolean))
-suite:add("ExplicitTrue"  , idl.any, { _anyval = 0  , _anytype = idl.boolean }, setmetatable({ _anyval = true , _anytype = idl.boolean }, idl.boolean))
-suite:add("ExplicitUShort", idl.any, { _anyval = 123, _anytype = idl.ushort } , setmetatable({ _anyval = 123  , _anytype = idl.ushort  }, idl.ushort ))
-suite:add("ExplicitChar"  , idl.any, { _anyval = "c", _anytype = idl.char }   , setmetatable({ _anyval = "c"  , _anytype = idl.char    }, idl.char   ))
+suite:add("TypeFieldFalse" , idl.any, { _anyval = nil, _anytype = idl.boolean }, setmetatable({ _anyval = false, _anytype = idl.boolean }, idl.boolean))
+suite:add("TypeFieldTrue"  , idl.any, { _anyval = 0  , _anytype = idl.boolean }, setmetatable({ _anyval = true , _anytype = idl.boolean }, idl.boolean))
+suite:add("TypeFieldUShort", idl.any, { _anyval = 123, _anytype = idl.ushort } , setmetatable({ _anyval = 123  , _anytype = idl.ushort  }, idl.ushort ))
+suite:add("TypeFieldChar"  , idl.any, { _anyval = "c", _anytype = idl.char }   , setmetatable({ _anyval = "c"  , _anytype = idl.char    }, idl.char   ))
+
+suite:add("MetatableFalse" , idl.any, setmetatable({ _anyval = nil }, idl.boolean), setmetatable({ _anyval = false, _anytype = idl.boolean }, idl.boolean))
+suite:add("MetatableTrue"  , idl.any, setmetatable({ _anyval = 0   }, idl.boolean), setmetatable({ _anyval = true , _anytype = idl.boolean }, idl.boolean))
+suite:add("MetatableUShort", idl.any, setmetatable({ _anyval = 123 }, idl.ushort ), setmetatable({ _anyval = 123  , _anytype = idl.ushort  }, idl.ushort ))
+suite:add("MetatableChar"  , idl.any, setmetatable({ _anyval = "c" }, idl.char   ), setmetatable({ _anyval = "c"  , _anytype = idl.char    }, idl.char   ))
+
+suite:add("TypeFieldAndMetatableFalse" , idl.any, setmetatable({ _anyval = nil, _anytype = idl.boolean }, idl.boolean), setmetatable({ _anyval = false, _anytype = idl.boolean }, idl.boolean))
+suite:add("TypeFieldAndMetatableTrue"  , idl.any, setmetatable({ _anyval = 0  , _anytype = idl.boolean }, idl.boolean), setmetatable({ _anyval = true , _anytype = idl.boolean }, idl.boolean))
+suite:add("TypeFieldAndMetatableUShort", idl.any, setmetatable({ _anyval = 123, _anytype = idl.ushort  }, idl.ushort ), setmetatable({ _anyval = 123  , _anytype = idl.ushort  }, idl.ushort ))
+suite:add("TypeFieldAndMetatableChar"  , idl.any, setmetatable({ _anyval = "c", _anytype = idl.char    }, idl.char   ), setmetatable({ _anyval = "c"  , _anytype = idl.char    }, idl.char   ))
 
 --------------------------------------------------------------------------------
 
@@ -53,6 +63,22 @@ suite:add("TypeAsMetatable",
 suite:add("TypeAsMetaField",
 	function() return idl.any end,
 	function() return setmetatable({number=123, text="text"}, {__type=StructType()}) end,
+	ExpectedValue)
+
+suite:add("TypeAsFieldAndMetatable",
+	function() return idl.any end,
+	function()
+		local type = StructType()
+		return setmetatable({number=123, text="text", _anytype=type}, type)
+	end,
+	ExpectedValue)
+
+suite:add("TypeAsFieldAndMetaField",
+	function() return idl.any end,
+	function()
+		local type = StructType()
+		return setmetatable({number=123, text="text", _anytype=type}, {__type=type})
+	end,
 	ExpectedValue)
 
 --------------------------------------------------------------------------------

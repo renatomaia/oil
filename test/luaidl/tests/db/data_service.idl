@@ -1,38 +1,427 @@
-#ifndef DS_IDL
-#define DS_IDL
+#ifndef __TECGRAF_OPENBUS_DATA_SERVICE_IDL__
+#define __TECGRAF_OPENBUS_DATA_SERVICE_IDL__
 
-#include "scs.idl"
+module tecgraf {
 
-module openbusidl {
+module openbus {
 
 /**
- * \brief Módulo do Serviço de Dados
+ * \brief Módulo do Serviço de Dados Estruturados.
  */
-module ds {
+module data_service {
 
-typedef string PropertyName;
-typedef string PropertyValue;
-struct Property {
-  PropertyName name;
-  PropertyValue value;
-};
-typedef sequence<Property> PropertyList;
+/** \brief Sequência de octetos. */
+typedef sequence<octet> OctetSeq;
 
-typedef string NodeKey;
-struct Node {
-  NodeKey key;
-  PropertyList properties;
-};
-typedef sequence<Node> NodeList;
+/** \brief Sequência de strings. */
+typedef sequence<string> StringSeq;
 
-interface IDataService {
-  NodeList getRoots();
-  NodeList getChildren(in NodeKey key);
-  scs::core::IComponent getComponent(in NodeKey key);
+/** \brief Tempo em (\b milissegundos) desde 1 de janeiro de 1970. */
+typedef long long TimeStamp;
+
+/** \brief O identificador unívoco de um dado.
+ *
+ * Através do identificador unívoco é possível identificar, além do dado 
+ * em si, o serviço que o hospeda. Ou seja, com o identificador de um
+ * dado é possível encontrá-lo no barramento de forma unívoca.
+ * É importante não amarrar o identificador de um dado a um servidor
+ * específico. No caso de um serviço mudar de servidor, devemos ainda ser
+ * capazes de encontrar o dado através do identificador.
+ */
+typedef OctetSeq DataKey;
+
+/** \brief Sequência de identificadores. */
+typedef  sequence<DataKey> DataKeySeq;
+
+/** \brief Indica que uma visão desconhecida foi solicitada. */
+exception UnknownViewInterface {
+  string fName; /**< \brief O nome da visão. */
 };
 
+/**
+ * \brief Indica a tentativa de se tratar um dado que não possui visões
+ * conhecidas.
+ */
+exception UnknownViews {};
+
+/** \brief Indica que a chave de um dado é inválida. */
+exception InvalidDataKey {
+  DataKey fKey; /**< \brief A chave inválida. */
 };
 
+/** \brief Indica que o protótipo é inválido. */
+exception InvalidPrototype {};
+
+/** \brief Indica que o usuário não possui permissão para acessar o dado. */
+exception DataAccessDenied{};
+
+/** \brief Indica que dados não foram encontrados. */
+exception DataNotFound {
+  DataKeySeq fKey; /**< \brief As chaves dos dados não encontrados. */
 };
+
+/** \brief Indica que houve uma falha no serviço. */
+exception ServiceFailure {};
+
+/**
+ * \brief Representa um metadado.
+ *
+ * O metadado é utilizado para inserir uma informação adicional à estrutura.
+ * Para representar o metadado utiliza-se um par de nome e valor onde o valor
+ * pode ser de qualquer tipo básico (any).
+ */
+struct Metadata {
+  string fName; /**< \brief O nome. */
+  any fValue;  /**< \brief O valor. */
+};
+typedef sequence<Metadata> MetadataSeq; /**< \brief Sequência de metadados. */
+
+/**
+ * \brief A descrição de um dado.
+ *
+ * A descrição deve ter informações suficientes para que um determinado dado
+ * seja identificado.
+ * É utilizada tipicamente para navegação e visualização.
+ *
+ * A chave é criada pelo serviço. Nela pode-se inserir qualquer informação que
+ * o serviço entenda como importante para identificar o dado. Pode-se, por
+ * exemplo, usar como parte da chave o caminho do dado no sistema de arquivos
+ * ou a chave do dado em um banco de dados. A chave também pode conter
+ * informações suficientes para identificar o dado no barramento.
+ * O Openbus provê uma classe para facilitar a criação desta chave, assim como
+ * facilidades para converter e estruturar a infomação presente no DataKey.
+ *
+ * O campo `views é importante para que uma aplicação consiga identificar quais
+ * visões o dado possui. Tipicamente utiliza-se o repository ID como
+ * identificador da visão. O ID possui o caminho da estrutura na IDL - os
+ * módulos onde a estrutura está situada, juntamente com seu nome e número de
+ * versão.
+ */
+valuetype DataDescription {
+  public DataKey fKey;  /**< \brief A chave unívoca do dado. */
+  public string fName; /**< \brief O nome simbólico do dado. */
+  public StringSeq fViews; /**< \brief As visões oferecidas pelo dado. */
+  public MetadataSeq fMetadata; /**< \brief Metadados (\b opcionais) do dado. */
+};
+typedef sequence<DataDescription> DataDescriptionSeq; /**< \brief Sequência de
+    descrições de dados. */
+
+/**
+ * \brief Visão oferecida para um dado.
+ *
+ * Os dados são oferecidos pelos serviços através de visões. Um dado pode ser
+ * exposto através de uma ou mais visões.
+ *
+ * Por ser uma interface abstrata, pode-se estender o DataView como um
+ * objeto por valor (valuetype) ou um objeto remoto (interface). A escolha de
+ * como estender deve ser tomada pensando na quantidade de infomação do dado e
+ * no número de chamadas remotas que serão necessárias para obter o dado
+ * esperado. Normalmente é utilizado o valuetype como visão de dado.
+ *
+ * O DataView possui dois métodos obrigatórios que são necessários para
+ * identificação do dado. O primeiro método, \i getKey, é importante para
+ * manter a ligação entre a visão atual e o dado. Com a chave, o usuário
+ * consegue encontrar a descrição e todas as demais visões do dado. O outro
+ * método obrigatório, \i getInterfaceName, é importante para reconhecer qual
+ * interface o objeto representado por um DataView está implementando.
+ */
+abstract interface DataView {
+  /**
+   * \brief Obtém o identificador unívoco do dado.
+   *
+   * Deve-se retornar o mesmo identificador para todas as visões do dado
+   * inclusive para o DataDescription.
+   *
+   * \return O identificador unívoco do dado.
+   */
+  DataKey getKey();
+
+  /**
+   * \brief Obtém o nome da interface.
+   *
+   * Deve-se utilizar o "Repository ID" como retorno. O importante é que o
+   * DataDescription, estrutura que descreve o dado, deve conter o mesmo nome
+   * retornado neste método, em seu campo \i views.
+   *
+   * \return O nome da interface.
+   */
+  string getInterfaceName();
+};
+typedef sequence<DataView> DataViewSeq; /**< \brief Sequência de visões de um
+    dado. */
+
+/**
+ * \brief Visão não-estruturada de um dado para a transferência de seu conteúdo
+ * através de um \i socket.
+ */
+valuetype UnstructuredData supports DataView {
+  public DataKey fKey; /**< \brief O identificador unívoco do dado. */
+  public string fHost; /**< \brief O nome do \i host de origem do dado. */
+  public unsigned long fPort; /**< \brief A porta do \i host de origem do
+      dado. */
+  public OctetSeq fAccessKey; /**< \brief A chave de acesso ao dado. */
+  public boolean fWritable; /**< \brief Indica se é possível alterar no dado. */
+};
+
+/**
+ * \brief Serviço de Navegação Hierárquica em Dados Estruturados.
+ */
+interface IHierarchicalNavigationDataService {
+ /**
+  * \brief Obtém os descritores dos dados que representam as raízes da
+  * hierarquia.
+  *
+  * Este método é utilizado pelas aplicações que utilizam o serviço para
+  * iniciar a navegação nos dados.
+  *
+  * \return Os descritores dos dados que representam as raízes da hierarquia.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  DataDescriptionSeq getRoots() raises (ServiceFailure, DataAccessDenied);
+
+ /**
+  * \brief Obtém os descritores dos dados descendentes de um determinado dado.
+  *
+  * \param [in] fKey A chave do dado que se deseja os descendentes.
+  *
+  * \return Os dados descendentes.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  DataDescriptionSeq getChildren(in DataKey fKey) raises (ServiceFailure,
+      InvalidDataKey, DataNotFound, DataAccessDenied);
+
+ /**
+  * \brief Obtém o descritor do ascendente de um dado.
+  *
+  * \param [in] fKey A chave do dado que se deseja o ascendente.
+  *
+  * \return O dado ascendente.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  DataDescription getParent(in DataKey fKey) raises (ServiceFailure,
+      InvalidDataKey, DataNotFound, DataAccessDenied);
+
+ /**
+  * \brief Obtém o descritor de um dado.
+  *
+  * \param [in] fKey A chave do dado.
+  *
+  * \return O descritor do dado.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  DataDescription getDataDescription(in DataKey fKey) raises (ServiceFailure,
+      InvalidDataKey, DataNotFound, DataAccessDenied);
+
+ /**
+  * \brief Obtém uma visão de um dado.
+  *
+  * O dado (representado pelo DataKey) pode oferecer diversas visões. O
+  * DataDescription é a estrutura responsável por informar quais visões um dado
+  * oferece.
+  *
+  * \param [in] fKey A chave do dado.
+  * \param [in] fViewInterface O nome da interface da visão desejada.
+  *
+  * \return A visão.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception UnknownViewInterface Indica que uma visão desconhecida foi
+  * solicitada.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  DataView getDataView(in DataKey fKey, in string fViewInterface)
+      raises (ServiceFailure, InvalidDataKey, DataNotFound,
+      UnknownViewInterface, DataAccessDenied);
+
+ /**
+  * \brief Obtém um conjunto de visões para um conjunto de dados.
+  *
+  * Todas as visões no conjunto implementam a mesma interface solicitada.
+  *
+  * \param [in] fKeys As chaves dos dados.
+  * \param [in] fViewInterface O nome da interface da visão desejada.
+  *
+  * \return O conjunto de visões.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception UnknownViewInterface Indica que uma visão desconhecida foi
+  * solicitada.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  DataViewSeq getDataViewSeq(in DataKeySeq fKeys, in string fViewInterface)
+      raises (ServiceFailure, InvalidDataKey, DataNotFound, 
+      UnknownViewInterface, DataAccessDenied);
+};
+
+/**
+ * \brief Serviço de Gerenciamento de Hierarquia de Dados Estruturados.
+ */
+interface IHierarchicalManagementDataService {
+ /**
+  * \brief Cria um dado a partir de informações contidas em um protótipo.
+  *
+  * O protótipo precisar conter todas as informações necessárias para criar o
+  * dado. Vale ressaltar que nem todos os campos presentes na descrição do dado
+  * precisam ser criados. O campo dataKey por exemplo, é criado pelo serviço
+  * e, portanto, não precisa ser criado no protótipo.
+  *
+  * \param [in] fPrototype O protótipo.
+  * \param [in] fParentKey A chave do dado (pai) onde o novo dado (filho)
+  * será criado.
+  *
+  * \return A chave do dado criado.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception InvalidPrototype Caso o protótipo seja inválido.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  DataKey createData(in DataKey fPrototype, in DataDescription fParentKey)
+      raises (ServiceFailure, InvalidDataKey, DataNotFound, InvalidPrototype,
+      DataAccessDenied);
+
+ /**
+  * \brief Copia um dado para uma determinada localização.
+  *
+  * \param [in] fSourceKey A chave do dado de origem.
+  * \param [in] fParentKey A chave do dado (pai) onde o novo dado (filho) será
+  * criado.
+  *
+  * \return O dado criado.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception UnknownViews Caso o dado não possua visões conhecidas para o
+  * novo dado.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  DataKey copyData(in DataKey fSourceKey, in DataKey fParentKey)
+      raises (ServiceFailure, UnknownViews, InvalidDataKey, DataNotFound, 
+      DataAccessDenied);
+
+ /**
+  * \brief Move determinado dado.
+  *
+  * \param [in] fKey A chave do dado que se deseja mover.
+  * \param [in] fNewParentKey A chave do dado do pai de destino.
+  * 
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception UnknownViews O dado não possui tipos suportados para o novo dado.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  void moveData(in DataKey fKey, in DataKey fNewParentKey)
+      raises (ServiceFailure, UnknownViews, InvalidDataKey, DataNotFound, 
+      DataAccessDenied);
+
+ /**
+  * \brief Atualiza um dado a partir do conteúdo de um outro dado qualquer.
+  *
+  * \param [in] fKey A chave do dado que se deseja atualizar.
+  * \param [in] fSourceKey A chave do dado de origem.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception UnknownViews O dado de origem não oferece visões suportadas
+  * pelo dado que está sendo atualizado.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  void updateData(in DataKey fKey, in DataKey fSourceKey)
+      raises (ServiceFailure, UnknownViews, InvalidDataKey, DataNotFound, 
+      DataAccessDenied);
+
+ /**
+  * \brief Remove um dado.
+  *
+  * \param [in] fKey A chave do dado.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  void deleteData(in DataKey fKey) raises (ServiceFailure, InvalidDataKey, 
+      DataNotFound, DataAccessDenied);
+};
+
+/**
+ * \brief Serviço de Transferência de Dados Estruturados.
+ */
+interface IHierarchicalTransferDataService {
+ /**
+  * \brief Copia um dado para uma determinada localização.
+  *
+  * \param [in] fSourceKey A chave do dado de origem.
+  * \param [in] fParentKey A chave do dado (pai) onde o novo dado (filho) será
+  * criado.
+  *
+  * \return O dado criado.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception UnknownViews Caso o dado não possua visões conhecidas para o
+  * novo dado.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  DataKey copyDataFrom(in DataKey fSourceKey, in DataKey fParentKey)
+      raises (ServiceFailure, UnknownViews, InvalidDataKey, DataNotFound, 
+      DataAccessDenied);
+
+ /**
+  * \brief Atualiza um dado a partir do conteúdo de um outro dado qualquer.
+  *
+  * \param [in] fKey A chave do dado que se deseja atualizar.
+  * \param [in] fSourceKey A chave do dado de origem.
+  *
+  * \exception ServiceFailure Caso ocorra uma falha na operação.
+  * \exception UnknownViews O dado de origem não oferece visões suportadas
+  * pelo dado que está sendo atualizado.
+  * \exception InvalidDataKey Caso a chave do dado não seja válida.
+  * \exception DataNotFound Caso o dado não seja encontrado.
+  * \exception DataAccessDenied Caso o usuário não tenha permissão de acesso.
+  */
+  void updateDataFrom(in DataKey fKey, in DataKey fSourceKey)
+      raises (ServiceFailure, UnknownViews, InvalidDataKey, DataNotFound, 
+      DataAccessDenied);
+};
+
+/**
+ * \brief Serviço de Hierarquia de Dados Estruturados.
+ *
+ * Este serviço trata da navegação, gerenciamento e transferência de dados
+ * estruturados que estejam organizados de maneira hierárquica.
+ */
+interface IHierarchicalDataService : IHierarchicalNavigationDataService,
+    IHierarchicalManagementDataService, IHierarchicalTransferDataService {
+};
+
+}; // data_service
+
+}; // openbus
+
+}; // tecgraf
 
 #endif
