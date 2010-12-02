@@ -1,7 +1,8 @@
 package = "OiL"
 version = "0.5-1"
 source = {
-	url = "http://luaforge.net/frs/download.php/4720/oil-0.5.tar.gz",
+	url = "http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5.tar.gz",
+	md5 = "0f17927d92d633dbc9b499d2acfdb163",
 }
 description = {
 	summary = "An Object Request Broker in Lua",
@@ -15,7 +16,7 @@ description = {
 		invocations, etc.
 	]],
 	license = "MIT/X11",
-	homepage = "http://oil.luaforge.net/",
+	homepage = "http://www.tecgraf.puc-rio.br/~maia/oil",
 	maintainer = "Renato Maia <maia@tecgraf.puc-rio.br>",
 }
 dependencies = {
@@ -25,7 +26,7 @@ dependencies = {
 	"luaidl == 1.0.5",
 }
 build = {
-	type = "module",
+	type = "builtin",
 	modules = {
 		["oil.arch.basic.client"] = "lua/oil/arch/basic/client.lua",
 		["oil.arch.basic.common"] = "lua/oil/arch/basic/common.lua",
