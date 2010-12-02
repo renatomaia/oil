@@ -7,6 +7,7 @@ return Suite{
 	ORBRestart       = require "oil.dtests.kernel.ORBRestart",
 	ServantLocator   = require "oil.dtests.kernel.ServantLocator",
 	ServantManager   = require "oil.dtests.kernel.ServantManager",
+	AsyncResultsProbe= require "oil.dtests.kernel.AsyncResultsProbe",
 	CORBA = Suite{
 		ServantCreation  = require "oil.dtests.corba.ServantCreation",
 		ObjectOperations = require "oil.dtests.corba.ObjectOperations",

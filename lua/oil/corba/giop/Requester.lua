@@ -391,6 +391,8 @@ function getreply(self, request, probe)
 				if not success then continue = false break end
 			end -- of while current channel is from the reply should be read
 			channel:freelock("read")
+		elseif probe then
+			continue = false
 		end
 	end
 	return success, except
