@@ -8,6 +8,7 @@ local _G = require "_G"
 local select = _G.select
 local tonumber = _G.tonumber
 local unpack = _G.unpack
+local stderr = _G.io and _G.io.stderr -- only if available
 
 local tabops = require "loop.table"
 local memoize = tabops.memoize
@@ -22,11 +23,25 @@ local LuDOChannel = require "oil.ludo.Channel"
 
 
 
+local ServerRequest = class({}, Listener.Request)
+
+function ServerRequest:setreply(...)                                            --[[VERBOSE]] verbose:listen("set reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
+	local channel = self.channel
+	channel:trylock("write")
+	local success, except = channel:sendvalues(self.request_id, ...)
+	channel:freelock("write")
+	if not success and except.error ~= "terminated" and stderr then
+		stderr:write(tostring(except), "\n")
+	end
+end
+
+
+
 local ServerChannel = class({}, LuDOChannel)
 
 local function makerequest(channel, success, requestid, objkey, operation, ...)
 	if not success then return nil, requestid end
-	local request = channel.listener.Request{
+	return channel.context.Request{
 		channel = channel,
 		request_id = requestid,
 		objectkey = objkey,
@@ -34,7 +49,6 @@ local function makerequest(channel, success, requestid, objkey, operation, ...)
 		n = select("#", ...),
 		...,
 	}
-	return request
 end
 function ServerChannel:getrequest(timeout)
 	local result, except
@@ -50,10 +64,9 @@ function ServerChannel:getrequest(timeout)
 	return result, except
 end
 
-function ServerChannel:sendreply(request)
-	return self:sendvalues(request.request_id, request.success, request:getvalues())
-end
 
 
-
-return class({ Channel = ServerChannel }, Listener)
+return class({
+	Channel = ServerChannel,
+	Request = ServerRequest,
+}, Listener)

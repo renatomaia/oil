@@ -4,7 +4,7 @@ local Results  = require "loop.test.Results"
 local Reporter = require "loop.test.Reporter"
 
 local OiL = Suite{
-	LuaIDL = require "luaidl.tests.Suite",
+	--LuaIDL = require "luaidl.tests.Suite",
 	["CORBA.CDR"] = require "oil.tests.corba.cdr.Suite",
 }
 

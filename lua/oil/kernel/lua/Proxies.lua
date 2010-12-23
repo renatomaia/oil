@@ -40,7 +40,11 @@ function LuaProxies:__init()
 			"newindex",
 		} do
 			ops["__"..field] = function(proxy, ...)                                   --[[VERBOSE]] verbose:proxies("call to ",field)
-				local request = self.requester:newrequest(proxy.__reference, field, ...)
+				local request = self.requester:newrequest{
+					reference = proxy.__reference,
+					operation = field,
+					n = select("#", ...), ...,
+				}
 				return assert(proxy, operation, request:getreply())
 			end
 		end

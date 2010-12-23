@@ -60,16 +60,17 @@ PL_FLAGS= -p OILALL_API
 LIBPFX= lualib
 
 LUASOCKET= luasocket
-OILBIT= oilbit
+LUASTRUCT= struct
 OILALL= oilall
 
 vLOOP= 2.3
 vLIDL= 1.0.5
 vSOCK= 2.0.2
+vSTRC= 1.2
 vOIL=  0.5
 
 CLIBS= $(LUASOCKET).$(vSOCK) \
-       $(OILBIT).$(vOIL)
+       $(LUASTRUCT).$(vSTRC)
 LLIBS= loop.$(vLOOP) \
        luaidl.$(vLIDL) \
        socket.$(vSOCK) \

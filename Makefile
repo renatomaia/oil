@@ -20,8 +20,8 @@ install: clibs $(INSTALL_DIR)
 	cd src; $(INSTALL_DATA) $(TOLIB) $(INSTALL_LIB)
 	cd src; $(INSTALL_EXEC) $(TOSOL) $(INSTALL_LIB)
 	cd $(INSTALL_LIB); for n in $(TOSOL); do $(INSTALL_COPY) $$n $${n%%.*}.so; done
-	cd $(INSTALL_CMOD)/socket; $(INSTALL_COPY) $(INSTALL_LIB)/libluasocket.$(vSOCK).so core.so;
-	cd $(INSTALL_CMOD)/oil   ; $(INSTALL_COPY) $(INSTALL_LIB)/liboilbit.$(vOIL).so     bit.so;
+	cd $(INSTALL_CMOD)/socket; $(INSTALL_COPY) $(INSTALL_LIB)/$(LUASOCKET).$(vSOCK).so core.so;
+	cd $(INSTALL_CMOD)       ; $(INSTALL_COPY) $(INSTALL_LIB)/$(LUASTRUCT).$(vSTRC).so struct.so;
 
 install-precomp: precomp $(INSTALL_INC) $(INSTALL_LIB) $(INSTALL_CMOD)
 	cd src; $(INSTALL_DATA) $(PCINC) $(TOINC) $(INSTALL_INC)

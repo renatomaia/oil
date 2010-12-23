@@ -21,7 +21,8 @@ function ServerRequest:preinvoke(entry, member)
 		local intercepted = {
 			service_context   = self.service_context,
 			request_id        = self.request_id,
-			response_expected = self.response_expected,
+			response_expected = self.sync_scope ~= "channel",
+			sync_scope        = self.sync_scope,
 			object_key        = self.object_key,
 			operation_name    = self.operation,
 			servant           = entry and entry.__servant,
@@ -79,17 +80,11 @@ local function buildreply(self)
 	local reference = self.forward_reference
 	if reference then
 		self.reply_status = "LOCATION_FORWARD"
-		self.service_context = Empty
 		return LocationForwardTypes, { reference }
 	end
-	local header, types, body = ListenerRequest.getreply(self)
-	if header ~= self then
-		self.reply_status = header.reply_status
-		self.service_context = header.service_context
-	end
-	return types, body
+	return ListenerRequest.getreplybody(self)
 end
-function ServerRequest:getreply()
+function ServerRequest:getreplybody()
 	local types, body = buildreply(self)
 	local intercepted = self.intercepted
 	if intercepted then
@@ -97,7 +92,7 @@ function ServerRequest:getreply()
 		local interceptor = self.interceptor
 		if interceptor and interceptor.sendreply then
 			intercepted.reply_status = self.reply_status
-			intercepted.success      = self.success
+			intercepted.success = self.success
 			if self.reply_status == "SYSTEM_EXCEPTION" then
 				intercepted.results = {n=1, body[1]}
 			else
@@ -117,14 +112,13 @@ function ServerRequest:getreply()
 				end
 			end
 			-- update GIOP message fields
-			self.reply_service_context = intercepted.reply_service_context
 			types, body = buildreply(self)
-			if self.reply_service_context then
-				self.service_context = self.reply_service_context
+			if intercepted.reply_service_context ~= nil then
+				self.service_context = intercepted.reply_service_context
 			end
 		end
 	end
-	return self, types, body
+	return types, body
 end
 
 

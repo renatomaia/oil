@@ -18,55 +18,16 @@ local class = oo.class
 local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
 local Request = require "oil.protocol.Request"
-local LuDOChannel = require "oil.ludo.Channel"
 
 
 
-local ServerRequest = class({}, Request)
-
-function ServerRequest:__init()
-	local channel = self.channel
-	if channel then
-		channel[self.request_id] = self
-		channel.pending = 1 + (channel.pending or 0)
-	end
-end
-
-function ServerRequest:finish()
-	local channel = self.channel
-	if channel then
-		self.channel = nil
-		channel[self.request_id] = nil
-		local pending = channel.pending
-		channel.pending = pending-1
-		if channel.closing and pending <= 1 then                                    --[[VERBOSE]] verbose:listen "all pending requests replied, connection being closed"
-			return channel:close()
-		end
-	end
-	return true
-end
-
-function ServerRequest:sendreply()                                              --[[VERBOSE]] verbose:listen(true, "replying for request ",self.request_id," to object ",self.objectkey,":",self.operation)
-	local channel = self.channel
-	channel:trylock("write")
-	local result, except = channel:sendreply(self)
-	channel:freelock("write")
-	if result then
-		result, except = self:finish()
-	end                                                                           --[[VERBOSE]] verbose:listen(false)
-	return result, except
-end
-
-
-
-local Listener = class{ Request = ServerRequest }
+local Listener = class{ Request = Request }
 
 function Listener:__init()
 	self.sock2channel = memoize(function(socket)
 		return self.Channel{
-			codec = self.codec,
 			socket = socket,
-			listener = self,
+			context = self,
 		}
 	end, "k")
 end
@@ -95,10 +56,14 @@ function Listener:getaccess(probe)
 			result, except = self.channels:newaccess(result)
 			if result ~= nil then
 				self.access = result
-				local host, port, addresses = result:address()
-				self.configs.host = host
-				self.configs.port = port
-				self.configs.addresses = addresses
+				--local address = result:address()
+				--if address then
+				--	self.configs.address = address
+				--	local requester = self.requester
+				--	if requester ~= nil then
+				--		requester:addlocaladdress(address)
+				--	end
+				--end
 			end
 		end
 	end
@@ -111,13 +76,8 @@ function Listener:getaddress(probe)
 		result, except = self:getaccess(probe)
 		if result ~= nil then
 			local addresses
-			result, except, addresses = result:address()
+			result, except = result:address()
 			if result ~= nil then
-				result, except = {
-					host = result,
-					port = except,
-					addresses = addresses,
-				}
 				self.address = result
 			end
 		end

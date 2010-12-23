@@ -10,6 +10,7 @@ return Suite{
 	CORBA = Suite{
 		ServantCreation  = require "oil.dtests.corba.ServantCreation",
 		ObjectOperations = require "oil.dtests.corba.ObjectOperations",
+		NonExistentErrors= require "oil.dtests.corba.NonExistentErrors",
 		IDLChanges       = require "oil.dtests.corba.IDLChanges",
 		InterceptedGIOP = Suite{
 			InvocationCallInfo        = require "oil.dtests.corba.intercepted.InvocationInfo",

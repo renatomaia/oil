@@ -43,8 +43,8 @@ function _ENV:step(timeout)
 	local result, except = self:probe(timeout)
 	if result then                                                                --[[VERBOSE]] verbose:acceptor(true, "processing one single request")
 		self.pending = nil
-		self.dispatcher:dispatch(result)
-		result, except = result:sendreply()                                         --[[VERBOSE]] verbose:acceptor(false, "request completed")
+		self.dispatcher:dispatch(result)                                            --[[VERBOSE]] verbose:acceptor(false, "request completed")
+		return true
 	end
 	return result, except
 end

@@ -45,7 +45,7 @@ oil.main(function()
 	oil.verbose:level(verb)
 	local orb = (port > 0) and oil.init{port=port} or oil.init()
 	local ir = orb:getLIR()
-	if ior ~= "" then oil.writeto(ior, orb:tostring(ir)) end
+	if ior ~= "" then oil.writeto(ior, tostring(ir)) end
 	for _, file in ipairs(files) do
 		orb:loadidlfile(file)
 	end

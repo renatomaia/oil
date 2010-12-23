@@ -69,14 +69,11 @@ end
 
 function _ENV:dorequest(request)
 	self.dispatcher:dispatch(request)
-	local result, except = request:sendreply()
-	if not result then
-		self:stop(nil, except)
-	end
 end
 
 function _ENV:dochannel(channel)
 	local result, except
+	local listener = self.listener
 	repeat
 		result, except = channel:getrequest()
 		if result then
@@ -98,7 +95,7 @@ function _ENV:dolistener()
 		result, except = listener:getchannel()
 		if result then
 			result:acquire()
-			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] local host,port = result.socket:getpeername(); verbose.viewer.labels[reader] = "Reader("..host..":"..port.."->"..self.listener.configs.host..":"..self.listener.configs.port..")"
+			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] local address = listener:getaddress(); local host,port = result.socket:getpeername(); verbose.viewer.labels[reader] = "Reader("..host..":"..port.."->"..address.host..":"..address.port..")"
 			readers[reader] = result
 			yield("resume", reader, self, result)
 		end

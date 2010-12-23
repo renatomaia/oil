@@ -24,10 +24,10 @@ end
 
 function TypedServants:makeentry(entry)
 	local servant = entry.__servant
-	if entry.__type == nil then
-		entry.__type = getfield(servant, "__type")
-	end
-	local type, except = self.types:resolve(entry.__type)
+	local type = getfield(servant, "__type")
+	if type ~= nil then entry.__type = type end
+	local except
+	type, except = self.types:resolve(entry.__type)
 	if not type then return nil, except end
 	entry.__type = type
 	if entry.__objkey == nil then

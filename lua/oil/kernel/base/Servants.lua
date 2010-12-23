@@ -10,7 +10,7 @@ local getmetatable = _G.getmetatable
 local pcall = _G.pcall
 local rawget = _G.rawget
 local rawset = _G.rawset
-local luatostring = _G.tostring
+local tostring = _G.tostring
 local type = _G.type
 
 local tabop = require "loop.table"
@@ -32,7 +32,7 @@ function hashof(object)
 		backup = rawget(meta, "__tostring")
 		if backup ~= nil then rawset(meta, "__tostring", nil) end
 	end
-	local hash = luatostring(object)
+	local hash = tostring(object)
 	if meta then
 		if backup ~= nil then rawset(meta, "__tostring", backup) end
 	end
@@ -62,11 +62,14 @@ end, "k")
 Registered = class()
 
 function Registered:__index(field)
-	local value = self.__servant[field]
-	if type(value) == "function"
-		then return MethodWrapper[value]
-		else return value
+	local value = Registered[field]
+	if value == nil then
+		value = self.__servant[field]
+		if type(value) == "function" then
+			value = MethodWrapper[value]
+		end
 	end
+	return value
 end
 
 function Registered:__newindex(field, value)
@@ -78,7 +81,7 @@ function Registered:__deactivate()
 end
 
 function Registered:__tostring()
-	return self.__manager.referrer:encode(self.__reference)
+	return tostring(self.__reference)
 end
 
 
@@ -143,13 +146,16 @@ function _ENV:register(...)
 	if result then
 		assert(result.__servant ~= nil)
 		local entry = result
-		result, except = self.referrer:newreference(entry)
+		result, except = self.listener:getaddress()
 		if result then
-			entry.__reference = result
-			result, except = self:addentry(entry)
+			result, except = self.referrer:newreference(entry, result)
 			if result then
-				entry.__manager = self
-				result = Registered(entry)
+				entry.__reference = result
+				result, except = self:addentry(entry)
+				if result then
+					result.__manager = self
+					result = Registered(result)
+				end
 			end
 		end
 	end
@@ -171,9 +177,12 @@ function _ENV:retrieve(key)
 	return self.map[key]
 end
 
-function _ENV:islocal(reference)
-	local key = self.referrer:islocal(reference)
-	if key then
-		return self.map[key]
+function _ENV:localref(reference)
+	local result, except = self.listener:getaddress("probe")
+	if result then
+		local key = reference:islocal(result)
+		if key then
+			return self.map[key]
+		end
 	end
 end

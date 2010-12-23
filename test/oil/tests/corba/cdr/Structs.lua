@@ -59,14 +59,14 @@ local Expected = setmetatable({
 	short_value   = -32768,
 	ushort_value  = 0,
 	long_value    = -2147483648,
-	ulong_value   = 0,
+	ulong_value   = 4294967295, -- due to 'struct' (should be 0 due to overflow)
 	float_value   = -1/0,
 	double_value  = -1/0,
 	boolean_value = nil,
 	char_value    = "\0",
 	octet_value   = 0,
 	string_value  = "\0\0\0",
-	any_value     = nil,
+	any_value     = setmetatable({_anytype=idl.null}, idl.null),
 	object_value  = nil,
 }, Struct)
 

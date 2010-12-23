@@ -20,136 +20,147 @@ local idl = require "oil.corba.idl"
 local objrepID = idl.object.repID
 
 local giop = require "oil.corba.giop"
-local ioridl = giop.IOR
+local IOR = giop.IOR
 local _interface = giop.ObjectOperations._interface
 
 local Exception = require "oil.corba.giop.Exception"
 
-module(...); local _ENV = _M
 
 
 local function byte2hexa(value)
 	return (value:gsub('(.)', function (char)
-		-- TODO:[maia] check char to byte conversion
 		return (format("%02x", char:byte()))
 	end))
 end
 
 local function hexa2byte(value)
 	return (value:gsub('(%x%x)', function (hexa)
-		-- TODO:[maia] check byte to char conversion
 		return (char(tonumber(hexa, 16)))
 	end))
 end
 
 
-class(_ENV)
 
+IOR = class(IOR)
 
-function _ENV:IOR(stream)
-	local decoder = self.codec:decoder(hexa2byte(stream), true)
-	return decoder:struct(ioridl)
-end
-
-function _ENV:corbaloc(encoded)
-	for token, data in encoded:gmatch("(%w*):([^,]*)") do
-		if token == "" then token = "iiop" end
-		local profiler = self.profiler[token]
-		if profiler then
-			local profile, except = profiler:decodeurl(data)
-			if profile then
-				return setmetatable({
-					type_id = objrepID,
-					profiles = { profile },
-				}, ioridl)
-			else
-				return nil, except
-			end
+function IOR:getprofile(index)
+	local profile = self.profiles[index]
+	if profile then
+		if profile.decoded == nil then
+			profile.decoded, profile.except = self.referrer:decodeprofile(profile)
 		end
-	end
-	return nil, Exception{
-		error = "badcorbaloc",
-		message = "no supported protocol found in corbaloc (got $reference)",
-		reference = encoded,
-	}
-end
-
-
-function _ENV:newreference(info)
-	local result, except = self.listener:getaddress()
-	if result then
-		local profiles = {}
-		result, except = self.profiler[0]:encode(profiles, info.__objkey, result)
-		if result then
-			result, except = setmetatable({
-				type_id = info.__type.repID,
-				profiles = profiles,
-			}, ioridl)
-		end
-	end
-	return result, except
-end
-
-function _ENV:islocal(reference)
-	local listener = self.listener
-	if listener then
-		local address = listener:getaddress("probe") -- only if avaliable
-		if address then
-			local profiles = reference.profiles
-			for i = 1, #profiles do
-				local profile = profiles[i]
-				if profile.tag == 0 then
-					local profiler = self.profiler[0]
-					local result = profiler:belongsto(profile.profile_data, address)
-					if result then return result end
-				end
-			end
-		end
+		return profile
 	end
 end
 
-function _ENV:isequivalent(reference, otherref)
-	local tags = {}
-	for _, profile in ipairs(otherref.profiles) do
-		tags[profile.tag] = profile
-	end
-	for _, profile in ipairs(reference.profiles) do
+local function iprofiles(self, index)
+	index = index+1
+	local profile = self:getprofile(index)
+	if profile then return index, profile end
+end
+function IOR:allprofiles()
+	return iprofiles, self, 0
+end
+
+function IOR:equivalentto(other)
+	local profilers = self.referrer.profiler
+	for i, profile in ipairs(self.profiles) do
 		local tag = profile.tag
-		local other = tags[tag]
-		if other then
-			local profiler = self.profiler[tag]
-			if profiler
-			and profiler:equivalent(profile.profile_data, other.profile_data) then
-				return true
+		local profiler = profilers[tag]
+		if profiler then
+			for j, otherprof in ipairs(other.profiles) do
+				if otherprof.tag == tag then
+					profile = self:getprofile(i)
+					otherprof = other:getprofile(j)
+					profile = profile.decoded
+					otherprof = otherprof.decoded
+					if profile and otherprof and profiler:equivalent(profile,otherprof) then
+						return true
+					end
+				end
 			end
 		end
 	end
 	return false
 end
 
-function _ENV:typeof(reference, timeout)
-	local requester = self.requester
+function IOR:islocal(access)
+	for i, profile in ipairs(self.profiles) do
+		if profile.tag == access.iorprofiletag then
+			profile = self:getprofile(i)
+			local decoded = profile.decoded
+			if decoded then
+				local profiler = self.referrer.profiler[profile.tag]
+				local objkey = profiler:belongsto(decoded, address)
+				if objkey then return objkey end
+			end
+		end
+	end
+end
+
+function IOR:gettype(timeout)
+	local requester = self.referrer.requester
 	if requester then                                                             --[[VERBOSE]] verbose:proxies(true, "attempt to discover interface a remote object")
-		local request = requester:newrequest(reference, _interface)
+		local request = requester:newrequest{reference=self,operation=_interface}
 		if request then
 			local ok, type = request:getreply(timeout)
 			if ok then                                                                --[[VERBOSE]] verbose:proxies(false, "interface discovered")
 				return type
-			end
+			end                                                                       --[[VERBOSE]] verbose:proxies("discovery failed: ",type)
 		end
-	end                                                                           --[[VERBOSE]] verbose:proxies(false, "discovery failed, using interface defined in the IOR")
-	return reference.type_id
+	end                                                                           --[[VERBOSE]] verbose:proxies(false, "using interface from the IOR")
+	return self.type_id
 end
 
-function _ENV:encode(reference)
-	local encoder = self.codec:encoder(true)
-	encoder:struct(reference, ioridl)
+function IOR:__tostring()                                                       --[[VERBOSE]] verbose:references("encoding stringfied IOR")
+	local encoder = self.referrer.codec:encoder(true)
+	encoder:struct(self, IOR)
 	return "IOR:"..byte2hexa(encoder:getdata())
 end
 
-function _ENV:decode(encoded)
+
+
+local Referrer = class()
+
+local function decodeIOR(self, stream)
+	local decoder = self.codec:decoder(hexa2byte(stream), true)
+	return decoder:IOR()
+end
+local StringfiedDecoder = {
+	IOR = function(self, stream)                                                  --[[VERBOSE]] verbose:references(true, "decode stringfied IOR")
+		local ok, result = pcall(decodeIOR, self, stream)                           --[[VERBOSE]] verbose:references(false)
+		if not ok then
+			return nil, result
+		end
+		return result
+	end,
+	corbaloc = function(self, encoded)                                            --[[VERBOSE]] verbose:references(true, "decode corbaloc reference")
+		for token, data in encoded:gmatch("(%w*):([^,]*)") do
+			if token == "" then token = "iiop" end
+			local profiler = self.profiler[token]
+			if profiler then
+				local profile, except = profiler:decodeurl(data)
+				if profile then                                                         --[[VERBOSE]] verbose:references(false)
+					return IOR{
+						referrer = self,
+						type_id = objrepID,
+						profiles = { profile },
+					}
+				else                                                                    --[[VERBOSE]] verbose:references(false, "unable to decode corbaloc URL with profile ",token)
+					return nil, except
+				end
+			end
+		end                                                                         --[[VERBOSE]] verbose:references(false, "no supported protocol found in corbaloc")
+		return nil, Exception{
+			error = "badcorbaloc",
+			message = "no supported protocol found in corbaloc (got $reference)",
+			reference = encoded,
+		}
+	end,
+}
+function Referrer:decodestring(encoded)
 	local token, stream = encoded:match("^(%w+):(.+)$")
-	local decoder = self[token]
+	local decoder = StringfiedDecoder[token]
 	if decoder then
 		return decoder(self, stream)
 	end
@@ -161,18 +172,29 @@ function _ENV:decode(encoded)
 	}
 end
 
-function _ENV:decodeprofile(encoded)
+function Referrer:decodeprofile(encoded)
 	local profiler = self.profiler[encoded.tag]
-	if profiler then
-		return profiler:decode(encoded.profile_data)
+	if profiler == nil then
+		return nil, Exception{
+			error = "badversion",
+			message = "IOR profile tag not supported",
+			errmsg = "unsupported IOR profile",
+			minor = 1,
+			profile = encoded,
+		}
 	end
-	return nil, Exception{
-		error = "badversion",
-		message = "IOR profile tag not supported",
-		errmsg = "unsupported IOR profile",
-		minor = 1,
-		completed = "COMPLETED_NO",
-		profile = encoded,
-	}
-	
+	return profiler:decode(encoded.profile_data)
 end
+
+function Referrer:newreference(servant, access)                                 --[[VERBOSE]] verbose:references(true, "create reference for local servant")
+	local profiles = {}
+	local ok, except = self.profiler[0]:encode(profiles, servant.__objkey, access)--[[VERBOSE]] verbose:references(false)
+	if ok == nil then return nil, except end
+	return IOR{
+		referrer = self,
+		type_id = servant.__type.repID,
+		profiles = profiles,
+	}
+end
+
+return Referrer

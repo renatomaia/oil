@@ -15,7 +15,7 @@ oil.main(function()
 	
 	local Invoker = orb:newproxy(oil.readfrom("ref.ludo"))
 	local proxy = orb:newproxy(
-	              	orb:tostring(
+	              	tostring(
 	              		orb:newservant(Hello)))
 	
 	Invoker:invoke(Hello, "say", "there") -- message appear remotely

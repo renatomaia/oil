@@ -45,7 +45,7 @@ oil.main(function()
 	local orb = oil.init()
 	orb:loadidlfile("philo.idl")
 	oil.writeto("observer.ior",
-		orb:tostring(
+		tostring(
 			orb:newservant(ObserverHome, nil, "ObserverHome")))
 	orb:run()
 end)

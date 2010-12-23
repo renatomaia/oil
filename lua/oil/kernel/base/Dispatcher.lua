@@ -50,7 +50,7 @@ end
 --[[VERBOSE]] 		local val = select(i, ...)
 --[[VERBOSE]] 		if type(val) == "string" then
 --[[VERBOSE]] 			output:write(val)
---[[VERBOSE]] 		elseif val.objectkey and val.operation and val.getvalues then
+--[[VERBOSE]] 		elseif type(val) == "table" and val.objectkey and val.operation and val.getvalues then
 --[[VERBOSE]] 			output:write(val.objectkey,":",val.operation,"(")
 --[[VERBOSE]] 			viewer:write(val:getvalues())
 --[[VERBOSE]] 			output:write(")")

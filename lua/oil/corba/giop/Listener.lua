@@ -13,7 +13,7 @@ local select = _G.select
 local tostring = _G.tostring
 local type = _G.type
 local unpack = _G.unpack
-local stderr = _G.io and _G.io.stderr
+local stderr = _G.io and _G.io.stderr -- only if available
 
 local tabops = require "loop.table"
 local memoize = tabops.memoize
@@ -35,13 +35,15 @@ local MessageType = giop.MessageType
 local SystemExceptionIDs = giop.SystemExceptionIDs
 
 local Listener = require "oil.protocol.Listener"
+local Request = Listener.Request
+
 local Exception = require "oil.corba.giop.Exception"
 local GIOPChannel = require "oil.corba.giop.Channel"
 
 
 
 local function unknownex(error)
-	if stderr then stderr:write(tostring(except), "\n") end
+	if stderr then stderr:write(tostring(error), "\n") end
 	return Exception{ SystemExceptionIDs.UNKNOWN,
 		minor = 0,
 		completed = "COMPLETED_MAYBE",
@@ -76,7 +78,6 @@ end
 
 
 local SysExReply = {
-	service_context = Empty,
 	request_id      = nil, -- defined later
 	reply_status    = "SYSTEM_EXCEPTION",
 }
@@ -91,38 +92,14 @@ local function sysexreply(requestid, body)                                      
 end
 
 
-local ServerRequest = class({}, Listener.Request)
+local ServerRequest = class({}, Request)
 
--- this is a separated method to provide pointcut for interception
-local ExceptionReplyTypes = { idl.string }
-local ExceptionReplyBody = { n = 2, --[[defined later]] }
-function ServerRequest:getreply()
-	if self.success then                                                          --[[VERBOSE]] verbose:listen "got successful results"
-		self.service_context = Empty
-		self.reply_status = "NO_EXCEPTION"
-		return self, self.outputs, self
-	else
-		local requestid = self.request_id
-		local except = self[1]
-		local extype = type(except)
-		if extype == "table" then                                                   --[[VERBOSE]] verbose:listen("got exception ",except)
-			local excepttype = self.exceptions
-			excepttype = excepttype and excepttype[ except[1] ]
-			if excepttype then
-				self.service_context = Empty
-				self.reply_status = "USER_EXCEPTION"
-				ExceptionReplyTypes[2] = excepttype
-				ExceptionReplyBody[1] = except[1]
-				ExceptionReplyBody[2] = except
-				return self, ExceptionReplyTypes, ExceptionReplyBody
-			elseif not SystemExceptions[ except[1] ] then                             --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
-				except = OiLEx2SysEx[except.error] or unknownex(except)                 --[[VERBOSE]] else verbose:listen("got system exception ",except)
-			end
-		else
-			except = unknownex(except)
-		end
-		return sysexreply(requestid, except)
+local function noresponse() return true end
+function ServerRequest:__init()
+	if self.sync_scope == "channel" then
+		self.sendreply = noresponse
 	end
+	self.objectkey = self.object_key
 end
 
 function ServerRequest:preinvoke(entry, member)
@@ -151,85 +128,73 @@ function ServerRequest:preinvoke(entry, member)
 	end
 end
 
-
-
-local ServerChannel = class({}, GIOPChannel)
-
-function ServerChannel:close()
-	local result, except = self:sendmsg(CloseConnectionID)
-	if result or except.error == "terminated" then
-		result, except = GIOPChannel.close(self)
+local UserExTypes = { idl.string, --[[defined later, see below]] }
+local SysExTypes = { idl.string, giop.SystemExceptionIDL }
+local ExMsgBody = {}
+function ServerRequest:getreplybody()
+	self.service_context = nil
+	if self.success then                                                          --[[VERBOSE]] verbose:listen("got successful results")
+		self.reply_status = "NO_EXCEPTION"
+		return self.outputs, self
 	end
-	return result, except
-end
-
-local function noresponse() return true end
-function ServerChannel:getrequest(timeout)
-	local result, except
-	repeat
-		if self:trylock("read", timeout) then
-			local msgid, header, decoder = self:receivemsg(timeout)
-			self:freelock("read")
-				if msgid == RequestID then                                              --[[VERBOSE]] verbose:listen("got request ",header.request_id)
-				local requestid = header.request_id
-				if not self[requestid] then
-					header.decoder = decoder
-					if header.response_expected then
-						header.channel = self
-					else                                                                  --[[VERBOSE]] verbose:listen "no response expected"
-						header.sendreply = noresponse
-					end
-					header.objectkey = header.object_key
-					return self.listener.Request(header)                                 --[[VERBOSE]] else verbose:listen("got replicated request id ",requestid,", ignoring it")
-				end
-			elseif msgid == CancelRequestID then
-				local request = self[header.request_id]                                 --[[VERBOSE]] verbose:listen("got cancelation of request ",header.request_id, request and "" or " (not found)")
-				if request then result, except = request:finish() end
-			elseif msgid == LocateRequestID then                                      --[[VERBOSE]] verbose:listen(true, "got request ",header.request_id," for location of object ",header.object_key)
-				local reply = { request_id = header.request_id }
-				if self.listener.servants:retrieve(header.object_key)
-					then reply.locate_status = "OBJECT_HERE"                              --[[VERBOSE]] verbose:listen("object found here")
-					else reply.locate_status = "UNKNOWN_OBJECT"                           --[[VERBOSE]] verbose:listen("object is unknown")
-				end                                                                     --[[VERBOSE]] verbose:listen(false)
-				reply[1] = reply
-				result, except = self:sendmsg(LocateReplyID, reply)
-			elseif msgid == MessageErrorID then                                       --[[VERBOSE]] verbose:listen "got message error notification"
-				result, except = self:close()
-			elseif MessageType[msgid] then                                            --[[VERBOSE]] verbose:listen("got unknown message ",msgid,", sending message error notification")
-				result, except = self:sendmsg(MessageErrorID)
-			elseif header.error == "badversion" then
-				result, except = self:sendmsg(MessageErrorID)
-				self:close()
-			else
-				result, except = nil, header
-			end
+	local except = self[1]
+	if type(except) == "table" then                                               --[[VERBOSE]] verbose:listen("got exception ",except)
+		local repid = except[1]
+		local excepttype = self.exceptions
+		excepttype = excepttype and excepttype[repid]
+		if excepttype then
+			self.reply_status = "USER_EXCEPTION"
+			UserExTypes[2] = excepttype
+			ExMsgBody[1] = repid
+			ExMsgBody[2] = except
+			return UserExTypes, ExMsgBody
+		elseif not SystemExceptions[repid] then                                     --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
+			except = OiLEx2SysEx[except.error] or unknownex(except)                   --[[VERBOSE]] else verbose:listen("got system exception ",except)
 		end
-	until not result
-	return result, except
+	else
+		except = unknownex(except)
+	end
+	self.reply_status = "SYSTEM_EXCEPTION"
+	ExMsgBody[1] = except[1]
+	ExMsgBody[2] = except
+	return SysExTypes, ExMsgBody
 end
 
-function ServerChannel:sendreply(request)                                       --[[VERBOSE]] verbose:listen(true, "replying for request ",request.request_id)
-	local success, except = true
-	local requestid = request.request_id
-	if self and self[requestid] == request then
-		success, except = self:sendmsg(ReplyID, request:getreply())
-		if not success then
-			if except.error == "terminated" then                                      --[[VERBOSE]] verbose:listen("unable to send reply, connection terminated")
-				success, except = true
-			else
-				if SystemExceptions[except[1]] then                                     --[[VERBOSE]] verbose:listen("got system exception ",except," during reply")
-					except.completed = "COMPLETED_YES"
-					success, except = self:sendmsg(ReplyID, sysexreply(requestid, except))
-				end
-			end
-		end                                                                         --[[VERBOSE]] else verbose:listen("no pending request found with id ",requestid,", reply discarded")
-	end                                                                           --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully processed" or "failed: ", except or "")
-	return success, except
+function ServerRequest:setreply(success, ...)
+	local channel = self.channel
+	if channel ~= nil then                                                        --[[VERBOSE]] verbose:listen("set reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
+		Request.setreply(self, success, ...)
+		local success, except = channel:sendreply(self)
+		if not success and except.error ~= "terminated" and stderr then             --[[VERBOSE]] verbose:listen("error sending reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
+			stderr:write(tostring(except), "\n")
+		end                                                                         --[[VERBOSE]] else verbose:listen("ignoring reply for cancelled request ",self.request_id," to ",self.objectkey,":",self.operation)
+	end
 end
 
 
 
-return class({
+local GIOPListener = class({
 	Request = ServerRequest,
-	Channel = ServerChannel,
+	Channel = GIOPChannel,
 }, Listener)
+
+function GIOPListener:addbidircontext(servctxt)
+	local encoder = self.serviceencoder
+	if encoder ~= nil then
+		local address = self:getaddress("probe")
+		if address ~= nil then
+			if servctxt == nil then servctxt = {} end
+			encoder:encodebidir(servctxt, address)
+			return servctxt
+		end
+	end
+end
+
+function GIOPListener:addbidirchannel(channel)                                  --[[VERBOSE]] verbose:listen("add bidirectional channel as incoming request channel")
+	channel.context = self
+	local socket = channel.socket
+	self.sock2channel[socket] = channel
+	self.access:add(socket)
+end
+
+return GIOPListener

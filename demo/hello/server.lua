@@ -21,7 +21,7 @@ oil.main(function()
 	
 	hello = orb:newservant(hello, nil, "Hello")    -- Create CORBA object
 	
-	local ref = orb:tostring(hello)                -- Get object's reference
+	local ref = tostring(hello)                    -- Get object's reference
 	if not oil.writeto("ref.ior", ref) then
 		print(ref)
 	end

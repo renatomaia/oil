@@ -5,6 +5,7 @@
 
 
 local _G = require "_G"
+local error = _G.error
 local ipairs = _G.ipairs
 local tonumber = _G.tonumber
 
@@ -16,20 +17,15 @@ local Version = idl.Version
 
 local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module(..., class)
-
---------------------------------------------------------------------------------
--- IIOP profile structure
-
-local Empty = {}
 
 local Tag = 0
+local Empty = {}
+
 
 local TaggedComponentSeq = idl.sequence{idl.struct{
 	{name = "tag"           , type = idl.ulong   },
 	{name = "component_data", type = idl.OctetSeq},
 }}
-
 local ProfileBody_v1_ = {
 	-- Note: First profile structure field is read/write directly
 	[0] = idl.struct{
@@ -49,88 +45,75 @@ local ProfileBody_v1_ = {
 ProfileBody_v1_[2] = ProfileBody_v1_[1] -- same as IIOP 1.1
 ProfileBody_v1_[3] = ProfileBody_v1_[1] -- same as IIOP 1.1
 
---------------------------------------------------------------------------------
--- IIOP profile encode/decode
 
-function encode(self, profiles, object_key, config, minor)
-	if not minor then minor = 0 end
+local IIOPProfiler = class{ minor = 2 }
+
+local VersionData = {major=1, minor=nil}
+local function encodeIIOPProfile(self, profile, minor)
+	if not minor then minor = self.minor end
 	local profileidl = ProfileBody_v1_[minor]
-	if profileidl then
-		local port = config.refport or config.port
-		for _, addr in ipairs(config.addresses) do
-			local profile = {
-				components = Empty,
-				host = addr,
-				port = port,
-				object_key = object_key
-			}
-			local encoder = self.codec:encoder(true)
-			encoder:struct({major=1, minor=minor}, Version)
-			encoder:struct(profile, profileidl)
-			profiles[#profiles+1] = {
-				tag          = Tag,
-				profile_data = encoder:getdata(),
-			}
-		end
-		return true
-	else
-		return nil, Exception{ "INTERNAL", minor = 0,
+	if profileidl == nil then
+		error(Exception{
 			error = "badversion",
-			message = "$protocol minor version $version not supported",
+			message = "$protocol version $versionmajor.$versionminor is not supported",
 			protocol = "IIOP",
-			version = minor,
-		}
+			versionmajor = 1,
+			versionminor = minor,
+			minor = 0,
+		})
 	end
+	local encoder = self.codec:encoder(true)
+	VersionData.minor = minor
+	encoder:struct(VersionData, Version)
+	encoder:struct(profile, profileidl)
+	return encoder:getdata()
+end
+function IIOPProfiler:encode(profiles, object_key, config, minor)               --[[VERBOSE]] verbose:references(true, "encoding IIOP profile")
+	local port = config.refport or config.port
+	for _, addr in ipairs(config.addresses) do
+		local profile = {
+			components = Empty,
+			host = addr,
+			port = port,
+			object_key = object_key
+		}
+		local ok, encoded = pcall(encodeIIOPProfile, self, profile, minor)
+		if not ok then                                                              --[[VERBOSE]] verbose:references(false, "error in encoding of IIOP profile")
+			return nil, encoded
+		end
+		profiles[#profiles+1] = { tag=Tag, profile_data=encoded }
+	end                                                                           --[[VERBOSE]] verbose:references(false)
+	return true
 end
 
-function decode(self, profile)
+local function decodeIIOPProfile(self, profile)
 	local decoder = self.codec:decoder(profile, true)
 	local version = decoder:struct(Version)
 	local profileidl = ProfileBody_v1_[version.minor]
-
 	if version.major ~= 1 or not profileidl then
-		return nil, Exception{ "INTERNAL", minor = 0,
+		error(Exception{
 			error = "badversion",
-			message = "$protocol version not supported (got $major.$minor)",
+			message = "$protocol version not supported (got $versionmajor.$versionminor)",
 			protocol = "IIOP",
-			major = version.major,
-			minor = version.minor,
-		}
+			versionmajor = version.major,
+			versionminor = version.minor,
+			minor = 0,
+		})
 	end
-
 	profile = decoder:struct(profileidl)
 	profile.iiop_version = version -- add read version directly
-
-	return profile, profile.object_key
+	profile.giop_minor = version.minor
+	return profile
+end
+function IIOPProfiler:decode(profile)                                           --[[VERBOSE]] verbose:references(true, "decoding IIOP profile")
+	local ok, profile = pcall(decodeIIOPProfile, self, profile)
+	if not ok then                                                                --[[VERBOSE]] verbose:references(false, "error in decoding IIOP profile")
+		return nil, profile
+	end                                                                           --[[VERBOSE]] verbose:references(false)
+	return profile
 end
 
---------------------------------------------------------------------------------
--- IIOP profile and local ORB config match
-
-function belongsto(self, profile, config)
-	local objectkey
-	profile, objectkey = self:decode(profile)
-	if config.addresses[profile.host] and profile.port == config.port then
-		return objectkey
-	end
-end
-
---------------------------------------------------------------------------------
--- IIOP profile are equivalent
-
-function equivalent(self, profile1, profile2)
-	local objectkey1, objectkey2
-	profile1, objectkey1 = self:decode(profile1)
-	profile2, objectkey2 = self:decode(profile2)
-	return objectkey1 == objectkey2 and
-	       profile1.host == profile2.host and
-	       profile1.port == profile2.port
-end
-
---------------------------------------------------------------------------------
--- IIOP corbaloc URL decoder
-
-function decodeurl(self, data)
+function IIOPProfiler:decodeurl(data)
 	local temp, objectkey = data:match("^([^/]*)/(.*)$")
 	if temp
 		then data = temp
@@ -178,3 +161,61 @@ function decodeurl(self, data)
 		profile_data = temp:getdata(),
 	}
 end
+
+function IIOPProfiler:belongsto(profile, accessinfo)
+	if accessinfo.addresses[profile.host] and profile.port == accessinfo.port then
+		return profile.object_key
+	end
+end
+
+function IIOPProfiler:equivalent(profile1, profile2)
+	return profile1.host == profile2.host and
+	       profile1.port == profile2.port and
+	       profile1.object_key == profile2.objectkey
+end
+
+
+
+local BI_DIR_IIOP = 5
+local ListenPoint = idl.struct{
+	{name = "host", type = idl.string},
+	{name = "port", type = idl.ushort},
+}
+local ListenPointList = idl.sequence{ListenPoint}
+local BiDirIIOPServiceContext = idl.struct{
+	{name = "listen_points", type = ListenPointList},
+}
+
+function IIOPProfiler:encodebidir(service_context, address)
+	local encoder = self.codec:encoder(true)
+	local port = address.port
+	local listen_points = {}
+	for index, host in ipairs(address.addresses) do
+		listen_points[index] = {host=host,port=port}
+	end
+	encoder:put({listen_points=listen_points}, BiDirIIOPServiceContext)
+	service_context[#service_context+1] = {
+		context_id = BI_DIR_IIOP,
+		context_data = encoder:getdata(),
+	}
+end
+
+function IIOPProfiler:decodebidir(service_context)
+	local result
+	for _, context in ipairs(service_context) do
+		if context.context_id == BI_DIR_IIOP then
+			local decoder = self.codec:decoder(context.context_data, true)
+			context = decoder:get(BiDirIIOPServiceContext)
+			if result == nil then
+				result = context.listen_points
+			else
+				for _, listen_point in ipairs(context.listen_points) do
+					result[#result+1] = listen_point
+				end
+			end
+		end
+	end
+	return result
+end
+
+return IIOPProfiler

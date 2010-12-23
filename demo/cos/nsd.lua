@@ -50,6 +50,6 @@ oil.main(function()
 		else orb:loadidlfile("CosNaming.idl")
 	end
 	ns = orb:newservant(naming.new())
-	if ior ~= "" then oil.writeto(ior, orb:tostring(ns)) end
+	if ior ~= "" then oil.writeto(ior, tostring(ns)) end
 	orb:run()
 end)

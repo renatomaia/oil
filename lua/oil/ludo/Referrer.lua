@@ -11,12 +11,35 @@ local oo = require "oil.oo"                                                     
 local class = oo.class
 
 
+local Reference = class()
+
+function Reference:islocal(access)
+	if access.addresses[reference.host] and access.port == access.port then
+		return reference.object
+	end
+end
+
+function Reference:__tostring()
+	local object, host, port = self.object, self.host, self.port
+	if type(object) == "string"
+	and type(host) == "string"
+	and type(port) == "number" then
+		local encoder = self.referrer.codec:encoder()
+		encoder:put(object, host, port)
+		return encoder:__tostring()
+	end
+	return "bad LuDO reference"
+end
+
+
+
 local Referrer = class()
 
 function Referrer:newreference(entry)
 	local result, except = self.listener:getaddress()
 	if result then
-		result, except = {
+		return Reference{
+			referrer = self,
 			host = result.host,
 			port = result.port,
 			object = entry.__objkey,
@@ -25,35 +48,14 @@ function Referrer:newreference(entry)
 	return result, except
 end
 
-function Referrer:islocal(reference, access)
-	local result, except = self.listener:getaddress()
-	if result then
-		if result.addresses[reference.host] and reference.port == result.port then
-			result, except = reference.object, nil
-		end
-	end
-	return result, except
-end
-
-function Referrer:encode(reference)
-	local object, host, port = reference.object, reference.host, reference.port
-	if type(object) == "string"
-	and type(host) == "string"
-	and type(port) == "number" then
-		local encoder = self.codec:encoder()
-		encoder:put(object, host, port)
-		return encoder:__tostring()
-	end
-	return nil, "bad LuDO reference"
-end
-
-function Referrer:decode(reference)
+function Referrer:decodestring(reference)
 	local decoder = self.codec:decoder(reference)
 	local object, host, port = decoder:get()
 	if type(object) == "string"
 	and type(host) == "string"
 	and type(port) == "number" then
-		return {
+		return Reference{
+			referrer = self,
 			host = host,
 			port = port,
 			object = object,

@@ -45,7 +45,7 @@ function GIOPException:__new(except, ...)
 			except[1] = sysex
 		else
 			sysex = OiLEx2SysEx[except.error]
-			if sysex then
+			if sysex ~= nil then
 				except[1] = sysex[1]
 				except.minor = sysex[2]
 			end

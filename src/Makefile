@@ -20,7 +20,7 @@ LUASOCKET_OBJ= \
 	except.o \
 	select.o \
 	usocket.o
-OILBIT_OBJ= oilbit.o
+LUASTRUCT_OBJ= struct.o
 
 LOOP_LUA= $(addprefix ../lua/, \
 	loop/base.lua \
@@ -185,7 +185,7 @@ PLOBJ= $(PLINC:.h=.o)
 
 ALL_PRE=	$(PCINC) $(PCSRC) \
         	$(PLINC) $(PLSRC)
-ALL_OBJ=	$(LUASOCKET_OBJ) $(OILBIT_OBJ) \
+ALL_OBJ=	$(LUASOCKET_OBJ) $(LUASTRUCT_OBJ) \
         	$(PCOBJ) $(PLOBJ) $(OILBIN_OBJ)
 ALL_LIB=	$(TOLIB) $(PCLIB) $(PLLIB)
 ALL_SOL=	$(TOSOL) $(PCSOL) $(PLSOL)
@@ -226,7 +226,7 @@ $(LIBPFX)oil.c: $(PRECMP_LUA) $(OIL_LUA)
 lib$(LUASOCKET).a: $(LUASOCKET_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
 
-lib$(OILBIT).a: $(OILBIT_OBJ)
+lib$(LUASTRUCT).a: $(LUASTRUCT_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
 
 # Dynamic Libraies
@@ -234,7 +234,7 @@ lib$(OILBIT).a: $(OILBIT_OBJ)
 lib$(LUASOCKET).$(vSOCK).so: $(LUASOCKET_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $?
 
-lib$(OILBIT).$(vOIL).so: $(OILBIT_OBJ)
+lib$(LUASTRUCT).$(vOIL).so: $(LUASTRUCT_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $?
 
 # Precompiled Static Libraries
@@ -248,7 +248,7 @@ lib$(LIBPFX)luaidl.a: $(LIBPFX)luaidl.o
 lib$(LIBPFX)socket.a: $(LIBPFX)socket.o $(LUASOCKET_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
 
-lib$(LIBPFX)oil.a: $(LIBPFX)oil.o $(OILBIT_OBJ)
+lib$(LIBPFX)oil.a: $(LIBPFX)oil.o
 	$(AR) $@ $?; $(RANLIB) $@
 
 # Precompiled Dynamic Libraries
@@ -262,7 +262,7 @@ lib$(LIBPFX)luaidl.$(vLIDL).so: $(LIBPFX)luaidl.o
 lib$(LIBPFX)socket.$(vSOCK).so: $(LIBPFX)socket.o $(LUASOCKET_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-lib$(LIBPFX)oil.$(vOIL).so: $(LIBPFX)oil.o $(OILBIT_OBJ)
+lib$(LIBPFX)oil.$(vOIL).so: $(LIBPFX)oil.o
 	$(LD) $(LDFLAGS) -o $@ $^
 
 # Preload Libraries
@@ -270,15 +270,15 @@ lib$(LIBPFX)oil.$(vOIL).so: $(LIBPFX)oil.o $(OILBIT_OBJ)
 $(PLSRC): $(PRELDR_LUA) $(TOINC) $(PCINC)
 	$(LUA) $< $(PL_FLAGS) -o $(@:.c=) $(filter-out $<,$^)
 
-$(PLLIB): $(PCOBJ) $(PLOBJ) $(LUASOCKET_OBJ) $(OILBIT_OBJ)
+$(PLLIB): $(PCOBJ) $(PLOBJ) $(LUASOCKET_OBJ) $(LUASTRUCT_OBJ)
 	$(AR) $@ $?; $(RANLIB) $@
 
-$(PLSOL): $(PCOBJ) $(PLOBJ) $(LUASOCKET_OBJ) $(OILBIT_OBJ)
+$(PLSOL): $(PCOBJ) $(PLOBJ) $(LUASOCKET_OBJ) $(LUASTRUCT_OBJ)
 	$(LD) $(LDFLAGS) -o $@ $^
 
 # STAND-ALONE CONSOLE
 
-$(OILBIN_TRG): $(OILBIT_OBJ) $(PCOBJ) $(PLOBJ) $(OILBIN_OBJ)
+$(OILBIN_TRG): $(LUASTRUCT_OBJ) $(PCOBJ) $(PLOBJ) $(OILBIN_OBJ)
 	$(CC) $(LDFLAGS) -o $@ $? $(LIBS)
 
 clean:
@@ -305,8 +305,6 @@ none:
 linux:
 	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
 	            MYLDFLAGS="-Wl,-E -O -shared $(MYLDFLAGS)"
-#	$(MAKE) console LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
-#	            MYLDFLAGS="-Wl,-E -O $(MYLDFLAGS)"
 
 solaris:
 	$(MAKE) all LD="gcc" MYCFLAGS="-fpic $(MYCFLAGS)" \
@@ -325,7 +323,7 @@ $(LIBPFX)socket.o: $(LIBPFX)socket.h $(LIBPFX)socket.c
 $(LIBPFX)oil.o: $(LIBPFX)oil.h $(LIBPFX)oil.c
 $(PLOBJ): $(PCINC) $(PLINC)
 console.o: $(PLINC) console.c
-oilbit.o: oilbit.h oilbit.c
+struct.o: struct.h struct.c
 auxiliar.o: auxiliar.c auxiliar.h
 buffer.o: buffer.c buffer.h io.h timeout.h
 except.o: except.c except.h

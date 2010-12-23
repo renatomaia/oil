@@ -1,9 +1,9 @@
 local streampath = (os.getenv("OIL_HOME") or "..")..
                    "/test/oil/tests/corba/cdr/streams/"
 
+local struct = require "struct"
 local oo = require "loop.base"
 local Suite = require "loop.test.Suite"
-local bit = require "oil.bit"
 local idl = require "oil.corba.idl"
 local Codec = require "oil.corba.giop.Codec"
 local CodecGen = require "oil.corba.giop.CodecGen"
@@ -68,6 +68,10 @@ local function hexdump(stream, expected)
 	return table.concat(dump)
 end
 
+local prefix = (struct.unpack("B", struct.pack("I2", 1)) == 1) and ">" or "<"
+local function invpack(format, ...)
+	return struct.pack(prefix..format, ...)
+end
 local function newcase(suite, testID, codec, byteorder, shift, idltype, value, expected)
 	local fileID = string.gsub(suite.ID..testID..byteorder..shift, "%W", "_")
 	return function(checks)
@@ -85,7 +89,7 @@ local function newcase(suite, testID, codec, byteorder, shift, idltype, value, e
 		for i, idltype in ipairs(idltype) do
 			local encoder = codec:encoder(byteorder == "Encapsulated")
 			if byteorder == "Inverted" then
-				encoder.pack = oil.bit.invpack
+				encoder.pack = invpack
 			end
 			encoder:jump(shift)
 			encoder:put(value[i], idltype)

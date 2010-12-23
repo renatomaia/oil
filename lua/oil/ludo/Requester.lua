@@ -18,18 +18,20 @@ local LuDOChannel = require "oil.ludo.Channel"
 
 local LuDORequester = class({ Channel = LuDOChannel }, Requester)
 
-function LuDORequester:makerequest(channel, except, reference, operation, ...)
-	local request = self.Request{
-		channel = channel,
-		requester = self,
-	}
+function LuDORequester:newrequest(request)
+	request = self.Request(request)
+	local reference = request.reference                                           --[[VERBOSE]] verbose:invoke("new request to ",reference.object,":",request.operation)
+	local channel, except = self:getchannel(reference)
 	if channel then
-		local requestid = #channel+1
+		request.requester = self
+		request.channel = channel
+		local requestid = #channel+1                                                --[[VERBOSE]] request.request_id = requestid request.object_key = reference.object
 		channel:trylock("write")
 		local success
 		success, except = channel:sendvalues(requestid,
 		                                     reference.object,
-		                                     operation, ...)
+		                                     request.operation,
+		                                     request:getvalues())
 		channel:freelock("write")
 		if success then
 			channel[requestid] = request
@@ -40,25 +42,8 @@ function LuDORequester:makerequest(channel, except, reference, operation, ...)
 	return request
 end
 
-local function doreply(channel, ok, requestid, success, ...)
-	if not ok then return nil, requestid end
-	local request, except = channel[requestid]
-	if request then
-		channel[requestid] = nil
-		request.channel = nil
-		request:setreply(success, ...)
-		channel:signal("read", request)
-	else
-		except = Exception{
-			error = "badmessage",
-			message = "unexpected LuDO reply ID (got $requestid)",
-			requestid = requestid,
-		}
-	end
-	return request, except
-end
-function LuDORequester:readchannel(channel, timeout)
-	return doreply(channel, channel:receivevalues(timeout))
+function LuDORequester:getreply(request, timeout)
+	return request.channel:processmessage(timeout)
 end
 
 return LuDORequester

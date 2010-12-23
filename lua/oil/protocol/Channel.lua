@@ -117,16 +117,20 @@ function Channel:receive(count, timeout)
 end
 
 function Channel:close()
-	self.socket:close()
+	local socket = self.socket
+	if socket ~= nil then
+		--self.socket = nil
+		socket:close()
+	end
 	return true
 end
 
 function Channel:acquire()
-	self.listener.access:remove(self.socket)
+	self.context.access:remove(self.socket)
 end
 
 function Channel:release()
-	self.listener.access:add(self.socket)
+	self.context.access:add(self.socket)
 end
 
 return Channel

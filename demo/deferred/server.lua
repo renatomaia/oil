@@ -18,7 +18,7 @@ oil.main(function()
 	
 	local server = orb:newservant(server_impl, nil, "Concurrency::Server")
 	
-	assert(oil.writeto("server.ior", orb:tostring(server)))
+	assert(oil.writeto("server.ior", tostring(server)))
 	
 	orb:run()
 end)

@@ -28,7 +28,7 @@ oil.main(function()
 	orb = oil.init()
 	orb:loadidlfile("control.idl")
 	oil.writeto("ref.ior",
-		orb:tostring(
+		tostring(
 			orb:newservant(Server, nil, "Control::Server")))
 	orb:run()
 end)

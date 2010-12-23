@@ -16,11 +16,13 @@ OperationRequester = component.Template{
 function assemble(components)
 	arch.start(components)
 	
+	ValueEncoder.proxies = proxykind[ proxykind[1] ].proxies
+	
 	ClientChannels.sockets = BasicSystem.sockets
 	
 	OperationRequester.codec = ValueEncoder.codec
 	OperationRequester.channels = ClientChannels.channels
-	OperationRequester.referrer = ObjectReferrer.references -- open IOR profiles
+	OperationRequester.listener = RequestListener.requests -- BiDir GIOP
 	
 	-- this optional depedency is to allow 'ObjectReferrer' to invoke
 	-- 'get_interface' on references to find out their actual interface

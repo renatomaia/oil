@@ -15,23 +15,20 @@ local memoize = tabop.memoize
 local oo = require "oil.oo"
 local class = oo.class
 
+local Exception = require "oil.Exception"
 local Request = require "oil.protocol.Request"
 
 
 local ClientRequest = class({}, Request)
 
-function ClientRequest:getreply(timeout)
+function ClientRequest:getreply(timeout)                                        --[[VERBOSE]] verbose:invoke(true, "get reply for request ",self.request_id," to ",self.object_key,":",self.operation)
 	local requester = self.requester
-	while self.success == nil do
-		local channel = self.channel
-		if channel:trylock("read", timeout, self) then
-			repeat
-				local ok, except = requester:readchannel(channel, timeout)
-				if not ok then return nil, except end
-			until self.channel ~= channel
-			channel:freelock("read")
+	while self.success == nil do                                                  --[[VERBOSE]] verbose:invoke("reply results are not available yet")
+		local ok, except = requester:getreply(self, timeout)
+		if not ok then                                                              --[[VERBOSE]] verbose:invoke(false, "unable to get reply due to error")
+			return false, except
 		end
-	end
+	end                                                                           --[[VERBOSE]] verbose:invoke(false, "got reply with ",self.success and "results" or "exception")
 	return self.success, self:getvalues()
 end
 
@@ -42,10 +39,11 @@ local WeakTable = class{ __mode = "kv" }
 local Requester = class{ Request = ClientRequest }
 
 function Requester:__init()
+	self.addresses = {}
 	self.sock2channel = memoize(function(socket)
 		return self.Channel{
 			socket = socket,
-			codec = self.codec,
+			context = self,
 		}
 	end, "k")
 end
@@ -55,24 +53,19 @@ function Requester:getchannel(reference)
 	local result, except = channels:retrieve(reference)
 	if result then
 		result = self.sock2channel[result]
-		if result:unlocked("read") then -- channel might be broken
+		if result:unlocked("read") then --[[channel might be broken]]               --[[VERBOSE]] verbose:invoke(true, "check if channel is valid")
 			local ok
-			repeat ok, except = self:readchannel(result, 0) until not ok
-			if except.error == "timeout" then
+			repeat ok, except = result:processmessage(0) until not ok
+			if except.error == "timeout" then                                         --[[VERBOSE]] verbose:invoke(false, "channel seems OK")
 				except = nil
-			else
-				result:close()
+			else                                                                      --[[VERBOSE]] verbose:invoke(false, "channel seems to be broken")
+				result:close()                                                          --[[VERBOSE]] verbose:invoke("get a new channel")
 				result, except = channels:retrieve(reference)
 				if result then result = sock2channel[result] end
 			end
 		end
-	end
+	end                                                                           --[[VERBOSE]] if not result then verbose:invoke("unable to get channel") end
 	return result, except
-end
-
-function Requester:newrequest(reference, ...)
-	local channel, except = self:getchannel(reference)
-	return self:makerequest(channel, except, reference, ...)
 end
 
 return Requester

@@ -1,7 +1,6 @@
 require "oil"
 oil.main(function()
-	local orb = oil.init()
-	------------------------------------------------------------------------------
+	orb = oil.init()
 	orb:loadidl [[
 		module Concurrency {
 			interface Server {
@@ -9,17 +8,12 @@ oil.main(function()
 			};
 		};
 	]]
-	------------------------------------------------------------------------------
-	local server_impl = {}
+	server_impl = {}
 	function server_impl:do_something_for(seconds)
 		oil.sleep(seconds)
 		return true
 	end
-	------------------------------------------------------------------------------
-	local server = orb:newservant(server_impl, nil, "Concurrency::Server")
-	------------------------------------------------------------------------------
-	assert(oil.writeto("server.ior", orb:tostring(server)))
-	------------------------------------------------------------------------------
+	server = orb:newservant(server_impl, nil, "Concurrency::Server")
+	assert(oil.writeto("server.ior", tostring(server)))
 	orb:run()
-	------------------------------------------------------------------------------
 end)

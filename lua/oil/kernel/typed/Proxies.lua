@@ -5,6 +5,7 @@
 
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local select = _G.select
 local setmetatable = _G.setmetatable
 local rawget = _G.rawget
 local rawset = _G.rawset
@@ -24,20 +25,24 @@ function _ENV:__init()
 	if self.class == nil then
 		local methodmaker = self.invoker
 		local OpCache = {
-			__index = function(cache, field)                                          --[[VERBOSE]] verbose:proxies("first attempt to invoke operation ",field)
+			__index = function(cache, field)
 				local operation = self.indexer:valueof(cache.__type, field)
-				if operation then
+				if operation then                                                       --[[VERBOSE]] verbose:proxies("create proxy operation '",field,"'")
 					local function invoker(proxy, ...)                                    --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-						return self.requester:newrequest(proxy.__reference, operation, ...)
+						return self.requester:newrequest{
+							reference = proxy.__reference,
+							operation = operation,
+							n = select("#", ...), ...,
+						}
 					end
-					invoker = methodmaker(invoker, operation)                             --[[VERBOSE]] verbose:proxies("operation named ",field," was created")
+					invoker = methodmaker(invoker, operation)
 					cache[field] = invoker
-					return invoker                                                        --[[VERBOSE]] else verbose:proxies("operation named ",field," not found")
+					return invoker                                                        --[[VERBOSE]] else verbose:proxies("indexed operation '",field,"' does not exist")
 				end
 			end
 		}
 		local function proxytostring(proxy)
-			return self.referrer:encode(proxy.__reference)
+			return proxy.__reference:__tostring()
 		end
 		local function proxynarrow(proxy, type)
 			return self:newproxy{
@@ -66,8 +71,8 @@ function _ENV:__init()
 	end
 end
 
-function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies(true, "creating new proxy")
-	local type = proxy.__type or self.referrer:typeof(proxy.__reference)
+function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies(true, "create proxy for remote object")
+	local type = proxy.__type or proxy.__reference:gettype()
 	local result, except = self.types:resolve(type)
 	if result then                                                                --[[VERBOSE]] verbose:proxies("using interface ",result.repID)
 		result, except = setmetatable(proxy, self.class[result]), nil

@@ -16,6 +16,8 @@ function assemble(components)
 	ServerChannels.sockets = BasicSystem.sockets
 	ServerChannels.dns = BasicSystem.dns
 	
+	ServantManager.listener = RequestListener.requests
+	
 	RequestListener.codec = ValueEncoder.codec
 	RequestListener.channels = ServerChannels.channels
 	

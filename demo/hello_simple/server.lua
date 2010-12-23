@@ -19,7 +19,7 @@ oil.main(function()
 	
 	hello = orb:newservant(hello)                  -- Create Ludo object
 
-	local ref = orb:tostring(hello)                -- Get object's reference
+	local ref = tostring(hello)                -- Get object's reference
 	if not oil.writeto("ref.ludo", ref) then
 		print(ref)
 	end

@@ -59,7 +59,7 @@ oil.main(function()
 	end
 	
 	local channel = orb:newservant(event.new(_M))
-	if ior ~= "" then oil.writeto(ior, orb:tostring(channel)) end
+	if ior ~= "" then oil.writeto(ior, tostring(channel)) end
 	
 	if name ~= "" then
 		if ns ~= ""

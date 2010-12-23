@@ -68,7 +68,6 @@ CompletionStatus = idl.enum{
 	"COMPLETED_MAYBE",
 }
 SystemExceptionIDL = idl.struct{
-	{name = "exception_id", type = idl.string}, --TODO:[maia] what about 'name=1'?
 	{name = "minor"       , type = idl.ulong },
 	{name = "completed"   , type = CompletionStatus },
 }
@@ -241,20 +240,24 @@ MessageHeader_v1_[1] = { -- GIOP 1.1
 
 local ReplyStatusType_1_2 = idl.enum{
 	"NO_EXCEPTION", "USER_EXCEPTION", "SYSTEM_EXCEPTION", "LOCATION_FORWARD",
-	"LOCATION_FORWARD_PERM", "NEEDS_ADDRESSING_MODE",
+	"LOCATION_FORWARD_PERM", "NEEDS_ADDRESSING_MODE", -- added values
 }
 local LocateStatusType_1_2 = idl.enum{
 	"UNKNOWN_OBJECT", "OBJECT_HERE", "OBJECT_FORWARD",
 	"OBJECT_FORWARD_PERM", "LOC_SYSTEM_EXCEPTION", "LOC_NEEDS_ADDRESSING_MODE",
 }
+AddressingDisposition = idl.short
+KeyAddr = 0
+ProfileAddr = 1
+ReferenceAddr = 2
 
 local IORAddressingInfo = idl.struct{
 	{type = idl.ulong, name = "selected_profile_index"},
 	{type = IOR      , name = "ior"                   },
 }
 local TargetAddress = idl.union{
-	switch = idl.short,     
-	options = {             
+	switch = AddressingDisposition,
+	options = {
 		{label = 0, name = "object_key", type = idl.OctetSeq     },
 		{label = 1, name = "profile"   , type = TaggedProfile    },
 		{label = 2, name = "ior"       , type = IORAddressingInfo},

@@ -16,8 +16,8 @@ local Channel = require "oil.protocol.Channel"
 local LuDOChannel = class({}, Channel)
 
 local MessageFmt = "%d\n%s"
-function LuDOChannel:sendvalues(...)
-	local encoder = self.codec:encoder()
+function LuDOChannel:sendvalues(...)                                            --[[VERBOSE]] verbose:message("sending values ",verbose.viewer:tostring(...))
+	local encoder = self.context.codec:encoder()
 	encoder:put(...)
 	local data = encoder:__tostring()
 	return self:send(MessageFmt:format(#data, data))
@@ -25,13 +25,13 @@ end
 
 function LuDOChannel:receivevalues(timeout)
 	local size = self.pendingsize
-	if size then
+	if size then                                                                  --[[VERBOSE]] verbose:message("reading a previous incomplete message (got only its size)")
 		self.pendingsize = nil
 	else
 		local bytes, except = self:receive(nil, timeout)
 		if bytes then
 			size = tonumber(bytes)
-			if size == nil then
+			if size == nil then                                                       --[[VERBOSE]] verbose:message("LuDO failure: illegal message size")
 				return nil, Exception{
 					error = "badmessage",
 					message = "invalid LuDO message size (got $size)",
@@ -42,11 +42,32 @@ function LuDOChannel:receivevalues(timeout)
 	end
 	local bytes, except = self:receive(size, timeout)
 	if bytes ~= nil then
-		return true, self.codec:decoder(bytes):get()
-	elseif except.error == "timeout" then
+		return true, self.context.codec:decoder(bytes):get()
+	elseif except.error == "timeout" then                                         --[[VERBOSE]] verbose:message("message was not available before timeout")
 		self.pendingsize = size
 	end
 	return nil, except
+end
+
+local function doreply(self, ok, requestid, success, ...)
+	if not ok then return nil, requestid end
+	local request, except = self[requestid]
+	if request then
+		self[requestid] = nil
+		request.channel = nil
+		request:setreply(success, ...)
+		self:signal("read", request)
+	else                                                                          --[[VERBOSE]] verbose:message("LuDO failure: reply for unknown request ID")
+		except = Exception{
+			error = "badmessage",
+			message = "unexpected LuDO reply ID (got $requestid)",
+			requestid = requestid,
+		}
+	end
+	return request, except
+end
+function LuDOChannel:processmessage(timeout)
+	return doreply(self, self:receivevalues(timeout))
 end
 
 return LuDOChannel

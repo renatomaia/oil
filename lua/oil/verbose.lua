@@ -32,8 +32,8 @@ local verbose = Verbose{
 	viewer = Viewer{ maxdepth = 1 },
 	groups = {
 		broker = { "acceptor", "dispatcher", "servants", "proxies" },
-		communication = { "mutex", "invoke", "listen", "message", "channels" },
-		transport = { "marshal", "unmarshal" },
+		communication = { "invoke", "listen", "message", "channels" },
+		encoding = { "marshal", "unmarshal" },
 		idltypes = { "idl", "repository" },
 	},
 }
@@ -44,10 +44,9 @@ end
 
 verbose:newlevel{ "broker" }
 verbose:newlevel{ "invoke", "listen" }
-verbose:newlevel{ "mutex" }
-verbose:newlevel{ "message" }
 verbose:newlevel{ "channels" }
-verbose:newlevel{ "transport" }
+verbose:newlevel{ "message" }
+verbose:newlevel{ "references","encoding" }
 verbose:newlevel{ "hexastream" }
 verbose:newlevel{ "idltypes" }
 

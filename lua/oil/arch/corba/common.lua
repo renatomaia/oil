@@ -40,8 +40,7 @@ function assemble(components)
 	
 	TypeRepository.types:register(sysex) -- IDL of standard system exceptions
 	
-	ValueEncoder.proxies = proxykind[ proxykind[1] ].proxies
-	ValueEncoder.servants = ServantManager.servants
+	ValueEncoder.references = ObjectReferrer.references
 	ValueEncoder.types = TypeRepository.types
 	
 	IIOPProfiler.codec = ValueEncoder.codec

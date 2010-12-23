@@ -81,9 +81,6 @@ local concat = table.concat
 
 local OrderedSet = require "loop.collection.OrderedSet"
 
---[[DEBUG]] require "inspector" -- must be required before 'cothread.auxiliary'
-require "cothread.auxiliary" -- to avoid coroutine limitation of Lua 5.1
-
 local oo = require "oil.oo"
 local class = oo.class	
 local rawnew = oo.rawnew
@@ -338,7 +335,7 @@ end
 --
 function ORB:newproxy(reference, kind, iface)
 	if type(reference) == "string" then
-		reference = assert(self.ObjectReferrer.references:decode(reference))
+		reference = assert(self.ObjectReferrer.references:decodestring(reference))
 	else
 		iface = iface or reference.__type
 		reference = reference.__reference
@@ -461,23 +458,6 @@ function ORB:deactivate(object, type)
 			"object reference (servant, implementation or object key expected)")
 	end
 	return self.ServantManager.servants:unregister(object, type)
-end
-
---------------------------------------------------------------------------------
--- Returns textual information that identifies the servant.
---
--- This function is used to get textual information that references a servant
--- or proxy like an IOR (Inter-operable Object Reference).
---
--- @param servant object Servant which textual referecence must be taken.
---
--- @return string Textual referecence to the servant.
---
--- @usage oil.writeto("ref.ior", oil.tostring(oil.newservant(impl, "::Hello"))).
---
-function ORB:tostring(object)
-	asserttype(object, "table", "object")
-	return assert(self.ObjectReferrer.references:encode(object.__reference))
 end
 
 --------------------------------------------------------------------------------
@@ -748,6 +728,8 @@ end
 VERSION = "OiL 0.5"
 
 if cothread == nil then
+	--[[DEBUG]] require "inspector" -- must be required before 'cothread.auxiliary'
+	require "cothread.auxiliary" -- to avoid coroutine limitation of Lua 5.1
 	require "cothread.socket"
 	cothread = require "cothread"
 	--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels

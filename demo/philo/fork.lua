@@ -38,7 +38,7 @@ oil.main(function()
 	local orb = oil.init()
 	orb:loadidlfile("philo.idl")
 	oil.writeto("fork.ior",
-		orb:tostring(
+		tostring(
 			orb:newservant(ForkHome, nil, "ForkHome")))
 	orb:run()
 end)

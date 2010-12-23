@@ -113,7 +113,11 @@ function AccessPoint:address()
 		addr[ addr[i] ] = i
 	end
 	
-	return host, port, addr
+	return {
+		host = host,
+		port = port,
+		addresses = addr
+	}
 end
 
 

@@ -27,7 +27,11 @@ function Connector:__init()
 	self.cache = WeakValues()
 end
 
-function Connector:retrieve(profile)                                                --[[VERBOSE]] verbose:channels("retrieve channel connected to ",profile.host,":",profile.port)
+function Connector:register(socket, profile)                                    --[[VERBOSE]] verbose:channels("got bidirectional channel to ",profile.host,":",profile.port)
+	self.cache[tuple[profile.host][profile.port]] = socket
+end
+
+function Connector:retrieve(profile)                                            --[[VERBOSE]] verbose:channels("get channel to ",profile.host,":",profile.port)
 	local connid = tuple[profile.host][profile.port]
 	local cache = self.cache
 	local socket, except = cache[connid]
@@ -45,11 +49,11 @@ function Connector:retrieve(profile)                                            
 		local sockets = self.sockets
 		socket, except = sockets:newsocket(self.options)
 		if socket then
-			local host, port = profile.host, profile.port                             --[[VERBOSE]] verbose:channels("new socket to ",host,":",port)
+			local host, port = profile.host, profile.port                             --[[VERBOSE]] verbose:channels("create new channel to ",host,":",port)
 			success, except = socket:connect(host, port)
 			if success then
 				cache[connid] = socket
-			else
+			else                                                                      --[[VERBOSE]] verbose:channels("unable to connect to ",host,":",port," (",except,")")
 				socket, except = nil, Exception{
 					error = "badconnect",
 					message = "unable to connect to $host:$port ($errmsg)",
@@ -58,7 +62,7 @@ function Connector:retrieve(profile)                                            
 					port = port,
 				}
 			end
-		else
+		else                                                                        --[[VERBOSE]] verbose:channels("unable to create socket")
 			socket, except = nil, Exception{
 				error = "badsocket",
 				message = "unable to create socket ($errmsg)",
