@@ -1,11 +1,10 @@
 require "oil"
 
 oil.main(function()
-	local orb = oil.init{
+	orb = oil.init{
 		flavor = "cooperative;ludo",
 		localrefs = "proxy", -- disable local reference resolution
 	}
-	
 	oil.newthread(orb.run, orb)
 	
 	local Hello = {}
@@ -13,10 +12,8 @@ oil.main(function()
 		print(string.format("Hello, %s!", tostring(who)))
 	end
 	
-	local Invoker = orb:newproxy(oil.readfrom("ref.ludo"))
-	local proxy = orb:newproxy(
-	              	tostring(
-	              		orb:newservant(Hello)))
+	Invoker = orb:newproxy(oil.readfrom("ref.ludo"))
+	proxy = orb:newproxy(tostring(orb:newservant(Hello)))
 	
 	Invoker:invoke(Hello, "say", "there") -- message appear remotely
 	Invoker:invoke(proxy, "say", "here") -- message appear locally

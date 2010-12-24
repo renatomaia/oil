@@ -103,14 +103,10 @@ function Listener:shutdown()
 	end                                                                           --[[VERBOSE]] verbose:listen(true, "shutting down server")
 	local sock2channel = self.sock2channel
 	for _, socket in ipairs(access:close()) do
-		local channel = sock2channel[socket]
-		if channel.pending > 0 then                                                 --[[VERBOSE]] verbose:listen("channel in use, marked to be closed")
-			channel.closing = true
-		else                                                                        --[[VERBOSE]] verbose:listen("closing channel")
-			local closed, except = channel:close()
-			if not closed then                                                        --[[VERBOSE]] verbose:listen(false, "shutdown failed while closing channel")
-				return nil, except
-			end
+		local channel = sock2channel[socket]                                        --[[VERBOSE]] verbose:listen("closing channel")
+		local closed, except = channel:close()
+		if not closed then                                                          --[[VERBOSE]] verbose:listen(false, "shutdown failed while closing channel")
+			return nil, except
 		end
 	end
 	self.access = nil

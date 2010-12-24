@@ -60,7 +60,7 @@ end
 local function resolveref(self, reference)
 	local servants = self.servants
 	if servants ~= nil and self.localrefs == "implementation" then
-		local entry = servants:islocal(reference)
+		local entry = servants:localref(reference)
 		if entry ~= nil then                                                          --[[VERBOSE]] verbose:unmarshal("local object with key '",objkey,"' restored")
 			return entry.__servant
 		end

@@ -14,8 +14,8 @@ local class = oo.class
 local Reference = class()
 
 function Reference:islocal(access)
-	if access.addresses[reference.host] and access.port == access.port then
-		return reference.object
+	if access.addresses[self.host] and access.port == access.port then
+		return self.object
 	end
 end
 
@@ -33,7 +33,7 @@ end
 
 
 
-local Referrer = class()
+local Referrer = class{ Reference = Reference }
 
 function Referrer:newreference(entry)
 	local result, except = self.listener:getaddress()

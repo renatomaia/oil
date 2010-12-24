@@ -144,6 +144,9 @@ function GIOPRequester:dorequest(request)
 		local success
 		success, except = channel:sendrequest(request)
 		if success then
+			if request.sync_scope == "channel" then
+				self:endrequest(request, true, 0)
+			end
 			return request
 		end
 	end

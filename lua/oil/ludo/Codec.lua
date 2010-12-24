@@ -29,6 +29,7 @@ local table        = require "loop.table"
 local StringStream = require "loop.serial.StringStream"
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local Referrer = require "oil.ludo.Referrer"
 
 module("oil.ludo.Codec", oo.class)
 
@@ -42,6 +43,8 @@ function __new(self, ...)
 	self = oo.rawnew(self, ...)
 	self.names = WeakKey(self.names)
 	self.values = WeakValues(self.values)
+	self.names[Referrer.Reference] = "LuDOReference"
+	self.values.LuDOReference = Referrer.Reference
 	return self
 end
 
