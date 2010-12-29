@@ -1666,7 +1666,7 @@ rules.positive_int_const = function (numrule)
   if tab_firsts.rule_75[token] then
     local const1 = rules.xor_expr(numrule)
     rules.or_expr_l(numrule)
-    if type(const1) == "string" and string.find(const1, '[%d]') then
+    if type(const1) == "string" and string.find(const1, '^%d+$') then
      const1 = tonumber(const1)
      if const1 < 0 then
         semanticError(tab_ERRORMSG[24])
