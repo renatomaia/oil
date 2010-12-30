@@ -21,6 +21,8 @@ function resolve(proc, port, objkey, kind, nowait)
 		if success or (type(errmsg) == "table" and errmsg.error == "badobjimpl")
 		then -- '_non_existent' may not provided but such object exists ;-)
 			return proxy
+		elseif type(errmsg) ~= "table" or errmsg.error ~= "badconnect" then
+			error(errmsg)
 		end
 		oil.sleep(querytime)
 	end

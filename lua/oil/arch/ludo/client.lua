@@ -13,6 +13,7 @@ OperationRequester = component.Template{
 function assemble(components)
 	arch.start(components)
 	ClientChannels.sockets = BasicSystem.sockets
+	ClientChannels.dns = BasicSystem.dns
 	OperationRequester.codec = ValueEncoder.codec
 	OperationRequester.channels = ClientChannels.channels
 	arch.finish(components)

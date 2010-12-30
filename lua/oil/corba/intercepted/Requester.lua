@@ -36,15 +36,18 @@ function IceptedRequester:dorequest(request)                                    
 			interceptor:sendrequest(intercepted)                                      --[[VERBOSE]] verbose:interceptors(false, "sendrequest ended")
 			local success = intercepted.success
 			if success ~= nil then                                                    --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
-				request.success = success
 				-- update returned values
 				local results = intercepted.results or {}
-				local count = results.n or #results
-				for i = 1, count do
-					request[i] = results[i]
-				end
-				self:endrequest(request, success, count)                                --[[VERBOSE]] verbose:interceptors(false, "interception canceled invocation")
-				return request
+				if success then
+					local count = results.n or #results
+					for i = 1, count do
+						request[i] = results[i]
+					end
+					self:endrequest(request, true, count)
+				else
+					self:endrequest(request, false, results[1])
+				end                                                                     --[[VERBOSE]] verbose:interceptors(false, "interception canceled invocation")
+				return self.Request(request)
 			else
 				-- update GIOP message fields
 				request.sync_scope = intercepted.sync_scope
@@ -64,7 +67,9 @@ function IceptedRequester:dorequest(request)                                    
 				local newref = intercepted.reference
 				if newref and newref ~= reference then                                  --[[VERBOSE]] verbose:interceptors("interception forwarded request to another reference")
 					request.reference = newref
-					channel:unregister(request.id, "outgoing")
+					if channel ~= nil then
+						channel:unregister(request.id, "outgoing")
+					end
 				end
 			end
 		end

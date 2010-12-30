@@ -49,18 +49,21 @@ local OperationReplier = {}
 
 local ReplyTrue  = { getreply = function() return true, true end }
 local ReplyFalse = { getreply = function() return true, false end }
-function OperationRequester:_is_equivalent(reference, operation, other)
+function OperationRequester:_is_equivalent(request)
+	local reference = request.reference
+	local other = request[1]
 	return reference:equivalentto(other.__reference)
 	   and ReplyTrue
 	    or ReplyFalse
 end
 
+local NonExistentErrors = {
+	badconnect = true,
+	badobjkey = true,
+}
 function OperationReplier:_non_existent(request)
 	local except = request:getvalues()
-	if not request.success and (
-		except.error == "badconnect" or
-		except.exception_id == "IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"
-	) then
+	if not request.success and NonExistentErrors[except.error] then
 		request:setreply(true, true)
 	end
 end
@@ -115,11 +118,12 @@ end
 
 function GIOPRequester:endrequest(request, success, result)
 	if success ~= nil then
+		request.success = success
 		if success then
-			request.success = true
 			request.n = result
 		else
-			request:setreply(false, result)
+			request.n = 1
+			request[1] = result
 		end
 	end
 	local replier = self.OperationReplier[request.operation]
@@ -206,12 +210,14 @@ local function doreply(self, replied)
 				local ok, result = pcall(decoder.get, decoder, outputs[i])
 				if not ok then                                                          --[[VERBOSE]] verbose:invoke("error in decoding of result ",i)
 					self:endrequest(replied, false, result)
-					return
+					break
 				end
 				replied[i] = result
 			end
 		end
-		self:endrequest(replied, true, count)
+		if replied.success == nil then
+			self:endrequest(replied, true, count)
+		end
 	elseif status:find("LOCATION_FORWARD", 1, true) == 1 then                     --[[VERBOSE]] verbose:invoke("got remote request to forward request through other channel")
 		local reference = decoder:IOR()
 		if status == "LOCATION_FORWARD_PERM" then                                   --[[VERBOSE]] verbose:invoke("replacing current reference with a new one permanently")
@@ -248,7 +254,8 @@ local function doreply(self, replied)
 			except = decoder:struct(SystemExceptionIDL)
 			except[1] = repid
 			except.error = SystemExceptionError[repid] or "corbasysex"
-			except.message = "got remote exception $exception_id"
+			except.message = "got remote exception $systemexception"
+			except.systemexception = repid
 			except = Exception(except)
 		else --[[status == ???]]                                                    --[[VERBOSE]] verbose:invoke("got unsupported GIOP reply status: ",status)
 			except = Exception{
@@ -259,6 +266,8 @@ local function doreply(self, replied)
 		end
 		self:endrequest(replied, false, except)
 	end -- of if status == "NO_EXCEPTION"
+	replied.reply = nil
+	replied.decoder = nil
 end
 
 function GIOPRequester:getreply(request, timeout)

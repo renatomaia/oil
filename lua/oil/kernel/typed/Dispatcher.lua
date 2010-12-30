@@ -16,27 +16,11 @@ local Dispatcher = class{ context = false }
 
 function Dispatcher:dispatch(request)
 	local context = self.context
-	local operation -- defined later if servant exists
 	local key = request.objectkey
 	local entry = context.servants:retrieve(key)
-	if entry == nil then                                                          --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
-		request:setreply(false, Exception{
-			error = "badobjkey",
-			message = "unknown servant (got $key)",
-			key = key,
-		})
-	else
+	local operation -- defined later if servant exists
+	if entry ~= nil then
 		operation = context.indexer:valueof(entry.__type, request.operation)
-		if operation == nil then                                                    --[[VERBOSE]] verbose:dispatcher("got illegal operation ",request.operation)
-			request:setreply(false, Exception{
-				error = "badobjop",
-				message = "operation $operation is illegal for servant $key",
-				operation = request.operation,
-				object = object,
-				type = entry.__type,
-				key = key,
-			})
-		end
 	end
 	local object, method = request:preinvoke(entry, operation)
 	if object ~= nil then
@@ -51,7 +35,22 @@ function Dispatcher:dispatch(request)
 				object = object,
 				key = key,
 			})
-		end                                                                         --[[VERBOSE]] else verbose:dispatcher("pre-invocation failed!")
+		end
+	elseif entry == nil then                                                      --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
+		request:setreply(false, Exception{
+			error = "badobjkey",
+			message = "unknown servant (got $key)",
+			key = key,
+		})
+	elseif operation == nil then                                                  --[[VERBOSE]] verbose:dispatcher("got illegal operation ",request.operation)
+		request:setreply(false, Exception{
+			error = "badobjop",
+			message = "operation $operation is illegal for servant $key",
+			operation = request.operation,
+			object = object,
+			type = entry.__type,
+			key = key,
+		})                                                                          --[[VERBOSE]] else verbose:dispatcher("pre-invocation failed!")
 	end
 end
 

@@ -3,7 +3,7 @@ local assert = utils.assertresults
 
 local function ready(self)
 	local result, except = self:getreply(0)
-	return result ~= nil or except.error ~= "timeout"
+	return result or except.error ~= "timeout"
 end
 local function results(self, timeout)
 	return self:getreply(timeout)

@@ -19,6 +19,7 @@ function assemble(components)
 	ValueEncoder.proxies = proxykind[ proxykind[1] ].proxies
 	
 	ClientChannels.sockets = BasicSystem.sockets
+	ClientChannels.dns = BasicSystem.dns
 	
 	OperationRequester.codec = ValueEncoder.codec
 	OperationRequester.channels = ClientChannels.channels

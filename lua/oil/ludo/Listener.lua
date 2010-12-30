@@ -33,14 +33,19 @@ function ServerRequest:setreply(...)                                            
 	if not success and except.error ~= "terminated" and stderr then
 		stderr:write(tostring(except), "\n")
 	end
+	channel.pending = channel.pending-1
+	if channel.closing and channel.pending == 0 then
+		LuDOChannel.close(channel)
+	end
 end
 
 
 
-local ServerChannel = class({}, LuDOChannel)
+local ServerChannel = class({ pending = 0 }, LuDOChannel)
 
 local function makerequest(channel, success, requestid, objkey, operation, ...)
 	if not success then return nil, requestid end
+	channel.pending = channel.pending+1
 	return channel.context.Request{
 		channel = channel,
 		request_id = requestid,
@@ -62,6 +67,15 @@ function ServerChannel:getrequest(timeout)
 		}
 	end
 	return result, except
+end
+
+function ServerChannel:close()
+	if self.pending > 0 then
+		self.closing = true
+	else
+		LuDOChannel.close(self)
+	end
+	return true
 end
 
 

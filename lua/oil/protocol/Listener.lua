@@ -28,6 +28,7 @@ function Listener:__init()
 		return self.Channel{
 			socket = socket,
 			context = self,
+			server = true,
 		}
 	end, "k")
 end

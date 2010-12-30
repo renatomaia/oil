@@ -32,6 +32,8 @@ function _ENV:probe(timeout)                                                    
 					self.pending = result
 				elseif except.error == "timeout" then
 					except = nil
+				elseif except.error == "terminated" then
+					except = nil
 				end
 			end
 		until result or except

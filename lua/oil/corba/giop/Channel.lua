@@ -197,11 +197,12 @@ local function encodemsg(self, kind, header, types, values)
 	encoder:struct(header, self.headertype)
 	return encoder:getdata()..stream
 end
-local function sendmsg(self, kind, header, types, values)                       --[[VERBOSE]] verbose:message(true, "send message ",MessageType[kind],header)
+local function sendmsg(self, kind, header, types, values)                       --[[VERBOSE]] verbose:message(true, "send message ",MessageType[kind],header or "")
 	local ok, result = pcall(encodemsg, self, kind, header, types, values)
 	if ok then
 		self:trylock("write")
 		ok, result = self:send(result)
+		if not ok and type(result) == "table" then result = Exception(result) end
 		self:freelock("write")
 	else                                                                          --[[VERBOSE]] verbose:message("message encoding failed")
 		ok, result = nil, Exception{ "MARSHAL",
@@ -273,7 +274,7 @@ local function receivemsg(self, timeout)                                        
 			-- unmarshal message header
 			local stream, except = self:receive(self.headersize, timeout)
 			if stream == nil then                                                     --[[VERBOSE]] verbose:message(false, except.error == "timeout" and "message data is not available yet" or "error while reading message header data")
-				return nil, except
+				return nil, Exception(except)
 			end
 			local ok
 			ok, minor, kind, size, incomplete, decoder = pcall(decodeheader,
@@ -293,6 +294,8 @@ local function receivemsg(self, timeout)                                        
 			decoder = pending.decoder
 			incomplete = pending.incomplete
 		end
+		-- upgrade channel version
+		self:upgradeto(minor)
 		-- unmarshal message body
 		local message
 		if size > 0 then
@@ -308,7 +311,7 @@ local function receivemsg(self, timeout)                                        
 						incomplete = incomplete,
 					}                                                                     --[[VERBOSE]] else verbose:message(false)
 				end
-				return nil, except
+				return nil, Exception(except)
 			end
 			self.pending = nil
 			decoder:append(stream)
@@ -545,7 +548,7 @@ function GIOPChannel:sendrequest(request)
 	if self.sync_scope ~= "channel" then
 		self:register(request, "outgoing") -- defines the 'request_id'
 	else
-		request.request_id = (self.bidir_role=="acceptor" and 1 or 0)
+		request.request_id = (bidir=="acceptor" and 1 or 0)
 	end
 	local types = request.inputs
 	if self.version > 1 and request.encoded == nil then
@@ -635,7 +638,6 @@ function GIOPChannel:sendreply(request)
 	local success, except = true
 	local requestid = request.request_id                                          --[[VERBOSE]] verbose:listen(true, "replying for request ",request.request_id," for ",request.objectkey,":",request.operation)
 	if self.incoming[requestid] == request then
-		self:unregister(requestid, "incoming")
 		local types, values = request:getreplybody()
 		if request.service_context == nil then request.service_context = Empty end
 		success, except = sendmsg(self, ReplyID, request, types, values)
@@ -655,7 +657,8 @@ function GIOPChannel:sendreply(request)
 					success, except = true
 				end
 			end
-		end                                                                         --[[VERBOSE]] else verbose:listen("no pending request found with id ",requestid,", reply discarded")
+		end
+		self:unregister(requestid, "incoming")                                      --[[VERBOSE]] else verbose:listen("no pending request found with id ",requestid,", reply discarded")
 	end                                                                           --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully processed" or "failed: ", except or "")
 	return success, except
 end
@@ -663,16 +666,16 @@ end
 function GIOPChannel:close()
 	if next(self.incoming) == nil then
 		local result, except
-		if self.version < 2 then
-			result, except = true
-		else
+		if self.server or self.version >= 2  then
 			result, except = sendmsg(self, CloseConnectionID)
+		else
+			result, except = true
 		end
 		if result or except.error == "terminated" then
 			result, except = Channel.close(self)
-		end
+		end                                                                         --[[VERBOSE]] verbose:listen("channel closed")
 		return result, except
-	end
+	end                                                                           --[[VERBOSE]] verbose:listen("channel marked for closing after pending requests are replied")
 	self.closing = true
 	return true
 end

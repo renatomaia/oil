@@ -26,7 +26,7 @@ checks = oil.dtests.checks
 Interceptor = {}
 function Interceptor:sendreply(reply)
 	if reply.object_key == "object" then
-		reply.forward_reference = forward.__reference
+		reply.reference = forward.__reference
 	end
 end
 

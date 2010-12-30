@@ -1,6 +1,7 @@
-local error        = error
-local getmetatable = getmetatable
-local rawget       = rawget
+local _G = require "_G"
+local error = _G.error
+local getmetatable = _G.getmetatable
+local rawget = _G.rawget
 
 module "oil.kernel.base.Proxies.utils"
 

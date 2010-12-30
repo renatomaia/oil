@@ -28,7 +28,7 @@ function Interceptor:sendrequest(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		request.forward_reference = forward.__reference
+		request.reference = forward.__reference
 	end
 end
 

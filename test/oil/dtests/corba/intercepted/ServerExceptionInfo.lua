@@ -57,7 +57,6 @@ function Interceptor:sendreply(reply)
 		checks:assert(reply.results,               checks.similar{
 		                                           	{
 		                                           		"IDL:omg.org/CORBA/UNKNOWN:1.0",
-		                                           		exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
 		                                           		completed = "COMPLETED_MAYBE",
 		                                           		minor = 0,
 		                                           		error = '[string "Server"]:6: Oops!',
@@ -148,7 +147,6 @@ function Interceptor:receivereply(reply)
 		checks:assert(reply.results,                checks.similar{
 		                                            	{
 		                                            		"IDL:omg.org/CORBA/UNKNOWN:1.0",
-		                                            		exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
 		                                            		completed = "COMPLETED_MAYBE",
 		                                            		minor = 0,
 		                                            	},
@@ -175,7 +173,6 @@ ok, res = pcall(sync.concat, sync, "first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
                    	"IDL:omg.org/CORBA/UNKNOWN:1.0",
-                   	exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
                    	completed = "COMPLETED_MAYBE",
                    	minor = 0,
                    })
@@ -186,7 +183,6 @@ ok, res = async:concat("first", "second"):results()
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
                    	"IDL:omg.org/CORBA/UNKNOWN:1.0",
-                   	exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
                    	completed = "COMPLETED_MAYBE",
                    	minor = 0,
                    })
@@ -197,7 +193,6 @@ ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
                    	"IDL:omg.org/CORBA/UNKNOWN:1.0",
-                   	exception_id = "IDL:omg.org/CORBA/UNKNOWN:1.0",
                    	completed = "COMPLETED_MAYBE",
                    	minor = 0,
                    })
