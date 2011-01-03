@@ -100,11 +100,11 @@ function AccessPoint:address()
 	if ip then
 		host = ip
 		addr = extra.ip
-		addr[#addr+1] = extra.name
-		local aliases = extra.alias
-		for i = 1, #aliases do
-			addr[#addr+1] = aliases[i]
-		end
+		--addr[#addr+1] = extra.name
+		--local aliases = extra.alias
+		--for i = 1, #aliases do
+		--	addr[#addr+1] = aliases[i]
+		--end
 	else
 		addr = {host}
 	end
