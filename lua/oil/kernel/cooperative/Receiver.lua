@@ -6,6 +6,8 @@
 
 local _G = require "_G"
 local pairs = _G.pairs
+local tostring = _G.tostring
+local stderr = _G.io and _G.io.stderr -- only if available
 
 local coroutine = require "coroutine"
 local newthread = coroutine.create
@@ -82,7 +84,8 @@ function _ENV:dochannel(channel)
 		end
 	until not result
 	if except.error ~= "terminated" then
-		self:stop(nil, except)
+		channel:close()
+		if stderr then stderr:write(tostring(except)) end
 	end
 end
 
