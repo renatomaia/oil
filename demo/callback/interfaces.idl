@@ -1,0 +1,12 @@
+interface TimeEventTimer {
+	readonly attribute long count;
+	boolean enable();
+	boolean disable();
+};
+interface TimeEventCallback {
+	void triggered(in long count);
+};
+interface TimeEventService {
+	TimeEventTimer newtimer(in double rate, in TimeEventCallback callback);
+	void print(in string msg);
+};

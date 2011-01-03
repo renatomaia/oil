@@ -1,0 +1,63 @@
+#!/bin/sh
+
+OUTDIR="java"
+IDLC="idlj -fall -td ${OUTDIR}"
+JAVAC="javac -sourcepath ${OUTDIR} -d ${OUTDIR}"
+JAVA="java -cp java"
+LUA=lua
+
+JACORB_HOME="/Users/maia/Work/proj/corba/src/JacORB_2.3.0_beta2"
+IDLC="${JAVA} -classpath ${JACORB_HOME}/lib/idl.jar:${JACORB_HOME}/lib/logkit-1.2.jar org.jacorb.idl.parser -I${JACORB_HOME}/idl -d ${OUTDIR} -all"
+JAVAC="${JAVAC} -cp ${JACORB_HOME}/lib/jacorb.jar"
+JAVA="java -cp java:${JACORB_HOME}/lib/jacorb.jar:${JACORB_HOME}/lib/avalon-framework-4.1.5.jar:${JACORB_HOME}/lib/logkit-1.2.jar \
+           -Djacorb.home=${JACORB_HOME} \
+           -Dorg.omg.CORBA.ORBClass=org.jacorb.orb.ORB \
+           -Dorg.omg.CORBA.ORBSingletonClass=org.jacorb.orb.ORBSingleton"
+
+
+
+
+mkdir ${OUTDIR}
+
+${IDLC} interfaces.idl
+${JAVAC} server.java
+${JAVAC} client.java
+
+echo "Starting Java server"
+$JAVA server &
+pids="$pids $!"
+trap "kill $pids > /dev/null 2> /dev/null" 0
+
+for((i=0;i<10;++i));do if test -r ref.ior;then break;else sleep 1;fi;done
+
+echo "Starting Lua client"
+$LUA client.lua &
+pids="$pids $!"
+trap "kill $pids > /dev/null 2> /dev/null" 0
+
+echo "Execute for 30 secs. for a deadlock situation"
+sleep 30
+
+rm -f ref.ior
+
+kill $pids
+pids=
+
+echo "Starting Lua server"
+$LUA server.lua &
+pids="$pids $!"
+trap "kill $pids > /dev/null 2> /dev/null" 0
+
+for((i=0;i<10;++i));do if test -r ref.ior;then break;else sleep 1;fi;done
+
+echo "Starting Java client"
+$JAVA client &
+pids="$pids $!"
+trap "kill $pids > /dev/null 2> /dev/null" 0
+
+echo "Execute for 30 secs. for a deadlock situation"
+sleep 30
+
+rm -f ref.ior
+
+rm -fR ${OUTDIR}

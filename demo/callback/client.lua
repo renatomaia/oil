@@ -1,10 +1,9 @@
 require "oil"
 
-local port = ...
-
 oil.main(function()
-	local orb = oil.init{port=port}
-	local service = orb:newproxy(assert(oil.readfrom("ref.ior")))
+	local orb = oil.init()
+	orb:loadidlfile("interfaces.idl")
+	local service = orb:newproxy(assert(oil.readfrom("ref.ior")), nil, "TimeEventService")
 	for i = 1, 3 do
 		local timer
 		timer = service:newtimer(i, {
@@ -12,8 +11,8 @@ oil.main(function()
 				service:print(i..": Triggered "..count.." times")
 			end
 		})
-		timer:enable()
 		if i == 1 then i = "\n"..i end
+		timer:enable()
 	end
 	orb:run()
 end)
