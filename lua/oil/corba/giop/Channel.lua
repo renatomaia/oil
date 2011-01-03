@@ -152,6 +152,17 @@ end
 MessageBuilder_v1_[3] = MessageBuilder_v1_[2]
 
 
+local function pdecode_cont(ok, ...)
+	if ok then return true, ... end
+	if type(...) ~= "string" then return false, Exception(...) end
+	return false, Exception{ "MARSHAL",
+		error = "badvalue",
+		message = ...,
+	}
+end
+local function pdecode(func, ...)
+	return pdecode_cont(pcall(func, ...))
+end
 
 local function encodevalues(self, types, values, encoder)
 	local count = values.n or #values
@@ -174,7 +185,7 @@ local function encodemsg(self, kind, header, types, values)
 		if builder then header = builder(header) end
 		encoder:struct(header, self.messagetype[kind])
 	end
-	if types then
+	if types and #types > 0 then
 		if self.version > 1 and (kind == RequestID or kind == ReplyID) then
 			encoder:align(8)
 			local encoded = values.encoded
@@ -203,13 +214,7 @@ local function sendmsg(self, kind, header, types, values)                       
 		self:trylock("write")
 		ok, result = self:send(result)
 		if not ok and type(result) == "table" then result = Exception(result) end
-		self:freelock("write")
-	else                                                                          --[[VERBOSE]] verbose:message("message encoding failed")
-		ok, result = nil, Exception{ "MARSHAL",
-			error = "badvalue",
-			message = "error on encoding: $errmsg",
-			errmsg = result,
-		}
+		self:freelock("write")                                                      --[[VERBOSE]] else verbose:message("message encoding failed")
 	end                                                                           --[[VERBOSE]] verbose:message(false)
 	return ok, result
 end
@@ -243,8 +248,8 @@ local function decodeheader(self, stream)
 		local flags = decoder:octet()
 		local orderbit = flags%2
 		decoder:order(orderbit == 1)
-		local fragbit = (flags-orderbit)%2
-		incomplete = (fragbit == 1)
+		local fragbit = (flags-orderbit)%4
+		incomplete = (fragbit == 2)
 	end
 	return minor, -- version
 	       decoder:octet(), -- type
@@ -260,12 +265,14 @@ local function decodemsgbody(self, decoder, minor, kind)
 		if adapter then
 			body = adapter(body, self)
 		end
-		if minor > 1 and (kind == RequestID or kind == ReplyID) then
+		if minor > 1 and (kind == RequestID or kind == ReplyID)
+		and decoder.cursor <= #decoder.data then
 			decoder:align(8)
 		end
 		return body
 	end
 end
+local IncompleteMessages = {}
 local function receivemsg(self, timeout)                                        --[[VERBOSE]] verbose:message(true, "get message from channel")
 	while true do
 		local minor, kind, size, decoder, incomplete
@@ -277,14 +284,10 @@ local function receivemsg(self, timeout)                                        
 				return nil, Exception(except)
 			end
 			local ok
-			ok, minor, kind, size, incomplete, decoder = pcall(decodeheader,
-			                                                   self, stream)
+			ok, minor, kind, size, incomplete, decoder = pdecode(decodeheader,
+			                                                     self, stream)
 			if not ok then                                                            --[[VERBOSE]] verbose:message(false, "error in message header decoding: ",kind.error)
-				return nil, Exception{
-					error = "badstream",
-					message = "error on GIOP message header decoding: $errmsg",
-					errmsg = minor,
-				}
+				return nil, minor
 			end
 		else                                                                        --[[VERBOSE]] verbose:message("continue message from a previous decoded header")
 			-- continue decoding of a previous decoded header
@@ -313,35 +316,46 @@ local function receivemsg(self, timeout)                                        
 				end
 				return nil, Exception(except)
 			end
-			self.pending = nil
 			decoder:append(stream)
-			local ok
-			ok, message = pcall(decodemsgbody, self, decoder, minor, kind)
-			if not ok then                                                            --[[VERBOSE]] verbose:message(false, "error in message body decoding: ",message.error)
-				return nil, Exception{
-					error = "badstream",
-					message = "error on GIOP message body decoding: $errmsg",
-					errmsg = message,
-				}
-			end
-		else
-			self.pending = nil
 		end
-		-- handle incomplete fragmented messages
-		if kind == FragmentID then
-			local id = (minor==1) and #IncompleteMessages or message.request_id
-			message = IncompleteMessages[id]
-			message.decoder:append(decoder:remains())
-			if not incomplete then                                                    --[[VERBOSE]] verbose:message(false, "got final fragment of message ",MessageType[kind],message)
-				IncompleteMessages[id] = nil
-				return kind, message, message.decoder                                   --[[VERBOSE]] else verbose:message("fragment of an incomplete message")
+		self.pending = nil
+		local fragment = (kind == FragmentID) or incomplete
+		if fragment then
+			local cursor
+			local id
+			if minor == 1 then
+				id = #IncompleteMessages
+				if kind ~= FragmentID then id = id+1 end
+			else
+				cursor = decoder.cursor
+				local ok
+				ok, id = pdecode(decoder.ulong, decoder)
+				if not ok then                                                          --[[VERBOSE]] verbose:message(false, "error in decoding request id: ",message.error)
+					return nil, id
+				end
 			end
-		elseif incomplete then                                                      --[[VERBOSE]] verbose:message("got the begin of a fragmented message")
-			message.kind = kind
-			message.decoder = decoder
-			local id = (minor==1) and #IncompleteMessages+1 or message.request_id
-			IncompleteMessages[id] = message
-		else                                                                        --[[VERBOSE]] verbose:message(false, "got message ",MessageType[kind],message or "")
+			-- handle incomplete fragmented messages
+			if kind == FragmentID then
+				local previous = IncompleteMessages[id]
+				previous:append(decoder:remains())
+				if not incomplete then
+					decoder = previous
+					kind = decoder.kind                                                   --[[VERBOSE]] verbose:message("got final fragment of message ",MessageType[kind])
+					fragment = false
+					IncompleteMessages[id] = nil                                          --[[VERBOSE]] else verbose:message("fragment of an incomplete message")
+				end
+			else                                                                      --[[VERBOSE]] verbose:message("got the begin of a fragmented message")
+				if cursor then decoder.cursor = cursor end
+				decoder.kind = kind
+				IncompleteMessages[id] = decoder
+			end
+		end
+		if not fragment then
+			local ok
+			ok, message = pdecode(decodemsgbody, self, decoder, minor, kind)
+			if not ok then                                                            --[[VERBOSE]] verbose:message(false, "error in message body decoding: ",message.error)
+				return nil, message
+			end                                                                       --[[VERBOSE]] verbose:message(false, "got message ",MessageType[kind],message or "")
 			return kind, message or minor, decoder
 		end
 	end
