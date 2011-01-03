@@ -302,7 +302,7 @@ end
 function Encoder:put(value, idltype)
 	local marshal = self[idltype._type]
 	if not marshal then
-		illegal(idltype._type, "supported type", "MARSHAL")
+		illegal(idltype._type, "supported type")
 	end
 	return marshal(self, value, idltype)
 end
@@ -342,7 +342,7 @@ local NilEnabledTypes = {
 local function numbermarshaller(format, size, align)
 	if align == nil then align = size end
 	return function (self, value)
-		checktype(value, "number", "numeric value", "MARSHAL")
+		checktype(value, "number", "numeric value")
 		self:align(align)
 		self:rawput(format, value, size)                                            --[[VERBOSE]] verbose_marshal(self, format, value)
 	end
@@ -368,15 +368,15 @@ function Encoder:boolean(value)                                                 
 end
 
 function Encoder:char(value)
-	checktype(value, "string", "character", "MARSHAL")
+	checktype(value, "string", "character")
 	if #value ~= 1 then
-		illegal(value, "character", "MARSHAL")
+		illegal(value, "character")
 	end
 	self:rawput('c', value, 1)                                                    --[[VERBOSE]] verbose_marshal(self, idl.char, value)
 end
 
 function Encoder:octet(value)
-	checktype(value, "number", "octet value", "MARSHAL")
+	checktype(value, "number", "octet value")
 	self:rawput("B", value, 1)                                                    --[[VERBOSE]] verbose_marshal(self, idl.octet, value)
 end
 
@@ -413,7 +413,7 @@ function Encoder:any(value)                                                     
 		end
 	end
 	if not idltype then
-		checktype(value, "any, unable to map to an idl type", "MARSHAL")
+		checktype(value, "any, unable to map to an idl type")
 	end                                                                           --[[VERBOSE]] verbose_marshal "[type of any]"
 	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose_marshal "[value of any]"
 	self:put(value, idltype)                                                      --[[VERBOSE]] verbose_marshal(false)
@@ -453,16 +453,14 @@ function Encoder:struct(value, idltype)                                         
 	for _, field in ipairs(idltype.fields) do
 		local val = value[field.name]                                               --[[VERBOSE]] verbose_marshal("[field ",field.name,"]")
 		if val == nil and not NilEnabledTypes[field.type._type] then
-			illegal(value,
-			        "struct value (no value for field "..field.name..")",
-			        "MARSHAL")
+			illegal(value, "struct value (no value for field "..field.name..")")
 		end
 		self:put(val, field.type)
 	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
 
 function Encoder:union(value, idltype)                                          --[[VERBOSE]] verbose_marshal(true, self, idltype)
-	checktype(value, "table", "union value", "MARSHAL")
+	checktype(value, "table", "union value")
 	local switch = value._switch
 
 	-- Marshal discriminator
@@ -478,7 +476,7 @@ function Encoder:union(value, idltype)                                          
 			if switch == nil then
 				switch = idltype.options[idltype.default+1]
 				if switch == nil then
-					illegal(value, "union value (no discriminator)", "MARSHAL")
+					illegal(value, "union value (no discriminator)")
 				end
 			end
 		end
@@ -492,7 +490,7 @@ function Encoder:union(value, idltype)                                          
 		if unionvalue == nil then
 			unionvalue = value[selection.name]
 			if unionvalue == nil then
-				illegal(value, "union value (none contents)", "MARSHAL")
+				illegal(value, "union value (none contents)")
 			end
 		end                                                                         --[[VERBOSE]] verbose_marshal("[field ",selection.name,"]")
 		self:put(unionvalue, selection.type)
@@ -501,12 +499,12 @@ end
 
 function Encoder:enum(value, idltype)                                           --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
 	value = idltype.labelvalue[value] or tonumber(value)
-	if not value then illegal(value, "enum value", "MARSHAL") end
+	if not value then illegal(value, "enum value") end
 	self:ulong(value)                                                             --[[VERBOSE]] verbose_marshal(false)
 end
 
 function Encoder:string(value)                                                  --[[VERBOSE]] verbose_marshal(true, self, idl.string, value)
-	checktype(value, "string", "string value", "MARSHAL")
+	checktype(value, "string", "string value")
 	local length = #value
 	self:ulong(length + 1)
 	self:rawput('s', value, length+1)                                             --[[VERBOSE]] verbose_marshal(false)
@@ -523,11 +521,10 @@ function Encoder:sequence(value, idltype)                                       
 		if elementtype == idl.octet or elementtype == idl.char then
 			self:rawput('c'..length, value, length)
 		else
-			illegal(value, "sequence value (table expected, got string)",
-			                      "MARSHAL")
+			illegal(value, "sequence value (table expected, got string)")
 		end
 	else
-		checktype(value, "table", "sequence value", "MARSHAL")
+		checktype(value, "table", "sequence value")
 		local length = value.n or #value
 		self:ulong(length)
 		for i = 1, length do                                                        --[[VERBOSE]] verbose_marshal("[element ",i,"]")
@@ -545,15 +542,14 @@ function Encoder:array(value, idltype)                                          
 		if elementtype == idl.octet or elementtype == idl.char then
 			local length = #value
 			if length ~= idltype.length then
-				illegal(value, "array value (wrong length)", "MARSHAL")
+				illegal(value, "array value (wrong length)")
 			end
 			self:rawput('c'..length, value, length)
 		else
-			illegal(value, "array value (table expected, got string)",
-			                      "MARSHAL")
+			illegal(value, "array value (table expected, got string)")
 		end
 	else
-		checktype(value, "table", "array value", "MARSHAL")
+		checktype(value, "table", "array value")
 		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose_marshal("[element ",i,"]")
 			self:put(value[i], elementtype)
 		end
@@ -565,13 +561,11 @@ function Encoder:typedef(value, idltype)                                        
 end
 
 function Encoder:except(value, idltype)                                         --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
-	checktype(value, "table", "except value", "MARSHAL")
+	checktype(value, "table", "except value")
 	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose_marshal("[member ", member.name, "]")
 		local val = value[member.name]
 		if val == nil and not NilEnabledTypes[member.type._type] then
-			illegal(value,
-			        "except value (no value for member "..member.name..")",
-			        "MARSHAL")
+			illegal(value, "except value (no value for member "..member.name..")")
 		end
 		self:put(val, member.type)
 	end                                                                           --[[VERBOSE]] verbose_marshal(false)
@@ -621,7 +615,7 @@ local function reserve(self, size, noupdate)
 		local newsize = size + (self[sizeindex] or MinValueTag)
 		if newsize >= MinValueTag then -- update current chunk size
 			if size >= MinValueTag then
-				illegal(data, "value too large", "MARSHAL")
+				illegal(data, "value too large")
 			end                                                                       --[[VERBOSE]] verbose_marshal("[new encoding chunk]")
 			self.ChunkSizeIndex = nil -- disable chunk encoding
 			self:long(0) --[[start a new chunk (size is initially 0)]]
@@ -686,7 +680,7 @@ local function encodevaluetype(self, value, idltype)
 		          or pindex(value, "__type")
 		          or (idltype.kind ~= abstract and idltype or nil)
 	end
-	checktype(actualtype, "idl valuetype", "value type", "MARSHAL")
+	checktype(actualtype, "idl valuetype", "value type")
 	-- collect typing information and check the type of the value
 	local types = {}
 	local type = actualtype
@@ -713,7 +707,7 @@ local function encodevaluetype(self, value, idltype)
 				end
 			end
 			if not found then
-				illegal(value, "value of type "..idltype.repID, "MARSHAL")
+				illegal(value, "value of type "..idltype.repID)
 			end
 		end
 	elseif argidx < lstidx then
@@ -792,7 +786,7 @@ function Encoder:valuetype(value, idltype)                                      
 	if value == nil then
 		self:ulong(0) -- null tag
 	else
-		checktype(value, "table", "value", "MARSHAL")
+		checktype(value, "table", "value")
 		self:indirection(encodevaluetype, value, idltype)
 	end                                                                           --[[VERBOSE]] verbose_marshal(false)
 end
@@ -870,11 +864,11 @@ local TypeCodes = { interface = 14 }
 for tcode, info in pairs(TypeCodeInfo) do TypeCodes[info.name] = tcode end
 
 function Encoder:TypeCode(value)                                                --[[VERBOSE]] verbose_marshal(true, self, idl.TypeCode, value)
-	checktype(value, "idl type", "TypeCode value", "MARSHAL")
+	checktype(value, "idl type", "TypeCode value")
 	local kind   = TypeCodes[value._type]
 	local tcinfo = TypeCodeInfo[kind]
 
-	if not kind then illegal(value, "idl type", "MARSHAL") end
+	if not kind then illegal(value, "idl type") end
 	
 	if tcinfo.type == "empty" then
 		self:ulong(kind)
@@ -926,7 +920,7 @@ function Decoder:jump(shift)
 	if shift > 0 then                                                             --[[VERBOSE]] CURSOR[self.cursor] = true; if CODEC == nil then CODEC = self end
 		self.cursor = cursor + shift                                                --[[VERBOSE]] CURSOR[self.cursor] = false
 		if self.cursor - 1 > #self.data then
-			illegal(self.data, "data stream, insufficient data", "MARSHAL")
+			illegal(self.data, "data stream, insufficient data", "badstream")
 		end
 	end
 	return cursor
@@ -940,7 +934,7 @@ function Decoder:indirection(unmarshal, ...)
 		local offset = self:long()
 		value = self.history[pos+offset]                                            --[[VERBOSE]] verbose_unmarshal(value == nil and "no " or "","previous value found at position ",pos+offset," (current: ",pos,")")
 		if value == nil then
-			illegal(offset, "indirection offset", "MARSHAL")
+			illegal(offset, "indirection offset", "badstream")
 		end
 	else
 		local pos = self.previousend+self.cursor - PrimitiveSizes.ulong             --[[VERBOSE]] verbose_unmarshal("calculating position of value for indirections, got ",pos)
@@ -952,7 +946,7 @@ end
 function Decoder:get(idltype)
 	local unmarshal = self[idltype._type]
 	if not unmarshal then
-		illegal(idltype._type, "supported type", "MARSHAL")
+		illegal(idltype._type, "supported type", "badstream")
 	end
 	return unmarshal(self, idltype)
 end
@@ -1077,7 +1071,7 @@ end
 function Decoder:enum(idltype)                                                  --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
 	local value = self:ulong() + 1
 	if value > #idltype.enumvalues then
-		illegal(value, "enumeration value", "MARSHAL")
+		illegal(value, "enumeration value", "badstream")
 	end                                                                           --[[VERBOSE]] verbose_unmarshal(false, "got ",idltype.enumvalues[value])
 	return idltype.enumvalues[value]
 end
@@ -1171,7 +1165,7 @@ local function reservedjump(self, shift)
 			self.ChunkEnd = chunkend                                                  --[[VERBOSE]] verbose_unmarshal("value encoding chunk started (end at ",chunkend,")")
 		else -- end tag
 			illegal(self.data,
-				"data stream, chunked value encoding ended prematurely", "MARSHAL")
+				"data stream, chunked value encoding ended prematurely", "badstream")
 		end
 	end
 	local result = self:jump(shift)
@@ -1179,7 +1173,7 @@ local function reservedjump(self, shift)
 		self.ChunkEnd = nil
 	elseif chunkend and self.cursor > chunkend then
 		illegal(self.data,
-			"data stream, value chunk ended prematurely", "MARSHAL")
+			"data stream, value chunk ended prematurely", "badstream")
 	end
 	self.jump = reservedjump -- re-enable chunk decoding
 	return result
@@ -1232,10 +1226,9 @@ local function decodevaluestate(self, value, idltype, repidlist, chunked)
 			end
 		end
 		if type == nil then
-			illegal(value,
-				"value, all truncatable bases are unknown", "MARSHAL")
+			illegal(value, "value, all truncatable bases are unknown", "badstream")
 		end
-		checktype(type, "idl valuetype", "type of received value", "MARSHAL")
+		checktype(type, "idl valuetype", "type of received value", "badstream")
 	end                                                                           --[[VERBOSE]] verbose_unmarshal("decoding value as a ",type.name)
 	setmetatable(value, type)
 	-- collect all base types
@@ -1274,7 +1267,7 @@ function decodevaluetype(self, pos, tag, idltype)
 	end
 	-- check tag value
 	if tag < MinValueTag or tag > MaxValueTag then
-		illegal(tag, "value tag", "MARSHAL")
+		illegal(tag, "value tag", "badstream")
 	end
 	-- decode flags contained in the tag
 	local codebase = tag%2
@@ -1297,7 +1290,7 @@ function decodevaluetype(self, pos, tag, idltype)
 	elseif repidlist ~= 0 then
 		illegal(repidlist,
 			"type information bit pattern in value tag (only 0, "
-			..SingleRepID.." and "..ListOfRepID.." are valid)", "MARSHAL")
+			..SingleRepID.." and "..ListOfRepID.." are valid)", "badstream")
 	end
 	-- create value
 	local value = {}
@@ -1346,7 +1339,7 @@ local function decodevaluebox(self, pos, tag, idltype)
 	-- check tag value
 	local chunked = (tag == MinValueTag+ChunkedFlag)
 	if not chunked and tag ~= MinValueTag then
-		illegal(tag, "value box tag", "MARSHAL")
+		illegal(tag, "value box tag", "badstream")
 	end
 	-- check if chunked decoding is necessary
 	local nesting
@@ -1376,9 +1369,9 @@ end
 
 local function decodetypeinfo(self, pos, kind)
 	local tcinfo = TypeCodeInfo[kind]
-	if tcinfo == nil then illegal(kind, "type code", "MARSHAL") end        --[[VERBOSE]] verbose_unmarshal("TypeCode defines a ",tcinfo.name)
+	if tcinfo == nil then illegal(kind, "type code", "badstream") end        --[[VERBOSE]] verbose_unmarshal("TypeCode defines a ",tcinfo.name)
 	if tcinfo.unhandled then
-		illegal(tcinfo.name, "supported type code", "MARSHAL")
+		illegal(tcinfo.name, "supported type code", "badstream")
 	end
 	if tcinfo.type == "empty" then
 		return tcinfo.idl
