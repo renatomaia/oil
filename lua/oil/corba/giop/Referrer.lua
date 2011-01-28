@@ -67,14 +67,15 @@ function IOR:equivalentto(other)
 	for i, profile in ipairs(self.profiles) do
 		local tag = profile.tag
 		local profiler = profilers[tag]
-		if profiler then
+		if profiler ~= nil then
 			for j, otherprof in ipairs(other.profiles) do
 				if otherprof.tag == tag then
 					profile = self:getprofile(i)
 					otherprof = other:getprofile(j)
 					profile = profile.decoded
 					otherprof = otherprof.decoded
-					if profile and otherprof and profiler:equivalent(profile,otherprof) then
+					if profile ~= nil and otherprof ~= nil
+					and profiler:equivalent(profile,otherprof) then
 						return true
 					end
 				end

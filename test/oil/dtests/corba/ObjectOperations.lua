@@ -18,26 +18,32 @@ fake   = oil.dtests.resolve("_", 0, "", nil, true, true)
 
 cases = {
 	_interface = {
-		[object] = { checks.similar(orb.types:lookup("::CORBA::InterfaceDef"), nil, {metatable=true}) },
+		[object] = checks.similar{
+			__type = "IDL:omg.org/CORBA/InterfaceDef:1.0",
+			__reference = {
+				type_id = "IDL:omg.org/CORBA/InterfaceDef:1.0",
+				profiles = { { tag = 0 } },
+			},
+		},
 	},
 	_component = {
-		[object] = { checks.is(nil) },
+		[object] = checks.is(nil),
 	},
 	_is_a = { "IDL:omg.org/CORBA/InterfaceDef:1.0",
-		[object] = { checks.is(true) },
+		[object] = checks.is(true),
 	},
 	_non_existent = {
-		[object] = { checks.is(false) },
-		[fake]   = { checks.is(true) },
+		[object] = checks.is(false),
+		[fake]   = checks.is(true),
 	},
 	_is_equivalent = { object,
-		[object] = { checks.is(true) },
-		[fake]   = { checks.is(false) },
+		[object] = checks.is(true),
+		[fake]   = checks.is(false),
 	},
 }
 
 for opname, opdesc in pairs(cases) do
-	for proxy, checkers in pairs(opdesc) do
+	for proxy, checker in pairs(opdesc) do
 		if proxy ~= 1 then
 			-- synchronous call
 			result = proxy[opname](proxy, unpack(opdesc))
@@ -56,7 +62,6 @@ for opname, opdesc in pairs(cases) do
 			ok, result = prot[opname](prot, unpack(opdesc))
 			checks:assert(ok, checks.is(true, "operation results indicated a unexpected error."))
 			checks:assert(result, checker)
-			
 		end
 	end
 end

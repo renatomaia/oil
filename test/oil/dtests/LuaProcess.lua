@@ -20,8 +20,6 @@ if result then
 					result, errmsg = results:test(nil, result, results) -- run code
 					if result then
 						result = "success"
-					elseif results:isfailure(errmsg) then
-						result = "failure"
 					else
 						result = "error"
 					end

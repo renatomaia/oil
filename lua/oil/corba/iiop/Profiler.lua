@@ -171,7 +171,7 @@ end
 function IIOPProfiler:equivalent(profile1, profile2)
 	return profile1.host == profile2.host and
 	       profile1.port == profile2.port and
-	       profile1.object_key == profile2.objectkey
+	       profile1.object_key == profile2.object_key
 end
 
 
