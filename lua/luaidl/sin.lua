@@ -474,8 +474,8 @@ tab_firsts.rule_94   = set_firsts { '^' }
 tab_firsts.rule_96   = tab_firsts.rule_75
 tab_firsts.rule_97   = set_firsts { '&' }
 tab_firsts.rule_99   = tab_firsts.rule_75
-tab_firsts.rule_100  = set_firsts { '>>' }
-tab_firsts.rule_101  = set_firsts { '<<' }
+tab_firsts.rule_100  = set_firsts { 'TK_SHIFT_RIGHT' }
+tab_firsts.rule_101  = set_firsts { '<' }
 tab_firsts.rule_103  = tab_firsts.rule_75
 tab_firsts.rule_104  = set_firsts { '+' }
 tab_firsts.rule_105  = set_firsts { '-' }
@@ -640,7 +640,7 @@ tab_firsts.rule_285  = set_firsts {
   'TK_ENUM', 'TK_NATIVE', 'TK_UNION', 'TK_STRUCT',
   'TK_EXCEPTION', 'TK_READONLY', 'TK_ATTRIBUTE',
   'TK_PUBLIC', 'TK_PRIVATE',
-  'TK_FACTORY'
+  'TK_FACTORY', 'TK_CONST', 
 }
 tab_firsts.rule_287  = tab_firsts.rule_207
 tab_firsts.rule_288  = set_firsts { 'TK_PUBLIC', 'TK_PRIVATE' }
@@ -696,6 +696,8 @@ tab_firsts.rule_370  = set_firsts { 'TK_RAISES' }
 
 tab_firsts.rule_377  = set_firsts { 'TK_CONTEXT' }
 
+tab_firsts.rule_380  = set_firsts { '>' }
+
 tab_firsts.rule_400  = set_firsts { 'TK_ID' }
 tab_firsts.rule_401  = set_firsts { ':' }
 
@@ -707,15 +709,18 @@ tab_follow.rule_69   = set_firsts { '>' }
 tab_follow.rule_72   = set_firsts { '>' }
 tab_follow.rule_73   = set_firsts { 'TK_ID' }
 tab_follow.rule_95   = set_firsts { '|', ']', ')' }
-tab_follow.rule_98   = set_firsts { '^', ']', ')' }
-tab_follow.rule_102  = set_firsts { '&', ']', ')' }
-tab_follow.rule_106  = set_firsts { '>>', '<<', '&', '^', '|', ']', ')' }
-tab_follow.rule_111  = set_firsts { '+', '-', '>>', '<<', '&', '^', '|', ']', ')' }
+tab_follow.rule_98   = set_firsts { '^', '|', ']', ')', 'TK_SHIFT_RIGHT' }
+tab_follow.rule_102  = set_firsts { '^', '&', '|', '+', '-', '~', '*', 
+  'TK_SHIFT_RIGHT', '/', '%', ']', ')' }
+tab_follow.rule_106  = set_firsts { '>', '<', '&', '^', '|', ']', ')', 
+  'TK_SHIFT_RIGHT' }
+tab_follow.rule_111  = set_firsts { '+', '-', '>', '<', '&', '^', '|', ']', 
+  ')', 'TK_SHIFT_RIGHT' }
 tab_follow.rule_119  = set_firsts { ')' }
 tab_follow.rule_139  = set_firsts { '}' }
 tab_follow.rule_143  = set_firsts { ';' }
 tab_follow.rule_146  = set_firsts { ',', ';' }
-tab_follow.rule_147  = set_firsts { '*', '/', '%', '+', '-', '>>', '<<', '&', '^', '|', ']', ')' }
+tab_follow.rule_147  = set_firsts { '*', '/', '%', '+', '-', '>', '<', '&', '^', '|', ']', ')' }
 tab_follow.rule_148  = set_firsts { ')' }
 tab_follow.rule_154  = set_firsts { ',', ')' }
 tab_follow.rule_157  = set_firsts { '}' }
@@ -753,6 +758,7 @@ tab_follow.rule_353  = set_firsts { '{' }
 tab_follow.rule_359  = set_firsts { '}' }
 tab_follow.rule_367  = set_firsts { ',', ')' }
 tab_follow.rule_369  = set_firsts { ')' }
+tab_follow.rule_381  = set_firsts { ',', ')', ']', ';', 'TK_ID' }
 tab_follow.rule_600  = set_firsts { 'TK_STRING_LITERAL' }
 
 local tab_follow_rule_error_msg = {
@@ -1006,6 +1012,7 @@ local TAB_VALUEEXPECTED = {
   [lex.tab_tokens.TK_PRAGMA_PREFIX]   = "<pragma prefix>",
   [lex.tab_tokens.TK_PRAGMA_ID]       = "<pragma id>",
   [lex.tab_tokens.TK_MANAGES]         = "manages",
+  [lex.tab_tokens.TK_SHIFT_RIGHT]     = ">>",  
 }
 
 local rules = {}
@@ -1055,12 +1062,12 @@ local tab_ERRORMSG ={
   [17] = "'TK_TRUE', 'TK_FALSE'",
   [18] = "'*', '/', '%', '+', '-', ']', ')', '>>', '<<', '&', '^', '|'",
   [19] = "'+', '-', '>>', '<<'",
-  [20] = "'>>', '<<', '&'",
-  [21] = "'&', '^'",
+  [20] = "'&', '|', '+', '-', '~', '*', '/', '%', ']', ')'",
+  [21] = "'^', '|', ']', ')'",
   [22] = "'^', '|'",
   [23] = "'|'",
   [24] = "you must entry with a positive integer",
-  [25] = "you must entry with a integer",
+  [25] = "you must entry with a number",
   [26] = "'<' or identifier",
   [27] = "constructed type specification ('struct', 'union' or 'enum')",
   [28] = "type specification or '}'",
@@ -1418,12 +1425,15 @@ end
 rules.const_dcl = function ()
   if (tab_firsts.rule_174[token]) then
     recognize(lex.tab_tokens.TK_CONST)
-    local type = rules.const_type()
+    local constType = rules.const_type()
     recognize(lex.tab_tokens.TK_ID)
     local name = getID()
     recognize("=")
-    local value = rules.positive_int_const(143)
-    local const = {type = type, value = value}
+    local value = rules.positive_int_const(constType, 143)
+    local const = {
+      type = constType, 
+      value = value
+    }
     define(name, TAB_TYPEID.CONST, const)
     if (callbacks.const) then
       callbacks.const(const)
@@ -1523,8 +1533,6 @@ rules.base_type_spec = function ()
   elseif (tab_firsts.rule_42[token]) then
     recognize(lex.tab_tokens.TK_VALUEBASE)
     return TAB_BASICTYPE.VALUEBASE
---  else
---    sinError(tab_ERRORMSG[05])
   end
 end
 
@@ -1548,8 +1556,6 @@ rules.floating_pt_type = function ()
   elseif (tab_firsts.rule_47[token]) then
     recognize(lex.tab_tokens.TK_DOUBLE)
     return TAB_BASICTYPE.DOUBLE
---  else
---    sinError(tab_ERRORMSG[07])
   end
 end
 
@@ -1559,8 +1565,6 @@ rules.integer_type = function (numrule)
     return TAB_BASICTYPE.SHORT
   elseif (tab_firsts.rule_49[token]) then
     return rules.unsigned_int(numrule)
---  else
---    sinError(tab_ERRORMSG[08])
   end
 end
 
@@ -1654,104 +1658,147 @@ end
 
 rules.fixed_array_size = function (tab_type_spec)
   recognize("[")
-  local const = rules.positive_int_const(147)
+  local const = rules.positive_int_const(nil, 147)
   recognize("]")
   return const
 end
 
--- without revision
---without revision
---without bitwise logical operations
-rules.positive_int_const = function (numrule)
+rules.positive_int_const = function (_type, numrule)
   if tab_firsts.rule_75[token] then
-    local const1 = rules.xor_expr(numrule)
-    rules.or_expr_l(numrule)
-    if type(const1) == "string" and string.find(const1, '^%d+$') then
-     const1 = tonumber(const1)
-     if const1 < 0 then
-        semanticError(tab_ERRORMSG[24])
-      end
-    end
-    return const1
+    local expression
+    local lExpression = rules.xor_expr(_type, numrule)
+    local rExpression = rules.or_expr_l(lExpression, _type, numrule)
+    return rExpression
   else
     sinError(tab_ERRORMSG[13])
   end
 end
 
-
-rules.xor_expr = function (numrule)
+rules.xor_expr = function (type, numrule)
   if tab_firsts.rule_93[token] then
-    local exp1 = rules.and_expr(numrule)
-    rules.xor_expr_l(numrule)
-    return exp1
---  else
---    sinError(tab_ERRORMSG[13])
+    local expression = rules.and_expr(type, numrule)
+    return rules.xor_expr_l(expression, type, numrule)
   end
 end
 
-
-rules.and_expr = function (numrule)
+rules.and_expr = function (type, numrule)
   if tab_firsts.rule_96[token] then
-    local const1 = rules.shift_expr(numrule)
-    return rules.and_expr_l(const1, numrule)
---  else
---    sinError(tab_ERRORMSG[13])
+    local expression = rules.shift_expr(type, numrule)
+    return rules.and_expr_l(expression, type, numrule)
   end
 end
 
-
-rules.shift_expr = function (numrule)
+rules.shift_expr = function (type, numrule)
   if tab_firsts.rule_99[token] then
-    local const1 = rules.add_expr(numrule)
-    return rules.shift_expr_l(const1, numrule)
---  else
---    sinError(tab_ERRORMSG[13])
+    local expression = rules.add_expr(type, numrule)
+    return rules.shift_expr_l(expression, type, numrule)
   end
 end
 
-
-rules.add_expr = function (numrule)
+rules.add_expr = function (type, numrule)
   if tab_firsts.rule_103[token] then
-    local const1 = rules.mult_expr(numrule)
-    return rules.add_expr_l(const1, numrule)
---  else
---    sinError(tab_ERRORMSG[13])
+    local expression = rules.mult_expr(type, numrule)
+    return rules.add_expr_l(expression, type, numrule)
   end
 end
 
-
-rules.mult_expr = function (numrule)
+rules.mult_expr = function (type, numrule)
   if tab_firsts.rule_107[token] then
-    local const = rules.unary_expr()
---[[   if not is_num(const) then
-      semanticError(tab_ERRORMSG[25])
-    end
-]]
-    const = rules.mult_expr_l(const, numrule)
-    return const
---  else
---    sinError(tab_ERRORMSG[13])
+    local expression = rules.unary_expr(type)
+    return rules.mult_expr_l(expression, type, numrule)
   end
 end
 
-
---semantic of '~' operator ???!!
-rules.unary_expr = function ()
+rules.unary_expr = function (type)
   if tab_firsts.rule_112[token] then
-    local op = rules.unary_operator()
-    local exp = rules.primary_expr()
-    if tonumber(exp) then
-      if op == '-' then
-        exp = tonumber('-'..exp)
-      elseif op == '+' then
-        exp = tonumber('+'..exp)
+    local operator = rules.unary_operator()
+    local token, expression = rules.primary_expr(type)
+    if tonumber(expression) then
+      expression = tonumber(expression)
+      if operator == '-' then
+        expression = tonumber('-'..expression)
+        if type._type == TAB_BASICTYPE.ULONG._type or 
+           type._type == TAB_BASICTYPE.USHORT._type or
+           type._type == TAB_BASICTYPE.ULLONG._type
+        then
+          semanticError("Only positive integer values can be assigned to "..
+            "unsigned integer type constants")
+        elseif type == TAB_BASICTYPE.OCTET then
+          semanticError("Value outside the range 0-255")
+        elseif TAB_BASICTYPE.SHORT == type and 
+          expression < -(2^15) 
+        then
+          semanticError("Value outside the range -2^15..2^15-1")
+        elseif TAB_BASICTYPE.LONG == type and 
+          expression < -(2^31) 
+        then
+          semanticError("Value outside the range -2^31..2^31-1")
+        elseif TAB_BASICTYPE.LLONG == type and 
+          expression < -(2^63) 
+        then
+          semanticError("Value outside the range -2^63..2^63-1")
+        end
+      end
+    else
+      semanticError("Unary operators ('-', '+', '~') are applicable in " ..
+        "floating-point, fixed-point and integer expressions")
+    end
+    return expression
+  elseif tab_firsts.rule_113[token] then
+    local token, expression = rules.primary_expr(type)
+    if (
+         (type ~= TAB_BASICTYPE.STRING and type ~= TAB_BASICTYPE.WSTRING) and
+         token == lex.tab_tokens.TK_STRING_LITERAL
+       )
+       or
+       (
+          (type ~= TAB_BASICTYPE.BOOLEAN) and
+          token == "boolean"
+       )
+       or
+       (
+          (type ~= TAB_BASICTYPE.OCTET) and
+          token == lex.tab_tokens.TK_OCTET
+       )
+       or
+       (
+          (type ~= TAB_BASICTYPE.CHAR) and
+          token == lex.tab_tokens.TK_CHAR
+       )
+    then
+      semanticError("There is an incorrect attribution")
+    end
+    if tonumber(expression) then
+      expression = tonumber(expression)    
+      if TAB_BASICTYPE.OCTET == type and (expression > 255) then
+        semanticError("Value outside the range 0-255")
+      elseif TAB_BASICTYPE.SHORT == type and 
+        expression > (2^15)-1 
+      then
+        semanticError("Value outside the range -2^15..2^15-1")
+      elseif TAB_BASICTYPE.LONG == type and 
+        expression > (2^31)-1 
+      then
+        semanticError("Value outside the range -2^31..2^31-1")
+      elseif TAB_BASICTYPE.LLONG == type and 
+        expression > (2^63)-1 
+      then
+        semanticError("Value outside the range -2^63..2^63-1")
+      elseif TAB_BASICTYPE.USHORT == type and 
+        expression > (2^16)-1
+      then
+        semanticError("Value outside the range 0..2^16-1")
+      elseif TAB_BASICTYPE.ULONG == type and 
+        expression > (2^32)-1
+      then
+        semanticError("Value outside the range 0..2^32-1")
+      elseif TAB_BASICTYPE.ULLONG == type and 
+        expression > (2^64)-1
+      then
+        semanticError("Value outside the range 0..2^64-1")
       end
     end
-    return exp
-  elseif tab_firsts.rule_113[token] then
-    return rules.primary_expr()
---  else
---    sinError(tab_ERRORMSG[13])
+    return expression
   end
 end
 
@@ -1765,13 +1812,10 @@ rules.unary_operator = function ()
   elseif tab_firsts.rule_116[token] then
     recognize("~")
     return '~'
---  else
---    sinError(tab_ERRORMSG[14])
   end
 end
 
-
-rules.primary_expr = function ()
+rules.primary_expr = function (_type)
   if tab_firsts.rule_117[token] then
     local value = rules.case_label_aux()
     if type(value) == 'table' then
@@ -1780,46 +1824,43 @@ rules.primary_expr = function ()
                   <boolean_type>, <floating_pt_type>, \
                   <string_type>, <wide_string_type>, <octet_type>, or <enum_type> constant.")
     end
-    return value
+    return nil, value
   elseif tab_firsts.rule_118[token] then
-    local value = rules.literal()
+    local token, value = rules.literal(_type)
     if (currentScope._type == TAB_TYPEID.UNION) then
       recognize(":")
     end
-    return value
+    return token, value
   elseif tab_firsts.rule_119[token] then
     recognize("(")
-    local const = rules.positive_int_const(119)
+    local expression = rules.positive_int_const(_type, 119)
     recognize(")")
-    return const
+    return nil, expression
   else
     sinError(tab_ERRORMSG[15])
   end
 end
 
-rules.literal = function ()
+rules.literal = function (type)
   if tab_firsts.rule_120[token] then
     recognize(lex.tab_tokens.TK_INTEGER_LITERAL)
-    return getID()
+    return lex.tab_tokens.TK_INTEGER_LITERAL, getID()
   elseif tab_firsts.rule_121[token] then
     recognize(lex.tab_tokens.TK_STRING_LITERAL)
-    return getID()
+    return lex.tab_tokens.TK_STRING_LITERAL, getID()
   elseif tab_firsts.rule_122[token] then
     recognize(lex.tab_tokens.TK_CHAR_LITERAL)
-    return getID()
+    return lex.tab_tokens.TK_CHAR_LITERAL, getID()
   elseif tab_firsts.rule_123[token] then
     recognize(lex.tab_tokens.TK_FIXED_LITERAL)
-    return getID()
+    return lex.tab_tokens.TK_FIXED_LITERAL, getID()
   elseif tab_firsts.rule_124[token] then
     recognize(lex.tab_tokens.TK_FLOAT_LITERAL)
-    return getID()
+    return lex.tab_tokens.TK_FLOAT_LITERAL, getID()
   elseif tab_firsts.rule_125[token] then
-    return rules.boolean_literal()
---  else
---    sinError(tab_ERRORMSG[16])
+    return "boolean", rules.boolean_literal()
   end
 end
-
 
 rules.boolean_literal = function ()
   if tab_firsts.rule_126[token] then
@@ -1828,37 +1869,34 @@ rules.boolean_literal = function ()
   elseif tab_firsts.rule_127[token] then
     recognize(lex.tab_tokens.TK_FALSE)
     return false
---  else
---    sinError(tab_ERRORMSG[17])
   end
 end
 
-
-rules.mult_expr_l = function (const1, numrule)
+rules.mult_expr_l = function (lExpression, type, numrule)
   if tab_firsts.rule_108[token] then
     recognize("*")
-    local const2 = rules.unary_expr()
-    if not tonumber(const2) then
+    local rExpression = rules.unary_expr(type)
+    if not (tonumber(lExpression) and tonumber(rExpression)) then
       semanticError(tab_ERRORMSG[25])
     end
-    local const = const1 * const2
-    return rules.mult_expr_l(const, numrule)
+    local expression = lExpression * rExpression
+    return rules.mult_expr_l(const, type, numrule)
   elseif tab_firsts.rule_109[token] then
     recognize("/")
-    local const2 = rules.unary_expr()
-    if not tonumber(const2) then
+    local rExpression = rules.unary_expr(type)
+    if not (tonumber(lExpression) and tonumber(rExpression)) then
       semanticError(tab_ERRORMSG[25])
     end
-    local const = const1 / const2
-    return rules.mult_expr_l(const, numrule)
+    local expression = lExpression / rExpression
+    return rules.mult_expr_l(expression, type, numrule)
   elseif tab_firsts.rule_110[token] then
     recognize("%")
-    local const2 = rules.unary_expr()
-    if not tonumber(const2) then
+    local rExpression = rules.unary_expr(type)
+    if not (tonumber(lExpression) and tonumber(rExpression)) then
       semanticError(tab_ERRORMSG[25])
     end
-    local const = math.mod(const1, const2)
-    return rules.mult_expr_l(const, numrule)
+    local expression = math.mod(lExpression, rExpression)
+    return rules.mult_expr_l(expression, type, numrule)
   elseif (
           tab_follow.rule_111[token] or
           tab_follow['rule_'..numrule][token] or
@@ -1866,29 +1904,29 @@ rules.mult_expr_l = function (const1, numrule)
          )
   then
     --empty
-    return const1
+    return lExpression
   else
     sinError(tab_ERRORMSG[18])
   end
 end
 
-rules.add_expr_l = function (const1, numrule)
+rules.add_expr_l = function (lExpression, type, numrule)
   if tab_firsts.rule_104[token] then
     recognize("+")
-    if not tonumber(const1) then
+    local rExpression = rules.mult_expr(type, numrule)
+    if not (tonumber(lExpression) and tonumber(rExpression)) then
       semanticError(tab_ERRORMSG[25])
     end
-    local const2 = rules.mult_expr(numrule)
-    local const = const1 + const2
-    return rules.add_expr_l(const, numrule)
+    local expression = lExpression + rExpression
+    return rules.add_expr_l(expression, type, numrule)
   elseif tab_firsts.rule_105[token] then
     recognize("-")
-    if not tonumber(const1) then
+    local rExpression = rules.mult_expr(type, numrule)
+    if not (tonumber(lExpression) and tonumber(rExpression)) then
       semanticError(tab_ERRORMSG[25])
     end
-    local const2 = rules.mult_expr(numrule)
-    local const = const1 - const2
-    return rules.add_expr_l(const, numrule)
+    local expression = lExpression - rExpression
+    return rules.add_expr_l(expression, type, numrule)
   elseif (
           tab_follow.rule_106[token] or
           tab_follow['rule_'..numrule][token] or
@@ -1896,21 +1934,24 @@ rules.add_expr_l = function (const1, numrule)
          )
   then
     --empty
-    return const1
+    return lExpression
   else
     sinError(tab_ERRORMSG[19])
   end
 end
 
-rules.shift_expr_l = function (const1, numrule)
+rules.shift_expr_l = function (lExpression, type, numrule)
   if tab_firsts.rule_100[token] then
-    recognize(">>")
-    rules.add_expr(numrule)
-    rules.shift_expr_l(numrule)
+    recognize(lex.tab_tokens.TK_SHIFT_RIGHT)
+    local rExpression = rules.add_expr(type, numrule)
+    local expression = lExpression.." >> "..rExpression
+    return rules.shift_expr_l(expression, type, numrule)
   elseif tab_firsts.rule_101[token] then
-    recognize("<<")
-    rules.add_expr(numrule)
-    rules.shift_expr_l(numrule)
+    recognize("<")
+    recognize("<")
+    local rExpression = rules.add_expr(type, numrule)
+    local expression = lExpression.." << "..rExpression
+    return rules.shift_expr_l(expression, type, numrule)
   elseif (
           tab_follow.rule_102[token] or
           tab_follow['rule_'..numrule][token] or
@@ -1918,21 +1959,18 @@ rules.shift_expr_l = function (const1, numrule)
          )
   then
     --empty
-    return const1
+    return lExpression
   else
     sinError(tab_ERRORMSG[20])
   end
 end
 
-rules.and_expr_l = function (const1, numrule)
+rules.and_expr_l = function (lExpression, type, numrule)
   if tab_firsts.rule_97[token] then
     recognize("&")
---[[   if not is_num(const1) then
-      semanticError(tab_ERRORMSG[25])
-    end]]
-    local const2 = rulesshift_expr(numrule)
---    local const = const1 and const2
-    return rules.and_expr_l(const, numrule)
+    local rExpression = rules.shift_expr(type, numrule)
+    local expression = lExpression.." & "..rExpression
+    return rules.and_expr_l(expression, type, numrule)
   elseif (
           tab_follow.rule_98[token] or
           tab_follow['rule_'..numrule][token] or
@@ -1940,17 +1978,18 @@ rules.and_expr_l = function (const1, numrule)
          )
   then
     --empty
-    return const1
+    return lExpression
   else
     sinError(tab_ERRORMSG[21])
   end
 end
 
-rules.xor_expr_l = function (numrule)
+rules.xor_expr_l = function (lExpression, type, numrule)
   if tab_firsts.rule_94[token] then
     recognize("^")
-    rules.and_expr(numrule)
-    rules.xor_expr_l(numrule)
+    local rExpression = rules.and_expr(type, numrule)
+    local expression = lExpression.." ^ "..rExpression
+    return rules.xor_expr_l(expression, type, numrule)
   elseif (
           tab_follow.rule_95[token] or
           tab_follow['rule_'..numrule][token] or
@@ -1958,22 +1997,25 @@ rules.xor_expr_l = function (numrule)
          )
   then
     --empty
+    return lExpression
   else
     sinError(tab_ERRORMSG[22])
   end
 end
 
-rules.or_expr_l = function (numrule)
+rules.or_expr_l = function (lExpression, type, numrule)
   if tab_firsts.rule_91[token] then
     recognize("|")
-    rules.xor_expr(numrule)
-    rules.or_expr_l(numrule)
+    local rExpression = rules.xor_expr(type, numrule)
+    local expression = lExpression.." | "..rExpression
+    return rules.or_expr_l(expression, type, numrule)
   elseif (
           tab_follow['rule_'..numrule][token] or
           (getID() == ':')
          )
   then
     --empty
+    return lExpression
   else
     sinError(tab_ERRORMSG[23])
   end
@@ -2003,7 +2045,7 @@ end
 rules.sequence_type_tail = function (tab_type_spec)
   if tab_firsts.rule_69[token] then
     recognize(",")
-    local const = rules.positive_int_const(69)
+    local const = rules.positive_int_const(nil, 69)
     recognize(">")
     return { _type = TAB_TYPEID.SEQUENCE, elementtype = tab_type_spec, maxlength = const  }
   elseif tab_firsts.rule_70[token] then
@@ -2025,7 +2067,7 @@ end
 rules.string_type_tail = function ()
   if tab_firsts.rule_72[token] then
     recognize("<")
-    local const = positive_int_const(72)
+    local const = positive_int_const(nil, 72)
     recognize(">")
     return const
   elseif tab_follow.rule_73[token] then
@@ -2039,9 +2081,9 @@ end
 rules.fixed_pt_type = function ()
   recognize(lex.tab_tokens.TK_FIXED)
   recognize("<")
-  local const1 = rules.positive_int_const(74)
+  local const1 = rules.positive_int_const(nil, 74)
   recognize(",")
-  local const2 = rules.positive_int_const(74)
+  local const2 = rules.positive_int_const(nil, 74)
   recognize(">")
   return TAB_BASICTYPE.FIXED
 end
@@ -2186,7 +2228,7 @@ end
 rules.case_label = function (cases)
   if (tab_firsts.rule_162[token]) then
     recognize(lex.tab_tokens.TK_CASE)
-    local value = rules.positive_int_const(162)
+    local value = rules.positive_int_const(nil, 162)
     table.insert(cases, value)
   elseif (tab_firsts.rule_163[token]) then
     recognize(lex.tab_tokens.TK_DEFAULT)
