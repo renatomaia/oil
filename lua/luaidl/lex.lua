@@ -34,7 +34,7 @@ tab_tokens = {
   TK_WSTRING = 321, TK_INTEGER_LITERAL = 322, TK_FLOAT_LITERAL = 323,
   TK_CHAR_LITERAL = 324, TK_WCHAR_LITERAL = 325, TK_STRING_LITERAL = 326,
   TK_WSTRING_LITERAL = 327, TK_FIXED_LITERAL = 328, TK_PRAGMA_PREFIX = 329,
-  TK_PRAGMA_ID = 330, TK_MANAGES = 332,
+  TK_PRAGMA_ID = 330, TK_MANAGES = 332, TK_SHIFT_RIGHT = 333,
 }
 
 local tab_keywords = {
@@ -238,6 +238,16 @@ function lexer(stridl)
 
     if not lookahead then
       init()
+      return token
+    elseif (lookahead == '>') then
+      lookahead = getchar(stridl)
+      tokenvalue = '>'
+      token = tokenvalue
+      if (lookahead == '>') then
+        token = tab_tokens.TK_SHIFT_RIGHT
+        tokenvalue = ">>"
+        lookahead = getchar(stridl)
+      end
       return token
     elseif (lookahead == '#') then
       lookahead = getchar(stridl)
