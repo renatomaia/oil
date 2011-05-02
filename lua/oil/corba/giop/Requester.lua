@@ -140,8 +140,8 @@ function GIOPRequester:dorequest(request)
 	request.exceptions = operation.exceptions
 	if request.sync_scope == nil then
 		request.sync_scope = operation.oneway and "channel" or "servant"
-	end                                                                           --[[VERBOSE]] verbose:invoke("new request to ",request.object_key,":",request.operation)
-	local reference = request.reference
+	end
+	local reference = request.reference                                           --[[VERBOSE]] verbose:invoke("new request to ",reference.object_key,":",request.operation)
 	local channel, except = self:getchannel(reference)
 	if channel then
 		request.object_key = reference.object_key

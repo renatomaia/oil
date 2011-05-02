@@ -13,5 +13,4 @@ local results = Results{
 		time = socket.gettime,
 	},
 }
-results.viewer.maxdepth = nil
 results:test("OiL", OiL, results)

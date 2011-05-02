@@ -19,7 +19,7 @@ function current(self)
 end
 
 function start(self, func, ...)
-	return yield("resume", create(func), ...)
+	return yield("next", create(func), ...)
 end
 
 function remove(self, thread)

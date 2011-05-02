@@ -3,7 +3,7 @@
 -- Title  : Mapping of Lua values into Common Data Representation (CDR)
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"; local CURSOR, CODEC, PREFIXSHIFT, SIZEINDEXPOS, verbose_marshal, verbose_unmarshal = {}
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"; local CURSOR, CODEC, PREFIXSHIFT, SIZEINDEXPOS = {}, nil, 0
 local getmetatable = _G.getmetatable
 local ipairs = _G.ipairs
 local pairs = _G.pairs
@@ -18,7 +18,7 @@ local huge = math.huge
 
 local table = require "table"
 local concat = table.concat
-local unpack = table.unpack
+local unpack = table.unpack or _G.unpack
 
 local struct = require "struct"
 local binpack = struct.pack
@@ -220,7 +220,7 @@ TypeCodeInfo = {
 	[IndirectionTag] = {name = "indirection marker", type = "fake"},
 }
 
-local PrimitiveSizes = {
+PrimitiveSizes = {
 	boolean    =  1,
 	char       =  1,
 	octet      =  1,
@@ -312,10 +312,10 @@ function Encoder:indirection(marshal, value, ...)
 	local previous = history[marshal][value]
 	if previous then
 		self:ulong(IndirectionTag)
-		self:long(previous - (self.previousend+self.cursor))                        --[[VERBOSE]] verbose_marshal("indirection to "..((self.previousend+self.cursor)-previous).." bytes away (",(self.previousend+self.cursor),"-",previous,").")
+		self:long(previous - (self.previousend+self.cursor))                        --[[VERBOSE]] verbose:marshal("indirection to "..((self.previousend+self.cursor)-previous).." bytes away (",(self.previousend+self.cursor),"-",previous,").")
 	else
 		local shift = alignment(self, PrimitiveSizes.ulong)
-		history[marshal][value] = (self.previousend+self.cursor+shift)              --[[VERBOSE]] verbose_marshal("registering position at ",history[marshal][value]," for future indirection")
+		history[marshal][value] = (self.previousend+self.cursor+shift)              --[[VERBOSE]] verbose:marshal("registering position at ",history[marshal][value]," for future indirection")
 		marshal(self, value, ...)
 	end
 end
@@ -344,7 +344,7 @@ local function numbermarshaller(format, size, align)
 	return function (self, value)
 		checktype(value, "number", "numeric value")
 		self:align(align)
-		self:rawput(format, value, size)                                            --[[VERBOSE]] verbose_marshal(self, format, value)
+		self:rawput(format, value, size)                                            --[[VERBOSE]] verbose:marshal(self, format, value)
 	end
 end
 
@@ -360,11 +360,11 @@ Encoder.float      = numbermarshaller("f" , PrimitiveSizes.float     )
 Encoder.double     = numbermarshaller("d" , PrimitiveSizes.double    )
 Encoder.longdouble = numbermarshaller("D" , PrimitiveSizes.longdouble, 8)
 	
-function Encoder:boolean(value)                                                 --[[VERBOSE]] verbose_marshal(true, self, idl.boolean)
+function Encoder:boolean(value)                                                 --[[VERBOSE]] verbose:marshal(true, self, idl.boolean)
 	if value
 		then self:octet(1)
 		else self:octet(0)
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
 function Encoder:char(value)
@@ -372,12 +372,12 @@ function Encoder:char(value)
 	if #value ~= 1 then
 		illegal(value, "character")
 	end
-	self:rawput('c', value, 1)                                                    --[[VERBOSE]] verbose_marshal(self, idl.char, value)
+	self:rawput('c', value, 1)                                                    --[[VERBOSE]] verbose:marshal(self, idl.char, value)
 end
 
 function Encoder:octet(value)
 	checktype(value, "number", "octet value")
-	self:rawput("B", value, 1)                                                    --[[VERBOSE]] verbose_marshal(self, idl.octet, value)
+	self:rawput("B", value, 1)                                                    --[[VERBOSE]] verbose:marshal(self, idl.octet, value)
 end
 
 local DefaultMapping = {
@@ -386,7 +386,7 @@ local DefaultMapping = {
 	boolean = idl.boolean,
 	["nil"] = idl.null,
 }
-function Encoder:any(value)                                                     --[[VERBOSE]] verbose_marshal(true, self, idl.any)
+function Encoder:any(value)                                                     --[[VERBOSE]] verbose:marshal(true, self, idl.any)
 	local luatype = type(value)
 	local idltype = DefaultMapping[luatype]
 	if not idltype then
@@ -414,13 +414,13 @@ function Encoder:any(value)                                                     
 	end
 	if not idltype then
 		checktype(value, "any, unable to map to an idl type")
-	end                                                                           --[[VERBOSE]] verbose_marshal "[type of any]"
-	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose_marshal "[value of any]"
-	self:put(value, idltype)                                                      --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal "[type of any]"
+	self:TypeCode(idltype)                                                        --[[VERBOSE]] verbose:marshal "[value of any]"
+	self:put(value, idltype)                                                      --[[VERBOSE]] verbose:marshal(false)
 end
 
 local NullReference = { type_id = "", profiles = { n=0 } }
-function Encoder:Object(value, idltype)                                         --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+function Encoder:Object(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	local reference
 	if value == nil then
 		reference = NullReference
@@ -428,38 +428,38 @@ function Encoder:Object(value, idltype)                                         
 		local metatable = getmetatable(value)
 		if metatable == IOR
 		or metatable and metatable.__type == IOR
-		then                                                                        --[[VERBOSE]] verbose_marshal("using IOR provided by the application")
+		then                                                                        --[[VERBOSE]] verbose:marshal("using IOR provided by the application")
 			reference = value
 		else
 			reference = (type(value)=="table") and value.__reference or nil
 			if not reference then
 				local servants = self.context.servants
-				if servants then                                                        --[[VERBOSE]] verbose_marshal(true, "implicit servant creation")
-					value = assert(servants:register{__servant=value,__type=idltype})     --[[VERBOSE]] verbose_marshal(false)
+				if servants then                                                        --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
+					value = assert(servants:register{__servant=value,__type=idltype})     --[[VERBOSE]] verbose:marshal(false)
 					if not value.__type:is_a(idltype.repID) then
 						illegal(value, idltype.repID..", got a "..objtype.repID,"BAD_PARAM")
 					end
 					reference = value.__reference
 				else
 					illegal(value, "Object, unable to create from value", "MARHSAL")
-				end                                                                     --[[VERBOSE]] else verbose_marshal("using proxy or servant object")
+				end                                                                     --[[VERBOSE]] else verbose:marshal("using proxy or servant object")
 			end
 		end
 	end
-	self:struct(reference, IOR)                                                   --[[VERBOSE]] verbose_marshal(false)
+	self:struct(reference, IOR)                                                   --[[VERBOSE]] verbose:marshal(false)
 end
 
-function Encoder:struct(value, idltype)                                         --[[VERBOSE]] verbose_marshal(true, self, idltype)
+function Encoder:struct(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype)
 	for _, field in ipairs(idltype.fields) do
-		local val = value[field.name]                                               --[[VERBOSE]] verbose_marshal("[field ",field.name,"]")
+		local val = value[field.name]                                               --[[VERBOSE]] verbose:marshal("[field ",field.name,"]")
 		if val == nil and not NilEnabledTypes[field.type._type] then
 			illegal(value, "struct value (no value for field "..field.name..")")
 		end
 		self:put(val, field.type)
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function Encoder:union(value, idltype)                                          --[[VERBOSE]] verbose_marshal(true, self, idltype)
+function Encoder:union(value, idltype)                                          --[[VERBOSE]] verbose:marshal(true, self, idltype)
 	checktype(value, "table", "union value")
 	local switch = value._switch
 
@@ -480,7 +480,7 @@ function Encoder:union(value, idltype)                                          
 				end
 			end
 		end
-	end                                                                           --[[VERBOSE]] verbose_marshal "[union switch]"
+	end                                                                           --[[VERBOSE]] verbose:marshal "[union switch]"
 	self:put(switch, idltype.switch)
 	
 	local selection = idltype.selection[switch]
@@ -492,25 +492,25 @@ function Encoder:union(value, idltype)                                          
 			if unionvalue == nil then
 				illegal(value, "union value (none contents)")
 			end
-		end                                                                         --[[VERBOSE]] verbose_marshal("[field ",selection.name,"]")
+		end                                                                         --[[VERBOSE]] verbose:marshal("[field ",selection.name,"]")
 		self:put(unionvalue, selection.type)
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function Encoder:enum(value, idltype)                                           --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+function Encoder:enum(value, idltype)                                           --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	value = idltype.labelvalue[value] or tonumber(value)
 	if not value then illegal(value, "enum value") end
-	self:ulong(value)                                                             --[[VERBOSE]] verbose_marshal(false)
+	self:ulong(value)                                                             --[[VERBOSE]] verbose:marshal(false)
 end
 
-function Encoder:string(value)                                                  --[[VERBOSE]] verbose_marshal(true, self, idl.string, value)
+function Encoder:string(value)                                                  --[[VERBOSE]] verbose:marshal(true, self, idl.string, value)
 	checktype(value, "string", "string value")
 	local length = #value
 	self:ulong(length + 1)
-	self:rawput('s', value, length+1)                                             --[[VERBOSE]] verbose_marshal(false)
+	self:rawput('s', value, length+1)                                             --[[VERBOSE]] verbose:marshal(false)
 end
 
-function Encoder:sequence(value, idltype)                                       --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+function Encoder:sequence(value, idltype)                                       --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	local elementtype = idltype.elementtype
 	if type(value) == "string" then
 		local length = #value
@@ -527,13 +527,13 @@ function Encoder:sequence(value, idltype)                                       
 		checktype(value, "table", "sequence value")
 		local length = value.n or #value
 		self:ulong(length)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose_marshal("[element ",i,"]")
+		for i = 1, length do                                                        --[[VERBOSE]] verbose:marshal("[element ",i,"]")
 			self:put(value[i], elementtype) 
 		end
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function Encoder:array(value, idltype)                                          --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+function Encoder:array(value, idltype)                                          --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	local elementtype = idltype.elementtype
 	if type(value) == "string" then
 		while elementtype._type == "typedef" do
@@ -550,25 +550,25 @@ function Encoder:array(value, idltype)                                          
 		end
 	else
 		checktype(value, "table", "array value")
-		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose_marshal("[element ",i,"]")
+		for i = 1, idltype.length do                                                --[[VERBOSE]] verbose:marshal("[element ",i,"]")
 			self:put(value[i], elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
-function Encoder:typedef(value, idltype)                                        --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
-	self:put(value, idltype.original_type)                                        --[[VERBOSE]] verbose_marshal(false)
+function Encoder:typedef(value, idltype)                                        --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
+	self:put(value, idltype.original_type)                                        --[[VERBOSE]] verbose:marshal(false)
 end
 
-function Encoder:except(value, idltype)                                         --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+function Encoder:except(value, idltype)                                         --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	checktype(value, "table", "except value")
-	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose_marshal("[member ", member.name, "]")
+	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose:marshal("[member ", member.name, "]")
 		local val = value[member.name]
 		if val == nil and not NilEnabledTypes[member.type._type] then
 			illegal(value, "except value (no value for member "..member.name..")")
 		end
 		self:put(val, member.type)
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
 Encoder.interface = Encoder.Object
@@ -583,7 +583,7 @@ local function pindex(indexable, field)
 	if ok then return value end
 end
 
-function Encoder:abstract_interface(value, idltype)                             --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+function Encoder:abstract_interface(value, idltype)                             --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	-- get type of the value
 	local actualtype = getmetatable(value)
 	if not istype(actualtype) then
@@ -593,11 +593,11 @@ function Encoder:abstract_interface(value, idltype)                             
 	local isvalue = (value == nil)
 	             or (actualtype and actualtype._type == "valuetype")
 	self:boolean(not isvalue)
-	if isvalue then                                                               --[[VERBOSE]] verbose_marshal("value encoded as copied value")
+	if isvalue then                                                               --[[VERBOSE]] verbose:marshal("value encoded as copied value")
 		self:valuetype(value, ValueBase)
-	else                                                                          --[[VERBOSE]] verbose_marshal("value encoded as object reference")
+	else                                                                          --[[VERBOSE]] verbose:marshal("value encoded as object reference")
 		self:interface(value, idltype)
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
 -- ValueTypes ------------------------------------------------------------------
@@ -616,7 +616,7 @@ local function reserve(self, size, noupdate)
 		if newsize >= MinValueTag then -- update current chunk size
 			if size >= MinValueTag then
 				illegal(data, "value too large")
-			end                                                                       --[[VERBOSE]] verbose_marshal("[new encoding chunk]")
+			end                                                                       --[[VERBOSE]] verbose:marshal("[new encoding chunk]")
 			self.ChunkSizeIndex = nil -- disable chunk encoding
 			self:long(0) --[[start a new chunk (size is initially 0)]]
 			sizeindex = self.index-1
@@ -718,16 +718,16 @@ local function encodevaluetype(self, value, idltype)
 	self.ChunkSizeIndex = nil -- end current chunk, if any
 	local chunked = nesting > 0 or truncatable
 	local tag = MinValueTag + (chunked and ChunkedFlag or 0)
-	if actualtype == idltype and nesting == 0 then                                --[[VERBOSE]] verbose_marshal("[value tag: no truncatable bases]")
+	if actualtype == idltype and nesting == 0 then                                --[[VERBOSE]] verbose:marshal("[value tag: no truncatable bases]")
 		self:ulong(tag)
-	elseif chunked then --[[nesting > 0 or truncatable]]                          --[[VERBOSE]] verbose_marshal("[value tag: lists of ",lstidx," truncatable bases]")
+	elseif chunked then --[[nesting > 0 or truncatable]]                          --[[VERBOSE]] verbose:marshal("[value tag: lists of ",lstidx," truncatable bases]")
 		self:ulong(tag+ListOfRepID)
 		self:long(lstidx)
-		for i = 1, lstidx do                                                        --[[VERBOSE]] verbose_marshal("[repID of truncatable base ",i,"]")
+		for i = 1, lstidx do                                                        --[[VERBOSE]] verbose:marshal("[repID of truncatable base ",i,"]")
 			self:indirection(self.string, types[i].repID)
 		end
 	else -- non-truncatable
-		self:ulong(tag+SingleRepID)                                                 --[[VERBOSE]] verbose_marshal("[value tag: single truncatable base]")
+		self:ulong(tag+SingleRepID)                                                 --[[VERBOSE]] verbose:marshal("[value tag: single truncatable base]")
 		self:indirection(self.string, types[1].repID)
 	end
 	-- check if chunked encoding is necessary
@@ -745,11 +745,11 @@ local function encodevaluetype(self, value, idltype)
 	end
 	-- encode value state
 	local membertype, membervalue
-	for i = #types, 1, -1 do                                                      --[[VERBOSE]] verbose_marshal("[base value ",types[i].name,"]")
+	for i = #types, 1, -1 do                                                      --[[VERBOSE]] verbose:marshal("[base value ",types[i].name,"]")
 		local members = types[i].members
 		local count = #members
 		for j = 1, count do
-			local member = members[j]                                                 --[[VERBOSE]] verbose_marshal("[field ",member.name,"]")
+			local member = members[j]                                                 --[[VERBOSE]] verbose:marshal("[field ",member.name,"]")
 			membertype = member.type         -- used in optimization below
 			membervalue = value[member.name]
 			self:put(membervalue, membertype)
@@ -763,8 +763,8 @@ local function encodevaluetype(self, value, idltype)
 		and membertype._type == "valuetype"
 		and membervalue ~= nil
 		and self.ChunkSizeIndex == nil then
-			self[self.index-1] = endtag      --[[last member was a ValueType]]        --[[VERBOSE]] verbose_marshal("[end tag of nested value updated to ",endtag,"] (optimized encoding)")
-		else                                                                        --[[VERBOSE]] verbose_marshal("[end tag of encoded value]")
+			self[self.index-1] = endtag      --[[last member was a ValueType]]        --[[VERBOSE]] verbose:marshal("[end tag of nested value updated to ",endtag,"] (optimized encoding)")
+		else                                                                        --[[VERBOSE]] verbose:marshal("[end tag of encoded value]")
 			self.ChunkSizeIndex = nil        -- terminate current chunk
 			self:long(endtag)
 		end
@@ -782,18 +782,18 @@ local function encodevaluetype(self, value, idltype)
 	end
 end
 
-function Encoder:valuetype(value, idltype)                                      --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+function Encoder:valuetype(value, idltype)                                      --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	if value == nil then
 		self:ulong(0) -- null tag
 	else
 		checktype(value, "table", "value")
 		self:indirection(encodevaluetype, value, idltype)
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
 -- ValueBox --------------------------------------------------------------------
 
-local function encodevaluebox(self, value, idltype)                             --[[VERBOSE]] verbose_marshal("[value tag: boxed]")
+local function encodevaluebox(self, value, idltype)                             --[[VERBOSE]] verbose:marshal("[value tag: boxed]")
 	local nesting = self.ValueTypeNesting
 	-- encode tag
 	self.ChunkSizeIndex = nil -- end current chunk, if any
@@ -806,7 +806,7 @@ local function encodevaluebox(self, value, idltype)                             
 	-- encode value
 	self:put(value, idltype.original_type)
 	-- finalize encoding of value
-	if nesting > 0 then                                                           --[[VERBOSE]] verbose_marshal("[end tag of encoded value]")
+	if nesting > 0 then                                                           --[[VERBOSE]] verbose:marshal("[end tag of encoded value]")
 		self.ChunkSizeIndex = nil         -- terminate current chunk
 		self:long(-(nesting+1))           -- encode chunk end tag
 		self.ValueTypeNesting = nesting-1 -- decrease value nesting level
@@ -814,12 +814,12 @@ local function encodevaluebox(self, value, idltype)                             
 	end
 end
 
-function Encoder:valuebox(value, idltype)                                       --[[VERBOSE]] verbose_marshal(true, self, idltype, value)
+function Encoder:valuebox(value, idltype)                                       --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
 	if value == nil then
 		self:ulong(0) -- null tag
 	else
 		self:indirection(encodevaluebox, value, idltype)
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
 -- TypeCodes -------------------------------------------------------------------
@@ -827,7 +827,7 @@ end
 local function encodetypeinfo(self, value, kind, tcinfo)
 	self:ulong(kind)
 	local tcparams = value.tcparams
-	if tcparams == nil then                                                       --[[VERBOSE]] verbose_marshal "[parameters values]"
+	if tcparams == nil then                                                       --[[VERBOSE]] verbose:marshal "[parameters values]"
 		-- create encoder for encapsulated stream
 		local cursor = self.previousend+self.cursor
 		local history
@@ -846,16 +846,16 @@ local function encodetypeinfo(self, value, kind, tcinfo)
 		encoder:boolean(NativeEndianess) -- encapsulated stream includes endianess
 		-- encode parameters using the encapsulated encoder
 		encoder:struct(value, tcinfo.parameters)
-		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose_marshal "[mutable parameters values]"
+		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose:marshal "[mutable parameters values]"
 			for _, param in ipairs(tcinfo.mutable:setup(value)) do
 				encoder:put(value[param.name], param.type)
 			end
-		end                                                                         --[[VERBOSE]] verbose_marshal(true, "[parameters encapsulation]")
+		end                                                                         --[[VERBOSE]] verbose:marshal(true, "[parameters encapsulation]")
 		-- get encapsulated stream and save for future reuse
 		tcparams = encoder:getdata()
 		if not self.encodingTypeCode then
 			value.tcparams = tcparams
-		end                                                                         --[[VERBOSE]] verbose_marshal(false)
+		end                                                                         --[[VERBOSE]] verbose:marshal(false)
 	end
 	self:sequence(tcparams, OctetSeq)
 end
@@ -863,7 +863,7 @@ end
 local TypeCodes = { interface = 14 }
 for tcode, info in pairs(TypeCodeInfo) do TypeCodes[info.name] = tcode end
 
-function Encoder:TypeCode(value)                                                --[[VERBOSE]] verbose_marshal(true, self, idl.TypeCode, value)
+function Encoder:TypeCode(value)                                                --[[VERBOSE]] verbose:marshal(true, self, idl.TypeCode, value)
 	checktype(value, "idl type", "TypeCode value")
 	local kind   = TypeCodes[value._type]
 	local tcinfo = TypeCodeInfo[kind]
@@ -874,12 +874,12 @@ function Encoder:TypeCode(value)                                                
 		self:ulong(kind)
 	elseif tcinfo.type == "simple" then
 		self:ulong(kind)
-		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose_marshal("[parameter ",param.name,"]")
+		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose:marshal("[parameter ",param.name,"]")
 			self:put(value[param.name], param.type)
 		end
 	else
 		self:indirection(encodetypeinfo, value, kind, tcinfo)
-	end                                                                           --[[VERBOSE]] verbose_marshal(false)
+	end                                                                           --[[VERBOSE]] verbose:marshal(false)
 end
 
 --------------------------------------------------------------------------------
@@ -929,15 +929,15 @@ end
 function Decoder:indirection(unmarshal, ...)
 	local value
 	local tag = self:ulong()
-	if tag == IndirectionTag then                                                 --[[VERBOSE]] verbose_unmarshal("indirection tag found")
+	if tag == IndirectionTag then                                                 --[[VERBOSE]] verbose:unmarshal("indirection tag found")
 		local pos = self.previousend+self.cursor
 		local offset = self:long()
-		value = self.history[pos+offset]                                            --[[VERBOSE]] verbose_unmarshal(value == nil and "no " or "","previous value found at position ",pos+offset," (current: ",pos,")")
+		value = self.history[pos+offset]                                            --[[VERBOSE]] verbose:unmarshal(value == nil and "no " or "","previous value found at position ",pos+offset," (current: ",pos,")")
 		if value == nil then
 			illegal(offset, "indirection offset", "badstream")
 		end
 	else
-		local pos = self.previousend+self.cursor - PrimitiveSizes.ulong             --[[VERBOSE]] verbose_unmarshal("calculating position of value for indirections, got ",pos)
+		local pos = self.previousend+self.cursor - PrimitiveSizes.ulong             --[[VERBOSE]] verbose:unmarshal("calculating position of value for indirections, got ",pos)
 		value = unmarshal(self, pos, tag, ...)
 	end
 	return value
@@ -970,7 +970,7 @@ local function numberunmarshaller(format, size, align)
 	if align == nil then align = size end
 	return function(self)
 		self:align(align)
-		local cursor = self:jump(size)                                              --[[VERBOSE]] verbose_unmarshal(self, format, self.unpack(format, self.data, cursor))
+		local cursor = self:jump(size)                                              --[[VERBOSE]] verbose:unmarshal(self, format, self.unpack(format, self.data, cursor))
 		return self.unpack(format, self.data, cursor)
 	end
 end
@@ -987,22 +987,22 @@ Decoder.float      = numberunmarshaller("f" , PrimitiveSizes.float     )
 Decoder.double     = numberunmarshaller("d" , PrimitiveSizes.double    )
 Decoder.longdouble = numberunmarshaller("D" , PrimitiveSizes.longdouble, 8)
 
-function Decoder:boolean()                                                      --[[VERBOSE]] verbose_unmarshal(true, self, idl.boolean)
-	return (self:octet() ~= 0)                                                    --[[VERBOSE]],verbose_unmarshal(false)
+function Decoder:boolean()                                                      --[[VERBOSE]] verbose:unmarshal(true, self, idl.boolean)
+	return (self:octet() ~= 0)                                                    --[[VERBOSE]],verbose:unmarshal(false)
 end
 
 function Decoder:char()
-	local cursor = self:jump(1) --[[check if there is enougth bytes]]             --[[VERBOSE]] verbose_unmarshal(self, idl.char, self.data:sub(cursor, cursor))
+	local cursor = self:jump(1) --[[check if there is enougth bytes]]             --[[VERBOSE]] verbose:unmarshal(self, idl.char, self.data:sub(cursor, cursor))
 	return self.data:sub(cursor, cursor)
 end
 
 function Decoder:octet()
-	local cursor = self:jump(1) --[[check if there is enougth bytes]]             --[[VERBOSE]] verbose_unmarshal(self, idl.octet, self.unpack("B", self.data, cursor))
+	local cursor = self:jump(1) --[[check if there is enougth bytes]]             --[[VERBOSE]] verbose:unmarshal(self, idl.octet, self.unpack("B", self.data, cursor))
 	return self.unpack("B", self.data, cursor)
 end
 
-function Decoder:any()                                                          --[[VERBOSE]] verbose_unmarshal(true, self, idl.any) verbose:unmarshal "[type of any]"
-	local idltype = self:TypeCode()                                               --[[VERBOSE]] verbose_unmarshal "[value of any]"
+function Decoder:any()                                                          --[[VERBOSE]] verbose:unmarshal(true, self, idl.any) verbose:unmarshal "[type of any]"
+	local idltype = self:TypeCode()                                               --[[VERBOSE]] verbose:unmarshal "[value of any]"
 	local value = self:get(idltype)
 	if type(value) == "table" then
 		value._anyval = value
@@ -1012,7 +1012,7 @@ function Decoder:any()                                                          
 			_anyval = value,
 			_anytype = idltype,
 		}, idltype)
-	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return value
 end
 
@@ -1022,16 +1022,16 @@ function Decoder:IOR()
 	return ior
 end
 
-function Decoder:Object(idltype)                                                --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+function Decoder:Object(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local ior = self:IOR()
-	if ior.type_id == "" then                                                     --[[VERBOSE]] verbose_unmarshal "got a null reference"
+	if ior.type_id == "" then                                                     --[[VERBOSE]] verbose:unmarshal "got a null reference"
 		ior = nil
 	else
 		if self.localrefs ~= "proxy" then
 			local servants = self.context.servants
 			if servants ~= nil then
 				local entry = servants:localref(ior)
-				if entry ~= nil then                                                      --[[VERBOSE]] verbose_unmarshal("reference to local object with key '",objkey,"' resolved")
+				if entry ~= nil then                                                      --[[VERBOSE]] verbose:unmarshal("reference to local object with key '",objkey,"' resolved")
 					if self.localrefs == "implementation" then
 						entry = entry.__servant
 					end
@@ -1040,108 +1040,108 @@ function Decoder:Object(idltype)                                                
 			end
 		end
 		local proxies = self.context.proxies
-		if proxies ~= nil then                                                        --[[VERBOSE]] verbose_unmarshal("retrieve proxy for referenced object")
+		if proxies ~= nil then                                                        --[[VERBOSE]] verbose:unmarshal("retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
 			return assert(proxies:newproxy{ __reference=ior, __type=idltype })
 		end
-	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return ior
 end
 
-function Decoder:struct(idltype)                                                --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+function Decoder:struct(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local value = {}
-	for _, field in ipairs(idltype.fields) do                                     --[[VERBOSE]] verbose_unmarshal("[field ",field.name,"]")
+	for _, field in ipairs(idltype.fields) do                                     --[[VERBOSE]] verbose:unmarshal("[field ",field.name,"]")
 		value[field.name] = self:get(field.type)
-	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return setmetatable(value, idltype)
 end
 
-function Decoder:union(idltype)                                                 --[[VERBOSE]] verbose_unmarshal(true, self, idltype) verbose:unmarshal "[union switch]"
+function Decoder:union(idltype)                                                 --[[VERBOSE]] verbose:unmarshal(true, self, idltype) verbose:unmarshal "[union switch]"
 	local switch = self:get(idltype.switch)
 	local value = { _switch = switch }
 	local option = idltype.selection[switch] or
 	               idltype.options[idltype.default+1]
-	if option then                                                                --[[VERBOSE]] verbose_unmarshal("[field ",option.name,"]")
+	if option then                                                                --[[VERBOSE]] verbose:unmarshal("[field ",option.name,"]")
 		value._field = option.name
 		value._value = self:get(option.type)
-	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return setmetatable(value, idltype)
 end
 
-function Decoder:enum(idltype)                                                  --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+function Decoder:enum(idltype)                                                  --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local value = self:ulong() + 1
 	if value > #idltype.enumvalues then
 		illegal(value, "enumeration value", "badstream")
-	end                                                                           --[[VERBOSE]] verbose_unmarshal(false, "got ",idltype.enumvalues[value])
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false, "got ",idltype.enumvalues[value])
 	return idltype.enumvalues[value]
 end
 
 function Decoder:indirectstring(pos, length)
 	local cursor = self:jump(length) -- check if there is enougth bytes
 	local value = self.data:sub(cursor, cursor + length - 2)
-	if pos then self.history[pos] = value end                                     --[[VERBOSE]] verbose_unmarshal("got ",verbose.viewer:tostring(value))
+	if pos then self.history[pos] = value end                                     --[[VERBOSE]] verbose:unmarshal("got ",verbose.viewer:tostring(value))
 	return value
 end
 
-function Decoder:string()                                                       --[[VERBOSE]] verbose_unmarshal(true, self, idl.string)
-	return self:indirectstring(nil, self:ulong())                                 --[[VERBOSE]],verbose_unmarshal(false)
+function Decoder:string()                                                       --[[VERBOSE]] verbose:unmarshal(true, self, idl.string)
+	return self:indirectstring(nil, self:ulong())                                 --[[VERBOSE]],verbose:unmarshal(false)
 end
 
-function Decoder:sequence(idltype)                                              --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+function Decoder:sequence(idltype)                                              --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local length      = self:ulong()
 	local elementtype = idltype.elementtype
 	local value
 	while elementtype._type == "typecode" do elementtype = elementtype.type end
 	if elementtype == idl.octet or elementtype == idl.char then
 		local cursor = self:jump(length) -- check if there is enougth bytes
-		value = self.data:sub(cursor, cursor + length - 1)                          --[[VERBOSE]] verbose_unmarshal("got ", verbose.viewer:tostring(value))
+		value = self.data:sub(cursor, cursor + length - 1)                          --[[VERBOSE]] verbose:unmarshal("got ", verbose.viewer:tostring(value))
 	else
 		value = setmetatable({ n = length }, idltype)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose_unmarshal("[element ",i,"]")
+		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshal("[element ",i,"]")
 			value[i] = self:get(elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return value
 end
 
-function Decoder:array(idltype)                                                 --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+function Decoder:array(idltype)                                                 --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local length      = idltype.length
 	local elementtype = idltype.elementtype
 	local value
 	while elementtype._type == "typecode" do elementtype = elementtype.type end
 	if elementtype == idl.octet or elementtype == idl.char then
 		local cursor = self:jump(length) -- check if there is enougth bytes
-		value = self.data:sub(cursor, cursor + length - 1)                          --[[VERBOSE]] verbose_unmarshal("got ",verbose.viewer:tostring(value))
+		value = self.data:sub(cursor, cursor + length - 1)                          --[[VERBOSE]] verbose:unmarshal("got ",verbose.viewer:tostring(value))
 	else
 		value = setmetatable({}, idltype)
-		for i = 1, length do                                                        --[[VERBOSE]] verbose_unmarshal("[element ",i,"]")
+		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshal("[element ",i,"]")
 			value[i] = self:get(elementtype)
 		end
-	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return value
 end
 
-function Decoder:typedef(idltype)                                               --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
-	return self:get(idltype.original_type)                                        --[[VERBOSE]],verbose_unmarshal(false)
+function Decoder:typedef(idltype)                                               --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+	return self:get(idltype.original_type)                                        --[[VERBOSE]],verbose:unmarshal(false)
 end
 
-function Decoder:except(idltype)                                                --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+function Decoder:except(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local value = {}
-	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose_unmarshal("[member ",member.name,"]")
+	for _, member in ipairs(idltype.members) do                                   --[[VERBOSE]] verbose:unmarshal("[member ",member.name,"]")
 		value[member.name] = self:get(member.type)
-	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return setmetatable(value, idltype)
 end
 
 Decoder.interface = Decoder.Object
 
-function Decoder:abstract_interface(idltype)                                    --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+function Decoder:abstract_interface(idltype)                                    --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local value
-	if self:boolean() then                                                        --[[VERBOSE]] verbose_unmarshal("value is a copied value")
+	if self:boolean() then                                                        --[[VERBOSE]] verbose:unmarshal("value is a copied value")
 		value = self:interface(idltype)
-	else                                                                          --[[VERBOSE]] verbose_unmarshal("value is an object reference")
+	else                                                                          --[[VERBOSE]] verbose:unmarshal("value is an object reference")
 		value = self:valuetype(ValueBase)
-	end                                                                           --[[VERBOSE]] verbose_unmarshal(false)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
 	return value
 end
 
@@ -1157,19 +1157,19 @@ local function reservedjump(self, shift)
 	if chunkend == nil then
 		local cursor = self.cursor
 		local value = self:long()
-		if value >= MinValueTag then                                                --[[VERBOSE]] verbose_unmarshal("found nested value in chunked encoding")
+		if value >= MinValueTag then                                                --[[VERBOSE]] verbose:unmarshal("found nested value in chunked encoding")
 			self.cursor = cursor+shift -- rollback the cursor
 			return cursor -- return with chunk decoding disabled 
 		elseif value > 0 then
 			chunkend = self.cursor + value -- calculate new chunk end
-			self.ChunkEnd = chunkend                                                  --[[VERBOSE]] verbose_unmarshal("value encoding chunk started (end at ",chunkend,")")
+			self.ChunkEnd = chunkend                                                  --[[VERBOSE]] verbose:unmarshal("value encoding chunk started (end at ",chunkend,")")
 		else -- end tag
 			illegal(self.data,
 				"data stream, chunked value encoding ended prematurely", "badstream")
 		end
 	end
 	local result = self:jump(shift)
-	if self.cursor == chunkend then                                               --[[VERBOSE]] verbose_unmarshal("value encoding chunk finished")
+	if self.cursor == chunkend then                                               --[[VERBOSE]] verbose:unmarshal("value encoding chunk finished")
 		self.ChunkEnd = nil
 	elseif chunkend and self.cursor > chunkend then
 		illegal(self.data,
@@ -1182,20 +1182,20 @@ end
 local function skipchunks(self, nesting)
 	self.jump = nil
 	local chunkend = self.ChunkEnd
-	if chunkend then                                                              --[[VERBOSE]] verbose_unmarshal("skipping the remains of current chunk")
+	if chunkend then                                                              --[[VERBOSE]] verbose:unmarshal("skipping the remains of current chunk")
 		self:jump(chunkend - self.cursor)
 		self.ChunkEnd = nil
 	end
 	repeat
 		local value = self:long()
-		if value >= MinValueTag then                                                --[[VERBOSE]] verbose_unmarshal(true, "skipping nested value")
-			local pos = self.previousend+self.cursor - PrimitiveSizes.ulong           --[[VERBOSE]] verbose_unmarshal("calculating position of value for indirections, got ",pos)
-			value = decodevaluetype(self, pos, value)                                 --[[VERBOSE]] verbose_unmarshal(false)
+		if value >= MinValueTag then                                                --[[VERBOSE]] verbose:unmarshal(true, "skipping nested value")
+			local pos = self.previousend+self.cursor - PrimitiveSizes.ulong           --[[VERBOSE]] verbose:unmarshal("calculating position of value for indirections, got ",pos)
+			value = decodevaluetype(self, pos, value)                                 --[[VERBOSE]] verbose:unmarshal(false)
 			self.jump = nil
-		elseif value > 0 then                                                       --[[VERBOSE]] verbose_unmarshal("skipping an entire chunk")
+		elseif value > 0 then                                                       --[[VERBOSE]] verbose:unmarshal("skipping an entire chunk")
 			self:jump(value)
 		else -- end tag
-			self.ValueTypeNesting = -(value+1)                                        --[[VERBOSE]] verbose_unmarshal("found the end tag of a nested value, restoring to nesting level ",self.ValueTypeNesting)
+			self.ValueTypeNesting = -(value+1)                                        --[[VERBOSE]] verbose:unmarshal("found the end tag of a nested value, restoring to nesting level ",self.ValueTypeNesting)
 		end
 	until self.ValueTypeNesting <= nesting
 	if self.ValueTypeNesting > 0 then self.jump = reservedjump end
@@ -1222,14 +1222,14 @@ local function decodevaluestate(self, value, idltype, repidlist, chunked)
 			for i = 1, #repidlist do
 				local repID = repidlist[i]
 				type = types:resolve(repID)
-				if type ~= nil then break end                                           --[[VERBOSE]] verbose_unmarshal("skipping unknown truncatable base ",repID)
+				if type ~= nil then break end                                           --[[VERBOSE]] verbose:unmarshal("skipping unknown truncatable base ",repID)
 			end
 		end
 		if type == nil then
 			illegal(value, "value, all truncatable bases are unknown", "badstream")
 		end
 		checktype(type, "idl valuetype", "type of received value", "badstream")
-	end                                                                           --[[VERBOSE]] verbose_unmarshal("decoding value as a ",type.name)
+	end                                                                           --[[VERBOSE]] verbose:unmarshal("decoding value as a ",type.name)
 	setmetatable(value, type)
 	-- collect all base types
 	local types = {}
@@ -1239,10 +1239,10 @@ local function decodevaluestate(self, value, idltype, repidlist, chunked)
 		if type == idl.null then break end
 	end
 	-- decode value state
-	for i = #types, 1, -1 do                                                      --[[VERBOSE]] verbose_unmarshal("[base value ",types[i].name,"]")
+	for i = #types, 1, -1 do                                                      --[[VERBOSE]] verbose:unmarshal("[base value ",types[i].name,"]")
 		local members = types[i].members
 		for j = 1, #members do
-			local member = members[j]                                                 --[[VERBOSE]] verbose_unmarshal("[field ",member.name,"]")
+			local member = members[j]                                                 --[[VERBOSE]] verbose:unmarshal("[field ",member.name,"]")
 			value[member.name] = self:get(member.type)
 		end
 	end
@@ -1254,8 +1254,8 @@ local function decodevaluestate(self, value, idltype, repidlist, chunked)
 	local factory = self.context.factories
 	if factory then
 		factory = factory[types[1].repID]
-		if factory then                                                             --[[VERBOSE]] verbose_unmarshal(true, "building value using factory of ",types[1].repID)
-			factory(value)                                                            --[[VERBOSE]] verbose_unmarshal(false) else verbose_unmarshal("no factory found for ",types[1].repID)
+		if factory then                                                             --[[VERBOSE]] verbose:unmarshal(true, "building value using factory of ",types[1].repID)
+			factory(value)                                                            --[[VERBOSE]] verbose:unmarshal(false) else verbose:unmarshal("no factory found for ",types[1].repID)
 		end
 	end
 end
@@ -1263,7 +1263,7 @@ end
 function decodevaluetype(self, pos, tag, idltype)
 	-- check for null tag
 	if tag == 0 then
-		return nil                                                                  --[[VERBOSE]],verbose_unmarshal("got a null")
+		return nil                                                                  --[[VERBOSE]],verbose:unmarshal("got a null")
 	end
 	-- check tag value
 	if tag < MinValueTag or tag > MaxValueTag then
@@ -1276,13 +1276,13 @@ function decodevaluetype(self, pos, tag, idltype)
 	tag = tag-repidlist
 	local chunked = (tag%16 == ChunkedFlag)
 	-- ignore CodeBaseURL string if present
-	if codebase == HasCodeBase then                                               --[[VERBOSE]] verbose_unmarshal("[CodeBaseURL: ignored]")
+	if codebase == HasCodeBase then                                               --[[VERBOSE]] verbose:unmarshal("[CodeBaseURL: ignored]")
 		self:indirection(self.indirectstring)
 	end
 	-- decode typing information
-	if repidlist == SingleRepID then                                              --[[VERBOSE]] verbose_unmarshal("[single truncatable base]")
+	if repidlist == SingleRepID then                                              --[[VERBOSE]] verbose:unmarshal("[single truncatable base]")
 		repidlist = { self:indirection(self.indirectstring) }
-	elseif repidlist == ListOfRepID then                                          --[[VERBOSE]] verbose_unmarshal("[list of truncatable bases]")
+	elseif repidlist == ListOfRepID then                                          --[[VERBOSE]] verbose:unmarshal("[list of truncatable bases]")
 		repidlist = {}
 		for i = 1, self:long() do
 			repidlist[i] = self:indirection(self.indirectstring)
@@ -1295,11 +1295,11 @@ function decodevaluetype(self, pos, tag, idltype)
 	-- create value
 	local value = {}
 	self.history[pos] = value
-	if idltype == nil then                                                        --[[VERBOSE]] verbose_unmarshal(true, "skipping chunks of a nested value inside a chunked value")
+	if idltype == nil then                                                        --[[VERBOSE]] verbose:unmarshal(true, "skipping chunks of a nested value inside a chunked value")
 		-- skipping chunks of a nested value
 		local cursor = self.cursor
 		local nesting = self.ValueTypeNesting
-		function value._complete(_, idltype)                                        --[[VERBOSE]] verbose_unmarshal(true, "resuming decoding of previously skipped nested value")
+		function value._complete(_, idltype)                                        --[[VERBOSE]] verbose:unmarshal(true, "resuming decoding of previously skipped nested value")
 			value._complete = nil
 			local cursor_back = self.cursor
 			local nesting_back = self.ValueTypeNesting
@@ -1311,21 +1311,21 @@ function decodevaluetype(self, pos, tag, idltype)
 			self.jump = nil
 			decodevaluestate(self, value, idltype, repidlist, chunked)
 			self.cursor = cursor_back
-			self.ValueTypeNesting = nesting_back                                      --[[VERBOSE]] verbose_unmarshal(false)
+			self.ValueTypeNesting = nesting_back                                      --[[VERBOSE]] verbose:unmarshal(false)
 			self.ChunkEnd = chunkend_back
 			self.jump = jump_back
 		end
 		self.ValueTypeNesting = nesting+1
-		skipchunks(self, nesting)                                                   --[[VERBOSE]] verbose_unmarshal(false)
+		skipchunks(self, nesting)                                                   --[[VERBOSE]] verbose:unmarshal(false)
 	else
 		decodevaluestate(self, value, idltype, repidlist, chunked)
 	end
 	return value
 end
 
-function Decoder:valuetype(idltype)                                             --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
+function Decoder:valuetype(idltype)                                             --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
 	local value = self:indirection(decodevaluetype, idltype)
-	if value and value._complete then value:_complete() end                       --[[VERBOSE]] verbose_unmarshal(false)
+	if value and value._complete then value:_complete() end                       --[[VERBOSE]] verbose:unmarshal(false)
 	return value
 end
 
@@ -1334,7 +1334,7 @@ end
 local function decodevaluebox(self, pos, tag, idltype)
 	-- check for null tag
 	if tag == 0 then
-		return nil                                                                  --[[VERBOSE]],verbose_unmarshal("got a null")
+		return nil                                                                  --[[VERBOSE]],verbose:unmarshal("got a null")
 	end
 	-- check tag value
 	local chunked = (tag == MinValueTag+ChunkedFlag)
@@ -1361,15 +1361,15 @@ local function decodevaluebox(self, pos, tag, idltype)
 	return value
 end
 
-function Decoder:valuebox(idltype)                                              --[[VERBOSE]] verbose_unmarshal(true, self, idltype)
-	return self:indirection(decodevaluebox, idltype)                              --[[VERBOSE]],verbose_unmarshal(false)
+function Decoder:valuebox(idltype)                                              --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+	return self:indirection(decodevaluebox, idltype)                              --[[VERBOSE]],verbose:unmarshal(false)
 end
 
 --------------------------------------------------------------------------------
 
 local function decodetypeinfo(self, pos, kind)
 	local tcinfo = TypeCodeInfo[kind]
-	if tcinfo == nil then illegal(kind, "type code", "badstream") end        --[[VERBOSE]] verbose_unmarshal("TypeCode defines a ",tcinfo.name)
+	if tcinfo == nil then illegal(kind, "type code", "badstream") end        --[[VERBOSE]] verbose:unmarshal("TypeCode defines a ",tcinfo.name)
 	if tcinfo.unhandled then
 		illegal(tcinfo.name, "supported type code", "badstream")
 	end
@@ -1378,11 +1378,11 @@ local function decodetypeinfo(self, pos, kind)
 	elseif tcinfo.type == "simple" then
 		-- NOTE: The string type is the only simple type being handled,
 		--       therefore parameters are ignored.
-		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose_unmarshal("[parameter ",param.name,"]")
+		for _, param in ipairs(tcinfo.parameters) do                                --[[VERBOSE]] verbose:unmarshal("[parameter ",param.name,"]")
 			self:get(param.type)
 		end
 		return tcinfo.idl
-	elseif tcinfo.type == "complex" then                                          --[[VERBOSE]] verbose_unmarshal(true, "[parameters encapsulation]")
+	elseif tcinfo.type == "complex" then                                          --[[VERBOSE]] verbose:unmarshal(true, "[parameters encapsulation]")
 		local tcparams = self:sequence(OctetSeq)
 		local value = { _type = tcinfo.name }
 		local history = self.history
@@ -1402,21 +1402,21 @@ local function decodetypeinfo(self, pos, kind)
 		}
 		decoder:order(decoder:boolean()) -- encapsulated stream includes endianess
 		-- encode parameters using the encapsulated encoder
-		for _, field in ipairs(tcinfo.parameters.fields) do                         --[[VERBOSE]] verbose_unmarshal("[field ",field.name,"]")
+		for _, field in ipairs(tcinfo.parameters.fields) do                         --[[VERBOSE]] verbose:unmarshal("[field ",field.name,"]")
 			value[field.name] = decoder:get(field.type)
 		end
-		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose_unmarshal "[mutable parameters values]"
+		if tcinfo.mutable then                                                      --[[VERBOSE]] verbose:unmarshal "[mutable parameters values]"
 			for _, param in ipairs(tcinfo.mutable:setup(value)) do
 				value[param.name] = decoder:get(param.type)
 			end
-		end                                                                         --[[VERBOSE]] verbose_unmarshal(false)
+		end                                                                         --[[VERBOSE]] verbose:unmarshal(false)
 		-- build local TypeCode value
 		return idl[tcinfo.name](value)
 	end
 end
 
-function Decoder:TypeCode()                                                     --[[VERBOSE]] verbose_unmarshal(true, self, idl.TypeCode)
-	return self:indirection(decodetypeinfo)                                       --[[VERBOSE]],verbose_unmarshal(false)
+function Decoder:TypeCode()                                                     --[[VERBOSE]] verbose:unmarshal(true, self, idl.TypeCode)
+	return self:indirection(decodetypeinfo)                                       --[[VERBOSE]],verbose:unmarshal(false)
 end
 
 --------------------------------------------------------------------------------
@@ -1463,10 +1463,6 @@ end
 --[[VERBOSE]] }
 --[[VERBOSE]] local luatype = type
 --[[VERBOSE]] function verbose.custom:marshal(codec, type, value)
--- [[VERBOSE]] 	if CODEC and self.flags.hexastream then
--- [[VERBOSE]] 		self.hexastream(self, CODEC, CURSOR)
--- [[VERBOSE]] 		CURSOR, CODEC = {}, nil
--- [[VERBOSE]] 	end
 --[[VERBOSE]] 	local viewer = self.viewer
 --[[VERBOSE]] 	local output = viewer.output
 --[[VERBOSE]] 	local op = self.codecop[getclass(codec)]
@@ -1488,26 +1484,15 @@ end
 --[[VERBOSE]] 	else
 --[[VERBOSE]] 		return true -- cancel custom message
 --[[VERBOSE]] 	end
+--[[VERBOSE]] 	if CODEC and self.flags.hexastream then
+--[[VERBOSE]] 		if CURSOR[SIZEINDEXPOS] and CODEC.ChunkSizeIndex then
+--[[VERBOSE]] 			self:marshal("[chunk size updated to ",CODEC[CODEC.ChunkSizeIndex],"]")
+--[[VERBOSE]] 		end
+--[[VERBOSE]] 		self:hexastream(CODEC, CURSOR, PREFIXSHIFT)
+--[[VERBOSE]] 		CURSOR, CODEC = {}, nil
+--[[VERBOSE]] 	end
 --[[VERBOSE]] end
 --[[VERBOSE]] verbose.custom.unmarshal = verbose.custom.marshal
---[[VERBOSE]] 
---[[VERBOSE]] function verbose_marshal(...)
---[[VERBOSE]] 	verbose:marshal(...)
---[[VERBOSE]] 	if CODEC and verbose.flags.hexastream then
---[[VERBOSE]] 		if CURSOR[SIZEINDEXPOS] and CODEC.ChunkSizeIndex then
---[[VERBOSE]] 			verbose:marshal("[chunk size updated to ",CODEC[CODEC.ChunkSizeIndex],"]")
---[[VERBOSE]] 		end
---[[VERBOSE]] 		verbose:hexastream(CODEC, CURSOR, PREFIXSHIFT)
---[[VERBOSE]] 		CURSOR, CODEC = {}, nil
---[[VERBOSE]] 	end
---[[VERBOSE]] end
---[[VERBOSE]] function verbose_unmarshal(...)
---[[VERBOSE]] 	verbose:unmarshal(...)
---[[VERBOSE]] 	if CODEC and verbose.flags.hexastream then
---[[VERBOSE]] 		if CURSOR[SIZEINDEXPOS] and CODEC.ChunkSizeIndex then
---[[VERBOSE]] 			verbose:marshal("[chunk size updated to ",CODEC[CODEC.ChunkSizeIndex],"]")
---[[VERBOSE]] 		end
---[[VERBOSE]] 		verbose:hexastream(CODEC, CURSOR)
---[[VERBOSE]] 		CURSOR, CODEC = {}, nil
---[[VERBOSE]] 	end
+--[[VERBOSE]] function verbose:SET_VERB_VARS(codec, cursor)
+--[[VERBOSE]] 	CURSOR[cursor] = true; if CODEC == nil then CODEC = codec end
 --[[VERBOSE]] end

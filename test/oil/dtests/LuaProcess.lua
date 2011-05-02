@@ -1,5 +1,5 @@
-require "cothread.auxiliary"
-require "cothread.debug"
+require "coroutine.pcall"
+require "coroutine.debug51"
 
 local socket = require "socket"
 local Results = require "loop.test.Results"

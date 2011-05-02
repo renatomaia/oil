@@ -21,15 +21,13 @@ local Exception = require "oil.Exception"
 
 local Receiver = require "oil.kernel.base.Receiver"                             --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module(...); local _ENV = _M
+CoReceiver = class({}, Receiver)
 
-class(_ENV, Receiver)
-
-function _ENV:probe(timeout)
+function CoReceiver:probe(timeout)
 	local readers = self.readers
 	if readers then
 		-- check if any 'channel reader' is ready for execution
-		for thread in yield("ready") do
+		for thread in yield("allready") do
 			if readers[thread] then return true end
 		end                                                                         --[[VERBOSE]] verbose:acceptor(true, "checking for invocation requests")
 		if not timeout or timeout > 0 then                                          --[[VERBOSE]] verbose:acceptor("waiting requests for ",timeout and timeout.." seconds" or "ever")
@@ -38,7 +36,7 @@ function _ENV:probe(timeout)
 			local thread = running()
 			local dorequest = self.dorequest
 			function self:dorequest(request)
-				yield("resume", thread, pending)
+				yield("next", thread, pending)
 				return dorequest(self, request)
 			end
 			-- suspend this thread for the timeout and let other threads execute
@@ -48,7 +46,12 @@ function _ENV:probe(timeout)
 			if self.dorequest ~= dorequest then
 				self.dorequest = dorequest
 			end                                                                       --[[VERBOSE]] verbose:acceptor(false, pending and "new request received" or "")
-			if pending then return true end
+			if pending then
+				if timeout then
+					yield("unschedule", thread) -- cancel timeout
+				end
+				return true
+			end
 		end
 		return nil, Exception{
 			error = "timeout",
@@ -59,28 +62,28 @@ function _ENV:probe(timeout)
 	return Receiver.probe(self, timeout)
 end
 
-function _ENV:step(timeout)
-	if self.thread then                                                           --[[VERBOSE]] verbose:acceptor(true, "processing one single request")
+function CoReceiver:step(timeout)
+	if self.thread ~= nil then                                                           --[[VERBOSE]] verbose:acceptor(true, "processing one single request")
 		local result, except = self:probe(timeout)
-		if result then yield("pause") end --[[let other threads execute]]           --[[VERBOSE]] verbose:acceptor(false)
+		if result then yield("last") end --[[let other threads execute]]            --[[VERBOSE]] verbose:acceptor(false)
 		return result, except
 	end
 	-- 'CoReceiver' was not started yet, then behave as 'Receiver'
 	return Receiver.step(self, timeout)
 end
 
-function _ENV:dorequest(request)
+function CoReceiver:dorequest(request)
 	self.dispatcher:dispatch(request)
 end
 
-function _ENV:dochannel(channel)
+function CoReceiver:dochannel(channel)
 	local result, except
 	local listener = self.listener
 	repeat
 		result, except = channel:getrequest()
 		if result then
 			local dispatcher = newthread(self.dorequest)                              --[[VERBOSE]] verbose.viewer.labels[dispatcher] = "Dispatcher('"..result.operation.."')"
-			yield("resume", dispatcher, self, result)
+			yield("last", dispatcher, self, result)
 		end
 	until not result
 	if except.error ~= "terminated" then
@@ -89,7 +92,7 @@ function _ENV:dochannel(channel)
 	end
 end
 
-function _ENV:dolistener()
+function CoReceiver:dolistener()
 	local listener = self.listener
 	local readers = {}
 	self.readers = readers
@@ -98,27 +101,27 @@ function _ENV:dolistener()
 		result, except = listener:getchannel()
 		if result then
 			result:acquire()
-			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] local address = listener:getaddress(); local host,port = result.socket:getpeername(); verbose.viewer.labels[reader] = "Reader("..host..":"..port.."->"..address.host..":"..address.port..")"
+			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] local host,port = result.socket:getpeername(); verbose.viewer.labels[reader] = "Reader("..host..":"..port..")"
 			readers[reader] = result
-			yield("resume", reader, self, result)
+			yield("last", reader, self, result)
 		end
 	until not result
 	self:stop(nil, except)
 end
 
-function _ENV:start()
+function CoReceiver:start()
 	if self.thread == nil then                                                    --[[VERBOSE]] verbose:acceptor("start processing invocation requests")
 		-- process any pending request
 		local pending = self.pending
 		if pending then
 			self.pending = nil
 			local dispatcher = newthread(self.dorequest)
-			yield("resume", dispatcher, self, pending)
+			yield("last", dispatcher, self, pending)
 		end
 		-- start processing new requests
 		self.thread = running()
 		self.getter = newthread(self.dolistener)                                    --[[VERBOSE]] local address = self.listener:getaddress(); verbose.viewer.labels[self.getter] = "Acceptor("..(address and address.host or "?")..":"..(address and address.port or "?")..")"
-		return yield("yield", self.getter, self)
+		return yield("suspend", self.getter, self)
 	end
 	return nil, Exception{
 		error = "badinitialize",
@@ -126,9 +129,9 @@ function _ENV:start()
 	}
 end
 
-function _ENV:stop(...)
+function CoReceiver:stop(...)
 	local thread = self.thread
-	if thread then                                                                --[[VERBOSE]] verbose:acceptor("attempt to stop invocation request processing")
+	if thread ~= nil then                                                         --[[VERBOSE]] verbose:acceptor("attempt to stop invocation request processing")
 		-- unschedule 'channel readers' and release their channels
 		local readers = self.readers
 		for reader, channel in pairs(readers) do
@@ -142,7 +145,9 @@ function _ENV:stop(...)
 		self.getter = nil
 		-- resume thread that started this 'CoReceiver'
 		self.thread = nil
-		yield("resume", thread, ...)
+		yield("last", thread, ...)
 		return true
 	end
 end
+
+return CoReceiver

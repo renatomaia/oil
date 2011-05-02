@@ -60,14 +60,15 @@ local error = _G.error
 local ipairs = _G.ipairs
 local module = _G.module
 local pairs = _G.pairs
+local pcall = _G.pcall
 local require = _G.require
-local tostring = _G.tostring
-local type = _G.type
-local xpcall = _G.xpcall
 local select = _G.select
 local setmetatable = _G.setmetatable
-local unpack = _G.unpack
+local tostring = _G.tostring
 local traceback = _G.debug and debug.traceback -- only if available
+local type = _G.type
+local unpack = _G.unpack
+local xpcall = _G.xpcall
 
 local io = require "io"
 local open = io.open
@@ -725,15 +726,18 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-VERSION = "OiL 0.5"
+VERSION = "OiL 0.6"
 
 if cothread == nil then
-	--[[DEBUG]] require "inspector" -- must be required before 'cothread.auxiliary'
-	require "cothread.auxiliary" -- to avoid coroutine limitation of Lua 5.1
-	require "cothread.socket"
-	cothread = require "cothread"
-	--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
-	--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
+	--[[DEBUG]] pcall(require, "inspector") -- must be required before 'coroutine.pcall'
+	require "coroutine.pcall" -- to avoid coroutine limitation of Lua 5.1
+	local ok, result = pcall(require, "cothread")
+	if ok then
+		cothread = result
+		cothread.plugin(require "cothread.plugin.socket")
+		--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
+		--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
+	end
 end
 
 --------------------------------------------------------------------------------
@@ -812,9 +816,9 @@ function main(main, ...)
 	asserttype(main, "function", "main function")
 	if cothread then
 		local thread = newcoroutine(main)                                           --[[VERBOSE]] verbose.viewer.labels[thread] = "oil.main"
-		cothread.run(thread, ...)
+		cothread.run(cothread.step(thread, ...))
 	else
-		local success, except = xpcall(main, extracer)
+		local success, except = xpcall(main, extracer, ...)
 		if not success then error(except, 2) end
 	end
 end
@@ -839,7 +843,7 @@ end
 --
 function newthread(func, ...)
 	asserttype(func, "function", "thread body")
-	return yield("resume", newcoroutine(func) , ...)
+	return yield("next", newcoroutine(func) , ...)
 end
 
 --------------------------------------------------------------------------------
@@ -855,9 +859,10 @@ if cothread then
 		return yield("delay", time)
 	end
 else
+	local _sleep = require("socket.core").sleep
 	function sleep(time)
 		asserttype(time, "number", "time")
-		return socket.sleep(time)
+		return _sleep(time)
 	end
 end
 
@@ -873,8 +878,9 @@ if cothread then
 		return yield("now")
 	end
 else
+	local _gettime = require("socket.core").gettime
 	function time()
-		return socket.gettime()
+		return _gettime()
 	end
 end
 

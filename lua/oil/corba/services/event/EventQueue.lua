@@ -15,7 +15,7 @@ function enqueue(self, event)
   if self.count > 0 and self.waiting_thread then
     local t = self.waiting_thread
     self.waiting_thread = nil
-    coroutine.yield("resume", t)
+    coroutine.yield("last", t)
   end
 end
 

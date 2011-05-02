@@ -23,7 +23,6 @@ local remove = ArraySet.remove
 
 local oo = require "oil.oo"
 local class = oo.class
-local rawnew = oo.rawnew
 
 do -- add new operation 'settimelimit' on sockets
 	local debug = require "debug"
@@ -61,7 +60,7 @@ function EventPoll:remove(socket)
 				if ready[i] == socket then
 					ready[socket] = nil
 					ready[i], ready[count] = ready[count], nil
-					return true
+					break
 				end
 			end
 		end
@@ -91,7 +90,7 @@ end
 function EventPoll:clear()
 	local sockets = {}
 	for i = 1, #self do
-		sockets[i] = self[i]
+		sockets[ self[i] ] = true
 	end
 	return sockets
 end

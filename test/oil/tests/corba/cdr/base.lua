@@ -68,7 +68,8 @@ local function hexdump(stream, expected)
 	return table.concat(dump)
 end
 
-local prefix = (struct.unpack("B", struct.pack("I2", 1)) == 1) and ">" or "<"
+local littleendian = struct.unpack("B", struct.pack("I2", 1)) == 1
+local prefix = littleendian and ">" or "<"
 local function invpack(format, ...)
 	return struct.pack(prefix..format, ...)
 end
@@ -99,7 +100,7 @@ local function newcase(suite, testID, codec, byteorder, shift, idltype, value, e
 			
 			local decoder = codec:decoder(stream, byteorder == "Encapsulated")
 			if byteorder == "Inverted" then
-				decoder:order(not Codec.NativeEndianess)
+				decoder:order(not littleendian)
 			end
 			decoder:jump(shift)
 			local actual = decoder:get(idltype)
@@ -131,8 +132,7 @@ local function addcases(suite, testID, type, value, ...)
 		expected = value
 	end
 	local impls = Suite()
-	--for implname, factory in pairs{ Codec = Codec, CodecGen = CodecGen } do
-	for implname, factory in pairs{ Codec = Codec, --[[CodecGen = CodecGen]] } do
+	for implname, factory in pairs{ Codec = Codec, CodecGen = testID~="truncatable_with_nested_valuetypes" and CodecGen or nil } do
 		local codec = factory()
 		codec.context = codec
 		codec.__component = codec

@@ -10,6 +10,8 @@ local tonumber = _G.tonumber
 local oo = require "oil.oo"
 local class = oo.class
 
+local Exception = require "oil.Exception"
+
 local Channel = require "oil.protocol.Channel"
 
 

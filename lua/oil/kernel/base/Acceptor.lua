@@ -22,14 +22,15 @@ function AccessPoint:accept(timeout)
 	local socket, except
 	repeat
 		socket, except = poll:getready(timeout)
-		if socket then
+		if socket ~= nil then
 			if socket == self.socket then
-				socket, except = socket:accept()
-				if socket then                                                            --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("new connection accepted from ",host,":",port)
+				local port = socket
+				socket, except = port:accept()
+				if socket ~= nil then                                                   --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("new connection accepted from ",host,":",port)
 					socket = self.sockets:setoptions(self.options, socket)
 					poll:add(socket)
-				else                                                                      --[[VERBOSE]] verbose:channels("error when accepting connection (",except,")")
-					if except == "closed" then poll:remove(socket) end
+				else                                                                    --[[VERBOSE]] verbose:channels("error when accepting connection (",except,")")
+					if except == "closed" then poll:remove(port) end
 					except = Exception{
 						error = "badconnect",
 						message = "unable to accept connection ($errmsg)",
@@ -39,19 +40,19 @@ function AccessPoint:accept(timeout)
 			else
 				socket:settimeout(0)
 				local success, errmsg = socket:receive(0)
-				if not success and errmsg == "closed" then
+				if not success and errmsg == "closed" then                              --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("connection from ",host,":",port," was closed")
 					poll:remove(socket)
 					socket = nil
-				else
+				else                                                                    --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("connection from ",host,":",port," is ready to be read",success and "" or " (got error '"..errmsg.."')")
 					socket:settimeout(nil)
 				end
 			end
-		elseif except == "timeout" then
+		elseif except == "timeout" then                                             --[[VERBOSE]] verbose:channels("timeout when accepting connection")
 			except = Exception{
 				error = "timeout",
 				message = "timeout",
 			}
-		elseif except == "empty" then
+		elseif except == "empty" then                                               --[[VERBOSE]] verbose:channels("accepting connection terminated")
 			except = Exception{
 				error = "terminated",
 				message = "terminated",

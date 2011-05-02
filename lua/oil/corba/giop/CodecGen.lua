@@ -143,22 +143,23 @@ function DecoderGenerator:__new(...)
 	return self
 end
 
-local code = "self.unpack('%s',self.data,nil,nil,self:alignedjump(%d))"
-local function numberunmarshaller(size, format)
-	local code = code:format(format, size)
+local code = "self.unpack('%s',self.data,self:alignedjump(%d, %d))"
+local function numberunmarshaller(format, size, align)
+	if align == nil then align = size end
+	local code = code:format(format, size, align)
 	return function(self) self:add(code) end
 end
 DecoderGenerator.null       = function(self) self:add(" nil") end
 DecoderGenerator.void       = DecoderGenerator.null
-DecoderGenerator.short      = numberunmarshaller( 2, "s")
-DecoderGenerator.long       = numberunmarshaller( 4, "l")
-DecoderGenerator.longlong   = numberunmarshaller( 8, "g")
-DecoderGenerator.ushort     = numberunmarshaller( 2, "S")
-DecoderGenerator.ulong      = numberunmarshaller( 4, "L")
-DecoderGenerator.ulonglong  = numberunmarshaller( 8, "G")
-DecoderGenerator.float      = numberunmarshaller( 4, "f")
-DecoderGenerator.double     = numberunmarshaller( 8, "d")
-DecoderGenerator.longdouble = numberunmarshaller(16, "D")
+DecoderGenerator.short      = numberunmarshaller("i2", PrimitiveSizes.short     )
+DecoderGenerator.long       = numberunmarshaller("i4", PrimitiveSizes.long      )
+DecoderGenerator.longlong   = numberunmarshaller("i8", PrimitiveSizes.longlong  )
+DecoderGenerator.ushort     = numberunmarshaller("I2", PrimitiveSizes.ushort    )
+DecoderGenerator.ulong      = numberunmarshaller("I4", PrimitiveSizes.ulong     )
+DecoderGenerator.ulonglong  = numberunmarshaller("I8", PrimitiveSizes.ulonglong )
+DecoderGenerator.float      = numberunmarshaller("f" , PrimitiveSizes.float     )
+DecoderGenerator.double     = numberunmarshaller("d" , PrimitiveSizes.double    )
+DecoderGenerator.longdouble = numberunmarshaller("D" , PrimitiveSizes.longdouble, 8)
 
 function DecoderGenerator:boolean()
 	self:add "("
@@ -171,7 +172,7 @@ function DecoderGenerator:char()
 end
 
 function DecoderGenerator:octet()
-	self:add "self.unpack('B',self.data,nil,nil,self:jump(1))"
+	self:add "self.unpack('B',self.data,self:jump(1))"
 end
 
 function DecoderGenerator:struct(idltype)
@@ -308,10 +309,10 @@ end
 
 Decoder = oo.class({}, Decoder)
 
-function Decoder:alignedjump(value)
-	local shift = value - (self.cursor - 2) % value - 1
+function Decoder:alignedjump(size, align)
+	local shift = align - (self.cursor - 2) % align - 1
 	local pos = self.cursor + shift
-	self:jump(shift + value)
+	self:jump(shift + size)
 	return pos
 end
 
@@ -375,28 +376,29 @@ end
 
 function EncoderGenerator:rawput(format, size, value)
 	self:add("local index = self.index")
-	self:add("\nformat[index],self[index] = '",format,"',",value or self:top())
+	self:add("\nformat[index],self[index] = '",format,"',",value or self:top())   --[[VERBOSE]] self:add("\nverbose:SET_VERB_VARS(self, self.cursor, true)")
 	self:add("\nself.index,self.cursor = index+1,self.cursor+",size,"\n")
 end
 
-local function numbermarshaller(size, format)
+local function numbermarshaller(format, size, align)
+	if align == nil then align = size end
 	return function(self)
-		self:add('aux = ',size-1,'-(self.cursor-2)%',size,'\n')
-		self:rawput('"', 'aux', '("\\255"):rep(aux)')
+		self:add('aux = ',align-1,'-(self.cursor-2)%',align,'\n')
+		self:rawput('c0', 'aux', '("\\255"):rep(aux)')
 		self:rawput(format, size)
 	end
 end
 EncoderGenerator.null       = function() end
 EncoderGenerator.void       = DecoderGenerator.null
-EncoderGenerator.short      = numbermarshaller( 2, "s")
-EncoderGenerator.long       = numbermarshaller( 4, "l")
-EncoderGenerator.longlong   = numbermarshaller( 8, "g")
-EncoderGenerator.ushort     = numbermarshaller( 2, "S")
-EncoderGenerator.ulong      = numbermarshaller( 4, "L")
-EncoderGenerator.ulonglong  = numbermarshaller( 8, "G")
-EncoderGenerator.float      = numbermarshaller( 4, "f")
-EncoderGenerator.double     = numbermarshaller( 8, "d")
-EncoderGenerator.longdouble = numbermarshaller(16, "D")
+EncoderGenerator.short      = numbermarshaller("i2", PrimitiveSizes.short     )
+EncoderGenerator.long       = numbermarshaller("i4", PrimitiveSizes.long      )
+EncoderGenerator.longlong   = numbermarshaller("i8", PrimitiveSizes.longlong  )
+EncoderGenerator.ushort     = numbermarshaller("I2", PrimitiveSizes.ushort    )
+EncoderGenerator.ulong      = numbermarshaller("I4", PrimitiveSizes.ulong     )
+EncoderGenerator.ulonglong  = numbermarshaller("I8", PrimitiveSizes.ulonglong )
+EncoderGenerator.float      = numbermarshaller("f" , PrimitiveSizes.float     )
+EncoderGenerator.double     = numbermarshaller("d" , PrimitiveSizes.double    )
+EncoderGenerator.longdouble = numbermarshaller("D" , PrimitiveSizes.longdouble, 8)
 
 function EncoderGenerator:boolean()
 	self:add(self:top(),' = ',self:top(),' and 1 or 0\n')
@@ -405,7 +407,7 @@ end
 
 function EncoderGenerator:char()
 	self:add('if #',self:top(),' ~= 1 then assert.illegal(',self:top(),', "character", "MARSHAL") end\n')
-	self:rawput('"', 1)
+	self:rawput('c', 1)
 end
 
 function EncoderGenerator:octet()
@@ -472,8 +474,7 @@ function EncoderGenerator:string()
 	self:push('#',self:top(),'+1')
 	self:ulong()
 	self:pop()
-	self:rawput('"', self:top(1))
-	self:rawput('"', 0, "'\\0'")
+	self:rawput('s', self:top(1))
 end
 
 function EncoderGenerator:sequence(idltype)
@@ -485,7 +486,7 @@ function EncoderGenerator:sequence(idltype)
 			self:push('#',self:top())
 			self:ulong()
 			self:pop()
-			self:rawput('"', self:top(1))
+			self:rawput('c0', self:top(1))
 		self:add 'else\n'
 	end
 	self:push(self:top(),'.n or #',self:top())
@@ -507,7 +508,7 @@ function EncoderGenerator:array(idltype)
 	local dostring = elementtype == idl.octet or elementtype == idl.char
 	if dostring then
 		self:add('if type(',self:top(),') == "string" then\n')
-		self:rawput('"', idltype.length)
+		self:rawput('c0', idltype.length)
 		self:add('else\n')
 	end
 	self:add('for i = 1,',idltype.length,' do\n')
@@ -530,8 +531,8 @@ end
 
 function EncoderGenerator:generate(idltype)
 	local generator = self[idltype._type]
-	if generator then                                                             --[[VERBOSE]] self:add('verbose:marshal(true,self,',self:upvalue(idltype),',',self:top(),')\n')
-		generator(self, idltype)                                                    --[[VERBOSE]] self:add('verbose:marshal(false)\n')
+	if generator then
+		generator(self, idltype)                                                    --[[VERBOSE]] self:add('verbose:marshal(self,',self:upvalue(idltype),',',self:top(),')\n')
 	else
 		self:add('self:',idltype._type,'(',self:top(),',',self:upvalue(idltype),')\n')
 	end
@@ -584,6 +585,7 @@ Encoder.except     = Encoder.put
 --[[VERBOSE]] verbose.codecop[Encoder] = verbose.codecop[Codec.Encoder]
 --[[VERBOSE]] verbose.codecop[Decoder] = verbose.codecop[Codec.Decoder]
 --[[VERBOSE]] function verbose:gen_marshal(codec, type, value)
---[[VERBOSE]] 	self:marshal(codec, type, value)
+--[[VERBOSE]] 	verbose:SET_VERB_VARS(codec, codec.cursor)
+--[[VERBOSE]] 	verbose:marshal(codec, type, value)
 --[[VERBOSE]] 	return value
 --[[VERBOSE]] end

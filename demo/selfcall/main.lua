@@ -1,9 +1,8 @@
 require "oil"
 
-local orb = oil.init()
-orb:loadidl("interface MyObject { void shutdown(); };")
-
 oil.main(function()
+	local orb = oil.init()
+	orb:loadidl("interface MyObject { void shutdown(); };")
 	oil.newthread(orb.run, orb)
 	local obj = {shutdown = function() orb:shutdown() end}
 	local prx = orb:newproxy(tostring(orb:newservant(obj, nil, "MyObject")))

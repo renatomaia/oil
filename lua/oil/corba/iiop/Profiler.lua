@@ -7,6 +7,7 @@
 local _G = require "_G"
 local error = _G.error
 local ipairs = _G.ipairs
+local pcall = _G.pcall
 local tonumber = _G.tonumber
 
 local oo = require "oil.oo"

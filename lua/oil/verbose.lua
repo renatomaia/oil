@@ -65,7 +65,7 @@ function verbose:hexastream(codec, cursor, prefix)
 				end
 				local base = codec.previousend
 				local output = self.viewer.output
-				local lines = string.format("%%0%dx:", math.ceil(math.log10((base+last)/16))+1)
+				local lines = string.format("\n%%0%dx:", math.ceil(math.log10((base+last)/16))+1)
 				local text = {}
 				for count = count-(count-1)%16, last do
 					column = math.mod(count-1, 16)
@@ -99,7 +99,7 @@ function verbose:hexastream(codec, cursor, prefix)
 					end
 					-- write ASCII text if last column, or a blank space if middle column
 					if column == 15 then
-						output:write("  |"..table.concat(text).."|\n")
+						output:write("  |"..table.concat(text).."|")
 						text = {}
 					elseif column == 7 then
 						output:write("  ")

@@ -19,6 +19,8 @@ local floor = math.floor
 local struct = require "struct"
 local littleendian = (struct.unpack("B", struct.pack("I2", 1)) == 1)
 
+local Queue = require "loop.collection.Queue"
+
 local Mutex = require "cothread.Mutex"
 
 local oo = require "oil.oo"
@@ -369,32 +371,6 @@ local function failedGIOP(self, errmsg)
 		message = "GIOP Failure ($errmsg)",
 		errmsg = errmsg,
 	}
-end
-
-
-
-local Queue = class{head=1,tail=0}
-function Queue:empty()
-	return self.head > self.tail
-end
-function Queue:enqueue(value)
-	local tail = self.tail+1
-	self[tail] = value
-	self.tail = tail
-end
-function Queue:dequeue()
-	local head = self.head
-	local tail = self.tail
-	if head <= tail then
-		local value = self[head]
-		self[head] = nil
-		if head == tail then -- dequeued last item
-			self.head, self.tail = nil, nil
-		else
-			self.head = head+1
-		end
-		return value
-	end
 end
 
 
