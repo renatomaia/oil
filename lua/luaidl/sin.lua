@@ -891,6 +891,7 @@ local tab_legal_type = {
   [TAB_TYPEID.TYPECODE] = true,
   [TAB_TYPEID.SEQUENCE] = true,
   [TAB_TYPEID.STRING] = true,
+  [TAB_TYPEID.VALUETYPE] = true,
 }
 
 local tab_accept_definition = {

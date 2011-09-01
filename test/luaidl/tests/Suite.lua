@@ -5,7 +5,8 @@ local FileStream = require "loop.serial.FileStream"
 local Suite      = require "loop.test.Suite"
 
 local files = {
-	"const",
+  "valuetype",
+  "const",
   "core",
   "data_service",
 	"enum",

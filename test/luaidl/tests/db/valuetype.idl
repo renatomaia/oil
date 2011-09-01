@@ -1,0 +1,13 @@
+module A {
+  module B {
+    valuetype v1 {
+      public long x;
+    };
+    typedef long datum;
+  };
+};
+module C {
+ typedef A::B::datum datum;
+ typedef A::B::v1 v1;
+};
+
