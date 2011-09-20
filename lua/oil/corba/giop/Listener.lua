@@ -4,7 +4,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"                                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 local assert = _G.assert
 local ipairs = _G.ipairs
 local pairs = _G.pairs
@@ -84,7 +84,7 @@ local SysExReply = {
 local SysExType = { giop.SystemExceptionIDL }
 local SysExBody = { n = 1, --[[defined later]] }
 
-local function sysexreply(requestid, body)                                            --[[VERBOSE]] verbose:listen("new system exception ",body.exception_id," for request ",requestid)
+local function sysexreply(requestid, body)                                    --[[VERBOSE]] verbose:listen("new system exception ",body.exception_id," for request ",requestid)
 	SysExReply.request_id = requestid
 	SysExBody[1] = body
 	body.exception_id = body[1]
@@ -133,41 +133,41 @@ local SysExTypes = { idl.string, giop.SystemExceptionIDL }
 local ExMsgBody = {}
 function ServerRequest:getreplybody()
 	self.service_context = nil
-	if self.success then                                                          --[[VERBOSE]] verbose:listen("got successful results")
+	if self.success then                                                        --[[VERBOSE]] verbose:listen("got successful results")
 		self.reply_status = "NO_EXCEPTION"
 		return self.outputs, self
 	end
 	local except = self[1]
-	if type(except) == "table" then                                               --[[VERBOSE]] verbose:listen("got exception ",except)
-		local repid = except[1]
+	if type(except) == "table" then
+		local repid = except._repid
 		local excepttype = self.exceptions
 		excepttype = excepttype and excepttype[repid]
-		if excepttype then
+		if excepttype then                                                        --[[VERBOSE]] verbose:listen("got exception ",except)
 			self.reply_status = "USER_EXCEPTION"
 			UserExTypes[2] = excepttype
 			ExMsgBody[1] = repid
 			ExMsgBody[2] = except
 			return UserExTypes, ExMsgBody
-		elseif not SystemExceptions[repid] then                                     --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
-			except = OiLEx2SysEx[except.error] or unknownex(except)                   --[[VERBOSE]] else verbose:listen("got system exception ",except)
+		elseif not SystemExceptions[repid] then                                   --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
+			except = OiLEx2SysEx[except.error] or unknownex(except)                 --[[VERBOSE]] else verbose:listen("got system exception ",except)
 		end
 	else
 		except = unknownex(except)
 	end
 	self.reply_status = "SYSTEM_EXCEPTION"
-	ExMsgBody[1] = except[1]
+	ExMsgBody[1] = except._repid
 	ExMsgBody[2] = except
 	return SysExTypes, ExMsgBody
 end
 
 function ServerRequest:setreply(success, ...)
 	local channel = self.channel
-	if channel ~= nil then                                                        --[[VERBOSE]] verbose:listen("set reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
+	if channel ~= nil then                                                      --[[VERBOSE]] verbose:listen("set reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
 		Request.setreply(self, success, ...)
 		local success, except = channel:sendreply(self)
-		if not success and except.error ~= "terminated" and stderr then             --[[VERBOSE]] verbose:listen("error sending reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
+		if not success and except.error ~= "terminated" and stderr then           --[[VERBOSE]] verbose:listen("error sending reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
 			stderr:write(tostring(except), "\n")
-		end                                                                         --[[VERBOSE]] else verbose:listen("ignoring reply for cancelled request ",self.request_id," to ",self.objectkey,":",self.operation)
+		end                                                                       --[[VERBOSE]] else verbose:listen("ignoring reply for cancelled request ",self.request_id," to ",self.objectkey,":",self.operation)
 	end
 end
 
@@ -190,7 +190,7 @@ function GIOPListener:addbidircontext(servctxt)
 	end
 end
 
-function GIOPListener:addbidirchannel(channel)                                  --[[VERBOSE]] verbose:listen("add bidirectional channel as incoming request channel")
+function GIOPListener:addbidirchannel(channel)                                --[[VERBOSE]] verbose:listen("add bidirectional channel as incoming request channel")
 	channel.context = self
 	local socket = channel.socket
 	self.sock2channel[socket] = channel

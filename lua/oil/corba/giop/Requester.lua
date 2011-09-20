@@ -238,29 +238,28 @@ local function doreply(self, replied)
 			except = replied.exceptions[repid]
 			if except then
 				except = decoder:except(except)
-				except[1] = repid
+				except._repid = repid
 				except = Exception(except)
 			else
 				except = Exception{
+					"illegal user exception (got $exception)",
 					error = "badexception",
-					message = "illegal user exception (got $exception)",
 					exception = repid,
 					minor = 1,
 				}
 			end
-		elseif status == "SYSTEM_EXCEPTION" then                                    --[[VERBOSE]] verbose:invoke("got reply with system exception for request ",header.request_id," to ",replied.object_key,":",replied.operation)
+		elseif status == "SYSTEM_EXCEPTION" then
 			-- TODO:[maia] set its type to the proper SystemExcep.
-			local repid = decoder:string()
+			local repid = decoder:string()                                            --[[VERBOSE]] verbose:invoke("got reply with system exception ",repid," for request ",header.request_id," to ",replied.object_key,":",replied.operation)
 			except = decoder:struct(SystemExceptionIDL)
-			except[1] = repid
+			except[1] = "CORBA System Exception $_repid: minor code: $minor, completed: $completed"
 			except.error = SystemExceptionError[repid] or "corbasysex"
-			except.message = "got remote exception $systemexception"
-			except.systemexception = repid
+			except._repid = repid
 			except = Exception(except)
 		else --[[status == ???]]                                                    --[[VERBOSE]] verbose:invoke("got unsupported GIOP reply status: ",status)
 			except = Exception{
+				"unsupported GIOP reply status (got $replystatus)",
 				error = "badmessage",
-				message = "unsupported GIOP reply status (got $replystatus)",
 				replystatus = status,
 			}
 		end

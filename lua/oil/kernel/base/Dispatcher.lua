@@ -26,8 +26,8 @@ function Dispatcher:dispatch(request)
 			request:setreply(pcall(method, object, request:getvalues()))
 		else                                                                        --[[VERBOSE]] verbose:dispatcher("missing implementation of ",request.operation)
 			request:setreply(false, Exception{
+				"servant $key does not implement $operation",
 				error = "badobjimpl",
-				message = "servant $key does not implement $operation",
 				operation = operation,
 				object = object,
 				key = key,
@@ -35,8 +35,8 @@ function Dispatcher:dispatch(request)
 		end
 	else                                                                          --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
 		request:setreply(false, Exception{
+			"unknown servant (got $key)",
 			error = "badobjkey",
-			message = "unknown servant (got $key)",
 			key = key,
 		})
 	end

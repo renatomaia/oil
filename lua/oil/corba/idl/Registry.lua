@@ -156,8 +156,8 @@ end
 function IRObject:destroy()
 	if self.observer == nil or next(self.references) ~= nil then
 		error(Exception{ "BAD_INV_ORDER", minor_error_code = 1,
+			"attempt to destroy IR definition in use",
 			error = "irdestroy",
-			message = "attempt to destroy IR definition in use",
 			object = self,
 		})
 	end
@@ -1648,7 +1648,7 @@ Classes = {
 
 local function getupdate(self, value, name, typespec)                           --[[VERBOSE]] verbose:repository("[attribute ",name,"]")
 	if type(typespec) == "string" then
-		assert.type(value, typespec, name)
+		assert.type(value, typespec, name, "BAD_PARAM")
 	elseif type(typespec) == "table" then
 		if oo.isclass(typespec) then
 			value = self[value]
@@ -1763,7 +1763,7 @@ function register(self, ...)
 	local count = select("#", ...)
 	for i = 1, count do
 		local definition = select(i, ...)
-		assert.type(definition, "table", "IR object definition")
+		assert.type(definition, "table", "IR object definition", "BAD_PARAM")
 		results[i] = registry[definition]
 	end
 	return unpack(results, 1, count)
@@ -1787,15 +1787,15 @@ function resolve(self, typeref)
 		result = self:lookup(typeref) or self:lookup_id(typeref)
 		if not result then
 			errmsg = Exception{ "INTERNAL", minor = 0,
+				"unknown interface (got $interface_id)",
 				error = "interface",
-				message = "unknown interface (got $interface_id)",
 				interface_id = typeref,
 			}
 		end
 	elseif result == nil then
 		result, errmsg = nil, Exception{ "INTERNAL", minor = 0,
+			"illegal IDL type (got $idltype)",
 			error = "interface",
-			message = "illegal IDL type (got $idltype)",
 			idltype = typeref,
 		}
 	end

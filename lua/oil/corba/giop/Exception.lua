@@ -13,7 +13,7 @@ local OiLEx2SysEx = {
 	badaddress    = { SystemExceptionIDs.NO_RESOURCES    ,nil},
 	badconnect    = { SystemExceptionIDs.TRANSIENT       , 2 },
 	badchannel    = { SystemExceptionIDs.COMM_FAILURE    ,nil},
-	badvalue      = { SystemExceptionIDs.BAD_PARAM       ,nil},
+	badvalue      = { SystemExceptionIDs.MARSHAL         ,nil},
 	badstream     = { SystemExceptionIDs.MARSHAL         ,nil},
 	badexception  = { SystemExceptionIDs.UNKNOWN         ,nil},
 	badmessage    = { SystemExceptionIDs.INTERNAL        ,nil},
@@ -28,30 +28,34 @@ local OiLEx2SysEx = {
 	timeout       = { SystemExceptionIDs.TIMEOUT         ,nil},
 }
 
-local GIOPException = class{
+local GIOPException = class({
+	"CORBA Exception: $_repid",
 	-- default attribute values
-	SystemExceptionIDs.UNKNOWN,
+	_repid = SystemExceptionIDs.UNKNOWN,
 	minor = 0,
 	completed = "COMPLETED_MAYBE",
 	-- inherited behavior from Exception
 	__concat   = Exception.__concat,
 	__tostring = Exception.__tostring,
-}
+}, Exception)
 
 function GIOPException:__new(except, ...)
 	if except then
 		local sysex = SystemExceptionIDs[except[1]]
 		if sysex ~= nil then
-			except[1] = sysex
+			except._repid = sysex
 		else
-			sysex = OiLEx2SysEx[except.error]
+			local error = except.error
+			sysex = OiLEx2SysEx[error] or SystemExceptionIDs[error]
 			if sysex ~= nil then
-				except[1] = sysex[1]
+				except._repid = sysex[1]
 				except.minor = sysex[2]
 			end
 		end
 	end
 	return Exception.__new(self, except, ...)
 end
+
+assert.Exception = GIOPException
 
 return GIOPException

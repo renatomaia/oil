@@ -53,7 +53,7 @@ end
 
 
 local MethodWrapper = memoize(function(method)
-	return function(_, ...)
+	return function(self, ...)
 		return method(self.__servant, ...)
 	end
 end, "k")
@@ -118,8 +118,8 @@ function _ENV:addentry(entry)
 		map[key] = entry                                                            --[[VERBOSE]] verbose:servants("object ",entry.__servant," registered with key ",key)
 	elseif current.__servant ~= entry.__servant then
 		return nil, Exception{
+			"object key already in use (got $key)",
 			error = "badobjkey",
-			message = "object key already in use (got $key)",
 			key = key,
 		}
 	end
@@ -131,8 +131,8 @@ function _ENV:removeentry(key)
 	local entry = map[key]
 	if entry == nil then
 		return nil, Exception{
+			"unknown object key (got $key)",
 			error = "badobjkey",
-			message = "unknown object key (got $key)",
 			key = key,
 		}
 	end

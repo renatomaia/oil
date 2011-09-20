@@ -53,10 +53,7 @@ function CoReceiver:probe(timeout)
 				return true
 			end
 		end
-		return nil, Exception{
-			error = "timeout",
-			message = "timeout",
-		}
+		return nil, Exception{ "timeout", error = "timeout" }
 	end
 	-- 'CoReceiver' was not started yet, then behave as 'Receiver'
 	return Receiver.probe(self, timeout)
@@ -123,10 +120,7 @@ function CoReceiver:start()
 		self.getter = newthread(self.dolistener)                                    --[[VERBOSE]] local address = self.listener:getaddress(); verbose.viewer.labels[self.getter] = "Acceptor("..(address and address.host or "?")..":"..(address and address.port or "?")..")"
 		return yield("suspend", self.getter, self)
 	end
-	return nil, Exception{
-		error = "badinitialize",
-		message = "already started",
-	}
+	return nil, Exception{ "already started", error = "badinitialize" }
 end
 
 function CoReceiver:stop(...)

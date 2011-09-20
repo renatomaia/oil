@@ -4,7 +4,6 @@
 -- @version 1.0
 -- @author  Renato Maia <maia@tecgraf.puc-rio.br>
 --
-
 local assert     = assert
 local pairs      = pairs
 local select     = select
@@ -19,7 +18,6 @@ local Serializer = require "loop.serial.Serializer"
 module("idl2lua", require "loop.compiler.Arguments")
 
 output  = "idl.lua"
-broker  = "require('oil').init()"
 include = {}
 
 _alias = { I = "include" }
@@ -29,7 +27,8 @@ end
 
 local start, errmsg = _M(...)
 local finish = select("#", ...)
-if not start or start ~= finish then
+
+if not start or start > finish then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
 	io.stderr:write([[
 IDL Descriptor Pre-Parser 1.1  Copyright (C) 2006-2008 Tecgraf, PUC-Rio
@@ -38,10 +37,6 @@ Options:
   
   -o, -output       Output file that should be generated. Its default is
                     ']],output,[['.
-  
-  -b, -broker       ORB instance the IDL must be loaded to. Its default
-                    is ']],instance,[[' that denotes the instance returned
-                    by the 'oil' package.
   
   -I, i, -include   Adds a directory to the list of paths where the IDL files
                     are searched.
@@ -82,22 +77,26 @@ stream[idl.Contents]     = "idl.Contents"
 stream[idl.ContainerKey] = "idl.ContainerKey"
 
 local compiler = Compiler()
-compiler.defaults.incpath = include
+local options = compiler.defaults
+options.incpath = include
 
-file:write(broker,[[.TypeRepository.types:register(
-	setfenv(
-		function()
-			return ]])
+file:write([[
+return setfenv(
+	function()
+		return {]])
 
-stream:serialize(assert(luaidl.parsefile(select(start, ...),
-                                         compiler.defaults)))
-file:write([[ 
-		end,
-		{
-			idl = require "oil.corba.idl",
-			]],stream.namespace,[[ = require("loop.serial.Serializer")(),
-		}
-	)()
-)
+
+for i = start, finish do
+	stream:serialize(assert(luaidl.parsefile(select(i, ...), options)))
+	file:write(",")
+end
+
+file:write([[}
+	end,
+	{
+		idl = require "oil.corba.idl",
+		]],stream.namespace,[[ = require("loop.serial.Serializer")(),
+	}
+)()
 ]])
 file:close()

@@ -11,6 +11,8 @@ local oo = require "oil.oo"                                                     
 local class = oo.class
 local getclass = oo.getclass
 
+local Exception = require "oil.Exception"
+
 local Servants = require "oil.kernel.base.Servants"
 local getfield = Servants.getfield
 local hashof = Servants.hashof
@@ -45,8 +47,8 @@ function TypedServants:addentry(entry)
 	elseif current.__servant ~= entry.__servant
 	    or current.__type ~= entry.__type then
 		return nil, Exception{
+			"object key already in use (got $key)",
 			error = "badobjkey",
-			message = "object key already in use (got $key)",
 			key = key,
 		}
 	end

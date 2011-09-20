@@ -35,8 +35,8 @@ function LuDOChannel:receivevalues(timeout)
 			size = tonumber(bytes)
 			if size == nil then                                                       --[[VERBOSE]] verbose:message("LuDO failure: illegal message size")
 				return nil, Exception{
+					"invalid LuDO message size (got $size)",
 					error = "badmessage",
-					message = "invalid LuDO message size (got $size)",
 					size = bytes,
 				}
 			end
@@ -61,8 +61,8 @@ local function doreply(self, ok, requestid, success, ...)
 		self:signal("read", request)
 	else                                                                          --[[VERBOSE]] verbose:message("LuDO failure: reply for unknown request ID")
 		except = Exception{
+			"unexpected LuDO reply ID (got $requestid)",
 			error = "badmessage",
-			message = "unexpected LuDO reply ID (got $requestid)",
 			requestid = requestid,
 		}
 	end

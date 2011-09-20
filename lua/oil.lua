@@ -241,7 +241,7 @@ end
 --            readonly attribute unsigned long count;
 --            string say_hello_to(in string msg);
 --          };
---        ]]                                                                   .
+--        ]]                                                                 .
 --
 function ORB:loadidl(idlspec)
 	asserttype(idlspec, "string", "IDL specification")
@@ -253,17 +253,32 @@ end
 --
 -- The file specified will be parsed by the LuaIDL compiler and the resulting
 -- definitions are updated in the internal interface repository.
--- If any errors occurs during the parse no definitions are loaded into the IR.
+-- If any errors occurs during the parse no definitions are loaded into the
+-- IR.
 --
 -- @param filename string The path to the IDL file that must be loaded.
 -- @return ... object IDL descriptors that represents the loaded definitions.
 --
--- @usage oil.loadidlfile "/usr/local/corba/idl/CosNaming.idl"                 .
--- @usage oil.loadidlfile("HelloWorld.idl", "/tmp/preprocessed.idl")           .
+-- @usage oil.loadidlfile "/usr/local/corba/idl/CosNaming.idl"               .
+-- @usage oil.loadidlfile("HelloWorld.idl", "/tmp/preprocessed.idl")         .
 --
 function ORB:loadidlfile(filepath)
 	asserttype(filepath, "string", "IDL file path")
 	return assert(self.TypeRepository.compiler:loadfile(filepath))
+end
+
+--------------------------------------------------------------------------------
+-- Loads a parsed IDL file into the internal interface repository.
+--
+-- The parsed IDL is a table containing the result of LuaIDL. The IDL
+-- definitions are updated in the internal interface repository.
+--
+-- @param parsedidl table The parsed IDL that must be loaded.
+-- @return ... object IDL descriptors that represents the loaded definitions.
+--
+function ORB:loadparsedidl(parsedidl)
+	asserttype(parsedidl, "tabl", "IDL file path")
+	return assert(self.TypeRepository.types:register(filepath))
 end
 
 --------------------------------------------------------------------------------
@@ -573,8 +588,8 @@ end
 function ORB:newexcept(body)
 	asserttype(body, "table", "exception body")
 	local except = self.types and self.types:resolve(body[1])
-	if except then body[1] = except.repID end
-	return Exception(body)
+	if except then body._repid = except.repID end
+	return self.Exception(body)
 end
 
 --------------------------------------------------------------------------------
@@ -806,11 +821,11 @@ local function extracer(ex)
 	return traceback(tostring(ex))
 end
 
-if cothread then
-	function cothread.error(thread, errmsg)
-		error(traceback(thread, tostring(errmsg)), 3)
-	end
-end
+--if cothread then
+--	function cothread.error(thread, errmsg)
+--		error(traceback(thread, tostring(errmsg)), 3)
+--	end
+--end
 
 function main(main, ...)
 	asserttype(main, "function", "main function")

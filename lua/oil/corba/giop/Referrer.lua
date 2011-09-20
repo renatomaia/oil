@@ -124,41 +124,65 @@ end
 
 local Referrer = class()
 
-local function decodeIOR(self, stream)
-	local decoder = self.codec:decoder(hexa2byte(stream), true)
+local function decodeIorString(self, encoded)
+	local decoder = self.codec:decoder(hexa2byte(encoded), true)
 	return decoder:IOR()
 end
-local StringfiedDecoder = {
-	IOR = function(self, stream)                                                  --[[VERBOSE]] verbose:references(true, "decode stringfied IOR")
-		local ok, result = pcall(decodeIOR, self, stream)                           --[[VERBOSE]] verbose:references(false)
-		if not ok then
-			return nil, result
-		end
-		return result
-	end,
-	corbaloc = function(self, encoded)                                            --[[VERBOSE]] verbose:references(true, "decode corbaloc reference")
-		for token, data in encoded:gmatch("(%w*):([^,]*)") do
-			if token == "" then token = "iiop" end
-			local profiler = self.profiler[token]
-			if profiler then
-				local profile, except = profiler:decodeurl(data)
-				if profile then                                                         --[[VERBOSE]] verbose:references(false)
-					return IOR{
-						referrer = self,
-						type_id = objrepID,
-						profiles = { profile },
-					}
-				else                                                                    --[[VERBOSE]] verbose:references(false, "unable to decode corbaloc URL with profile ",token)
-					return nil, except
-				end
+local function decodeIOR(self, encoded)
+	local ok, result = pcall(decodeIorString, self, encoded)                           --[[VERBOSE]] verbose:references(false)
+	if not ok then
+		return nil, result
+	end
+	return result
+end
+
+local function decodeCorbaloc(self, encoded)
+	local profiles = {}
+	for token, data in encoded:gmatch("(%w*):([^,]*)") do
+		if token == "" then token = "iiop" end
+		local profiler = self.profiler[token]
+		if profiler then
+			local profile, except = profiler:decodeurl(data)
+			if profile ~= nil then
+				profiles[#profiles+1] = profile                                     --[[VERBOSE]] else verbose:references("unable to decode corbaloc URL with profile ",token)
 			end
-		end                                                                         --[[VERBOSE]] verbose:references(false, "no supported protocol found in corbaloc")
+		end
+	end
+	if #profiles == 0 then                                                    --[[VERBOSE]] verbose:references(false, "no supported protocol found in corbaloc")
 		return nil, Exception{
+			"no supported protocol found in corbaloc (got $reference)",
 			error = "badcorbaloc",
-			message = "no supported protocol found in corbaloc (got $reference)",
 			reference = encoded,
 		}
-	end,
+	end                                                                       --[[VERBOSE]] verbose:references(false)
+	return IOR{
+		referrer = self,
+		type_id = objrepID,
+		profiles = profiles,
+	}
+end
+
+local function decodeCorbaname(self, encoded)
+	local nsloc, name = encoded:match("^([^#]+)#(.*)")
+	if nsloc ~= nil then
+		local ns, except = decodeCorbaloc(self, nsloc)
+		if ns ~= nil then
+			error("NOT IMPLEMENTED") -- ns = orb:newproxy(ns)
+			return ns:resolve_name(name)
+		end
+		return ns, except
+	end
+	return nil, Exception{
+		"invalid stringfied corbaname reference (got $reference)",
+		error = "badobjref",
+		reference = encoded,
+	}
+end
+
+local StringfiedDecoder = {
+	IOR = decodeIOR,
+	corbaloc = decodeCorbaloc,
+	--corbaname = decodeCorbaname,
 }
 function Referrer:decodestring(encoded)
 	local token, stream = encoded:match("^(%w+):(.+)$")
@@ -167,8 +191,8 @@ function Referrer:decodestring(encoded)
 		return decoder(self, stream)
 	end
 	return nil, Exception{
+		"invalid stringfied reference (got $reference)",
 		error = "badobjref",
-		message = "invalid stringfied reference (got $reference)",
 		reference = enconded,
 		format = token,
 	}
@@ -178,8 +202,8 @@ function Referrer:decodeprofile(encoded)
 	local profiler = self.profiler[encoded.tag]
 	if profiler == nil then
 		return nil, Exception{
+			"IOR profile tag not supported",
 			error = "badversion",
-			message = "IOR profile tag not supported",
 			errmsg = "unsupported IOR profile",
 			minor = 1,
 			profile = encoded,

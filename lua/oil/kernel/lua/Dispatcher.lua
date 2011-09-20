@@ -47,8 +47,8 @@ function LuaDispatcher:dispatch(request)
 			request:setreply(pcall(method, entry.__servant, request:getvalues()))
 		else
 			request:setreply(false, Exception{
+				"no implementation of $operation for object (got $key)",
 				error = "badobjimpl",
-				message = "no implementation of $operation for object (got $key)",
 				operation = request.operation,
 				object = entry.__servant,
 				key = request.objectkey,
@@ -56,8 +56,8 @@ function LuaDispatcher:dispatch(request)
 		end
 	else
 		request:setreply(false, Exception{
+			"no object with key (got $key)",
 			reason = "badobjkey",
-			message = "no object with key (got $key)",
 			key = request.objectkey,
 		})
 	end

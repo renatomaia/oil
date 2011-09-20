@@ -61,10 +61,7 @@ function ServerChannel:getrequest(timeout)
 		result, except = makerequest(self, self:receivevalues(timeout))
 		self:freelock("read")
 	else
-		result, except = nil, Exception{
-			error = "terminated",
-			message = "terminated",
-		}
+		result, except = nil, Exception{ "terminated", error = "terminated" }
 	end
 	return result, except
 end

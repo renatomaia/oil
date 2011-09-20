@@ -4,7 +4,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"                                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 local assert = _G.assert
 local ipairs = _G.ipairs
 local pcall = _G.pcall
@@ -28,7 +28,7 @@ local class = oo.class
 
 local idl = require "oil.corba.idl"
 
-local giop = require "oil.corba.giop"                                           --[[VERBOSE]] local MessageType = giop.MessageType
+local giop = require "oil.corba.giop"                                         --[[VERBOSE]] local MessageType = giop.MessageType
 local MagicTag = giop.MagicTag
 local HeaderSize = giop.HeaderSize
 local GIOPHeader_v1_ = giop.Header_v1_
@@ -40,6 +40,7 @@ local LocateRequestID = giop.LocateRequestID
 local CloseConnectionID = giop.CloseConnectionID
 local MessageErrorID = giop.MessageErrorID
 local FragmentID = giop.FragmentID
+local SystemExceptionIDs = giop.SystemExceptionIDs
 local SystemExceptionIDL = giop.SystemExceptionIDL
 
 local Channel = require "oil.protocol.Channel"
@@ -157,10 +158,7 @@ MessageBuilder_v1_[3] = MessageBuilder_v1_[2]
 local function pdecode_cont(ok, ...)
 	if ok then return true, ... end
 	if type(...) ~= "string" then return false, Exception(...) end
-	return false, Exception{ "MARSHAL",
-		error = "badvalue",
-		message = ...,
-	}
+	return false, Exception{ (...), error = "badvalue" }
 end
 local function pdecode(func, ...)
 	return pdecode_cont(pcall(func, ...))
@@ -210,14 +208,14 @@ local function encodemsg(self, kind, header, types, values)
 	encoder:struct(header, self.headertype)
 	return encoder:getdata()..stream
 end
-local function sendmsg(self, kind, header, types, values)                       --[[VERBOSE]] verbose:message(true, "send message ",MessageType[kind],header or "")
+local function sendmsg(self, kind, header, types, values)                     --[[VERBOSE]] verbose:message(true, "send message ",MessageType[kind],header or "")
 	local ok, result = pcall(encodemsg, self, kind, header, types, values)
 	if ok then
 		self:trylock("write")
 		ok, result = self:send(result)
 		if not ok and type(result) == "table" then result = Exception(result) end
-		self:freelock("write")                                                      --[[VERBOSE]] else verbose:message("message encoding failed")
-	end                                                                           --[[VERBOSE]] verbose:message(false)
+		self:freelock("write")                                                    --[[VERBOSE]] else verbose:message("message encoding failed")
+	end                                                                         --[[VERBOSE]] verbose:message(false)
 	return ok, result
 end
 
@@ -225,20 +223,20 @@ local function decodeheader(self, stream)
 	local decoder = self.context.codec:decoder(stream)
 	local header = self.headertype
 	local magic = decoder:array(header[1].type)
-	if magic ~= self.magictag then                                                --[[VERBOSE]] verbose:message("got invalid magic tag: ",magic)
+	if magic ~= self.magictag then                                              --[[VERBOSE]] verbose:message("got invalid magic tag: ",magic)
 		error(Exception{
+			"illegal GIOP magic tag (got $actualtag)",
 			error = "badstream",
-			message = "illegal GIOP magic tag (got $actualtag)",
 			actualtag = magic,
 		})
 	end
 	local version = decoder:struct(header[2].type)
 	local minor = version.minor
 	header = GIOPHeader_v1_[minor]
-	if version.major ~= 1 or header == nil then                                   --[[VERBOSE]] verbose:message("got unsupported GIOP version: ",version)
+	if version.major ~= 1 or header == nil then                                 --[[VERBOSE]] verbose:message("got unsupported GIOP version: ",version)
 		error(Exception{
+			"illegal GIOP version (got $majorversion.$minorversion)",
 			error = "badversion",
-			message = "illegal GIOP version (got $majorversion.$minorversion)",
 			majorversion = version.major,
 			minorversion = version.minor,
 		})
@@ -275,23 +273,23 @@ local function decodemsgbody(self, decoder, minor, kind)
 	end
 end
 local IncompleteMessages = {}
-local function receivemsg(self, timeout)                                        --[[VERBOSE]] verbose:message(true, "get message from channel")
+local function receivemsg(self, timeout)                                      --[[VERBOSE]] verbose:message(true, "get message from channel")
 	while true do
 		local minor, kind, size, decoder, incomplete
 		local pending = self.pendingmessage
 		if pending == nil then
 			-- unmarshal message header
 			local stream, except = self:receive(self.headersize, timeout)
-			if stream == nil then                                                     --[[VERBOSE]] verbose:message(false, except.error == "timeout" and "message data is not available yet" or "error while reading message header data")
+			if stream == nil then                                                   --[[VERBOSE]] verbose:message(false, except.error == "timeout" and "message data is not available yet" or "error while reading message header data")
 				return nil, Exception(except)
 			end
 			local ok
 			ok, minor, kind, size, incomplete, decoder = pdecode(decodeheader,
 			                                                     self, stream)
-			if not ok then                                                            --[[VERBOSE]] verbose:message(false, "error in message header decoding: ",kind.error)
+			if not ok then                                                          --[[VERBOSE]] verbose:message(false, "error in message header decoding: ",kind.error)
 				return nil, minor
 			end
-		else                                                                        --[[VERBOSE]] verbose:message("continue message from a previous decoded header")
+		else                                                                      --[[VERBOSE]] verbose:message("continue message from a previous decoded header")
 			-- continue decoding of a previous decoded header
 			minor = pending.minor
 			kind = pending.kind
@@ -306,15 +304,15 @@ local function receivemsg(self, timeout)                                        
 		if size > 0 then
 			local stream, except = self:receive(size, timeout)
 			if stream == nil then
-				if except.error ~= "timeout" then                                       --[[VERBOSE]] verbose:message(false, "error while reading message body data")
+				if except.error ~= "timeout" then                                     --[[VERBOSE]] verbose:message(false, "error while reading message body data")
 					self.pending = nil
-				elseif pending == nil then                                              --[[VERBOSE]] verbose:message(false, "message body data is not available yet")
+				elseif pending == nil then                                            --[[VERBOSE]] verbose:message(false, "message body data is not available yet")
 					self.pending = {
 						kind = kind,
 						size = size,
 						decoder = decoder,
 						incomplete = incomplete,
-					}                                                                     --[[VERBOSE]] else verbose:message(false)
+					}                                                                   --[[VERBOSE]] else verbose:message(false)
 				end
 				return nil, Exception(except)
 			end
@@ -332,7 +330,7 @@ local function receivemsg(self, timeout)                                        
 				cursor = decoder.cursor
 				local ok
 				ok, id = pdecode(decoder.ulong, decoder)
-				if not ok then                                                          --[[VERBOSE]] verbose:message(false, "error in decoding request id: ",message.error)
+				if not ok then                                                        --[[VERBOSE]] verbose:message(false, "error in decoding request id: ",message.error)
 					return nil, id
 				end
 			end
@@ -342,11 +340,11 @@ local function receivemsg(self, timeout)                                        
 				previous:append(decoder:remains())
 				if not incomplete then
 					decoder = previous
-					kind = decoder.kind                                                   --[[VERBOSE]] verbose:message("got final fragment of message ",MessageType[kind])
+					kind = decoder.kind                                                 --[[VERBOSE]] verbose:message("got final fragment of message ",MessageType[kind])
 					fragment = false
-					IncompleteMessages[id] = nil                                          --[[VERBOSE]] else verbose:message("fragment of an incomplete message")
+					IncompleteMessages[id] = nil                                        --[[VERBOSE]] else verbose:message("fragment of an incomplete message")
 				end
-			else                                                                      --[[VERBOSE]] verbose:message("got the begin of a fragmented message")
+			else                                                                    --[[VERBOSE]] verbose:message("got the begin of a fragmented message")
 				if cursor then decoder.cursor = cursor end
 				decoder.kind = kind
 				IncompleteMessages[id] = decoder
@@ -355,9 +353,9 @@ local function receivemsg(self, timeout)                                        
 		if not fragment then
 			local ok
 			ok, message = pdecode(decodemsgbody, self, decoder, minor, kind)
-			if not ok then                                                            --[[VERBOSE]] verbose:message(false, "error in message body decoding: ",message.error)
+			if not ok then                                                          --[[VERBOSE]] verbose:message(false, "error in message body decoding: ",message.error)
 				return nil, message
-			end                                                                       --[[VERBOSE]] verbose:message(false, "got message ",MessageType[kind],message or "")
+			end                                                                     --[[VERBOSE]] verbose:message(false, "got message ",MessageType[kind],message or "")
 			return kind, message or minor, decoder
 		end
 	end
@@ -367,8 +365,8 @@ local function failedGIOP(self, errmsg)
 	sendmsg(self, MessageErrorID) -- ignore any errors
 	self:close() -- ignore any errors
 	return nil, Exception{
+		"GIOP Failure ($errmsg)",
 		error = "badmessage",
-		message = "GIOP Failure ($errmsg)",
 		errmsg = errmsg,
 	}
 end
@@ -430,7 +428,7 @@ function GIOPChannel:unregister(requestid, direction)
 end
 
 function GIOPChannel:upgradeto(minor)
-	if minor >= self.version and GIOPHeader_v1_[minor] ~= nil then                --[[VERBOSE]] verbose:message("GIOP channel upgraded to version 1.",minor)
+	if minor >= self.version and GIOPHeader_v1_[minor] ~= nil then              --[[VERBOSE]] verbose:message("GIOP channel upgraded to version 1.",minor)
 		self.headertype = GIOPHeader_v1_[minor]
 		self.messagetype = MessageHeader_v1_[minor]
 		self.messagebuilder = MessageBuilder_v1_[minor]
@@ -444,22 +442,22 @@ local KeyAddrValue = {giop.KeyAddr}
 local MessageHandlers = {
 	[RequestID] = function(channel, header, decoder)
 		local requestid = header.request_id
-		if channel.incoming[requestid] ~= nil then                                  --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
+		if channel.incoming[requestid] ~= nil then                                --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
 			return failedGIOP(channel, "remote ORB issued a request with duplicated ID")
 		end
 		local response = header.sync_scope ~= "channel"
-		if header.object_key == nil then                                            --[[VERBOSE]] verbose:listen("got request ",requestid," with wrong addressing information")
-			if response then                                                          --[[VERBOSE]] verbose:listen("send reply requesting different addressing information")
+		if header.object_key == nil then                                          --[[VERBOSE]] verbose:listen("got request ",requestid," with wrong addressing information")
+			if response then                                                        --[[VERBOSE]] verbose:listen("send reply requesting different addressing information")
 				local reply = {
 					request_id = requestid,
 					reply_status = "NEEDS_ADDRESSING_MODE",
 				}
 				return sendmsg(channel, ReplyID, reply, AddressingType, KeyAddrValue)
-			end                                                                       --[[VERBOSE]] verbose:listen("ignoring request because no reply is expected, so it is not possible to request different addressing information")
+			end                                                                     --[[VERBOSE]] verbose:listen("ignoring request because no reply is expected, so it is not possible to request different addressing information")
 			return true
 		end
 		if response then
-			channel:register(header, "incoming")                                      --[[VERBOSE]] else verbose:listen("no reply is expected")
+			channel:register(header, "incoming")                                    --[[VERBOSE]] else verbose:listen("no reply is expected")
 		end
 		header.decoder = decoder
 		local unprocessed = channel.unprocessed
@@ -469,7 +467,7 @@ local MessageHandlers = {
 	end,
 	[ReplyID] = function(channel, header, decoder)
 		local request = channel:unregister(floor(header.request_id/2), "outgoing")
-		if request == nil then                                                      --[[VERBOSE]] verbose:invoke("got reply for invalid request ID: ",header.request_id)
+		if request == nil then                                                    --[[VERBOSE]] verbose:invoke("got reply for invalid request ID: ",header.request_id)
 			return failedGIOP(channel, "remote ORB issued a reply with unknown ID")
 		end
 		request.reply = header
@@ -477,25 +475,25 @@ local MessageHandlers = {
 		channel:signal("read", request) -- notify thread waiting for this reply
 		return request
 	end,
-	[CancelRequestID] = function(channel, header, decoder)                        --[[VERBOSE]] verbose:listen("got cancelation of request ",requestid)
-		if channel:unregister(header.request_id, "incoming") == nil then            --[[VERBOSE]] verbose:listen("canceled request ",requestid," does not exist")
+	[CancelRequestID] = function(channel, header, decoder)                      --[[VERBOSE]] verbose:listen("got cancelation of request ",requestid)
+		if channel:unregister(header.request_id, "incoming") == nil then          --[[VERBOSE]] verbose:listen("canceled request ",requestid," does not exist")
 			return failedGIOP(channel, "remote ORB canceled a request with unknown ID")
 		end
 		return true
 	end,
 	[LocateRequestID] = function(channel, header, decoder)
 		local types, values
-		local objkey = header.object_key                                            --[[VERBOSE]] verbose:listen(true, "got request ",header.request_id," to locate object ",objkey)
+		local objkey = header.object_key                                          --[[VERBOSE]] verbose:listen(true, "got request ",header.request_id," to locate object ",objkey)
 		local reply = { request_id = header.request_id }
 		if objkey == nil then
-			reply.locate_status = "LOC_NEEDS_ADDRESSING_MODE"                         --[[VERBOSE]] verbose:listen("different addressing information is required")
+			reply.locate_status = "LOC_NEEDS_ADDRESSING_MODE"                       --[[VERBOSE]] verbose:listen("different addressing information is required")
 			types = AddressingType
 			values = KeyAddrValue
 		elseif self.context.servants:retrieve(objkey) then
-			reply.locate_status = "OBJECT_HERE"                                       --[[VERBOSE]] verbose:listen("object found here")
+			reply.locate_status = "OBJECT_HERE"                                     --[[VERBOSE]] verbose:listen("object found here")
 		else
-			reply.locate_status = "UNKNOWN_OBJECT"                                    --[[VERBOSE]] verbose:listen("object is unknown")
-		end                                                                         --[[VERBOSE]] verbose:listen(false)
+			reply.locate_status = "UNKNOWN_OBJECT"                                  --[[VERBOSE]] verbose:listen("object is unknown")
+		end                                                                       --[[VERBOSE]] verbose:listen(false)
 		return sendmsg(channel, LocateReplyID, reply, types, values)
 	end,
 	[CloseConnectionID] = function(channel)
@@ -510,14 +508,14 @@ local MessageHandlers = {
 		return channel:close()
 	end,
 	[MessageErrorID] = function(channel, minor)
-		if next(channel.incoming) == nil and minor < channel.version then           --[[VERBOSE]] verbose:invoke("got remote request to use GIOP 1.",minor," instead of GIOP 1.",channel.version)
+		if next(channel.incoming) == nil and minor < channel.version then         --[[VERBOSE]] verbose:invoke("got remote request to use GIOP 1.",minor," instead of GIOP 1.",channel.version)
 			-- notify threads waiting for replies to reissue them in a new connection
 			for requestid in pairs(channel.outgoing) do
 				request.reference.ior_profile_decoded.giop_minor = minor
 				channel:signal("read", channel:unregister(requestid, "outgoing"))
 			end
 			return channel:close()
-		end                                                                         --[[VERBOSE]] verbose:invoke("got remote indication of error in protocol messages")
+		end                                                                       --[[VERBOSE]] verbose:invoke("got remote indication of error in protocol messages")
 		return failedGIOP(channel, "remote ORB reported error in GIOP messages")
 	end,
 }
@@ -552,14 +550,14 @@ function GIOPChannel:sendrequest(request)
 		listener = self.context.listener
 		if listener ~= nil then
 			bidir = listener:addbidircontext(request.service_context)
-			if bidir ~= nil then                                                      --[[VERBOSE]] verbose:invoke("bi-directional GIOP indication added to the request")
+			if bidir ~= nil then                                                    --[[VERBOSE]] verbose:invoke("bi-directional GIOP indication added to the request")
 				request.service_context = bidir
 			end
 		end
 	end
 	if request.service_context == nil then request.service_context = Empty end
 	local success, except = sendmsg(self, RequestID, request, types, request)
-	if not success then                                                           --[[VERBOSE]] verbose:invoke("unable to send the request")
+	if not success then                                                         --[[VERBOSE]] verbose:invoke("unable to send the request")
 		self:unregister(request.id, "outgoing")
 	elseif bidir ~= nil and listener ~= nil then
 		self.bidir_role = "connector"
@@ -576,31 +574,28 @@ function GIOPChannel:getreply(request, timeout)
 			result, except = self:processmessage(timeout)
 		until result == nil or result == request or request.channel ~= self
 		self:freelock("read")
-		if result == nil then                                                       --[[VERBOSE]] verbose:invoke("failed to get reply")
+		if result == nil then                                                     --[[VERBOSE]] verbose:invoke("failed to get reply")
 			return nil, except
 		end
-	elseif expired then --[[timeout of 'trylock' expired]]                        --[[VERBOSE]] verbose:invoke("got no reply before timeout")
-		return nil, Exception{
-			error = "timeout",
-			message = "timeout",
-		}
+	elseif expired then --[[timeout of 'trylock' expired]]                      --[[VERBOSE]] verbose:invoke("got no reply before timeout")
+		return nil, Exception{ "timeout", error = "timeout" }
 	end
 	return true
 end
 
 function GIOPChannel:getrequest(timeout)
 	local unprocessed = self.unprocessed
-	if unprocessed:empty() then                                                   --[[VERBOSE]] verbose:listen(true, "no request ready to be processed, read from channel")
+	if unprocessed:empty() then                                                 --[[VERBOSE]] verbose:listen(true, "no request ready to be processed, read from channel")
 		if self:trylock("read", timeout, unprocessed) then
 			local ok, except
 			repeat
 				ok, except = self:processmessage(timeout)
 			until not ok or not unprocessed:empty()
 			self:freelock("read")
-			if not ok then                                                            --[[VERBOSE]] verbose:listen(false, "failed to get request")
+			if not ok then                                                          --[[VERBOSE]] verbose:listen(false, "failed to get request")
 				return nil, except
 			end
-		end                                                                         --[[VERBOSE]] verbose:listen(false, "request was successfully read from channel")
+		end                                                                       --[[VERBOSE]] verbose:listen(false, "request was successfully read from channel")
 	end
 	local request = unprocessed:dequeue()
 	-- handle Bi-Directional GIOP service context
@@ -614,7 +609,7 @@ function GIOPChannel:getrequest(timeout)
 				bidir = decoder:decodebidir(request.service_context)
 				if bidir ~= nil then
 					self.bidir_role = "acceptor"
-					requester:addbidirchannel(self, bidir)                                --[[VERBOSE]] else verbose:listen("no bi-directional GIOP indication found in request received")
+					requester:addbidirchannel(self, bidir)                              --[[VERBOSE]] else verbose:listen("no bi-directional GIOP indication found in request received")
 				end
 			end
 		end
@@ -626,13 +621,13 @@ local SysExTypes = { idl.string, giop.SystemExceptionIDL }
 local SysExBody = { n=2, --[[defined later, see below]] }
 function GIOPChannel:sendreply(request)
 	local success, except = true
-	local requestid = request.request_id                                          --[[VERBOSE]] verbose:listen(true, "replying for request ",request.request_id," for ",request.objectkey,":",request.operation)
+	local requestid = request.request_id                                        --[[VERBOSE]] verbose:listen(true, "replying for request ",request.request_id," for ",request.objectkey,":",request.operation)
 	if self.incoming[requestid] == request then
 		local types, values = request:getreplybody()
 		if request.service_context == nil then request.service_context = Empty end
 		success, except = sendmsg(self, ReplyID, request, types, values)
-		if not success then
-			if except.error == "terminated" then                                      --[[VERBOSE]] verbose:listen("unable to send reply, connection terminated")
+		if not success then                                                       --[[VERBOSE]] verbose:listen(true, "unable to send reply: ",except)
+			if except.error == "terminated" then                                    --[[VERBOSE]] verbose:listen("connection terminated")
 				success, except = true
 			else
 				if request.reply_status == "SYSTEM_EXCEPTION" then
@@ -641,15 +636,17 @@ function GIOPChannel:sendreply(request)
 					request.reply_status = "SYSTEM_EXCEPTION"
 					except.completed = "COMPLETED_YES"
 				end
-				SysExBody[1], SysExBody[2] = repid, except
-				success, except = sendmsg(self, ReplyID, request, SysExTypes, SysExBody)
-				if not success and except.error == "terminated" then                    --[[VERBOSE]] verbose:listen("unable to send notification of error on reply, connection terminated")
-					success, except = true
+				SysExBody[1], SysExBody[2] = except._repid, except
+				success, except = sendmsg(self,ReplyID,request,SysExTypes,SysExBody)
+				if not success then                                                   --[[VERBOSE]] verbose:listen("unable to send exception on reply: ",except)
+					if except.error == "terminated" then                                --[[VERBOSE]] verbose:listen("connection terminated")
+						success, except = true                                            --[[VERBOSE]] else verbose:listen(false, "unable to send the error on reply as well")
+					end                                                                 --[[VERBOSE]] else verbose:listen(false, "error on reply was sent instead of the original result")
 				end
 			end
 		end
-		self:unregister(requestid, "incoming")                                      --[[VERBOSE]] else verbose:listen("no pending request found with id ",requestid,", reply discarded")
-	end                                                                           --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully processed" or "failed: ", except or "")
+		self:unregister(requestid, "incoming")                                    --[[VERBOSE]] else verbose:listen("no pending request found with id ",requestid,", reply discarded")
+	end                                                                         --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully processed" or "failed: ", except or "")
 	return success, except
 end
 
@@ -663,9 +660,9 @@ function GIOPChannel:close()
 		end
 		if result or except.error == "terminated" then
 			result, except = Channel.close(self)
-		end                                                                         --[[VERBOSE]] verbose:listen("channel closed")
+		end                                                                       --[[VERBOSE]] verbose:listen("channel closed")
 		return result, except
-	end                                                                           --[[VERBOSE]] verbose:listen("channel marked for closing after pending requests are replied")
+	end                                                                         --[[VERBOSE]] verbose:listen("channel marked for closing after pending requests are replied")
 	self.closing = true
 	return true
 end

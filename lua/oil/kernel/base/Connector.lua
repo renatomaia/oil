@@ -57,8 +57,8 @@ function Connector:retrieve(profile)                                            
 				cache[connid] = socket
 			else                                                                      --[[VERBOSE]] verbose:channels("unable to connect to ",host,":",port," (",except,")")
 				socket, except = nil, Exception{
+					"unable to connect to $host:$port ($errmsg)",
 					error = "badconnect",
-					message = "unable to connect to $host:$port ($errmsg)",
 					errmsg = except,
 					host = host,
 					port = port,
@@ -66,8 +66,8 @@ function Connector:retrieve(profile)                                            
 			end
 		else                                                                        --[[VERBOSE]] verbose:channels("unable to create socket")
 			socket, except = nil, Exception{
+				"unable to create socket ($errmsg)",
 				error = "badsocket",
-				message = "unable to create socket ($errmsg)",
 				errmsg = except,
 			}
 		end

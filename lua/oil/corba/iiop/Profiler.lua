@@ -55,8 +55,8 @@ local function encodeIIOPProfile(self, profile, minor)
 	local profileidl = ProfileBody_v1_[minor]
 	if profileidl == nil then
 		error(Exception{
+			"$protocol version $versionmajor.$versionminor is not supported",
 			error = "badversion",
-			message = "$protocol version $versionmajor.$versionminor is not supported",
 			protocol = "IIOP",
 			versionmajor = 1,
 			versionminor = minor,
@@ -93,8 +93,8 @@ local function decodeIIOPProfile(self, profile)
 	local profileidl = ProfileBody_v1_[version.minor]
 	if version.major ~= 1 or not profileidl then
 		error(Exception{
+			"$protocol version not supported (got $versionmajor.$versionminor)",
 			error = "badversion",
-			message = "$protocol version not supported (got $versionmajor.$versionminor)",
 			protocol = "IIOP",
 			versionmajor = version.major,
 			versionminor = version.minor,
@@ -130,8 +130,8 @@ function IIOPProfiler:decodeurl(data)
 	local profileidl = ProfileBody_v1_[minor]
 	if (major and major ~= "1") or (not profileidl) then
 		return nil, Exception{ "INTERNAL", minor = 0,
+			"$protocol $major.$minor not supported",
 			error = "badversion",
-			message = "$protocol $major.$minor not supported",
 			protocol = "IIOP",
 			major = major,
 			minor = minor,

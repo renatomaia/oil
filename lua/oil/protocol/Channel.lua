@@ -50,19 +50,13 @@ function Channel:send(...)
 	local result, except = socket:send(...)
 	if result == nil then
 		if except == "closed" then
-			except = Exception{
-				error = "terminated",
-				message = "terminated",
-			}
+			except = Exception{ "terminated", error = "terminated" }
 		elseif except == "timeout" then
-			except = Exception{
-				error = "timeout",
-				message = "timeout",
-			}
+			except = Exception{ "timeout", error = "timeout" }
 		else
 			except = Exception{
+				"unable to write to $channel ($errmsg)",
 				error = "badchannel",
-				message = "unable to write to $channel ($errmsg)",
 				errmsg = except,
 				channel = self,
 			}
@@ -96,19 +90,13 @@ function Channel:receive(count, timeout)
 	end
 	self.bytes = bytes..partial
 	if except == "closed" then
-		except = Exception{
-			error = "terminated",
-			message = "terminated",
-		}
+		except = Exception{ "terminated", error = "terminated" }
 	elseif except == "timeout" then
-		except = Exception{
-			error = "timeout",
-			message = "timeout",
-		}
+		except = Exception{ "timeout", error = "timeout" }
 	else
 		except = Exception{
+			"unable to read from $channel ($errmsg)",
 			error = "badchannel",
-			message = "unable to read from $channel ($errmsg)",
 			errmsg = except,
 			channel = self,
 		}

@@ -125,8 +125,8 @@ end
 
 function CodeGenerator:illegal(description, sysex)
 	self:add([[ assert.exception{ ']],(sysex or "illegal value"),[[',
-		reason = 'value',
-		message = 'illegal ]],description,[[',
+		'illegal ]],description,[[',
+		error = 'badvalue',
 		valuename = ']],description,[['
 	}
 	]])

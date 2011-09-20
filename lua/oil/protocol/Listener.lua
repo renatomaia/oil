@@ -38,10 +38,7 @@ function Listener:setup(configs)
 		self.configs = configs -- delay actual initialization (see 'getaccess')
 		return true
 	end
-	return nil, Exception{
-		error = "already started",
-		message = "already started",
-	}
+	return nil, Exception{ "already started", error = "already started" }
 end
 
 function Listener:getaccess(probe)
@@ -49,10 +46,7 @@ function Listener:getaccess(probe)
 	if result == nil and not probe then
 		result = self.configs
 		if result == nil then
-			except = Exception{
-				error = "terminated",
-				message = "terminated",
-			}
+			except = Exception{ "terminated", error = "terminated" }
 		else                                                                        --[[VERBOSE]] verbose:listen("creating new access point")
 			result, except = self.channels:newaccess(result)
 			if result ~= nil then

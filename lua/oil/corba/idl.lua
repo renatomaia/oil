@@ -365,7 +365,7 @@ function valuetype(self)
 	if base == nil then
 		self.base_value = null
 	elseif base ~= null then
-		assert.type(base, "idl valuetype", "base in value definition")
+		asserttype(base, "idl valuetype", "base in value definition", "BAD_PARAM")
 	end
 	if self.members == nil then self.members = self end
 	local members = self.members
@@ -383,7 +383,7 @@ function valuebox(self)
 	self._type = "valuebox"
 	if self.original_type == nil then self.original_type = self[1] end
 	local type = self.original_type
-	assert.type(type, "idl type", "type in typedef definition")
+	asserttype(type, "idl type", "type in typedef definition", "BAD_PARAM")
 	local kind = type._type
 	if kind == "valuetype" or kind == "valuebox" then
 		assert.illegal(type, "type of value box")
@@ -511,7 +511,7 @@ function interface(self)
 	asserttype(self.base_interfaces, "table", "interface base list")
 	for _, base in ipairs(self.base_interfaces) do
 		if base._type ~= "abstract_interface" then
-			assert.type(base, "idl interface", "interface base")
+			asserttype(base, "idl interface", "interface base", "BAD_PARAM")
 		end
 	end
 	self.hierarchy = basesof
@@ -521,7 +521,7 @@ end
 function abstract_interface(self)
 	self = interface(self)
 	for _, base in ipairs(self.base_interfaces) do
-		assert.type(base, "idl abstract_interface", "abstract interface base")
+		asserttype(base, "idl abstract_interface", "abstract interface base", "BAD_PARAM")
 	end
 	self._type = "abstract_interface"
 	return self
@@ -531,7 +531,7 @@ function local_interface(self)
 	self = interface(self)
 	for _, base in ipairs(self.base_interfaces) do
 		if base._type ~= "local_interface" then
-			assert.type(base, "idl interface", "local interface base")
+			asserttype(base, "idl interface", "local interface base", "BAD_PARAM")
 		end
 	end
 	self._type = "local_interface"

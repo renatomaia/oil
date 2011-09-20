@@ -32,8 +32,8 @@ function AccessPoint:accept(timeout)
 				else                                                                    --[[VERBOSE]] verbose:channels("error when accepting connection (",except,")")
 					if except == "closed" then poll:remove(port) end
 					except = Exception{
+						"unable to accept connection ($errmsg)",
 						error = "badconnect",
-						message = "unable to accept connection ($errmsg)",
 						errmsg = except,
 					}
 				end
@@ -48,15 +48,9 @@ function AccessPoint:accept(timeout)
 				end
 			end
 		elseif except == "timeout" then                                             --[[VERBOSE]] verbose:channels("timeout when accepting connection")
-			except = Exception{
-				error = "timeout",
-				message = "timeout",
-			}
+			except = Exception{ "timeout", error = "timeout" }
 		elseif except == "empty" then                                               --[[VERBOSE]] verbose:channels("accepting connection terminated")
-			except = Exception{
-				error = "terminated",
-				message = "terminated",
-			}
+			except = Exception{ "terminated", error = "terminated" }
 		end
 	until socket or except
 	return socket, except
@@ -129,9 +123,8 @@ function _ENV:newaccess(configs)
 	local sockets = self.sockets
 	local socket, except = sockets:newsocket(options)
 	if not socket then                                                            --[[VERBOSE]] verbose:channels("unable to create socket (",except,")")
-		return nil, Exception{
+		return nil, Exception{ "unable to create socket ($errmsg)",
 			error = "badsocket",
-			message = "unable to create socket ($errmsg)",
 			errmsg = except,
 		}
 	end
@@ -141,9 +134,8 @@ function _ENV:newaccess(configs)
 	success, except = socket:bind(host, port)
 	if not success then                                                           --[[VERBOSE]] verbose:channels("unable to bind to ",host,":",port," (",except,")")
 		socket:close()
-		return nil, Exception{
+		return nil, Exception{ "unable to bind to $host:$port ($errmsg)",
 			error = "badaddress",
-			message = "unable to bind to $host:$port ($errmsg)",
 			errmsg = except,
 			host = host,
 			port = port,
@@ -152,9 +144,8 @@ function _ENV:newaccess(configs)
 	success, except = socket:listen(options and options.backlog)
 	if not success then                                                           --[[VERBOSE]] verbose:channels("unable to listen to ",host,":",port," (",except,")")
 		socket:close()
-		return nil, Exception{
+		return nil, Exception{ "unable to listen to $host:$port ($error)",
 			error = "badinitialize",
-			message = "unable to listen to $host:$port ($error)",
 			errmsg = except,
 			host = host,
 			port = port,

@@ -28,8 +28,8 @@ function Dispatcher:dispatch(request)
 			request:setreply(pcall(method, object, request:getvalues()))
 		else                                                                        --[[VERBOSE]] verbose:dispatcher("missing implementation of ",request.operation)
 			request:setreply(false, Exception{
+				"servant $key does not implement $operation",
 				error = "badobjimpl",
-				message = "servant $key does not implement $operation",
 				operationdescription = operation,
 				operation = request.operation,
 				object = object,
@@ -38,14 +38,14 @@ function Dispatcher:dispatch(request)
 		end
 	elseif entry == nil then                                                      --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
 		request:setreply(false, Exception{
+			"unknown servant (got $key)",
 			error = "badobjkey",
-			message = "unknown servant (got $key)",
 			key = key,
 		})
 	elseif operation == nil then                                                  --[[VERBOSE]] verbose:dispatcher("got illegal operation ",request.operation)
 		request:setreply(false, Exception{
+			"operation $operation is illegal for servant $key",
 			error = "badobjop",
-			message = "operation $operation is illegal for servant $key",
 			operation = request.operation,
 			object = object,
 			type = entry.__type,

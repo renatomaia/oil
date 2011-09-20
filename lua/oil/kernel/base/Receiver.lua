@@ -62,10 +62,7 @@ function _ENV:start()
 		self.stopped = nil
 		return values()
 	end
-	return nil, Exception{
-		error = "badinitialize",
-		message = "already started",
-	}
+	return nil, Exception{ "already started", error = "badinitialize" }
 end
 
 function _ENV:stop(...)
