@@ -13,6 +13,6 @@ ServantManager = component.Template({
 function assemble(components)
 	arch.start(components)
 	ServantManager.indexer = TypeRepository.indexer
-	ServantManager.types   = TypeRepository.types
+	ServantManager.types = TypeRepository.types
 	arch.finish(components)
 end

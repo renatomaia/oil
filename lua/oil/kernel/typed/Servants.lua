@@ -29,7 +29,7 @@ function TypedServants:makeentry(entry)
 	local type = getfield(servant, "__type")
 	if type ~= nil then entry.__type = type end
 	local except
-	type, except = self.types:resolve(entry.__type)
+	type, except = self.types:resolve(entry.__type, true)
 	if not type then return nil, except end
 	entry.__type = type
 	if entry.__objkey == nil then
@@ -63,7 +63,7 @@ function TypedServants:unregister(value, type)
 			local objkey = getfield(value, "__objkey")
 			if objkey == nil then
 				if type == nil then type = getfield(value, "__type") end
-				local result, except = self.types:resolve(type)
+				local result, except = self.types:resolve(type, true)
 				if not result then return nil, except end
 				objkey = self:getkey(value, result)
 			end

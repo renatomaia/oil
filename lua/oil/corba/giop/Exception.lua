@@ -24,9 +24,12 @@ local OiLEx2SysEx = {
 	badobjimpl    = { SystemExceptionIDs.NO_IMPLEMENT    ,nil},
 	badobjop      = { SystemExceptionIDs.BAD_OPERATION   ,nil},
 	badobjkey     = { SystemExceptionIDs.OBJECT_NOT_EXIST,nil},
+	badtype       = { SystemExceptionIDs.BAD_PARAM       ,nil},
 	terminated    = { SystemExceptionIDs.COMM_FAILURE    ,nil},
 	timeout       = { SystemExceptionIDs.TIMEOUT         ,nil},
 }
+
+local SysExMessage = "CORBA System Exception $_repid: minor code: $minor, completed: $completed"
 
 local GIOPException = class({
 	"CORBA Exception: $_repid",
@@ -43,6 +46,7 @@ function GIOPException:__new(except, ...)
 	if except then
 		local sysex = SystemExceptionIDs[except[1]]
 		if sysex ~= nil then
+			except[1] = SysExMessage
 			except._repid = sysex
 		else
 			local error = except.error

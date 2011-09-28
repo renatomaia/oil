@@ -226,10 +226,10 @@ function register(self, object, history)
 	return result
 end
 
-function resolve(self, typeref)
+function resolve(self, typeref, ...)
 	if type(typeref) == "table" and typeref.__reference then
 		return self:register(typeref)
 	else
-		return Registry.resolve(self, typeref)
+		return Registry.resolve(self, typeref, ...)
 	end
 end

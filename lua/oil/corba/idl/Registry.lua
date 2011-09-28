@@ -19,6 +19,7 @@
 -- 	[interface:table] lookup_id(repid:string)
 --------------------------------------------------------------------------------
 
+local _G = require "_G"
 local error        = error
 local getmetatable = getmetatable
 local ipairs       = ipairs
@@ -1773,7 +1774,7 @@ local TypeCodesOfInterface = {
 	Object = true,
 	abstract_interface = true,
 }
-function resolve(self, typeref)
+function resolve(self, typeref, servant)
 	local luatype = type(typeref)
 	local result, errmsg
 	if luatype == "table" then
@@ -1784,19 +1785,25 @@ function resolve(self, typeref)
 		end
 	end
 	if luatype == "string" then
-		result = self:lookup(typeref) or self:lookup_id(typeref)
+		result = self:lookup_id(typeref) or self:lookup(typeref)
 		if not result then
-			errmsg = Exception{ "INTERNAL", minor = 0,
+			errmsg = Exception{
 				"unknown interface (got $interface_id)",
-				error = "interface",
+				error = "badtype",
 				interface_id = typeref,
 			}
 		end
 	elseif result == nil then
-		result, errmsg = nil, Exception{ "INTERNAL", minor = 0,
+		result, errmsg = nil, Exception{
 			"illegal IDL type (got $idltype)",
-			error = "interface",
+			error = "badtype",
 			idltype = typeref,
+		}
+	end
+	if servant and result == PrimitiveTypes.pk_objref then
+		result, errmsg = nil, Exception{
+			"interface CORBA::Object is illegal for servants",
+			error = "badtype",
 		}
 	end
 	return result, errmsg
