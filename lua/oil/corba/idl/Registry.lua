@@ -627,7 +627,7 @@ function ArrayDef:_get_element_type() return self.elementtype end
 
 function ArrayDef:_set_element_type_def(type_def, registry)
 	local old = self.elementtype
-	type_def = self.containing_repository:put(type_def.type, registry)
+	type_def = self.containing_repository:put(type_def, registry)
 	if self.element_type_def then
 		self:nowatch(self.element_type_def, "elementtype")
 	end
@@ -706,7 +706,7 @@ end
 
 function AttributeDef:_set_type_def(type_def, registry)
 	local old = self.type
-	type_def = self.containing_repository:put(type_def.type, registry)
+	type_def = self.containing_repository:put(type_def, registry)
 	if self.type_def then
 		self:nowatch(self.type_def, "type")
 	end
@@ -763,7 +763,7 @@ function OperationDef:_set_mode(value)
 end
 
 function OperationDef:_set_result_def(type_def, registry)
-	type_def = self.containing_repository:put(type_def.type, registry)
+	type_def = self.containing_repository:put(type_def, registry)
 	local current = self.result
 	local newval = type_def.type
 	if current ~= newval then
@@ -796,7 +796,7 @@ function OperationDef:_set_params(parameters, registry)
 		outputs[#outputs+1] = self.result
 	end
 	for index, param in ipairs(parameters) do
-		param.type_def = self.containing_repository:put(param.type, registry)
+		param.type_def = self.containing_repository:put(param, registry)
 		param.type = param.type_def.type
 		param.mode = param.mode or "PARAM_IN"
 		if param.mode == "PARAM_IN" then
@@ -824,7 +824,7 @@ end
 
 function OperationDef:_set_exceptions(exceptions, registry)
 	for index, except in ipairs(exceptions) do
-		except = self.containing_repository:put(except:get_description().type, registry)
+		except = self.containing_repository:put(except:get_description(), registry)
 		exceptions[index] = except
 		exceptions[except.repID] = except
 	end
@@ -898,7 +898,7 @@ end
 
 function ValueMemberDef:_set_type_def(type_def, registry)
 	local old = self.type
-	type_def = self.containing_repository:put(type_def.type, registry)
+	type_def = self.containing_repository:put(type_def, registry)
 	self.type_def = type_def
 	self.type = type_def.type
 	if self.type ~= old then self:notify("type") end
@@ -936,7 +936,7 @@ end
 function StructDef:_get_members() return self.fields end
 function StructDef:_set_members(members, registry)
 	for index, field in ipairs(members) do
-		field.type_def = self.containing_repository:put(field.type, registry)
+		field.type_def = self.containing_repository:put(field, registry)
 		field.type = field.type_def.type
 	end
 	for index, field in ipairs(self.fields) do
@@ -998,7 +998,7 @@ function UnionDef:_get_discriminator_type() return self.switch end
 
 function UnionDef:_set_discriminator_type_def(type_def, registry)
 	local old = self.switch
-	type_def = self.containing_repository:put(type_def.type, registry)
+	type_def = self.containing_repository:put(type_def, registry)
 	if self.discriminator_type_def then
 		self:nowatch(self.discriminator_type_def, "switch")
 	end
@@ -1013,7 +1013,7 @@ function UnionDef:_set_members(members, registry)
 	local selector = {}
 	local selection = {}
 	for index, member in ipairs(members) do
-		member.type_def = self.containing_repository:put(member.type, registry)
+		member.type_def = self.containing_repository:put(member, registry)
 		member.type = member.type_def.type
 		local option = {
 			label = member.label._anyval,
@@ -1075,7 +1075,7 @@ end
 
 function AliasDef:_set_original_type_def(type_def, registry)
 	local old = self.type
-	type_def = self.containing_repository:put(type_def.type, registry)
+	type_def = self.containing_repository:put(type_def, registry)
 	self.original_type_def = type_def
 	self.original_type = type_def.type
 	if self.type ~= old then self:notify("type") end
@@ -1183,7 +1183,7 @@ end
 
 function ExceptionDef:_set_members(members, registry)
 	for index, member in ipairs(members) do
-		member.type_def = self.containing_repository:put(member.type, registry)
+		member.type_def = self.containing_repository:put(member, registry)
 		member.type = member.type_def.type
 	end
 	for index, member in ipairs(self.members) do
@@ -1754,6 +1754,7 @@ end
 --------------------------------------------------------------------------------
 
 function put(self, definition, registry)
+	definition = definition.type or definition
 	registry = registry or self.Registry{ repository = self }
 	return registry[definition]
 end
