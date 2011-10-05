@@ -3,36 +3,54 @@
 -- @script  IDL Descriptor Pre-Loader
 -- @version 1.0
 -- @author  Renato Maia <maia@tecgraf.puc-rio.br>
---
-local assert     = assert
-local pairs      = pairs
-local select     = select
-local io         = require "io"
-local os         = require "os"
-local string     = require "string"
-local luaidl     = require "luaidl"
-local idl        = require "oil.corba.idl"
-local Compiler   = require "oil.corba.idl.Compiler"
+
+local _G = require "_G"
+local arg = _G.arg
+local assert = _G.assert
+local ipairs = _G.ipairs
+local pairs = _G.pairs
+local select = _G.select
+
+local array = require "table"
+local concat = array.concat
+
+local io = require "io"
+local stderr = io.stderr
+local open = io.open
+
+local os = require "os"
+local exit = os.exit
+
+local string = require "string"
+
+local luaidl = require "luaidl"
+local parsefile = luaidl.parsefile
+
+local Arguments = require "loop.compiler.Arguments"
 local Serializer = require "loop.serial.Serializer"
 
-module("idl2lua", require "loop.compiler.Arguments")
+local idl = require "oil.corba.idl"
+local Compiler = require "oil.corba.idl.Compiler"
 
-output  = "idl.lua"
-include = {}
+local _ENV = Arguments{
+	output  = "idl.lua",
+	include = {},
+}
+_G.pcall(_G.setfenv, 2, _ENV) -- Lua 5.1 compatbility
 
 _alias = { I = "include" }
 for name in pairs(_M) do
 	_alias[name:sub(1, 1)] = name
 end
 
-local start, errmsg = _M(...)
+local start, errmsg = _ENV(...)
 local finish = select("#", ...)
 
-if not start or start > finish then
-	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
-	io.stderr:write([[
+if not start or start ~= finish then
+	if errmsg then stderr:write("ERROR: ", errmsg, "\n") end
+	stderr:write([[
 IDL Descriptor Pre-Parser 1.1  Copyright (C) 2006-2008 Tecgraf, PUC-Rio
-Usage: ]].._NAME..[[.lua [options] <idlfile>
+Usage: ]]..arg[0]..[[.lua [options] <idlfile>
 Options:
   
   -o, -output       Output file that should be generated. Its default is
@@ -42,14 +60,14 @@ Options:
                     are searched.
 
 ]])
-	os.exit(1)
+	exit(1)
 end
 
 --------------------------------------------------------------------------------
 
-local file = assert(io.open(output, "w"))
+local file = assert(open(output, "w"))
 
-local stream = Serializer()
+local stream = Serializer{ ["function"] = false, varprefix = "local " }
 function stream:write(...)
 	return file:write(...)
 end
@@ -79,24 +97,20 @@ stream[idl.ContainerKey] = "idl.ContainerKey"
 local compiler = Compiler()
 local options = compiler.defaults
 options.incpath = include
+local values = { assert(parsefile(select(start, ...), options)) }
 
 file:write([[
-return setfenv(
-	function()
-		return {]])
-
-
-for i = start, finish do
-	stream:serialize(assert(luaidl.parsefile(select(i, ...), options)))
-	file:write(",")
+local _G = require "_G"
+local _ENV = {
+	idl = require "oil.corba.idl",
+	setmetatable = _G.setmetatable,
+}
+_G.pcall(_G.setfenv, 2, _ENV) -- Lua 5.1 compatibility
+]])
+for i, value in ipairs(values) do
+	values[i] = stream:serialize(value)
 end
-
-file:write([[}
-	end,
-	{
-		idl = require "oil.corba.idl",
-		]],stream.namespace,[[ = require("loop.serial.Serializer")(),
-	}
-)()
+file:write([[
+return ]],concat(values, ", "),[[
 ]])
 file:close()
