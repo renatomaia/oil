@@ -38,19 +38,20 @@ local _ENV = Arguments{
 }
 _G.pcall(_G.setfenv, 2, _ENV) -- Lua 5.1 compatbility
 
-_alias = { I = "include" }
-for name in pairs(_M) do
-	_alias[name:sub(1, 1)] = name
+local alias = { I = "include" }
+for name in pairs(_ENV) do
+	alias[name:sub(1, 1)] = name
 end
+_alias = alias
 
 local start, errmsg = _ENV(...)
 local finish = select("#", ...)
 
-if not start or start ~= finish then
+if not start or start > finish then
 	if errmsg then stderr:write("ERROR: ", errmsg, "\n") end
 	stderr:write([[
 IDL Descriptor Pre-Parser 1.1  Copyright (C) 2006-2008 Tecgraf, PUC-Rio
-Usage: ]]..arg[0]..[[.lua [options] <idlfile>
+Usage: ]]..arg[0]..[[.lua [options] <idlfiles>
 Options:
   
   -o, -output       Output file that should be generated. Its default is
@@ -64,6 +65,14 @@ Options:
 end
 
 --------------------------------------------------------------------------------
+
+local function addVarargTo(list, ...)
+	local count = #list
+	local length = select("#", ...)
+	for i = 1, length do
+		list[length+i] = select(i, ...)
+	end
+end
 
 local file = assert(open(output, "w"))
 
@@ -97,7 +106,11 @@ stream[idl.ContainerKey] = "idl.ContainerKey"
 local compiler = Compiler()
 local options = compiler.defaults
 options.incpath = include
-local values = { assert(parsefile(select(start, ...), options)) }
+local values = {}
+
+for i = start, finish do
+	addVarargTo(values, assert(parsefile(select(i, ...), options)))
+end
 
 file:write([[
 local _G = require "_G"
@@ -109,8 +122,9 @@ _G.pcall(_G.setfenv, 2, _ENV) -- Lua 5.1 compatibility
 ]])
 for i, value in ipairs(values) do
 	values[i] = stream:serialize(value)
+if values[i] == nil then print(i, value) end
 end
 file:write([[
-return ]],concat(values, ", "),[[
+return { ]],concat(values, ", "),[[ }
 ]])
 file:close()
