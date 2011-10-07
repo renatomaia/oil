@@ -83,8 +83,8 @@ function CoReceiver:dochannel(channel)
 			yield("last", dispatcher, self, result)
 		end
 	until not result
+	channel:close()
 	if except.error ~= "terminated" then
-		channel:close()
 		if stderr then stderr:write(tostring(except)) end
 	end
 end
