@@ -70,13 +70,13 @@ local function addVarargTo(list, ...)
 	local count = #list
 	local length = select("#", ...)
 	for i = 1, length do
-		list[length+i] = select(i, ...)
+		list[count+i] = select(i, ...)
 	end
 end
 
 local file = assert(open(output, "w"))
 
-local stream = Serializer{ ["function"] = false, varprefix = "local " }
+local stream = Serializer{ ["function"] = false }
 function stream:write(...)
 	return file:write(...)
 end
@@ -106,7 +106,7 @@ stream[idl.ContainerKey] = "idl.ContainerKey"
 local compiler = Compiler()
 local options = compiler.defaults
 options.incpath = include
-local values = {}
+local values = {n=0}
 
 for i = start, finish do
 	addVarargTo(values, assert(parsefile(select(i, ...), options)))
@@ -122,7 +122,6 @@ _G.pcall(_G.setfenv, 2, _ENV) -- Lua 5.1 compatibility
 ]])
 for i, value in ipairs(values) do
 	values[i] = stream:serialize(value)
-if values[i] == nil then print(i, value) end
 end
 file:write([[
 return { ]],concat(values, ", "),[[ }
