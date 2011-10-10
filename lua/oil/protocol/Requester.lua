@@ -45,14 +45,15 @@ function Requester:__init()
 			socket = socket,
 			context = self,
 		}
-	end, "k")
+	end)
 end
 
 function Requester:getchannel(reference)
 	local channels = self.channels
 	local result, except = channels:retrieve(reference)
 	if result then
-		result = self.sock2channel[result]
+		sock2channel = self.sock2channel
+		result = sock2channel[result]
 		if result:unlocked("read") then --[[channel might be broken]]               --[[VERBOSE]] verbose:invoke(true, "check if channel is valid")
 			local ok
 			repeat ok, except = result:processmessage(0) until not ok

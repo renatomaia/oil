@@ -45,10 +45,7 @@ local function findupvalue(func, name)
 	end
 	error("upvalue "..name.." not found!")
 end
-local WrapperOf = findupvalue(socket.tcp, "WrapperOf")
-local indexFunc = _G.getmetatable(WrapperOf).__index
-local funcUpVal = findupvalue(indexFunc, "func")
-local CoSocket = findupvalue(funcUpVal, "CoSocket")
+local CoSocket = findupvalue(socket.cosocket, "CoSocket")
 function CoSocket:settimelimit(timestamp)
 	self:settimeout(timestamp, "isTimestamp")
 end
@@ -56,33 +53,38 @@ end
 
 local Poll = class()
 
-function Poll:__new(object)
-	self = rawnew(self, object)
+function Poll:__init()
+	if self.wrapperOf == nil then self.wrapperOf = {} end
 	if self.poll == nil then self.poll = EventPoll() end
-	return self
 end
 
-function Poll:add(socket)
-	return self.poll:add(socket.__object, "r")
+function Poll:add(wrapper)
+	local socket = wrapper.__object
+	self.wrapperOf[socket] = wrapper
+	return self.poll:add(socket, "r")
 end
 
-function Poll:remove(socket)
-	return self.poll:remove(socket.__object, "r")
+function Poll:remove(wrapper)
+	local socket = wrapper.__object
+	self.wrapperOf[socket] = nil
+	return self.poll:remove(socket, "r")
 end
 
 function Poll:clear()
+	local wrapperOf = self.wrapperOf
 	local sockets = self.poll:clear().r
 	local results = {}
 	for socket in pairs(sockets) do
-		results[cosocket(socket)] = true
+		results[wrapperOf[socket]] = true
+		wrapperOf[socket] = nil
 	end
 	return results
 end
 
 function Poll:getready(timeout)
-	local socket, errmsg = cosocket(self.poll:getready())
+	local socket, errmsg = self.poll:getready()
 	if socket == nil then return nil, errmsg end
-	return socket
+	return self.wrapperOf[socket]
 end
 
 

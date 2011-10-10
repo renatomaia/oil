@@ -291,7 +291,7 @@ function Encoder:align(size)
 	if shift > 0 then self:jump(shift) end
 end
 
-function Encoder:rawput(format, data, size)                                     --[[VERBOSE]] CURSOR[self.cursor] = true; if CODEC == nil then CODEC = self end
+function Encoder:rawput(format, data, size)                                     --[[VERBOSE]] verbose:SET_VERB_VARS(self, self.cursor, true)
 	local index = self.index
 	self.format[index] = format
 	self[index] = data
@@ -624,7 +624,7 @@ local function reserve(self, size, noupdate)
 			self.ChunkSizeIndex = sizeindex                                           --[[VERBOSE]] SIZEINDEXPOS = self.cursor-PrimitiveSizes.long
 		end
 		if not noupdate then
-			self[sizeindex] = newsize                                                 --[[VERBOSE]] CURSOR[SIZEINDEXPOS] = true
+			self[sizeindex] = newsize                                                 --[[VERBOSE]] verbose:SET_VERB_VARS(self, SIZEINDEXPOS, true)
 		end
 	end
 end
@@ -917,8 +917,8 @@ end
 
 function Decoder:jump(shift)
 	local cursor = self.cursor
-	if shift > 0 then                                                             --[[VERBOSE]] CURSOR[self.cursor] = true; if CODEC == nil then CODEC = self end
-		self.cursor = cursor + shift                                                --[[VERBOSE]] CURSOR[self.cursor] = false
+	if shift > 0 then                                                             --[[VERBOSE]] verbose:SET_VERB_VARS(self, self.cursor, true)
+		self.cursor = cursor + shift                                                --[[VERBOSE]] verbose:SET_VERB_VARS(self, self.cursor, false)
 		if self.cursor - 1 > #self.data then
 			illegal(self.data, "data stream, insufficient data", "badstream")
 		end
@@ -1493,6 +1493,11 @@ end
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end
 --[[VERBOSE]] verbose.custom.unmarshal = verbose.custom.marshal
---[[VERBOSE]] function verbose:SET_VERB_VARS(codec, cursor)
---[[VERBOSE]] 	CURSOR[cursor] = true; if CODEC == nil then CODEC = codec end
+--[[VERBOSE]] function verbose:SET_VERB_VARS(codec, cursor, value)
+--[[VERBOSE]] 	if self.flags.hexastream then
+--[[VERBOSE]] 		if value == nil then value = true end
+--[[VERBOSE]] 		if CODEC == nil then CODEC = codec end
+--[[VERBOSE]] 		if CURSOR == nil then CURSOR = {} end
+--[[VERBOSE]] 		CURSOR[cursor] = value
+--[[VERBOSE]] 	end
 --[[VERBOSE]] end

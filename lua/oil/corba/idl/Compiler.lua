@@ -94,6 +94,7 @@ end
 
 function DefaultOptions.callbacks.finish()
 	for module in pairs(Modules) do idl.module(module) end
+	Modules = nil
 end
 
 --------------------------------------------------------------------------------
