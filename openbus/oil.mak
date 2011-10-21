@@ -1,0 +1,117 @@
+PROJNAME= oil
+LIBNAME= $(PROJNAME)
+
+SRC= $(PRELOAD_DIR)/$(LIBNAME).c
+
+LUADIR= ../lua
+LUASRC= \
+	$(LUADIR)/oil/arch/basic/client.lua \
+	$(LUADIR)/oil/arch/basic/common.lua \
+	$(LUADIR)/oil/arch/basic/server.lua \
+	$(LUADIR)/oil/arch/cooperative/common.lua \
+	$(LUADIR)/oil/arch/cooperative/server.lua \
+	$(LUADIR)/oil/arch/corba/client.lua \
+	$(LUADIR)/oil/arch/corba/common.lua \
+	$(LUADIR)/oil/arch/corba/intercepted/client.lua \
+	$(LUADIR)/oil/arch/corba/intercepted/server.lua \
+	$(LUADIR)/oil/arch/corba/server.lua \
+	$(LUADIR)/oil/arch/ludo/byref.lua \
+	$(LUADIR)/oil/arch/ludo/client.lua \
+	$(LUADIR)/oil/arch/ludo/common.lua \
+	$(LUADIR)/oil/arch/ludo/server.lua \
+	$(LUADIR)/oil/arch/typed/client.lua \
+	$(LUADIR)/oil/arch/typed/common.lua \
+	$(LUADIR)/oil/arch/typed/server.lua \
+	$(LUADIR)/oil/arch.lua \
+	$(LUADIR)/oil/assert.lua \
+	$(LUADIR)/oil/builder/basic/client.lua \
+	$(LUADIR)/oil/builder/basic/common.lua \
+	$(LUADIR)/oil/builder/basic/server.lua \
+	$(LUADIR)/oil/builder/cooperative/common.lua \
+	$(LUADIR)/oil/builder/cooperative/server.lua \
+	$(LUADIR)/oil/builder/corba/client.lua \
+	$(LUADIR)/oil/builder/corba/common.lua \
+	$(LUADIR)/oil/builder/corba/gencode.lua \
+	$(LUADIR)/oil/builder/corba/intercepted/client.lua \
+	$(LUADIR)/oil/builder/corba/intercepted/server.lua \
+	$(LUADIR)/oil/builder/corba/server.lua \
+	$(LUADIR)/oil/builder/lua/client.lua \
+	$(LUADIR)/oil/builder/lua/server.lua \
+	$(LUADIR)/oil/builder/ludo/byref.lua \
+	$(LUADIR)/oil/builder/ludo/client.lua \
+	$(LUADIR)/oil/builder/ludo/common.lua \
+	$(LUADIR)/oil/builder/ludo/server.lua \
+	$(LUADIR)/oil/builder/typed/client.lua \
+	$(LUADIR)/oil/builder/typed/server.lua \
+	$(LUADIR)/oil/builder.lua \
+	$(LUADIR)/oil/component.lua \
+	$(LUADIR)/oil/corba/giop/Channel.lua \
+	$(LUADIR)/oil/corba/giop/Codec.lua \
+	$(LUADIR)/oil/corba/giop/CodecGen.lua \
+	$(LUADIR)/oil/corba/giop/Exception.lua \
+	$(LUADIR)/oil/corba/giop/Indexer.lua \
+	$(LUADIR)/oil/corba/giop/Listener.lua \
+	$(LUADIR)/oil/corba/giop/Referrer.lua \
+	$(LUADIR)/oil/corba/giop/Requester.lua \
+	$(LUADIR)/oil/corba/giop.lua \
+	$(LUADIR)/oil/corba/idl/Compiler.lua \
+	$(LUADIR)/oil/corba/idl/Importer.lua \
+	$(LUADIR)/oil/corba/idl/Indexer.lua \
+	$(LUADIR)/oil/corba/idl/ir.lua \
+	$(LUADIR)/oil/corba/idl/Registry.lua \
+	$(LUADIR)/oil/corba/idl/sysex.lua \
+	$(LUADIR)/oil/corba/idl.lua \
+	$(LUADIR)/oil/corba/iiop/Profiler.lua \
+	$(LUADIR)/oil/corba/intercepted/Listener.lua \
+	$(LUADIR)/oil/corba/intercepted/Requester.lua \
+	$(LUADIR)/oil/corba/services/event/ConsumerAdmin.lua \
+	$(LUADIR)/oil/corba/services/event/EventFactory.lua \
+	$(LUADIR)/oil/corba/services/event/EventQueue.lua \
+	$(LUADIR)/oil/corba/services/event/ProxyPushConsumer.lua \
+	$(LUADIR)/oil/corba/services/event/ProxyPushSupplier.lua \
+	$(LUADIR)/oil/corba/services/event/SingleDeferredDispatcher.lua \
+	$(LUADIR)/oil/corba/services/event/SingleSynchronousDispatcher.lua \
+	$(LUADIR)/oil/corba/services/event/SupplierAdmin.lua \
+	$(LUADIR)/oil/corba/services/event.lua \
+	$(LUADIR)/oil/corba/services/naming.lua \
+	$(LUADIR)/oil/Exception.lua \
+	$(LUADIR)/oil/kernel/base/Acceptor.lua \
+	$(LUADIR)/oil/kernel/base/Channels.lua \
+	$(LUADIR)/oil/kernel/base/Connector.lua \
+	$(LUADIR)/oil/kernel/base/Dispatcher.lua \
+	$(LUADIR)/oil/kernel/base/DNS.lua \
+	$(LUADIR)/oil/kernel/base/Proxies/asynchronous.lua \
+	$(LUADIR)/oil/kernel/base/Proxies/protected.lua \
+	$(LUADIR)/oil/kernel/base/Proxies/synchronous.lua \
+	$(LUADIR)/oil/kernel/base/Proxies/utils.lua \
+	$(LUADIR)/oil/kernel/base/Proxies.lua \
+	$(LUADIR)/oil/kernel/base/Receiver.lua \
+	$(LUADIR)/oil/kernel/base/Servants.lua \
+	$(LUADIR)/oil/kernel/base/Sockets.lua \
+	$(LUADIR)/oil/kernel/cooperative/Receiver.lua \
+	$(LUADIR)/oil/kernel/cooperative/Sockets.lua \
+	$(LUADIR)/oil/kernel/cooperative/Tasks.lua \
+	$(LUADIR)/oil/kernel/intercepted/Listener.lua \
+	$(LUADIR)/oil/kernel/intercepted/Requester.lua \
+	$(LUADIR)/oil/kernel/lua/Dispatcher.lua \
+	$(LUADIR)/oil/kernel/lua/Proxies.lua \
+	$(LUADIR)/oil/kernel/typed/Dispatcher.lua \
+	$(LUADIR)/oil/kernel/typed/Proxies.lua \
+	$(LUADIR)/oil/kernel/typed/Servants.lua \
+	$(LUADIR)/oil/ludo/Channel.lua \
+	$(LUADIR)/oil/ludo/Codec.lua \
+	$(LUADIR)/oil/ludo/CodecByRef.lua \
+	$(LUADIR)/oil/ludo/Listener.lua \
+	$(LUADIR)/oil/ludo/Referrer.lua \
+	$(LUADIR)/oil/ludo/Requester.lua \
+	$(LUADIR)/oil/oo.lua \
+	$(LUADIR)/oil/port.lua \
+	$(LUADIR)/oil/properties.lua \
+	$(LUADIR)/oil/protocol/Channel.lua \
+	$(LUADIR)/oil/protocol/Listener.lua \
+	$(LUADIR)/oil/protocol/Request.lua \
+	$(LUADIR)/oil/protocol/Requester.lua \
+	$(LUADIR)/oil/verbose.lua \
+	$(LUADIR)/oil.lua
+
+include ${LOOP_HOME}/openbus/base.mak
