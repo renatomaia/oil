@@ -1136,7 +1136,7 @@ local function dclName(name, target, value)
     semanticError(string.format(ERRMSG_DECLARED, name))
   else
     if tab_identifiers[string.upper(absolutename)] then
-      semanticError("collide")
+      semanticError("collision with '"..name.."'")
     end
     namespaces[absolutename] = {namespace = name}
     if value then
