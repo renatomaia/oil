@@ -1358,6 +1358,14 @@ local function dclForward(name, type)
   end
   return definition
 end
+
+local function get_type(type)
+  while (type._type == TAB_TYPEID.TYPEDEF) do
+    type = type.original_type
+  end
+  return type._type
+end
+
 ---------------------------------------------------------------------------------------------------
 
 
@@ -1484,8 +1492,8 @@ end
 
 rules.type_declarator = function ()
   local type = rules.type_spec()
-  if (not tab_legal_type[type._type]) then
-    semanticError(string.format(ERRMSG_NOTTYPE, type._type))
+  if (not tab_legal_type[get_type(type)]) then
+    semanticError(string.format(ERRMSG_NOTTYPE, get_type(type)))
   end
   rules.type_dcl_name_l(type)
 end
@@ -1718,9 +1726,9 @@ rules.unary_expr = function (type)
       expression = tonumber(expression)
       if operator == '-' then
         expression = tonumber('-'..expression)
-        if type._type == TAB_BASICTYPE.ULONG._type or 
-           type._type == TAB_BASICTYPE.USHORT._type or
-           type._type == TAB_BASICTYPE.ULLONG._type
+        if get_type(type) == TAB_BASICTYPE.ULONG._type or 
+           get_type(type) == TAB_BASICTYPE.USHORT._type or
+           get_type(type) == TAB_BASICTYPE.ULLONG._type
         then
           semanticError("Only positive integer values can be assigned to "..
             "unsigned integer type constants")
@@ -3471,7 +3479,8 @@ rules.value_inhe_spec = function ()
     recognize(":")
     local truncatable = rules.truncatable_e()
     local value = rules.scoped_name(268)
-    if (value._type ~= TAB_TYPEID.VALUETYPE and value._type ~= TAB_TYPEID.INTERFACE) then
+    local type = get_type(value)
+    if (type ~= TAB_TYPEID.VALUETYPE and type ~= TAB_TYPEID.INTERFACE) then
       semanticError("The previously-defined type is not a VALUETYPE or INTERFACE")
     end
     currentScope.truncatable = truncatable
