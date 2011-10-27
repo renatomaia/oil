@@ -228,6 +228,7 @@ function doreply(self, replied, header, decoder)
 			local success
 			success, except = self:getchannel(decoder:struct(IOR))
 			if success then
+				replied.object_key = except
 				success, except = self:reissue(success, replied)
 				if success then
 					return true -- do not do anything else and notify that reply
