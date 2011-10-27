@@ -147,11 +147,18 @@ end
 
 assert.TypeCheckers["idl type"]    = istype
 assert.TypeCheckers["idl def."]    = isspec
-assert.TypeCheckers["^idl (%l+)$"] = function(value, name)
-	if istype(value)
-		then return (value._type == name), ("idl "..name.." type")
-		else return false, name
+assert.TypeCheckers["^idl ([%l_|]+)$"] = function(value, name)
+	if istype(value) then
+		while value._type == "typedef" do
+			value = value.original_type
+		end
+		for name in name:gmatch("[^|]+") do
+			if value._type == name then
+				return value
+			end
+		end
 	end
+	return nil
 end
 
 --------------------------------------------------------------------------------
@@ -407,7 +414,8 @@ function valuetype(self)
 	if base == nil then
 		self.base_value = null
 	elseif base ~= null then
-		assert.type(base, "idl valuetype", "base in value definition")
+		self.inherited = assert.type(base, "idl valuetype",
+		                             "base in value definition")
 	end
 	if self.members == nil then self.members = self end
 	local members = self.members
@@ -551,32 +559,42 @@ function interface(self)
 	self._type = "interface"
 	if self.base_interfaces == nil then self.base_interfaces = self end
 	assert.type(self.base_interfaces, "table", "interface base list")
-	for _, base in ipairs(self.base_interfaces) do
-		if base._type ~= "abstract_interface" then
-			assert.type(base, "idl interface", "interface base")
-		end
+	local inherited = {}
+	for index, base in ipairs(self.base_interfaces) do
+		inherited[index] = assert.type(base, "idl interface|abstract_interface",
+		                               "interface base")
 	end
+	self.inherited = inherited
 	self.hierarchy = basesof
 	return self
 end
 
 function abstract_interface(self)
-	self = interface(self)
-	for _, base in ipairs(self.base_interfaces) do
-		assert.type(base, "idl abstract_interface", "abstract interface base")
-	end
+	self = Container(Contained(self))
 	self._type = "abstract_interface"
+	if self.base_interfaces == nil then self.base_interfaces = self end
+	assert.type(self.base_interfaces, "table", "interface base list")
+	local inherited = {}
+	for index, base in ipairs(self.base_interfaces) do
+		inherited[index] = assert.type(base, "idl abstract_interface",
+		                               "abstract interface base")
+	end
+	self.inherited = inherited
+	self.hierarchy = basesof
 	return self
 end
 
 function local_interface(self)
-	self = interface(self)
-	for _, base in ipairs(self.base_interfaces) do
-		if base._type ~= "local_interface" then
-			assert.type(base, "idl interface", "local interface base")
-		end
-	end
+	self = Container(Contained(self))
 	self._type = "local_interface"
+	if self.base_interfaces == nil then self.base_interfaces = self end
+	assert.type(self.base_interfaces, "table", "interface base list")
+	for index, base in ipairs(self.base_interfaces) do
+		inherited[index] = assert.type(base, "idl interface|local_interface",
+		                                     "local interface base")
+	end
+	self.inherited = inherited
+	self.hierarchy = basesof
 	return self
 end
 

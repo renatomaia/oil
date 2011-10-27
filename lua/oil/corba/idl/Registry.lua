@@ -1202,9 +1202,11 @@ end
 --------------------------------------------------------------------------------
 
 local function changeinheritance(container, old, new, type)
-	for _, base in ipairs(new) do
+	local actual = {}
+	for index, base in ipairs(new) do
 		if type then
-			assert.type(base, type, "inherited definition", "BAD_PARAM", 4)
+			actual[index] = assert.type(base, type, "inherited definition",
+			                            "BAD_PARAM", 4)
 		end
 		for _, contained in ipairs(container.definitions) do
 			if #base:lookup_name(contained.name, -1, "dk_All", false) > 0 then
@@ -1223,7 +1225,7 @@ local function changeinheritance(container, old, new, type)
 		container:watch(base, "base "..index)
 	end
 	container:notify("inheritance", type)
-	return new
+	return new, actual
 end
 
 --------------------------------------------------------------------------------
@@ -1258,7 +1260,7 @@ end
 
 function InterfaceDef:is_a(interface_id)
 	if interface_id == self.repID then return true end
-	for _, base in ipairs(self.base_interfaces) do
+	for _, base in ipairs(self.inherited) do
 		if base:is_a(interface_id) then return true end
 	end
 	return false
@@ -1298,14 +1300,8 @@ end
 --
 
 function InterfaceDef:_set_base_interfaces(bases)
-	for _, base in ipairs(bases) do
-		if base._type ~= "interface" and base._type ~= "abstract_interface" then
-			assert.illegal(base, "inherited definition", "BAD_PARAM", 4)
-		end
-	end
-	self.base_interfaces = changeinheritance(self,
-	                                         self.base_interfaces,
-	                                         bases)
+	self.base_interfaces, self.inherited = changeinheritance(
+		self, self.base_interfaces, bases, "idl interface|abstract_interface")
 end
 
 function InterfaceDef:create_attribute(id, name, version, type, mode)
@@ -1357,10 +1353,8 @@ AbstractInterfaceDef.definition_fields = {
 	base_interfaces = { type = AbstractInterfaceDef, optional = true, list = true },
 }
 function AbstractInterfaceDef:_set_base_interfaces(bases)
-	self.base_interfaces = changeinheritance(self,
-	                                         self.base_interfaces,
-	                                         bases,
-	                                         "idl abstract_interface")
+	self.base_interfaces, self.inherited = changeinheritance(
+		self, self.base_interfaces, bases, "idl abstract_interface")
 end
 
 --------------------------------------------------------------------------------
@@ -1372,14 +1366,8 @@ end
 LocalInterfaceDef._type = "local_interface"
 LocalInterfaceDef.def_kind = "dk_LocalInterface"
 function LocalInterfaceDef:_set_base_interfaces(bases)
-	for _, base in ipairs(bases) do
-		if base._type ~= "interface" and base._type ~= "local_interface" then
-			assert.illegal(base, "inherited definition", "BAD_PARAM", 4)
-		end
-	end
-	self.base_interfaces = changeinheritance(self,
-	                                         self.base_interfaces,
-	                                         bases)
+	self.base_interfaces, self.inherited = changeinheritance(
+		self, self.base_interfaces, bases, "idl interface|local_interface")
 end
 
 --------------------------------------------------------------------------------
@@ -1444,7 +1432,6 @@ function ValueDef:update(new)
 	if new.base_value == idl.null then
 		self:_set_base_value(nil)
 	else
-		assert.type(new.base_value, "idl valuetype", "base value", "BAD_PARAM", 4)
 		self:_set_base_value(new.base_value)
 	end
 	if new.abstract_base_values then
@@ -1484,7 +1471,7 @@ end
 
 function ValueDef:is_a(id)
 	if id == self.repID then return true end
-	local base = self.base_value
+	local base = self.inherited
 	if base ~= idl.null and base:is_a(id) then return true end
 	for _, base in ipairs(self.abstract_base_values) do
 		if base:is_a(id) then return true end
@@ -1544,18 +1531,20 @@ function ValueDef:_set_is_truncatable(value)
 end
 
 function ValueDef:_set_supported_interfaces(ifaces)
-	self.supported_interfaces = changeinheritance(self,
-	                                              self.supported_interfaces,
-	                                              ifaces,
-	                                              "idl interface")
+	self.supported_interfaces = changeinheritance(
+		self, self.supported_interfaces, ifaces, "idl interface")
 end
 
 function ValueDef:_set_base_value(base)
 	if base then
-		if base.is_abstract then
-			assert.illegal(base, "invalid base value", "BAD_PARAM", 4)
+		local actual = assert.type(base, "idl valuetype", "base value",
+		                           "BAD_PARAM", 4)
+		if actual.is_abstract then
+			assert.illegal(actual, "invalid base value", "BAD_PARAM", 4)
 		end
-		local list = changeinheritance(self, {self.base_value}, {base}, "idl valuetype")
+		local list = changeinheritance(
+			self, {self.base_value}, {base}, "idl valuetype")
+		self.inherited = actual
 		base = list[1]
 	else
 		base = idl.null
@@ -1576,10 +1565,8 @@ function ValueDef:_set_abstract_base_values(bases)
 			assert.illegal(base, "invalid abstract base value", "BAD_PARAM", 4)
 		end
 	end
-	self.abstract_base_values = changeinheritance(self,
-	                                              self.abstract_base_values,
-	                                              bases,
-	                                              "idl valuetype")
+	self.abstract_base_values, self.inherited = changeinheritance(
+		self, self.abstract_base_values, bases, "idl valuetype")
 end
 
 function ValueDef:create_value_member(id, name, version, type, access)
@@ -1670,7 +1657,11 @@ local function getupdate(self, value, name, typespec)                           
 	elseif type(typespec) == "table" then
 		if oo.isclass(typespec) then
 			value = self[value]
-			if not oo.instanceof(value, typespec) then
+			local actual = value
+			while actual._type=="typedef" and not oo.instanceof(actual, typespec) do
+				actual = actual.original_type
+			end
+			if not oo.instanceof(actual, typespec) then
 				assert.illegal(value, name)
 			end
 		else

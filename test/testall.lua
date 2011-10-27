@@ -6,6 +6,7 @@ local Reporter = require "loop.test.Reporter"
 local OiL = Suite{
 	LuaIDL = require "luaidl.tests.Suite",
 	["CORBA.CDR"] = require "oil.tests.corba.cdr.Suite",
+	["CORBA.IDL"] = require "oil.tests.corba.idl.TypedefInheritance",
 }
 
 local results = Results{

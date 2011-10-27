@@ -2,6 +2,7 @@ local error   = error
 local pairs   = pairs
 local pcall   = pcall
 local require = require
+local tostring= tostring
 local type    = type                                                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
 module "oil.builder"
@@ -26,7 +27,7 @@ function build(customization, built)
 		local success, module = pcall(require, package)
 		if success then
 			built = module.create(built)
-		elseif not module:find(ErrorFrm:format(package), nil, true) then            --[[VERBOSE]] verbose:built(false)
+		elseif not tostring(module):find(ErrorFrm:format(package), nil, true) then  --[[VERBOSE]] verbose:built(false)
 			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load builder for architecture ",name)
 		end                                                                         --[[VERBOSE]] verbose:built(false)
 	end
