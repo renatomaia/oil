@@ -48,6 +48,9 @@ end
 -- 'filename', the IDL filename.
 -- @return String with the given IDL preprocessed.
 function pre(idl, options)
+  if not options then
+    options = { }
+  end
   return preprocessor.run(idl, options)
 end
 
@@ -55,18 +58,18 @@ end
 -- 
 -- @param filename The IDL filename.
 -- @param options (optional)Table with preprocessor options, the available keys are:
--- 'incpath', a table with include paths.
+-- 'incpath', a table with include paths. LuaIDL sets options.filename to filename.
 -- @return String with the given IDL preprocessed.
 -- @see pre
 function prefile(filename, options)
   local _type = type(filename)
   if (_type ~= "string") then
     error(string.format("bad argument #1 to 'prefile' (filename expected, got %s)", _type), 2)
-  end --if
+  end
   local fh, msg = io.open(filename)
   if not fh then
     error(msg, 2)
-  end --if
+  end
   if not options then
     options = { }
   end
