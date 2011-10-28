@@ -584,14 +584,20 @@ local function pindex(indexable, field)
 end
 
 function Encoder:abstract_interface(value, idltype)                             --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
-	-- get type of the value
-	local actualtype = getmetatable(value)
-	if not istype(actualtype) then
-		actualtype = pindex(actualtype, "__type")
-		          or pindex(value, "__type")
+	local isvalue = true
+	if value ~= nil then
+		-- get type of the value
+		local actualtype = getmetatable(value)
+		if not istype(actualtype) then
+			actualtype = pindex(actualtype, "__type")
+			          or pindex(value, "__type")
+			if not istype(actualtype) then
+				illegal(value, "abstract interface, unable to figure out actual type",
+				               "BAD_PARAM")
+			end
+		end
+		isvalue = (actualtype._type == "valuetype")
 	end
-	local isvalue = (value == nil)
-	             or (actualtype and actualtype._type == "valuetype")
 	self:boolean(not isvalue)
 	if isvalue then                                                               --[[VERBOSE]] verbose:marshal("value encoded as copied value")
 		self:valuetype(value, ValueBase)
