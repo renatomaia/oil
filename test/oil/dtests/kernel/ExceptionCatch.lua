@@ -4,7 +4,7 @@ local template = Template{"Client"} -- master process name
 Server = [=====================================================================[
 Raiser = {}
 function Raiser:raisenow()
-	error{ "IDL:ExceptionRaiser/RaisedException:1.0",
+	error{ _repid = "IDL:ExceptionRaiser/RaisedException:1.0",
 		reason = "exception",
 	}
 end
@@ -39,13 +39,13 @@ end
 
 raisers = {
 	[raiser] = function(exception)
-		checks:assert(exception[1], checks.equals("IDL:ExceptionRaiser/RaisedException:1.0", "wrong exception."))
+		checks:assert(exception._repid, checks.equals("IDL:ExceptionRaiser/RaisedException:1.0", "wrong exception."))
 		checks:assert(exception.reason, checks.equals("exception", "wrong exception field."))
 	end,
 	[badobj] = function(exception)
 		if oil.dtests.flavor.corba then
 			checks:assert(exception, checks.similar{
-				"IDL:omg.org/CORBA/TRANSIENT:1.0",
+				_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
 				completed = "COMPLETED_NO",
 				profile = {tag=0},
 			})

@@ -41,7 +41,7 @@ prot = orb:newproxy(sync, "protected")
 ok, res = pcall(sync.concat, sync, "first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
-                   	"IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+                   	_repid = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
                    	completed = "COMPLETED_NO",
                    	minor = 123,
                    })
@@ -49,7 +49,7 @@ checks:assert(res, checks.similar{
 ok, res = async:concat("first", "second"):results()
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
-                   	"IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+                   	_repid = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
                    	completed = "COMPLETED_NO",
                    	minor = 123,
                    })
@@ -57,7 +57,7 @@ checks:assert(res, checks.similar{
 ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
-                   	"IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+                   	_repid = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
                    	completed = "COMPLETED_NO",
                    	minor = 123,
                    })

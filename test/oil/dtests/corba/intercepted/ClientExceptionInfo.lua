@@ -61,7 +61,7 @@ function Interceptor:receivereply(reply)
 		checks:assert(reply.success,               checks.is(false))
 		checks:assert(reply.results,               checks.similar{
 		                                           	{
-		                                           		"IDL:omg.org/CORBA/TRANSIENT:1.0",
+		                                           		_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
 		                                           		completed = "COMPLETED_NO",
 		                                           		minor = 2,
 		                                           		error = "badconnect",
@@ -95,7 +95,7 @@ Interceptor.lastConcatRequest = nil
 ok, res = pcall(sync.concat, sync, "first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
-                   	"IDL:omg.org/CORBA/TRANSIENT:1.0",
+                   	_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
                    	completed = "COMPLETED_NO",
                    	minor = 2,
                    })
@@ -105,7 +105,7 @@ Interceptor.lastConcatRequest = nil
 ok, res = async:concat("first", "second"):results()
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
-                   	"IDL:omg.org/CORBA/TRANSIENT:1.0",
+                   	_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
                    	completed = "COMPLETED_NO",
                    	minor = 2,
                    })
@@ -115,7 +115,7 @@ Interceptor.lastConcatRequest = nil
 ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.similar{
-                   	"IDL:omg.org/CORBA/TRANSIENT:1.0",
+                   	_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
                    	completed = "COMPLETED_NO",
                    	minor = 2,
                    })
