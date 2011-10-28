@@ -1801,11 +1801,15 @@ function resolve(self, typeref, servant)
 			idltype = typeref,
 		}
 	end
-	if servant and result == PrimitiveTypes.pk_objref then
-		result, errmsg = nil, Exception{
-			"interface CORBA::Object is illegal for servants",
-			error = "badtype",
-		}
+	if servant then
+		if result==PrimitiveTypes.pk_objref
+		or result._type=="abstract_interface" then
+			result, errmsg = nil, Exception{
+				"interface $type is illegal for servants",
+				type = result.absolute_name,
+				error = "badtype",
+			}
+		end
 	end
 	return result, errmsg
 end
