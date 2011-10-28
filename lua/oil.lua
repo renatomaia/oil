@@ -737,6 +737,43 @@ function ORB:setinterceptor(iceptor, kind)
 	end
 end
 
+function ORB:getinterceptor(kind)
+	local corbakind = kind:match("^corba(.-)$")
+	if corbakind then
+		local srviceptor = self.RequestListener.interceptor
+		local clticeptor = self.OperationRequester.interceptor
+		if corbakind == ".server" then
+			return srviceptor
+		elseif corbakind ~= ".client" then
+			return clticeptor
+		elseif srviceptor == clticeptor then
+			return srviceptor
+		end
+	else
+		local wrapper = self.RequestReceiver.listener
+		if kind == "server" then
+			if wrapper ~= self.RequestListener.requests then
+				return wrapper.interceptor
+			end
+		elseif kind == "client" then
+			local requests = self.OperationRequester.requests
+			for _, kind in ipairs(self.proxykind) do
+				local ProxyManager = self.proxykind[kind]
+				local wrapper = ProxyManager.requester
+				if wrapper ~= requests then
+					return wrapper.interceptor
+				end
+			end
+		else
+			local srvicpt = self:getinterceptor("server")
+			local clticpt = self:getinterceptor("client")
+			if srvicpt == clticpt then
+				return srvicpt
+			end
+		end
+	end
+end
+
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -821,21 +858,22 @@ local function extracer(ex)
 	return traceback(tostring(ex))
 end
 
---if cothread then
---	function cothread.error(thread, errmsg)
---		error(traceback(thread, tostring(errmsg)), 3)
---	end
---end
+if cothread then
+	function cothread.error(thread, errmsg)
+		error(traceback(thread, tostring(errmsg)), 3)
+	end
+end
 
 function main(main, ...)
 	asserttype(main, "function", "main function")
+	local success, except
 	if cothread then
 		local thread = newcoroutine(main)                                           --[[VERBOSE]] verbose.viewer.labels[thread] = "oil.main"
-		cothread.run(cothread.step(thread, ...))
+		success, except = pcall(cothread.run, cothread.step(thread, ...))
 	else
-		local success, except = xpcall(main, extracer, ...)
-		if not success then error(except, 2) end
+		success, except = xpcall(main, extracer, ...)
 	end
+	if not success then error(tostring(except), 2) end
 end
 
 --------------------------------------------------------------------------------
