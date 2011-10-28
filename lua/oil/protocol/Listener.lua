@@ -30,7 +30,7 @@ function Listener:__init()
 			context = self,
 			server = true,
 		}
-	end, "k")
+	end)
 end
 
 function Listener:setup(configs)

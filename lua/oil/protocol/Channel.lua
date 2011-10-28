@@ -107,7 +107,7 @@ end
 function Channel:close()
 	local socket = self.socket
 	if socket ~= nil then
-		--self.socket = nil
+		self.context.sock2channel[socket] = nil
 		socket:close()
 	end
 	return true
