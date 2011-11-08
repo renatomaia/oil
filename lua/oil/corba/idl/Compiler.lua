@@ -113,9 +113,8 @@ function doresults(self, ...)
 end
 
 function options(self, idlpaths)
-	local options = self.defaults
+	local options = table.copy(self.defaults)
 	if idlpaths then
-		options = table.copy(options)
 		local incpath = table.copy(options.incpath)
 		for index, incpath in ipairs(idlpaths) do
 			incpath[#incpath+1] = incpath

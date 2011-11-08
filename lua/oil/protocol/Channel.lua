@@ -28,9 +28,9 @@ end
 function Channel:trylock(operation, timeout, signal)
 	local mutex = self[operation]
 	if signal ~= nil then mutex[signal] = running() end
-	local granted = mutex:try(timeout)
+	local granted, expired = mutex:try(timeout)
 	if signal ~= nil then mutex[signal] = nil end
-	return granted
+	return granted, expired
 end
 
 function Channel:signal(operation, signal)

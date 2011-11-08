@@ -696,8 +696,8 @@ local function encodevaluetype(self, value, idltype)
 		types[i] = type
 		if type == idltype then argidx = i end
 		if type.kind ~= truncatable then lstidx = i end
-		type = type.base_value
-		if type == idl.null then break end
+		type = type.inherited
+		if type == nil then break end
 	end
 	local truncatable = (lstidx > 1)
 	if argidx == nil then
@@ -1241,8 +1241,8 @@ local function decodevaluestate(self, value, idltype, repidlist, chunked)
 	local types = {}
 	for i = 1, huge do
 		types[i] = type
-		type = type.base_value
-		if type == idl.null then break end
+		type = type.inherited
+		if type == nil then break end
 	end
 	-- decode value state
 	for i = #types, 1, -1 do                                                      --[[VERBOSE]] verbose:unmarshal("[base value ",types[i].name,"]")

@@ -37,10 +37,11 @@ function module.type(value, expected, description, except)
 			for pattern, checker in pairs(TypeCheckers) do
 				local result = expected:match(pattern)
 				if result then
-					checker, result = checker(value, result)
-					if checker then return true end
-					expected = result or expected
-					break
+					result = checker(value, result)
+					if result
+						then return result
+						else break
+					end
 				end
 			end
 		end

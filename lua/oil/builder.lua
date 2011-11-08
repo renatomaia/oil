@@ -3,6 +3,7 @@ local error = _G.error
 local pairs = _G.pairs
 local pcall = _G.pcall
 local require = _G.require
+local tostring = _G.tostring
 local type = _G.type                                                            --[[VERBOSE]] local verbose = require "oil.verbose"
 local traceback = _G.debug and _G.debug.traceback -- only if available
 if traceback then
@@ -39,7 +40,7 @@ function build(customization, built)
 		local success, module = pcall(require, package)
 		if success then
 			built = module.create(built)
-		elseif not module:find(ErrorFrm:format(package), nil, true) then            --[[VERBOSE]] verbose:built(false)
+		elseif not tostring(module):find(ErrorFrm:format(package), nil, true) then  --[[VERBOSE]] verbose:built(false)
 			error(module, 2)                                                          --[[VERBOSE]] else verbose:built("unable to load builder for architecture ",name)
 		end                                                                         --[[VERBOSE]] verbose:built(false)
 	end

@@ -1,7 +1,8 @@
 package = "LuaIDL"
 version = "1.0.5-1"
 source = {
-	url = "http://luaforge.net/frs/download.php/4718/luaidl-1.0.5.tar.gz",
+	url = "http://www.tecgraf.puc-rio.br/~maia/oil/luaidl-1.0.5.tar.gz",
+	md5 = "8afb52c83792dce91c0ad5153a89a583",
 }
 description = {
 	summary = "A OMG IDL Compiler Front End",
@@ -15,7 +16,7 @@ description = {
 		it is completely implemented in Lua and does not have external dependencies.
 	]],
 	license = "MIT/X11",
-	homepage = "http://oil.luaforge.net/luaidl",
+	homepage = "http://www.tecgraf.puc-rio.br/~maia/oil/luaidl",
 	maintainer = "Ricardo Cosme <rcosme@tecgraf.puc-rio.br>",
 }
 dependencies = {

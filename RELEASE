@@ -29,9 +29,7 @@ OiL 0.5 beta
 
 - Module 'oil.compat' is no more available.
 - Alternative proxies ('__deferred' and '__try') are not created automatically.
-  Instead, initialize the ORB with:
-    orb = oil.init{ extraproxies = { "asynchronous", "protected" } }
-  Then use the following commands to explicitly create such proxies whenever
+  Instead, use the following commands to explicitly create such proxies whenever
   necessary.
     local deferred = orb:newproxy(proxy, "asynchronous")
     local try      = orb:newproxy(proxy, "protected")
