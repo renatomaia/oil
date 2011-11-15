@@ -2,19 +2,6 @@ local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-oo = require "oil.oo"
-Holder = oo.class()
-function Holder:get()
-	return self.value or self.__objkey
-end
-function Holder:set(value)
-	self.value = value
-end
-function Holder:dispose()
-	local ok, ex = orb:deactivate(self)
-	if not ok then error(ex) end
-end
-
 ObjectMapMeta = {}
 
 orb = oil.dtests.init{
@@ -32,9 +19,19 @@ end
 
 function ObjectMapMeta:__index(objkey)
 	if objkey:sub(1, 1) ~= "_" then
-		local entry = {
-			__servant = Holder{__objkey = objkey},
-		}
+		local holder = {__objkey = objkey}
+		function holder:get()
+			return self.value or self.__objkey
+		end
+		function holder:set(value)
+			self.value = value
+		end
+		function holder:dispose()
+			local ok, ex = orb:deactivate(self)
+			if not ok then error(ex) end
+		end
+		
+		local entry = { __servant = holder }
 		if oil.dtests.flavor.corba then
 			entry.__type = HolderType
 		end

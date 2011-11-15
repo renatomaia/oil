@@ -1,8 +1,8 @@
 environment = {
 	PATH = os.getenv("PATH"),
-	LUA_INIT = os.getenv("LUA_INIT")..";require'compat52'",
-	LUA_PATH = package.path,
-	LUA_CPATH = package.cpath,
-	OIL_HOME = os.getenv("OIL_HOME") or "/Users/maia/Work/proj/oil/trunk",
+	LUA_INIT = os.getenv("LUA_INIT"),
+	LUA_PATH = os.getenv("LUA_PATH"),
+	LUA_CPATH = os.getenv("LUA_CPATH"),
+	OIL_HOME = os.getenv("OIL_HOME"),
 }
 tasks = { OILSUITE = { dtest = "oil.dtests.Suite" } }

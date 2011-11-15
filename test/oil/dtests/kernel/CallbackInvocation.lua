@@ -23,13 +23,12 @@ Client = [=====================================================================[
 checks = oil.dtests.checks
 
 orb = oil.dtests.init()
-Caller = oil.dtests.resolve("Server", 2809, "object")
-for i = 1, 2 do
-	oil.newthread(orb.run, orb)
-	Caller:call({ ack = function() end })
-	orb:shutdown()
-end
+oil.newthread(orb.run, orb)
 
+Caller = oil.dtests.resolve("Server", 2809, "object")
+Caller:call({ ack = function() end })
+
+orb:shutdown()
 --[Client]=====================================================================]
 
-return template:newsuite{ cooperative = true }
+return template:newsuite{ cooperative = true, corba = true }

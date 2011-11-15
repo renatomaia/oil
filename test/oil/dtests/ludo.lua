@@ -11,7 +11,7 @@ module "oil.dtests"
 timeout = 3
 querytime = .5
 
-Reference = "%q,%q,%d\0"
+Reference = "return %q,%q,%d\0"
 function resolve(proc, port, objkey, kind, nowait)
 	assert(orb ~= nil, "DTest not initialized")
 	local proxy = orb:newproxy(Reference:format(objkey, hosts[proc] or proc, port))

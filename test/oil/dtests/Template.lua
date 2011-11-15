@@ -107,7 +107,6 @@ function newtest(self, infos)
 				                      "-loil.dtests.LuaProcess" }
 				command.environment = {
 					{name="PATH"     , value=os.getenv("PATH")     },
-					{name="LUA_INIT" , value=os.getenv("LUA_INIT") },
 					{name="LUA_PATH" , value=os.getenv("LUA_PATH") },
 					{name="LUA_CPATH", value=os.getenv("LUA_CPATH")},
 					{name="OIL_HOME" , value=os.getenv("OIL_HOME") },
@@ -304,7 +303,6 @@ function newsuite(self, required)
 	local flavors = seq{
 		"";
 		alt{"cooperative", ""};
-		--"base";
 	};
 	local protocols = {
 		ludo    = true,
