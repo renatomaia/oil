@@ -28,7 +28,7 @@ function Dispatcher:dispatch(request)
 			request:setreply(false, Exception{
 				"servant $key does not implement $operation",
 				error = "badobjimpl",
-				operation = operation,
+				operation = request.operation,
 				object = object,
 				key = key,
 			})
