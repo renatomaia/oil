@@ -60,8 +60,8 @@ function AccessPoint:remove(socket)
 	self.poll:remove(socket)
 end
 
-function AccessPoint:add(socket)
-	self.poll:add(socket)
+function AccessPoint:add(socket, ready)
+	self.poll:add(socket, ready)
 end
 
 function AccessPoint:close()

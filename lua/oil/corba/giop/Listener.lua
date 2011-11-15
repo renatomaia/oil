@@ -194,7 +194,7 @@ function GIOPListener:addbidirchannel(channel)                                --
 	channel.context = self
 	local socket = channel.socket
 	self.sock2channel[socket] = channel
-	self.access:add(socket)
+	self.access:add(socket, true)
 end
 
 return GIOPListener

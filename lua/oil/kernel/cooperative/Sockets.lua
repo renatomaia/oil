@@ -58,10 +58,14 @@ function Poll:__init()
 	if self.poll == nil then self.poll = EventPoll() end
 end
 
-function Poll:add(wrapper)
+function Poll:add(wrapper, ready)
 	local socket = wrapper.__object
 	self.wrapperOf[socket] = wrapper
-	return self.poll:add(socket, "r")
+	local poll = self.poll
+	poll:add(socket, "r")
+	if ready then
+		yield("next", poll.thread, socket, "r") -- simulate that socket is ready
+	end
 end
 
 function Poll:remove(wrapper)
