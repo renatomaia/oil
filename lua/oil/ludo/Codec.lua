@@ -22,30 +22,39 @@
 -- 	input:table, output:table select([input:table], [output:table], [timeout:number])
 --------------------------------------------------------------------------------
 
-local pairs   = pairs
-local require = require
+local _G = require "_G"
+local loadstring = _G.loadstring
+local pairs = _G.pairs
+local setfenv = _G.setfenv
+local setmetatable = _G.setmetatable
 
-local table        = require "loop.table"
+local debug = _G.debug -- only if available
+local setupvalue = debug and debug.setupvalue
+local upvaluejoin = debug and debug.upvaluejoin
+
+local table = require "loop.table"
+local copy = table.copy
+
 local StringStream = require "loop.serial.StringStream"
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local class = oo.class
+
 local Referrer = require "oil.ludo.Referrer"
 
-module("oil.ludo.Codec", oo.class)
+module("oil.ludo.Codec", class)
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-local WeakKey    = oo.class{ __mode = "k" }
-local WeakValues = oo.class{ __mode = "v" }
+local WeakKey    = class{ __mode = "k" }
+local WeakValues = class{ __mode = "v" }
 
-function __new(self, ...)
-	self = oo.rawnew(self, ...)
+function __init(self)
 	self.names = WeakKey(self.names)
 	self.values = WeakValues(self.values)
 	self.names[Referrer.Reference] = "LuDOReference"
 	self.values.LuDOReference = Referrer.Reference
-	return self
 end
 
 function localresources(self, resources)
@@ -58,12 +67,18 @@ function localresources(self, resources)
 end
 
 function encoder(self)
-	return StringStream(table.copy(self.names))
+	return StringStream(copy(self.names))
 end
 
 function decoder(self, stream)
 	return StringStream{
-		environment = table.copy(self.values),
+		environment = copy(self.values, {
+			loadstring = loadstring,
+			setfenv = setfenv,
+			setmetatable = setmetatable,
+			setupvalue = setupvalue,
+			upvaluejoin = upvaluejoin,
+		}),
 		data = stream,
 	}
 end
