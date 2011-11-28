@@ -165,9 +165,7 @@ function GIOPRequester:newrequest(request)
 	return requester(self, request)
 end
 
-
-
-local function reissue(self, request, reference, addressing)                    --[[VERBOSE]] verbose:invoke(true, "reissue request ",request.request_id," to ",request.object_key,":",request.operation)
+function GIOPRequester:reissue(request, reference, addressing)                  --[[VERBOSE]] verbose:invoke(true, "reissue request to ",request.object_key,":",request.operation)
 	local channel, except = self:getchannel(reference)
 	if channel then
 		request.reference = reference
@@ -190,6 +188,8 @@ local function reissue(self, request, reference, addressing)                    
 	end                                                                           --[[VERBOSE]] verbose:invoke(false, "unable to reissue request")
 	self:endrequest(request, false, except)
 end
+
+
 
 local SystemExceptionError = {
 	["IDL:omg.org/CORBA/COMM_FAILURE:1.0"    ] = "badchannel",
@@ -219,15 +219,19 @@ local function doreply(self, replied)
 			self:endrequest(replied, true, count)
 		end
 	elseif status:find("LOCATION_FORWARD", 1, true) == 1 then                     --[[VERBOSE]] verbose:invoke("got remote request to forward request through other channel")
-		local reference = decoder:IOR()
-		if status == "LOCATION_FORWARD_PERM" then                                   --[[VERBOSE]] verbose:invoke("replacing current reference with a new one permanently")
-			reference = copy(reference, clear(replied.reference))
-		end
-		reissue(self, replied, reference)
-	elseif status == "NEEDS_ADDRESSING_MODE" then                                 --[[VERBOSE]] verbose:invoke("got remote request to reissue with a different addressing mode")
-		ok, result = pcall(decoder.short, decoder)
+		local ok, reference = pcall(decoder.IOR, decoder)
 		if ok then
-			reissue(self, replied, replied.reference, result)
+			if status == "LOCATION_FORWARD_PERM" then                                 --[[VERBOSE]] verbose:invoke("replacing current reference with a new one permanently")
+				reference = copy(reference, clear(replied.reference))
+			end
+			self:reissue(replied, reference)
+		else                                                                        --[[VERBOSE]] verbose:invoke("error in decoding of reply with request for different addressing mode")
+			self:endrequest(replied, false, result)
+		end
+	elseif status == "NEEDS_ADDRESSING_MODE" then                                 --[[VERBOSE]] verbose:invoke("got remote request to reissue with a different addressing mode")
+		local ok, result = pcall(decoder.short, decoder)
+		if ok then
+			self:reissue(replied, replied.reference, result)
 		else                                                                        --[[VERBOSE]] verbose:invoke("error in decoding of reply with request for different addressing mode")
 			self:endrequest(replied, false, result)
 		end
@@ -271,7 +275,7 @@ end
 
 function GIOPRequester:getreply(request, timeout)
 	while request.reply == nil do
-		local channel = request.channel or reissue(self, request, request.reference)
+		local channel = request.channel or self:reissue(request, request.reference)
 		if channel == nil then -- error on reissue is stored as request's reply
 			return true
 		end
