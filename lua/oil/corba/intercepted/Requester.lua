@@ -60,7 +60,7 @@ function IceptedRequester:dorequest(request)                                    
 		request.intercepted = intercepted
 		local sendrequest = interceptor.sendrequest
 		if sendrequest ~= nil then                                                  --[[VERBOSE]] verbose:interceptors(true, "invoking sendrequest")
-			local success, except = pcall(sendrequest, interceptor, intercepted)                   --[[VERBOSE]] verbose:interceptors(false, "sendrequest ended")
+			local success, except = pcall(sendrequest, interceptor, intercepted)      --[[VERBOSE]] verbose:interceptors(false, "sendrequest ended")
 			if success then
 				success = intercepted.success
 				if success ~= nil then                                                  --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
@@ -113,14 +113,14 @@ function IceptedRequester:endrequest(request, success, result)
 				if success then
 					success = intercepted.success
 					request.success = success
-					if success ~= nil then                                                --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
+					if success ~= nil then
 						-- update returned values
 						local results = intercepted.results or {}
 						request.n = results.n or #results
 						for i = 1, request.n do
 							request[i] = results[i]
 						end
-					else
+					else                                                                  --[[VERBOSE]] verbose:interceptors("intercepted request must be reissued")
 						updaterequest(request, intercepted, request.operation_desc)
 						self:reissue(request, request.reference)
 					end
