@@ -35,7 +35,7 @@ local IceptedRequester = class({}, GIOPRequester)
 
 function IceptedRequester:dorequest(request)                                    --[[VERBOSE]] verbose:interceptors(true, "intercepting outgoing request")
 	local interceptor = self.interceptor
-	if interceptor then
+	if interceptor ~= nil then
 		local operation = request.operation
 		local interface = operation.defined_in
 		local reference = request.reference
@@ -58,24 +58,30 @@ function IceptedRequester:dorequest(request)                                    
 		}
 		request.operation_desc = operation
 		request.intercepted = intercepted
-		if interceptor.sendrequest then                                             --[[VERBOSE]] verbose:interceptors(true, "invoking sendrequest")
-			interceptor:sendrequest(intercepted)                                      --[[VERBOSE]] verbose:interceptors(false, "sendrequest ended")
-			local success = intercepted.success
-			if success ~= nil then                                                    --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
-				-- update returned values
-				local results = intercepted.results or {}
-				if success then
-					local count = results.n or #results
-					for i = 1, count do
-						request[i] = results[i]
-					end
-					self:endrequest(request, true, count)
+		local sendrequest = interceptor.sendrequest
+		if sendrequest ~= nil then                                                  --[[VERBOSE]] verbose:interceptors(true, "invoking sendrequest")
+			local success, except = pcall(sendrequest, interceptor, intercepted)                   --[[VERBOSE]] verbose:interceptors(false, "sendrequest ended")
+			if success then
+				success = intercepted.success
+				if success ~= nil then                                                  --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
+					-- update returned values
+					local results = intercepted.results or {}
+					if success then
+						local count = results.n or #results
+						for i = 1, count do
+							request[i] = results[i]
+						end
+						self:endrequest(request, true, count)
+					else
+						self:endrequest(request, false, results[1])
+					end                                                                   --[[VERBOSE]] verbose:interceptors(false, "interception canceled invocation")
+					return self.Request(request)
 				else
-					self:endrequest(request, false, results[1])
-				end                                                                     --[[VERBOSE]] verbose:interceptors(false, "interception canceled invocation")
+					updaterequest(request, intercepted, operation, channel)
+				end
+			else                                                                      --[[VERBOSE]] verbose:interceptors("error on interception: ",except)
+				self:endrequest(request, false, except)
 				return self.Request(request)
-			else
-				updaterequest(request, intercepted, operation, channel)
 			end
 		end
 	end                                                                           --[[VERBOSE]] verbose:interceptors(false, "interception of outgoing request completed")
@@ -88,32 +94,41 @@ function IceptedRequester:endrequest(request, success, result)
 	if intercepted ~= nil then                                                    --[[VERBOSE]] verbose:interceptors(true, "intercepting incoming reply")
 		request.intercepted = nil
 		local interceptor = self.interceptor
-		if interceptor ~= nil and interceptor.receivereply ~= nil then
-			local header = request.reply
-			if header then
-				if header.service_context then
-					intercepted.reply_service_context = header.service_context
+		if interceptor ~= nil then
+			local receivereply = interceptor.receivereply
+			if receivereply ~= nil then
+				local header = request.reply
+				if header then
+					if header.service_context then
+						intercepted.reply_service_context = header.service_context
+					end
+					intercepted.reply_status = header.reply_status
 				end
-				intercepted.reply_status = header.reply_status
-			end
-			intercepted.success = request.success
-			intercepted.results = {
-				n = request.n,
-				unpack(request, 1, request.n),
-			}                                                                         --[[VERBOSE]] verbose:interceptors(true, "invoking receivereply")
-			interceptor:receivereply(intercepted)                                     --[[VERBOSE]] verbose:interceptors(false, "receivereply ended")
-			local success = intercepted.success
-			request.success = success
-			if success ~= nil then                                                    --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
-				-- update returned values
-				local results = intercepted.results or {}
-				request.n = results.n or #results
-				for i = 1, request.n do
-					request[i] = results[i]
+				intercepted.success = request.success
+				intercepted.results = {
+					n = request.n,
+					unpack(request, 1, request.n),
+				}                                                                       --[[VERBOSE]] verbose:interceptors(true, "invoking receivereply")
+				local success, except = pcall(receivereply, interceptor, intercepted)   --[[VERBOSE]] verbose:interceptors(false, "receivereply ended")
+				if success then
+					success = intercepted.success
+					request.success = success
+					if success ~= nil then                                                --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
+						-- update returned values
+						local results = intercepted.results or {}
+						request.n = results.n or #results
+						for i = 1, request.n do
+							request[i] = results[i]
+						end
+					else
+						updaterequest(request, intercepted, request.operation_desc)
+						self:reissue(request, request.reference)
+					end
+				else                                                                    --[[VERBOSE]] verbose:interceptors("error on interception: ",except)
+					request[1] = except
+					request.n = 1
+					request.success = false
 				end
-			else
-				updaterequest(request, intercepted, request.operation_desc)
-				self:reissue(request, request.reference)
 			end
 		end                                                                         --[[VERBOSE]] verbose:interceptors(false, "interception of incoming reply completed")
 	end

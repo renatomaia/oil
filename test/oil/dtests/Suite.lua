@@ -28,6 +28,10 @@ return Suite{
 			ClientForwardReply = require "oil.dtests.corba.intercepted.ClientForwardReply",
 			ServerForwardRequest = require "oil.dtests.corba.intercepted.ServerForwardRequest",
 			ServerForwardReply = require "oil.dtests.corba.intercepted.ServerForwardReply",
+			ErrorInSendRequest = require "oil.dtests.corba.intercepted.ErrorInSendRequest",
+			ErrorInReceiveReply = require "oil.dtests.corba.intercepted.ErrorInReceiveReply",
+			ErrorInReceiveRequest = require "oil.dtests.corba.intercepted.ErrorInReceiveRequest",
+			ErrorInSendReply = require "oil.dtests.corba.intercepted.ErrorInSendReply",
 		},
 	},
 }

@@ -396,8 +396,8 @@ end
 -- @see newproxy
 --
 function ORB:narrow(object, type)
-	asserttype(object, "table", "object proxy")
 	if object then
+		asserttype(object, "table", "object proxy")
 		local proxykind = self.proxykind
 		local ProxyManager = proxykind[ proxykind[1] ]
 		return assert(ProxyManager.proxies:newproxy{
