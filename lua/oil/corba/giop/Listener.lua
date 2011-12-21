@@ -52,15 +52,18 @@ local function unknownex(error)
 end
 
 local OiLEx2SysEx = {
-	badobjkey = { SystemExceptionIDs.OBJECT_NOT_EXIST,
+	badobjkey = {
+		_repid = SystemExceptionIDs.OBJECT_NOT_EXIST,
 		minor = 1,
 		completed = "COMPLETED_NO",
 	},
-	badobjimpl = { SystemExceptionIDs.NO_IMPLEMENT,
+	badobjimpl = {
+		_repid = SystemExceptionIDs.NO_IMPLEMENT,
 		minor = 1,
 		completed = "COMPLETED_NO",
 	},
-	badobjop = { SystemExceptionIDs.BAD_OPERATION,
+	badobjop = {
+		_repid = SystemExceptionIDs.BAD_OPERATION,
 		minor = 1,
 		completed = "COMPLETED_NO",
 	},
