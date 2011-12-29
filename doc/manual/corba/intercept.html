@@ -73,6 +73,13 @@ end
 	</tr>
 	<tr>
 		<td valign="top"><code>profile_data</code></td>
+		<td valign="top"><b>string</b></td>
+		<td valign="top">[occasional, read-only]</td>
+		<td>The encoded profile data used to establish a connection with the servant's ORB.
+		If the ORB is not able to establish a connection, this field is <code>nil</code>.</td>
+	</tr>
+	<tr>
+		<td valign="top"><code>profile</code></td>
 		<td valign="top"><b>table</b></td>
 		<td valign="top">[occasional, read-only]</td>
 		<td>The decoded profile data used to establish a connection with the servant's ORB.

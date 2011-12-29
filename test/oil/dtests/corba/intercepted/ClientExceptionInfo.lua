@@ -14,7 +14,8 @@ function Interceptor:sendrequest(request)
 		checks:assert(request.response_expected,     checks.is(true))
 		checks:assert(request.reference,             checks.is(sync.__reference))
 		checks:assert(request.profile_tag,           checks.is(0))
-		checks:assert(request.profile_data,          checks.similar{
+		checks:assert(request.profile_data,          checks.typeis("string"))
+		checks:assert(request.profile,               checks.similar{
 		                                             	host = "Fake",
 		                                             	port = 2809,
 		                                             	object_key = "object",
@@ -31,7 +32,8 @@ function Interceptor:sendrequest(request)
 			request = request,
 			request_id = request.request_id,
 			reference = request.reference,
-			profile = request.profile_data,
+			profile_data = request.profile_data,
+			profile = request.profile,
 			parameters = request.parameters,
 		}
 	end
@@ -45,8 +47,9 @@ function Interceptor:receivereply(reply)
 		checks:assert(reply.object_key,            checks.is("object"))
 		checks:assert(reply.reference,             checks.is(info.reference))
 		checks:assert(reply.profile_tag,           checks.is(0))
-		checks:assert(reply.profile_data,          checks.is(info.profile))
-		checks:assert(reply.profile_data,          checks.similar{
+		checks:assert(reply.profile_data,          checks.is(info.profile_data))
+		checks:assert(reply.profile,               checks.is(info.profile))
+		checks:assert(reply.profile,               checks.similar{
 		                                           	host = "Fake",
 		                                           	port = 2809,
 		                                           	object_key = "object",
