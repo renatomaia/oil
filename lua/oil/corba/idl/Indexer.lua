@@ -46,11 +46,12 @@ end
 patterns = { "^_([gs]et)_(.+)$" }
 
 builders = {}
-function builders:get(attribute, opname, attribop)
+function builders:get(attribute, interface, opname, attribop)
 	if attribute._type == "attribute" then
 		local attribname = attribute.name
 		return idl.operation{ attribute = attribute, attribop = attribop,
 			name = opname,
+			defined_in = interface,
 			result = attribute.type,
 			implementation = function(self)
 				return self[attribname]
@@ -58,11 +59,12 @@ function builders:get(attribute, opname, attribop)
 		}
 	end
 end
-function builders:set(attribute, opname, attribop)
+function builders:set(attribute, interface, opname, attribop)
 	if attribute._type == "attribute" then
 		local attribname = attribute.name
 		return idl.operation{ attribute = attribute, attribop = attribop,
 			name = opname,
+			defined_in = interface,
 			parameters = { {type = attribute.type, name = "value"} },
 			implementation = function(self, value)
 				self[attribname] = value
@@ -83,7 +85,7 @@ function valueof(self, interface, name)
 			if action then
 				member, interface = self:findmember(interface, member)
 				if member then
-					member = self.builders[action](self, member, name, action)
+					member = self.builders[action](self, member, interface, name, action)
 					if member then
 						break
 					end
