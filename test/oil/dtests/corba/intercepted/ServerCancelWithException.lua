@@ -33,7 +33,7 @@ orb:run()
 Client = [=====================================================================[
 checks = oil.dtests.checks
 
-orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
+orb = oil.dtests.init()
 sync = oil.dtests.resolve("Server", 2809, "object")
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")

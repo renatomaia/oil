@@ -11,7 +11,7 @@ orb:run()
 Client = [=====================================================================[
 table = require "loop.table"
 
-orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
+orb = oil.dtests.init()
 checks = oil.dtests.checks
 object = oil.dtests.resolve("Server", 2809, "object", nil, false, true)
 fake   = oil.dtests.resolve("_", 0, "", nil, true, true)

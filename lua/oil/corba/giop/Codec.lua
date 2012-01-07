@@ -3,7 +3,7 @@
 -- Title  : Mapping of Lua values into Common Data Representation (CDR)
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"; local CURSOR, CODEC, PREFIXSHIFT, SIZEINDEXPOS = {}, nil, 0
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"; local CURSOR, CODEC, SIZEINDEXPOS = {}, nil
 local getmetatable = _G.getmetatable
 local ipairs = _G.ipairs
 local pairs = _G.pairs
@@ -278,7 +278,7 @@ function Encoder:__init()
 	if self.format == nil then self.format = {} end
 end
 
-function Encoder:shift(shift)                                                   --[[VERBOSE]] PREFIXSHIFT = shift
+function Encoder:shift(shift)                                                   --[[VERBOSE]] self.PREFIXSHIFT = shift
 	self.cursor = self.cursor + shift
 end
 
@@ -296,7 +296,7 @@ function Encoder:rawput(format, data, size)                                     
 	self.format[index] = format
 	self[index] = data
 	self.index = index+1
-	self.cursor = self.cursor + size
+	self.cursor = self.cursor + size                                              --[[VERBOSE]] verbose:SET_VERB_VARS(self, self.cursor-1, false)
 end
 
 function Encoder:put(value, idltype)
@@ -924,7 +924,7 @@ end
 function Decoder:jump(shift)
 	local cursor = self.cursor
 	if shift > 0 then                                                             --[[VERBOSE]] verbose:SET_VERB_VARS(self, self.cursor, true)
-		self.cursor = cursor + shift                                                --[[VERBOSE]] verbose:SET_VERB_VARS(self, self.cursor, false)
+		self.cursor = cursor + shift                                                --[[VERBOSE]] verbose:SET_VERB_VARS(self, self.cursor-1, false)
 		if self.cursor - 1 > #self.data then
 			illegal(self.data, "data stream, insufficient data", "badstream")
 		end
@@ -1037,7 +1037,7 @@ function Decoder:Object(idltype)                                                
 			local servants = self.context.servants
 			if servants ~= nil then
 				local entry = servants:localref(ior)
-				if entry ~= nil then                                                      --[[VERBOSE]] verbose:unmarshal("reference to local object with key '",objkey,"' resolved")
+				if entry ~= nil then                                                    --[[VERBOSE]] verbose:unmarshal("reference to local object with key '",objkey,"' resolved")
 					if self.localrefs == "implementation" then
 						entry = entry.__servant
 					end
@@ -1046,7 +1046,7 @@ function Decoder:Object(idltype)                                                
 			end
 		end
 		local proxies = self.context.proxies
-		if proxies ~= nil then                                                        --[[VERBOSE]] verbose:unmarshal("retrieve proxy for referenced object")
+		if proxies ~= nil then                                                      --[[VERBOSE]] verbose:unmarshal("retrieve proxy for referenced object")
 			if idltype._type == "Object" then idltype = idltype.repID end
 			return assert(proxies:newproxy{ __reference=ior, __type=idltype })
 		end
@@ -1100,7 +1100,7 @@ function Decoder:sequence(idltype)                                              
 	while elementtype._type == "typecode" do elementtype = elementtype.type end
 	if elementtype == idl.octet or elementtype == idl.char then
 		local cursor = self:jump(length) -- check if there is enougth bytes
-		value = self.data:sub(cursor, cursor + length - 1)                          --[[VERBOSE]] verbose:unmarshal("got ", verbose.viewer:tostring(value))
+		value = self.data:sub(cursor, cursor + length - 1)                          --[[VERBOSE]] verbose:unmarshal("got ",verbose.viewer:tostring(value))
 	else
 		value = setmetatable({ n = length }, idltype)
 		for i = 1, length do                                                        --[[VERBOSE]] verbose:unmarshal("[element ",i,"]")
@@ -1375,7 +1375,7 @@ end
 
 local function decodetypeinfo(self, pos, kind)
 	local tcinfo = TypeCodeInfo[kind]
-	if tcinfo == nil then illegal(kind, "type code", "badstream") end        --[[VERBOSE]] verbose:unmarshal("TypeCode defines a ",tcinfo.name)
+	if tcinfo == nil then illegal(kind, "type code", "badstream") end             --[[VERBOSE]] verbose:unmarshal("TypeCode defines a ",tcinfo.name)
 	if tcinfo.unhandled then
 		illegal(tcinfo.name, "supported type code", "badstream")
 	end
@@ -1451,6 +1451,7 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+--[[VERBOSE]] local select = _G.select
 --[[VERBOSE]] local getclass = oo.getclass
 --[[VERBOSE]] local numtype = {
 --[[VERBOSE]] 	i2 = idl.short,
@@ -1468,7 +1469,8 @@ end
 --[[VERBOSE]] 	[Decoder] = "unmarshal",
 --[[VERBOSE]] }
 --[[VERBOSE]] local luatype = type
---[[VERBOSE]] function verbose.custom:marshal(codec, type, value)
+--[[VERBOSE]] function verbose.custom:marshal(...)
+--[[VERBOSE]] 	local codec, type, value = ...
 --[[VERBOSE]] 	local viewer = self.viewer
 --[[VERBOSE]] 	local output = viewer.output
 --[[VERBOSE]] 	local op = self.codecop[getclass(codec)]
@@ -1488,13 +1490,20 @@ end
 --[[VERBOSE]] 			output:write(")")
 --[[VERBOSE]] 		end
 --[[VERBOSE]] 	else
---[[VERBOSE]] 		return true -- cancel custom message
+--[[VERBOSE]] 		local count = select("#", ...)
+--[[VERBOSE]] 		for i = 1, count do
+--[[VERBOSE]] 			local value = select(i, ...)
+--[[VERBOSE]] 			if luatype(value) == "string"
+--[[VERBOSE]] 				then output:write(value)
+--[[VERBOSE]] 				else viewer:write(value)
+--[[VERBOSE]] 			end
+--[[VERBOSE]] 		end
 --[[VERBOSE]] 	end
 --[[VERBOSE]] 	if CODEC and self.flags.hexastream then
 --[[VERBOSE]] 		if CURSOR[SIZEINDEXPOS] and CODEC.ChunkSizeIndex then
 --[[VERBOSE]] 			self:marshal("[chunk size updated to ",CODEC[CODEC.ChunkSizeIndex],"]")
 --[[VERBOSE]] 		end
---[[VERBOSE]] 		self:hexastream(CODEC, CURSOR, PREFIXSHIFT)
+--[[VERBOSE]] 		self:hexastream(CODEC, CURSOR, codec.PREFIXSHIFT)
 --[[VERBOSE]] 		CURSOR, CODEC = {}, nil
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end

@@ -52,7 +52,7 @@ function Interceptor:receivereply(reply)
 	end
 end
 
-orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
+orb = oil.dtests.init()
 orb:setclientinterceptor(Interceptor)
 sync = oil.dtests.resolve("Server", 2809, "object")
 async = orb:newproxy(sync, "asynchronous")
@@ -71,8 +71,6 @@ ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(true))
 checks:assert(res, checks.is("first&second"))
 checks:assert(Interceptor.success, checks.is(true))
-
-
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

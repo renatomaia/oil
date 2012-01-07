@@ -24,6 +24,7 @@ return Suite{
 			ClientCancelWithException = require "oil.dtests.corba.intercepted.ClientCancelWithException",
 			ServerCancelWithResults = require "oil.dtests.corba.intercepted.ServerCancelWithResults",
 			ServerCancelWithException = require "oil.dtests.corba.intercepted.ServerCancelWithException",
+			ServerCancelWithServiceContext = require "oil.dtests.corba.intercepted.ServerCancelWithServiceContext",
 			ClientForwardRequest = require "oil.dtests.corba.intercepted.ClientForwardRequest",
 			ClientForwardReply = require "oil.dtests.corba.intercepted.ClientForwardReply",
 			ServerForwardRequest = require "oil.dtests.corba.intercepted.ServerForwardRequest",

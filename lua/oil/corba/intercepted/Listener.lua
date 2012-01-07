@@ -50,6 +50,7 @@ function ServerRequest:preinvoke(entry, member)
 						method, object = error, results[1]
 						self.n = 0
 					end
+					self.reply_service_context = intercepted.reply_service_context
 				elseif intercepted.reference then                                       --[[VERBOSE]] verbose:interceptors("interceptor forwarded the request")
 					self.forward_reference = intercepted.reference
 					self.intercepted = nil -- this should cancel the reply interception
@@ -125,9 +126,7 @@ function ServerRequest:getreplybody()
 					end
 					-- update GIOP message fields
 					types, body = buildreply(self)
-					if intercepted.reply_service_context ~= nil then
-						self.service_context = intercepted.reply_service_context
-					end
+					self.reply_service_context = intercepted.reply_service_context
 				else                                                                    --[[VERBOSE]] verbose:interceptors("error on interception: ",except)
 					self.success = false
 					self.n = 1
@@ -136,6 +135,10 @@ function ServerRequest:getreplybody()
 				end
 			end
 		end
+	end
+	if self.reply_service_context ~= nil then
+		self.service_context = self.reply_service_context
+		self.reply_service_context = nil
 	end
 	return types, body
 end

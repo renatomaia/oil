@@ -56,7 +56,7 @@ function verbose:hexastream(codec, cursor, prefix)
 		if prefix then stream = string.rep("\0", prefix)..stream end
 		local last = #stream
 		for count = 1, last do
-			if cursor[count] then
+			if cursor[count] ~= nil then
 				for count = last, count, -1 do
 					if cursor[count] == false then
 						last = math.min(last, 16*math.ceil(count/16))
@@ -67,17 +67,26 @@ function verbose:hexastream(codec, cursor, prefix)
 				local output = self.viewer.output
 				local lines = string.format("\n%%0%dx:", math.ceil(math.log10((base+last)/16))+1)
 				local text = {}
+				local opnened
 				for count = count-(count-1)%16, last do
-					column = math.mod(count-1, 16)
+					column = (count-1)%16
 					-- write line start if necessary
 					if column == 0 then
 						output:write(lines:format(base+count-1))
 					end
 					-- write hexadecimal code
 					local hexa
-					if cursor[count]
-						then hexa = "[%02x]"
-						else hexa = " %02x "
+					local kind = cursor[count]
+					if kind == nil then
+						hexa = " %02x "
+					elseif kind == true then
+						opened = true
+						hexa = "[%02x "
+					elseif opened then
+						opened = nil
+						hexa = " %02x]"
+					else
+						hexa = "[%02x]"
 					end
 					local code = stream:byte(count, count)
 					output:write(hexa:format(code))

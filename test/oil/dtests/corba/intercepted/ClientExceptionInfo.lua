@@ -81,7 +81,7 @@ function Interceptor:receivereply(reply)
 	end
 end
 
-orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
+orb = oil.dtests.init()
 orb:setclientinterceptor(Interceptor)
 
 sync = oil.dtests.resolve("Fake", 2809, "object", nil, true, true)

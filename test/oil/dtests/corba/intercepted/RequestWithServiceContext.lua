@@ -54,7 +54,7 @@ function Interceptor:sendrequest(request)
 	end
 end
 
-orb = oil.dtests.init{ extraproxies = { "asynchronous", "protected" } }
+orb = oil.dtests.init()
 orb:setclientinterceptor(Interceptor)
 sync = oil.dtests.resolve("Server", 2809, "object")
 async = orb:newproxy(sync, "asynchronous")
