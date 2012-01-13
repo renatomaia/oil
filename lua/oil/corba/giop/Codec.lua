@@ -1482,9 +1482,6 @@ end
 --[[VERBOSE]] 			output:write(" ",type)
 --[[VERBOSE]] 		end
 --[[VERBOSE]] 		if value ~= nil then
---[[VERBOSE]] 			if luatype(value) == "string" then
---[[VERBOSE]] 				value = value:gsub("[^%w%p%s]", "?")
---[[VERBOSE]] 			end
 --[[VERBOSE]] 			output:write(" (got ")
 --[[VERBOSE]] 			viewer:write(value)
 --[[VERBOSE]] 			output:write(")")

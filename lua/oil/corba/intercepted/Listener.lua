@@ -41,7 +41,6 @@ function ServerRequest:preinvoke(entry, member)
 			if success then
 				success = intercepted.success
 				if success ~= nil then                                                  --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
-					self.intercepted = nil -- this should cancel the reply interception
 					local results = intercepted.results or {}
 					if success then -- dispath should do 'unpack(results, 1, results.n or #results)'
 						method, object = unpack, results

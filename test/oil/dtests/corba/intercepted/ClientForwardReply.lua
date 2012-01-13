@@ -24,12 +24,25 @@ Client = [=====================================================================[
 checks = oil.dtests.checks
 
 Interceptor = {}
+function Interceptor:sendrequest(request)
+	if request.object_key == "object"
+	and request.operation_name == "concat"
+	and request.reference == forward.__reference
+	then
+		FinalRequestId = request.request_id
+	end
+end
 function Interceptor:receivereply(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		request.success = nil
-		request.reference = forward.__reference
+		if request.reference == forward.__reference then
+			checks:assert(request.request_id, checks.is(FinalRequestId))
+			FinalRequestId = true
+		else
+			request.success = nil
+			request.reference = forward.__reference
+		end
 	end
 end
 
@@ -41,14 +54,19 @@ sync = orb:narrow(sync, "MyInterface")
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
-oil.verbose:level(4)
-oil.verbose:flag("interceptors", true)
-
+FinalRequestId = nil
 checks:assert(sync:concat("first", "second"), checks.is("first&second"))
+checks:assert(FinalRequestId, checks.is(true))
+
+FinalRequestId = nil
 checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&second"))
+checks:assert(FinalRequestId, checks.is(true))
+
+FinalRequestId = nil
 ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(true))
 checks:assert(res, checks.is("first&second"))
+checks:assert(FinalRequestId, checks.is(true))
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

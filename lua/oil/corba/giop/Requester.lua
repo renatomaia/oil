@@ -70,6 +70,32 @@ end
 
 
 
+local function reissue(self, request, reference, addressing)                    --[[VERBOSE]] verbose:invoke(true, "reissue request to ",request.object_key,":",request.operation)
+	local channel, except = self:getchannel(reference)
+	if channel then
+		request.reference = reference
+		if addressing == nil or addressing == 0 then                                --[[VERBOSE]] verbose:invoke("using object key as addressing mode")
+			request.object_key = reference.object_key
+		else
+			request.object_key = nil
+			if adressing == 1 then                                                    --[[VERBOSE]] verbose:invoke("using IOR profile as addressing mode")
+				request.target = {profile=reference.ior_profile}
+			elseif addressing == 2 then                                               --[[VERBOSE]] verbose:invoke("using complete IOR as addressing mode")
+				request.target = {ior=reference}
+			end
+		end
+		local success
+		success, except = channel:sendrequest(request)
+		if success then                                                             --[[VERBOSE]] verbose:invoke(false, "reissued as request ",request.request_id," to ",request.object_key,":",request.operation)
+			return channel
+		end
+		channel:unregister(request.id, "outgoing")
+	end                                                                           --[[VERBOSE]] verbose:invoke(false, "unable to reissue request")
+	self:endrequest(request, false, except)
+end
+
+
+
 local GIOPRequester = class({
 	OperationRequester = OperationRequester,
 	OperationReplier = OperationReplier,
@@ -165,30 +191,6 @@ function GIOPRequester:newrequest(request)
 	return requester(self, request)
 end
 
-function GIOPRequester:reissue(request, reference, addressing)                  --[[VERBOSE]] verbose:invoke(true, "reissue request to ",request.object_key,":",request.operation)
-	local channel, except = self:getchannel(reference)
-	if channel then
-		request.reference = reference
-		if addressing == nil or addressing == 0 then                                --[[VERBOSE]] verbose:invoke("using object key as addressing mode")
-			request.object_key = reference.object_key
-		else
-			request.object_key = nil
-			if adressing == 1 then                                                    --[[VERBOSE]] verbose:invoke("using IOR profile as addressing mode")
-				request.target = {profile=reference.ior_profile}
-			elseif addressing == 2 then                                               --[[VERBOSE]] verbose:invoke("using complete IOR as addressing mode")
-				request.target = {ior=reference}
-			end
-		end
-		local success
-		success, except = channel:sendrequest(request)
-		if success then                                                             --[[VERBOSE]] verbose:invoke(false, "reissued as request ",request.request_id," to ",request.object_key,":",request.operation)
-			return channel
-		end
-		channel:unregister(request.id, "outgoing")
-	end                                                                           --[[VERBOSE]] verbose:invoke(false, "unable to reissue request")
-	self:endrequest(request, false, except)
-end
-
 
 
 local SystemExceptionError = {
@@ -224,14 +226,14 @@ local function doreply(self, replied)
 			if status == "LOCATION_FORWARD_PERM" then                                 --[[VERBOSE]] verbose:invoke("replacing current reference with a new one permanently")
 				reference = copy(reference, clear(replied.reference))
 			end
-			self:reissue(replied, reference)
+			reissue(self, replied, reference)
 		else                                                                        --[[VERBOSE]] verbose:invoke("error in decoding of reply with request for different addressing mode")
 			self:endrequest(replied, false, result)
 		end
 	elseif status == "NEEDS_ADDRESSING_MODE" then                                 --[[VERBOSE]] verbose:invoke("got remote request to reissue with a different addressing mode")
 		local ok, result = pcall(decoder.short, decoder)
 		if ok then
-			self:reissue(replied, replied.reference, result)
+			reissue(self, replied, replied.reference, result)
 		else                                                                        --[[VERBOSE]] verbose:invoke("error in decoding of reply with request for different addressing mode")
 			self:endrequest(replied, false, result)
 		end
@@ -275,7 +277,7 @@ end
 
 function GIOPRequester:getreply(request, timeout)
 	while request.reply == nil do
-		local channel = request.channel or self:reissue(request, request.reference)
+		local channel = request.channel or reissue(self, request, request.reference)
 		if channel == nil then -- error on reissue is stored as request's reply
 			return true
 		end

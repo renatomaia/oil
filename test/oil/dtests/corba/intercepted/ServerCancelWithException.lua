@@ -14,8 +14,21 @@ function Interceptor:receiverequest(request)
 		request.results = { orb:newexcept{
 			"CORBA::NO_PERMISSION",
 			completed = "COMPLETED_NO",
-			minor = 123,
+			minor = 321,
 		} }
+	end
+end
+function Interceptor:sendreply(request)
+	if request.object_key == "object"
+	and request.operation_name == "concat"
+	then
+		checks:assert(request.success, checks.is(false))
+		checks:assert(request.results[1], checks.similar{
+		              	_repid = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
+		              	completed = "COMPLETED_NO",
+		              	minor = 321,
+		              })
+		request.results[1].minor = 123
 	end
 end
 

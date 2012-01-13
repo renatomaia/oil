@@ -5,13 +5,18 @@ local template = Template{"Client"} -- master process name
 Server = [=====================================================================[
 checks = oil.dtests.checks
 
+Object = {}
+function Object:concat(str1, str2)
+	return str1.."&"..str2
+end
+
 Interceptor = {}
 function Interceptor:receiverequest(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
 		request.success = true
-		request.results = { request.parameters[1].." "..request.parameters[2] }
+		request.results = { request.parameters[1].."&"..request.parameters[2] }
 	end
 end
 function Interceptor:sendreply(request)
@@ -19,8 +24,13 @@ function Interceptor:sendreply(request)
 	and request.operation_name == "concat"
 	then
 		checks:assert(request.success, checks.is(true))
-		checks:assert(request.results[1], checks.is("first second"))
-		request.results[1] = "first&second"
+		checks:assert(request.results[1], checks.is("first&second"))
+		request.reply_service_context = {
+			{
+				context_id = 1234,
+				context_data = "1234",
+			}
+		}
 	end
 end
 
@@ -31,29 +41,46 @@ orb:loadidl[[
 		string concat(in string str1, in string str2);
 	};
 ]]
-orb:newservant({}, "object", "::MyInterface")
+orb:newservant(Object, "object", "::MyInterface")
 orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
 checks = oil.dtests.checks
 
+Interceptor = {}
+function Interceptor:receivereply(reply)
+	if reply.object_key == "object"
+	and reply.operation_name == "concat"
+	then
+		checks:assert(reply.reply_service_context,                 checks.typeis("table"))
+		checks:assert(#reply.reply_service_context,                checks.is(1))
+		checks:assert(reply.reply_service_context.n,               checks.is(1))
+		checks:assert(reply.reply_service_context[1].context_id,   checks.is(1234))
+		checks:assert(reply.reply_service_context[1].context_data, checks.is("1234"))
+		self.success = true
+	end
+end
+
 orb = oil.dtests.init()
+orb:setclientinterceptor(Interceptor)
 sync = oil.dtests.resolve("Server", 2809, "object")
-orb:loadidl[[
-	interface MyInterface {
-		string concat(in string str1, in string str2);
-	};
-]]
-sync = orb:narrow(sync, "MyInterface")
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
+Interceptor.success = nil
 checks:assert(sync:concat("first", "second"), checks.is("first&second"))
+checks:assert(Interceptor.success, checks.is(true))
+
+Interceptor.success = nil
 checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&second"))
+checks:assert(Interceptor.success, checks.is(true))
+
+Interceptor.success = nil
 ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(true))
 checks:assert(res, checks.is("first&second"))
+checks:assert(Interceptor.success, checks.is(true))
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

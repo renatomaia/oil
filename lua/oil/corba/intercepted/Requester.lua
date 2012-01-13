@@ -6,7 +6,7 @@ local class = oo.class
 
 local GIOPRequester = require "oil.corba.giop.Requester"
 
-local function updaterequest(request, intercepted, operation, channel)
+local function updaterequest(request, intercepted, operation)
 	-- update GIOP message fields
 	request.sync_scope = intercepted.sync_scope
 	request.service_context = intercepted.service_context
@@ -17,17 +17,17 @@ local function updaterequest(request, intercepted, operation, channel)
 		request[i] = parameters[i]
 	end
 	-- update operation being invoked
+	local operation = request.operation_desc
 	local newop = intercepted.operation
 	if newop ~= nil and newop ~= operation then                                   --[[VERBOSE]] verbose:interceptors("interception changed the operation being invoked")
-		request.operation = newop
+		operation = newop
+		request.operation_desc = operation
 	end
+	request.operation = operation
 	-- update servant reference
 	local newref = intercepted.reference
 	if newref and newref ~= request.reference then                                --[[VERBOSE]] verbose:interceptors("interception forwarded request to another reference")
 		request.reference = newref
-		if channel ~= nil then
-			channel:unregister(request.id, "outgoing")
-		end
 	end
 end
 
@@ -36,29 +36,31 @@ local IceptedRequester = class({}, GIOPRequester)
 function IceptedRequester:dorequest(request)                                    --[[VERBOSE]] verbose:interceptors(true, "intercepting outgoing request")
 	local interceptor = self.interceptor
 	if interceptor ~= nil then
-		local operation = request.operation
+		local operation = request.operation_desc or request.operation
 		local interface = operation.defined_in
 		local reference = request.reference
 		local channel = self:getchannel(reference) -- ignore eventual errors
 		if channel ~= nil then
 			channel:register(request, "outgoing")
 		end
-		local intercepted = {
-			request_id        = request.request_id or 0,
-			reference         = reference,
-			profile_tag       = reference.ior_profile.tag,
-			profile_data      = reference.ior_profile.profile_data,
-			profile           = reference.ior_profile_decoded,
-			object_key        = reference.object_key,
-			interface         = interface,
-			operation         = operation,
-			operation_name    = operation.name,
-			sync_scope        = operation.oneway and "channel" or "servant",
-			response_expected = not operation.oneway, -- deprecated
-			parameters        = { n = request.n, unpack(request, 1, request.n) },
-		}
+		local intercepted = request.intercepted
+		if intercepted == nil then
+			intercepted = {}
+			request.intercepted = intercepted
+		end
+		intercepted.request_id = request.request_id or 0
+		intercepted.reference = reference
+		intercepted.profile_tag = reference.ior_profile.tag
+		intercepted.profile_data = reference.ior_profile.profile_data
+		intercepted.profile = reference.ior_profile_decoded
+		intercepted.object_key = reference.object_key
+		intercepted.interface = interface
+		intercepted.operation = operation
+		intercepted.operation_name = operation.name
+		intercepted.sync_scope = operation.oneway and "channel" or "servant"
+		intercepted.response_expected = not operation.oneway -- deprecated
+		intercepted.parameters = { n = request.n, unpack(request, 1, request.n) }
 		request.operation_desc = operation
-		request.intercepted = intercepted
 		local sendrequest = interceptor.sendrequest
 		if sendrequest ~= nil then                                                  --[[VERBOSE]] verbose:interceptors(true, "invoking sendrequest")
 			local success, except = pcall(sendrequest, interceptor, intercepted)      --[[VERBOSE]] verbose:interceptors(false, "sendrequest ended")
@@ -78,7 +80,13 @@ function IceptedRequester:dorequest(request)                                    
 					end                                                                   --[[VERBOSE]] verbose:interceptors(false, "interception canceled invocation")
 					return self.Request(request)
 				else
-					updaterequest(request, intercepted, operation, channel)
+					updaterequest(request, intercepted)
+					if request.reference ~= reference then
+						if channel ~= nil then
+							channel:unregister(request.id, "outgoing")
+						end
+						return self:dorequest(request)
+					end
 				end
 			else                                                                      --[[VERBOSE]] verbose:interceptors("error on interception: ",except)
 				self:endrequest(request, false, except)
@@ -122,8 +130,8 @@ function IceptedRequester:endrequest(request, success, result)
 							request[i] = results[i]
 						end
 					else                                                                  --[[VERBOSE]] verbose:interceptors("intercepted request must be reissued")
-						updaterequest(request, intercepted, request.operation_desc)
-						self:reissue(request, request.reference)
+						updaterequest(request, intercepted)
+						self:dorequest(request)
 					end
 				else                                                                    --[[VERBOSE]] verbose:interceptors("error on interception: ",except)
 					request[1] = except
