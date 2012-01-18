@@ -88,6 +88,11 @@ function DefaultOptions.callbacks.module(def)
 	return def
 end
 
+function DefaultOptions.callbacks.const(def)
+	def.val, def.value = def.value, nil
+	return def
+end
+
 function DefaultOptions.callbacks.start()
 	Modules = {}
 end

@@ -65,7 +65,7 @@ module "oil.corba.idl.Registry"
   AttributeDef            = oo.class({ __type = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, MemberDef)
   OperationDef            = oo.class({ __type = "IDL:omg.org/CORBA/OperationDef:1.0"            }, MemberDef)
   ValueMemberDef          = oo.class({ __type = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, MemberDef)
---ConstantDef             = oo.class({ __type = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
+  ConstantDef             = oo.class({ __type = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
   TypedefDef              = oo.class({ __type = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, IDLType, Contained)
   
   StructDef               = oo.class({ __type = "IDL:omg.org/CORBA/StructDef:1.0"               }, TypedefDef , Container)
@@ -386,8 +386,20 @@ function Container:create_module(id, name, version)
 	return created
 end
 
---function Container:create_constant(id, name, version, type, value)
---end
+function Container:create_constant(id, name, version, type, value)
+	local created = ConstantDef{ containing_repository=self.containing_repository }
+	created:update{
+		defined_in = self,
+		
+		repID = id,
+		name = name,
+		version = version,
+		
+		type = type,
+		value = value,
+	}
+	return created
+end
 
 function Container:create_struct(id, name, version, members)
 	local created = StructDef{ containing_repository=self.containing_repository }
@@ -902,6 +914,44 @@ function ValueMemberDef:_set_type_def(type_def, registry)
 	self.type_def = type_def
 	self.type = type_def.type
 	if self.type ~= old then self:notify("type") end
+end
+
+--------------------------------------------------------------------------------
+
+ConstantDef._type = "const"
+ConstantDef.def_kind = "dk_Constant"
+ConstantDef.definition_fields = {
+	type = { type = IDLType },
+	val  = { type = nil },
+}
+
+function ConstantDef:get_description()
+	return setmetatable({
+		type = self.type,
+		value = self.value,
+	}, iridl.ConstantDescription)
+end
+
+function ConstantDef:update(new, registry)
+	self:_set_type(new.type, registry)
+	self:_set_value({_anyval=new.val, _anytype=new.type}, registry)
+end
+
+function ConstantDef:_set_type(type_def, registry)
+	local old = self.type
+	type_def = self.containing_repository:put(type_def, registry)
+	if self.type_def then
+		self:nowatch(self.type_def, "type")
+	end
+	self.type_def = type_def
+	self.type = type_def.type
+	self:watch(self.type_def, "type")
+	if self.type ~= old then self:notify("type") end
+end
+
+function ConstantDef:_set_value(value, registry)
+	self.value = value
+	self.val = value._anyval
 end
 
 --------------------------------------------------------------------------------
@@ -1612,6 +1662,7 @@ ValueDef.create_operation = InterfaceDef.create_operation
 oo.class(_M, Repository)
 
 Classes = {
+	const              = ConstantDef,
 	struct             = StructDef,
 	union              = UnionDef,
 	enum               = EnumDef,

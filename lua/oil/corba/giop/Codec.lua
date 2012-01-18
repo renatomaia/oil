@@ -437,7 +437,7 @@ function Encoder:Object(value, idltype)                                         
 				if servants then                                                        --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
 					value = assert(servants:register{__servant=value,__type=idltype})     --[[VERBOSE]] verbose:marshal(false)
 					if not value.__type:is_a(idltype.repID) then
-						illegal(value, idltype.repID..", got a "..objtype.repID,"BAD_PARAM")
+						illegal(value, idltype.repID..", got a "..value.__type.repID,"BAD_PARAM")
 					end
 					reference = value.__reference
 				else
