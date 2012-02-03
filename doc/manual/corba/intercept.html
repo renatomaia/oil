@@ -116,8 +116,7 @@ end
 		<td valign="top"><code>service_context</code></td>
 		<td valign="top"><b>table</b></td>
 		<td valign="top">[optional]</td>
-		<td>Set this value to define the list of service context data to be marshaled in the request.
-		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+		<td>Set this value to a table mapping each service context ID to a service context data to be marshaled in the request.
 	</tr>
 	<tr>
 		<td valign="top"><code>success</code></td>
@@ -138,8 +137,7 @@ end
 		<td valign="top"><code>reply_service_context</code></td>
 		<td valign="top"><b>table</b></td>
 		<td valign="top">[optional]</td>
-		<td>Set this value to define the list of service context to be added to the reply of a cancelled request.
-		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+		<td>Set this value to a table mapping each service context ID to a service context data to be added to the reply of a cancelled request.
 	</tr>
 	<tr>
 		<td valign="top"><code>forward_reference</code></td>
@@ -171,8 +169,7 @@ end
 		<td valign="top"><code>reply_service_context</code></td>
 		<td valign="top"><b>table</b></td>
 		<td valign="top"></td>
-		<td>The list of service context received with the reply of the request.
-		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+		<td>A table mapping each service context ID to the service context data received with the reply of the request.
 	</tr>
 </table>
 </p>
@@ -240,8 +237,7 @@ end
 		<td valign="top"><code>service_context</code></td>
 		<td valign="top"><b>table</b></td>
 		<td valign="top">[optional]</td>
-		<td>Set this value to define the list of service context data to be marshaled in the request.
-		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+		<td>Set this value to a table mapping each service context ID to a service context data to be marshaled in the request.
 	</tr>
 	<tr>
 		<td valign="top"><code>success</code></td>
@@ -262,8 +258,7 @@ end
 		<td valign="top"><code>reply_service_context</code></td>
 		<td valign="top"><b>table</b></td>
 		<td valign="top">[optional]</td>
-		<td>Set this value to define the list of service context to be added to the reply of a cancelled request.
-		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+		<td>Set this value to a table mapping each service context ID to a service context data to be added to the reply of a cancelled request.
 	</tr>
 	<tr>
 		<td valign="top"><code>forward_reference</code></td>
@@ -295,8 +290,7 @@ end
 		<td valign="top"><code>reply_service_context</code></td>
 		<td valign="top"><b>table</b></td>
 		<td valign="top"></td>
-		<td>The list of service context received with the reply of the request.
-		See <code>CORBA::IOP::ServiceContextList</code> in CORBA specs.</td>
+		<td>A table mapping each service context ID to the service context data received with the reply of the request.
 	</tr>
 	<tr>
 		<td valign="top"><code>forward_reference</code></td>
@@ -311,7 +305,7 @@ end
 <h2>Adding Information to Invocations</h2>
 
 <p>GIOP messages for requests and replies has the special field <code>service_context</code>, which can be used to store additional information to be send with the invocation.
-Basically, the <code>service_context</code> is a sequence of structures, each containing a tag number and a octet sequence that is used to store arbitrary data.
+Basically, the <code>service_context</code> is a table mapping a tag number to a octet sequence that is used to store arbitrary data.
 Interceptors can define the value of field <code>service_context</code> in the parameter of methods <code>sendrequest</code> or <code>sendreply</code>.
 Similarly, the value of field <code>service_context</code> can be accessed through the parameter of methods <code>receiverequest</code> or <code>receivereply</code>.</p>
 
@@ -340,10 +334,7 @@ oil.main(function()
 	
 	local Authenticator = {}
 	function Authenticator:sendrequest(request)
-		request.service_context[#request.service_context + 1] = {
-			context_id = 404,
-			context_data = AuthData,
-		}
+		request.service_context[404] = AuthData
 	end
 	
 	broker:setinterceptor(Authenticator, "client")
@@ -371,12 +362,11 @@ oil.main(function()
 	local Validator = {}
 	function Validator:receiverequest(request)
 		local valid
-		for _, context in ipairs(request.service_context) do
-			if context.context_id == 404 then
-				local decoder = broker:newdecoder(context.context_data)
-				local authid = decoder:get(AuthID)
-				valid = (authid.user == "admin") and (authid.pswd == "admin")
-			end
+		local data = request.service_context[404]
+		if data ~= nil then
+			local decoder = broker:newdecoder(data)
+			local authid = decoder:get(AuthID)
+			valid = (authid.user == "admin") and (authid.pswd == "admin")
 		end
 		if not valid then
 			-- cancel request with an exception

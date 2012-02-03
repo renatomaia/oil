@@ -23,33 +23,27 @@ oil.main(function()
 		encoder:put({
 			memory = collectgarbage("count"),
 		}, ServerInfo)
-		request.service_context = {
-			{
-				context_id = 1234,
-				context_data = encoder:getdata()
-			}
-		}
+		request.service_context = { [1234] = encoder:getdata() }
 	end
 	function profiler:receivereply(request)
 		print("intercepting reply of opreation "..request.operation_name)
 		print("\tsuccess:", request.success)
 		local results = request.results
 		print("\tresults:", unpack(results, 1, results.n))
-		for _, context in ipairs(request.reply_service_context) do
-			if context.context_id == 4321 then
-				local decoder = orb:newdecoder(context.context_data)
-				local result = decoder:get(ClientInfo)
-				print("\ttime:", result.ending - result.start)
-				return
-			end
-		end
-		io.stderr:write("context 4321 not found! Canceling ...\n")
-		request.success = false
-		request.results = {
-			orb:newexcept{ "NoProfiling", -- local exception, unknown to CORBA
-				operation = operation
+		local data = request.reply_service_context[4321]
+		if data ~= nil then
+			local decoder = orb:newdecoder(data)
+			local result = decoder:get(ClientInfo)
+			print("\ttime:", result.ending - result.start)
+		else
+			io.stderr:write("context 4321 not found! Canceling ...\n")
+			request.success = false
+			request.results = {
+				orb:newexcept{ "NoProfiling", -- local exception, unknown to CORBA
+					operation = operation
+				}
 			}
-		}
+		end
 	end
 	orb:setinterceptor(profiler, "corba.client")
 	

@@ -18,10 +18,7 @@ function Interceptor:receiverequest(request)
 	and request.operation_name == "concat"
 	then
 		checks:assert(request.service_context,                 checks.typeis("table"))
-		checks:assert(#request.service_context,                checks.is(1))
-		checks:assert(request.service_context.n,               checks.is(1))
-		checks:assert(request.service_context[1].context_id,   checks.is(1234))
-		checks:assert(request.service_context[1].context_data, checks.is("1234"))
+		checks:assert(request.service_context,                 checks.similar({[1234]="1234"}, nil, {isomorphic=true}))
 		self.success = true
 	end
 end
@@ -45,12 +42,7 @@ function Interceptor:sendrequest(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		request.service_context = {
-			{
-				context_id = 1234,
-				context_data = "1234",
-			}
-		}
+		request.service_context = { [1234] = "1234" }
 	end
 end
 

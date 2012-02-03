@@ -10,6 +10,10 @@ local IOR = giop.IOR
 
 local Request = require "oil.protocol.Request"
 
+local servicecontext = require "oil.corba.intercepted.servicecontext"
+local srvctxttab2seq = servicecontext.table2sequence
+local srvctxtseq2tab = servicecontext.sequence2table
+
 local Listener = require "oil.corba.giop.Listener"
 local ListenerRequest = Listener.Request
 
@@ -22,7 +26,7 @@ function ServerRequest:preinvoke(entry, member)
 	local interceptor = self.interceptor
 	if interceptor ~= nil then
 		local intercepted = {
-			service_context   = self.service_context,
+			service_context   = srvctxtseq2tab(self.service_context),
 			request_id        = self.request_id,
 			response_expected = self.sync_scope ~= "channel",
 			sync_scope        = self.sync_scope,
@@ -49,7 +53,7 @@ function ServerRequest:preinvoke(entry, member)
 						method, object = error, results[1]
 						self.n = 0
 					end
-					self.reply_service_context = intercepted.reply_service_context
+					self.reply_service_context = srvctxttab2seq(intercepted.reply_service_context)
 				elseif intercepted.reference then                                       --[[VERBOSE]] verbose:interceptors("interceptor forwarded the request")
 					self.forward_reference = intercepted.reference
 					self.intercepted = nil -- this should cancel the reply interception
@@ -72,7 +76,7 @@ function ServerRequest:preinvoke(entry, member)
 						end
 					end
 					-- update GIOP message fields
-					self.service_context = intercepted.service_context
+					self.service_context = srvctxttab2seq(intercepted.service_context)
 				end
 			else --[[dispath should do 'error(except)']]                              --[[VERBOSE]] verbose:interceptors("error on interception: ",except)
 				method, object = error, except
@@ -125,7 +129,7 @@ function ServerRequest:getreplybody()
 					end
 					-- update GIOP message fields
 					types, body = buildreply(self)
-					self.reply_service_context = intercepted.reply_service_context
+					self.reply_service_context = srvctxttab2seq(intercepted.reply_service_context)
 				else                                                                    --[[VERBOSE]] verbose:interceptors("error on interception: ",except)
 					self.success = false
 					self.n = 1

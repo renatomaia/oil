@@ -25,12 +25,7 @@ function Interceptor:sendreply(request)
 	then
 		checks:assert(request.success, checks.is(true))
 		checks:assert(request.results[1], checks.is("first&second"))
-		request.reply_service_context = {
-			{
-				context_id = 1234,
-				context_data = "1234",
-			}
-		}
+		request.reply_service_context = { [1234] = "1234" }
 	end
 end
 
@@ -53,11 +48,8 @@ function Interceptor:receivereply(reply)
 	if reply.object_key == "object"
 	and reply.operation_name == "concat"
 	then
-		checks:assert(reply.reply_service_context,                 checks.typeis("table"))
-		checks:assert(#reply.reply_service_context,                checks.is(1))
-		checks:assert(reply.reply_service_context.n,               checks.is(1))
-		checks:assert(reply.reply_service_context[1].context_id,   checks.is(1234))
-		checks:assert(reply.reply_service_context[1].context_data, checks.is("1234"))
+		checks:assert(reply.reply_service_context, checks.typeis("table"))
+		checks:assert(reply.reply_service_context, checks.similar({[1234]="1234"}, nil, {isomorphic=true}))
 		self.success = true
 	end
 end

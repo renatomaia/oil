@@ -632,8 +632,8 @@ end
 --    response_expected: [boolean] (read-only)
 --    object_key: [string] (read-only)
 --    operation: [string] (read-only) Operation name.
---    service_context: [table] Set this value to define a service context
---      values. See 'ServiceContextList' in CORBA specs.
+--    service_context: [table] Set this value to a table mapping service context
+--      IDs to the octets representing the values.
 --    success: [boolean] set this value to cancel invocation:
 --      true ==> invocation successfull
 --      false ==> invocation raised an exception
@@ -642,8 +642,8 @@ end
 --    (see note below).
 --
 --  receive_reply(reply): 'reply' structure is described below.
---    service_context: [table] (read-only) See 'ServiceContextList' in CORBA
---      specs.
+--    service_context: [table] (read-only) table mapping service context IDs to
+--      the octets representing the values.
 --    reply_status: [string] (read-only)
 --    success: [boolean] Identifies the kind of result:
 --      true ==> invocation successfull
@@ -668,8 +668,8 @@ end
 -- The interceptor must provide the following operations
 --
 --  receive_request(request): 'request' structure is described below.
---    service_context: [table] (read-only) See 'ServiceContextList' in CORBA
---      specs.
+--    service_context: [table] (read-only) table mapping service context IDs to
+--      the octets representing the values.
 --    request_id: [number] (read-only)
 --    response_expected: [boolean] (read-only)
 --    object_key: [string] (read-only)
@@ -684,8 +684,8 @@ end
 --    (see note below).
 --
 --  send_reply(reply): 'reply' structure is described below.
---    service_context: [table] Set this value to define a service context
---      values. See 'ServiceContextList' in CORBA specs.
+--    service_context: [table] Set this value to a table mapping service context
+--      IDs to the octets representing the values.
 --    success: [boolean] identifies the kind of result:
 --      true ==> invocation successfull
 --      false ==> invocation raised an exception

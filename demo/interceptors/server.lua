@@ -16,19 +16,18 @@ oil.main(function()
 		local params = request.parameters
 		print("intercepting request to "..request.operation_name..
 		      "("..viewer:tostring(unpack(params, 1, params.n))..")")
-		for _, context in ipairs(request.service_context) do
-			if context.context_id == 1234 then
-				local decoder = orb:newdecoder(context.context_data)
-				local result = decoder:get(ServerInfo)
-				print("\tmemory:", result.memory)
-				return
-			end
+		local data = request.service_context[1234]
+		if data ~= nil then
+			local decoder = orb:newdecoder(data)
+			local result = decoder:get(ServerInfo)
+			print("\tmemory:", result.memory)
+		else
+			io.stderr:write("context 1234 not found! Canceling...\n")
+			request.success = false
+			request.results = {
+				orb:newexcept{ "CORBA::NO_PERMISSION", minor_code_value = 0 }
+			}
 		end
-		io.stderr:write("context 1234 not found! Canceling...\n")
-		request.success = false
-		request.results = {
-			orb:newexcept{ "CORBA::NO_PERMISSION", minor_code_value = 0 }
-		}
 	end
 	function profiler:sendreply(reply)
 		print("intercepting reply of opreation "..reply.operation_name)
@@ -40,12 +39,7 @@ oil.main(function()
 			start = reply.start_time,
 			ending = socket.gettime(),
 		}, ClientInfo)
-		reply.reply_service_context = {
-			{
-				context_id = 4321,
-				context_data = encoder:getdata()
-			}
-		}
+		reply.reply_service_context = { [4321] = encoder:getdata() }
 	end
 	orb:setinterceptor(profiler, "corba.server")
 	

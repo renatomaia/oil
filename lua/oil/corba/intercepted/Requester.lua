@@ -4,12 +4,16 @@ local unpack = _G.unpack
 local oo = require "oil.oo"
 local class = oo.class
 
+local servicecontext = require "oil.corba.intercepted.servicecontext"
+local srvctxttab2seq = servicecontext.table2sequence
+local srvctxtseq2tab = servicecontext.sequence2table
+
 local GIOPRequester = require "oil.corba.giop.Requester"
 
 local function updaterequest(request, intercepted, operation)
 	-- update GIOP message fields
 	request.sync_scope = intercepted.sync_scope
-	request.service_context = intercepted.service_context
+	request.service_context = srvctxttab2seq(intercepted.service_context)
 	-- update parameter values
 	local parameters = intercepted.parameters
 	request.n = parameters.n or #parameters
@@ -108,8 +112,8 @@ function IceptedRequester:endrequest(request, success, result)
 			if receivereply ~= nil then
 				local header = request.reply
 				if header then
-					if header.service_context then
-						intercepted.reply_service_context = header.service_context
+					if header.service_context ~= nil then
+						intercepted.reply_service_context = srvctxtseq2tab(header.service_context)
 					end
 					intercepted.reply_status = header.reply_status
 				end
