@@ -64,6 +64,7 @@ LUASRC= \
 	$(LUADIR)/oil/corba/iiop/Profiler.lua \
 	$(LUADIR)/oil/corba/intercepted/Listener.lua \
 	$(LUADIR)/oil/corba/intercepted/Requester.lua \
+	$(LUADIR)/oil/corba/intercepted/servicecontext.lua \
 	$(LUADIR)/oil/corba/services/event/ConsumerAdmin.lua \
 	$(LUADIR)/oil/corba/services/event/EventFactory.lua \
 	$(LUADIR)/oil/corba/services/event/EventQueue.lua \
