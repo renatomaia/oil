@@ -1,5 +1,6 @@
 local Suite = require "loop.test.Suite"
 return Suite{
+	AttributeAccess = require "oil.dtests.kernel.AttributeAccess",
 	MethodInvocation = require "oil.dtests.kernel.MethodInvocation",
 	CallbackInvocation = require "oil.dtests.kernel.CallbackInvocation",
 	ExceptionCatch = require "oil.dtests.kernel.ExceptionCatch",
@@ -9,6 +10,7 @@ return Suite{
 	ServantLocator = require "oil.dtests.kernel.ServantLocator",
 	ServantManager = require "oil.dtests.kernel.ServantManager",
 	AsyncResultsProbe = require "oil.dtests.kernel.AsyncResultsProbe",
+	LocalReference = require "oil.dtests.kernel.LocalReference",
 	CORBA = Suite{
 		IDLChanges = require "oil.dtests.corba.IDLChanges",
 		ServantCreation = require "oil.dtests.corba.ServantCreation",
