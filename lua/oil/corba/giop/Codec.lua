@@ -1432,6 +1432,7 @@ end
 --       endianess must be read from stream.
 function decoder(self, octets, getorder)
 	local decoder = self.Decoder{
+		localrefs = self.localrefs,
 		data = octets,
 		context = self,
 	}
