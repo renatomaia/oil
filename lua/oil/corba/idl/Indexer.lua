@@ -78,7 +78,7 @@ end
 
 function valueof(self, interface, name)
 	local member = self:findmember(interface, name)
-	if not member then
+	if member == nil then
 		local action
 		for _, pattern in ipairs(self.patterns) do
 			action, member = name:match(pattern)

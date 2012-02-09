@@ -54,10 +54,12 @@ function giop.ObjectOperations._component:implementation()
 end
 
 function valueof(self, interface, name)
-	local operation = Indexer.valueof(self, interface, name)
-	if not operation then
+	local member = Indexer.valueof(self, interface, name)
+	if member == nil then
 		CurrentInterface = interface -- setup current interface to be used by impls.
-		operation = giop.ObjectOperations[name]
+		member = giop.ObjectOperations[name]
+	elseif member._type ~= "operation" then
+		member = nil
 	end
-	return operation
+	return member
 end
