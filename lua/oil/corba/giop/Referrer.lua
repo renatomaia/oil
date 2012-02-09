@@ -86,15 +86,14 @@ function IOR:equivalentto(other)
 	return false
 end
 
-function IOR:islocal(access)
+function IOR:islocal(address)
 	for i, profile in ipairs(self.profiles) do
-		if profile.tag == access.iorprofiletag then
-			profile = self:getprofile(i)
-			local decoded = profile.decoded
-			if decoded then
-				local profiler = self.referrer.profiler[profile.tag]
+		local profiler = self.referrer.profiler[profile.tag]
+		if profiler ~= nil then
+			local decoded = self:getprofile(i).decoded
+			if decoded ~= nil then
 				local objkey = profiler:belongsto(decoded, address)
-				if objkey then return objkey end
+				if objkey ~= nil then return objkey end
 			end
 		end
 	end
