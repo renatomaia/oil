@@ -85,7 +85,7 @@ function CoReceiver:dochannel(channel)
 	until not result
 	channel:close()
 	if except.error ~= "terminated" then
-		if stderr then stderr:write(tostring(except)) end
+		if stderr then stderr:write(tostring(except), "\n") end
 	end
 	self.readers[yield("running")] = nil
 end
