@@ -286,7 +286,7 @@ local function receivemsg(self, timeout)                                      --
 			local ok
 			ok, minor, kind, size, incomplete, decoder = pdecode(decodeheader,
 			                                                     self, stream)
-			if not ok then                                                          --[[VERBOSE]] verbose:message(false, "error in message header decoding: ",kind.error)
+			if not ok then                                                          --[[VERBOSE]] verbose:message(false, "error in message header decoding: ",minor.error)
 				return nil, minor
 			end
 		else                                                                      --[[VERBOSE]] verbose:message("continue message from a previous decoded header")
@@ -521,7 +521,10 @@ local MessageHandlers = {
 }
 function GIOPChannel:processmessage(timeout)
 	local msgid, header, decoder = receivemsg(self, timeout)
-	if msgid == nil and header.error ~= "badversion" then
+	if msgid == nil then
+		if header.error == "badversion" then
+			sendmsg(self, MessageErrorID)
+		end
 		return nil, header
 	end
 	local handler = MessageHandlers[msgid]
