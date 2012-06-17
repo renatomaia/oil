@@ -54,10 +54,6 @@ function Listener:getaccess(probe)
 				--local address = result:address()
 				--if address then
 				--	self.configs.address = address
-				--	local requester = self.requester
-				--	if requester ~= nil then
-				--		requester:addlocaladdress(address)
-				--	end
 				--end
 			end
 		end

@@ -60,7 +60,7 @@ function CoReceiver:probe(timeout)
 end
 
 function CoReceiver:step(timeout)
-	if self.thread ~= nil then                                                           --[[VERBOSE]] verbose:acceptor(true, "processing one single request")
+	if self.thread ~= nil then                                                    --[[VERBOSE]] verbose:acceptor(true, "processing one single request")
 		local result, except = self:probe(timeout)
 		if result then yield("last") end --[[let other threads execute]]            --[[VERBOSE]] verbose:acceptor(false)
 		return result, except
@@ -79,7 +79,7 @@ function CoReceiver:dochannel(channel)
 	repeat
 		result, except = channel:getrequest()
 		if result then
-			local dispatcher = newthread(self.dorequest)                              --[[VERBOSE]] verbose.viewer.labels[dispatcher] = "Dispatcher('"..result.operation.."')"
+			local dispatcher = newthread(self.dorequest)                              --[[VERBOSE]] verbose.viewer.labels[dispatcher] = "Dispatcher("..result.operation..")"
 			yield("last", dispatcher, self, result)
 		end
 	until not result

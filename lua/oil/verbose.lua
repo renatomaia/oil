@@ -29,7 +29,10 @@ local Viewer = require "loop.debug.Viewer"
 local Verbose = require "loop.debug.Verbose"
 
 local verbose = Verbose{
-	viewer = Viewer{ maxdepth = 1 },
+	viewer = Viewer{
+		maxdepth = 1,
+		metaonly = true,
+	},
 	groups = {
 		broker = { "acceptor", "dispatcher", "servants", "proxies" },
 		communication = { "invoke", "listen", "message", "channels" },
