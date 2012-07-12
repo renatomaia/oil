@@ -34,7 +34,8 @@ end
 function Connector:retrieve(profile)                                            --[[VERBOSE]] verbose:channels("get channel to ",profile.host,":",profile.port)
 	local dns = self.dns
 	local host = dns:toip(profile.host) or profile.host
-	local connid = tuple[host][profile.port]
+	local port = profile.port
+	local connid = tuple[host][port]
 	local cache = self.cache
 	local socket, except = cache[connid]
 	if socket ~= nil then
@@ -50,8 +51,7 @@ function Connector:retrieve(profile)                                            
 	if socket == nil then
 		local sockets = self.sockets
 		socket, except = sockets:newsocket(self.options)
-		if socket then
-			local port = profile.port                                                 --[[VERBOSE]] verbose:channels("create new channel to ",host,":",port)
+		if socket then                                                              --[[VERBOSE]] verbose:channels("create new channel to ",host,":",port)
 			success, except = socket:connect(host, port)
 			if success then
 				cache[connid] = socket

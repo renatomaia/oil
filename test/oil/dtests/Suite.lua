@@ -1,8 +1,10 @@
 local Suite = require "loop.test.Suite"
+
 return Suite{
 	AttributeAccess = require "oil.dtests.kernel.AttributeAccess",
 	MethodInvocation = require "oil.dtests.kernel.MethodInvocation",
 	CallbackInvocation = require "oil.dtests.kernel.CallbackInvocation",
+	CallbackAsyncInvocation = require "oil.dtests.kernel.CallbackAsyncInvocation",
 	ExceptionCatch = require "oil.dtests.kernel.ExceptionCatch",
 	ORBShutdown = require "oil.dtests.kernel.ORBShutdown",
 	ORBShutdown2 = require "oil.dtests.kernel.ORBShutdown2",

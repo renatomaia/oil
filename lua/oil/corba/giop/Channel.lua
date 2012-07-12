@@ -214,7 +214,13 @@ local function sendmsg(self, kind, header, types, values)                     --
 		self:trylock("write")
 		ok, result = self:send(result)
 		if not ok and type(result) == "table" then result = Exception(result) end
-		self:freelock("write")                                                    --[[VERBOSE]] else verbose:message("message encoding failed")
+		self:freelock("write")
+	else                                                                        --[[VERBOSE]] verbose:message("message encoding failed")
+		if type(result) ~= "string" then
+			result = Exception(result)
+		else
+			result = Exception{ result, error = "badvalue" }
+		end
 	end                                                                         --[[VERBOSE]] verbose:message(false)
 	return ok, result
 end
@@ -376,7 +382,7 @@ end
 local GIOPChannel = class({
 	magictag = MagicTag,
 	headersize = HeaderSize,
-	version = 0,
+	version = -1,
 }, Channel)
 
 function GIOPChannel:__init()
@@ -391,7 +397,7 @@ function GIOPChannel:__init()
 	self.unprocessed = Queue()
 	self.incoming = {}
 	self.outgoing = {}
-	self:upgradeto(self.version)
+	self:upgradeto(0)
 end
 
 function GIOPChannel:register(request, direction)
@@ -428,7 +434,7 @@ function GIOPChannel:unregister(requestid, direction)
 end
 
 function GIOPChannel:upgradeto(minor)
-	if minor >= self.version and GIOPHeader_v1_[minor] ~= nil then              --[[VERBOSE]] verbose:message("GIOP channel upgraded to version 1.",minor)
+	if minor > self.version and GIOPHeader_v1_[minor] ~= nil then               --[[VERBOSE]] verbose:message("GIOP channel upgraded to version 1.",minor)
 		self.headertype = GIOPHeader_v1_[minor]
 		self.messagetype = MessageHeader_v1_[minor]
 		self.messagebuilder = MessageBuilder_v1_[minor]
@@ -630,6 +636,9 @@ function GIOPChannel:sendreply(request)
 		if request.service_context == nil then request.service_context = Empty end
 		success, except = sendmsg(self, ReplyID, request, types, values)
 		if not success then                                                       --[[VERBOSE]] verbose:listen(true, "unable to send reply: ",except)
+			if type(except) ~= "table" then
+				except = {}
+			end
 			if except.error == "terminated" then                                    --[[VERBOSE]] verbose:listen("connection terminated")
 				success, except = true
 			else

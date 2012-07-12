@@ -94,8 +94,6 @@ local assert = asserter.results
 local asserttype = asserter.type
 local illegal = asserter.illegal
 
-local Exception = require "oil.Exception"
-
 --------------------------------------------------------------------------------
 -- OiL main programming interface (API).
 
