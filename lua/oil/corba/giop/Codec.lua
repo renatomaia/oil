@@ -1028,7 +1028,7 @@ function Decoder:IOR()
 	return ior
 end
 
-function Decoder:Object(idltype)                                                --[[VERBOSE]] verbose:unmarshal(true, self, idltype)
+function Decoder:Object(idltype)                                                --[[VERBOSE]] verbose:unmarshal(self, idltype)
 	local ior = self:IOR()
 	if ior.type_id == "" then                                                     --[[VERBOSE]] verbose:unmarshal "got a null reference"
 		ior = nil
@@ -1050,7 +1050,7 @@ function Decoder:Object(idltype)                                                
 			if idltype._type == "Object" then idltype = idltype.repID end
 			return assert(proxies:newproxy{ __reference=ior, __type=idltype })
 		end
-	end                                                                           --[[VERBOSE]] verbose:unmarshal(false)
+	end
 	return ior
 end
 
