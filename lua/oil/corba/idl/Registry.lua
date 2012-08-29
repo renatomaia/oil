@@ -1310,6 +1310,7 @@ end
 --
 
 function InterfaceDef:is_a(interface_id)
+	if interface_id == PrimitiveTypes.pk_objref.repID then return true end
 	if interface_id == self.repID then return true end
 	for _, base in ipairs(self.inherited) do
 		if base:is_a(interface_id) then return true end
