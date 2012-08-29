@@ -940,11 +940,11 @@ end
 --
 -- Utility function for writing stringfied IORs into a file.
 --
-function writeto(filepath, text)
-	local result, errmsg = open(filepath, "w")
+function writeto(filepath, data, mode)
+	local result, errmsg = open(filepath, mode or "w")
 	if result then
 		local file = result
-		result, errmsg = file:write(tostring(text))
+		result, errmsg = file:write(tostring(data))
 		file:close()
 	end
 	return result, errmsg
@@ -955,8 +955,8 @@ end
 --
 -- Utility function for reading stringfied IORs from a file.
 --
-function readfrom(filepath)
-	local result, errmsg = open(filepath)
+function readfrom(filepath, mode)
+	local result, errmsg = open(filepath, mode)
 	if result then
 		local file = result
 		result, errmsg = file:read("*a")
