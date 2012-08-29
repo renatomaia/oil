@@ -128,7 +128,7 @@ local function decodeIorString(self, encoded)
 	return decoder:IOR()
 end
 local function decodeIOR(self, encoded)
-	local ok, result = pcall(decodeIorString, self, encoded)                           --[[VERBOSE]] verbose:references(false)
+	local ok, result = pcall(decodeIorString, self, encoded)                      --[[VERBOSE]] verbose:references(false)
 	if not ok then
 		return nil, result
 	end
@@ -142,18 +142,19 @@ local function decodeCorbaloc(self, encoded)
 		local profiler = self.profiler[token]
 		if profiler then
 			local profile, except = profiler:decodeurl(data)
-			if profile ~= nil then
-				profiles[#profiles+1] = profile                                     --[[VERBOSE]] else verbose:references("unable to decode corbaloc URL with profile ",token)
+			if profile == nil then                                                    --[[VERBOSE]] verbose:references("unable to decode corbaloc URL with profile ",token,": ",except)
+				return nil, except
 			end
+			profiles[#profiles+1] = profile
 		end
 	end
-	if #profiles == 0 then                                                    --[[VERBOSE]] verbose:references(false, "no supported protocol found in corbaloc")
+	if #profiles == 0 then                                                        --[[VERBOSE]] verbose:references(false, "no supported protocol found in corbaloc")
 		return nil, Exception{
 			"no supported protocol found in corbaloc (got $reference)",
 			error = "badcorbaloc",
 			reference = encoded,
 		}
-	end                                                                       --[[VERBOSE]] verbose:references(false)
+	end                                                                           --[[VERBOSE]] verbose:references(false)
 	return IOR{
 		referrer = self,
 		type_id = objrepID,
