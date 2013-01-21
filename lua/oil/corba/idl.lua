@@ -12,9 +12,8 @@
 --   possible.
 
 
-local _G = require "_G"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local type = _G.type
-local newproxy = _G.newproxy
 local pairs = _G.pairs
 local ipairs = _G.ipairs
 local rawset = _G.rawset
@@ -38,114 +37,12 @@ local isinstanceof = oo.isinstanceof
 local assert = require "oil.assert"
 local TypeCheckers = assert.TypeCheckers
 local asserttype = assert.type
-local illegal = assert.illegal                                                  --[[VERBOSE]] local verbose = require "oil.verbose"
-
-module "oil.corba.idl"
-
---------------------------------------------------------------------------------
--- Internal functions ----------------------------------------------------------
-
-local function checkfield(field)
-	asserttype(field.name, "string", "field name")
-	asserttype(field.type, "idl type", "field type")
-end
-
-local function checkfields(fields)
-	for _, field in ipairs(fields) do checkfield(field) end
-end
-
---------------------------------------------------------------------------------
--- IDL element types -----------------------------------------------------------
-
-BasicTypes = {
-	null       = true,
-	void       = true,
-	short      = true,
-	long       = true,
-	longlong   = true,
-	ushort     = true,
-	ulong      = true,
-	ulonglong  = true,
-	float      = true,
-	double     = true,
-	longdouble = true,
-	boolean    = true,
-	char       = true,
-	octet      = true,
-	any        = true,
-	TypeCode   = true,
-}
-
-UserTypes = {
-	string    = true,
-	Object    = true,
-	struct    = true,
-	union     = true,
-	enum      = true,
-	sequence  = true,
-	array     = true,
-	valuetype = true,
-	valuebox  = true,
-	typedef   = true,
-	except    = true,
-	interface = true,
-	abstract_interface = true,
-	local_interface = true,
-}
-
-InterfaceElements = {
-	attribute = true,
-	operation = true,
-	module    = true,
-}
-
---------------------------------------------------------------------------------
--- Auxilary module functions ---------------------------------------------------
-
-function istype(object)
-	return type(object) == "table" and (
-	       	BasicTypes[object._type] == object or
-	       	UserTypes[object._type]
-	       )
-end
-
-function isspec(object)
-	return type(object) == "table" and (
-	       	BasicTypes[object._type] == object or
-	       	UserTypes[object._type] or
-	       	InterfaceElements[object._type]
-	       )
-end
-
-TypeCheckers["idl type"]    = istype
-TypeCheckers["idl def."]    = isspec
-TypeCheckers["^idl ([%l_|]+)$"] = function(value, name)
-	if istype(value) then
-		while value._type == "typedef" do
-			value = value.original_type
-		end
-		for name in name:gmatch("[^|]+") do
-			if value._type == name then
-				return value
-			end
-		end
-	end
-	return nil
-end
-
---------------------------------------------------------------------------------
--- Basic types -----------------------------------------------------------------
-
-for name in pairs(BasicTypes) do
-	local basictype = {_type = name}
-	_M[name] = basictype
-	BasicTypes[name] = basictype
-end
+local illegal = assert.illegal
 
 --------------------------------------------------------------------------------
 -- Scoped definitions management -----------------------------------------------
 
-function setnameof(contained, name)
+local function setnameof(contained, name)
 	contained.name = name
 	local container = contained.defined_in
 	if container then
@@ -167,9 +64,9 @@ function setnameof(contained, name)
 end
 
 
-ContainerKey = newproxy()
+local ContainerKey = {}
 
-Contents = class()
+local Contents = class()
 
 function Contents:__newindex(name, contained)
 	if type(name) == "string" then
@@ -202,7 +99,7 @@ end
 Contents._removebyname = Contents._removeat
 
 
-function Container(self)
+local function Container(self)
 	if not isinstanceof(self.definitions, Contents) then
 		local contents = Contents{ [ContainerKey] = self }
 		if self.definitions then
@@ -222,7 +119,7 @@ function Container(self)
 end
 
 
-function Contained(self)
+local function Contained(self)
 	asserttype(self, "table", "IDL definition")
 	if self.name  == nil then self.name = "" end
 	if self.repID == nil then setnameof(self, self.name) end
@@ -232,26 +129,162 @@ function Contained(self)
 end
 
 --------------------------------------------------------------------------------
+-- Internal functions ----------------------------------------------------------
+
+local function checkfield(field)
+	asserttype(field.name, "string", "field name")
+	asserttype(field.type, "idl type", "field type")
+end
+
+local function checkfields(fields)
+	for _, field in ipairs(fields) do checkfield(field) end
+end
+
+--------------------------------------------------------------------------------
+-- IDL element types -----------------------------------------------------------
+
+local BasicTypes = {
+	null       = true,
+	void       = true,
+	short      = true,
+	long       = true,
+	longlong   = true,
+	ushort     = true,
+	ulong      = true,
+	ulonglong  = true,
+	float      = true,
+	double     = true,
+	longdouble = true,
+	boolean    = true,
+	char       = true,
+	octet      = true,
+	any        = true,
+	TypeCode   = true,
+}
+
+local UserTypes = {
+	string    = true,
+	Object    = true,
+	struct    = true,
+	union     = true,
+	enum      = true,
+	sequence  = true,
+	array     = true,
+	valuetype = true,
+	valuebox  = true,
+	typedef   = true,
+	except    = true,
+	interface = true,
+	abstract_interface = true,
+	local_interface = true,
+}
+
+local InterfaceElements = {
+	attribute = true,
+	operation = true,
+	module    = true,
+}
+
+--------------------------------------------------------------------------------
+-- Auxilary module functions ---------------------------------------------------
+
+local function istype(object)
+	return type(object) == "table" and (
+	       	BasicTypes[object._type] == object or
+	       	UserTypes[object._type]
+	       )
+end
+
+local function isspec(object)
+	return type(object) == "table" and (
+	       	BasicTypes[object._type] == object or
+	       	UserTypes[object._type] or
+	       	InterfaceElements[object._type]
+	       )
+end
+
+TypeCheckers["idl type"]    = istype
+TypeCheckers["idl def."]    = isspec
+TypeCheckers["^idl ([%l_|]+)$"] = function(value, name)
+	if istype(value) then
+		while value._type == "typedef" do
+			value = value.original_type
+		end
+		for name in name:gmatch("[^|]+") do
+			if value._type == name then
+				return value
+			end
+		end
+	end
+	return nil
+end
+
+
+local ValueKind = {
+	none = 0,
+	custom = 1,
+	abstract = 2,
+	truncatable = 3,
+}
+
+local ValueMemberAccess = {
+	private = 0,
+	public = 1,
+}
+
+for list in pairs{[ValueKind]=true, [ValueMemberAccess]=true} do
+	local values = {}
+	for _,value in pairs(list) do values[value] = true end
+	for value in pairs(values) do list[value] = value end
+end
+
+
+local function ibases(queue, interface)
+	interface = queue:successor(interface)
+	if interface then
+		for _, base in ipairs(interface.base_interfaces) do
+			queue:enqueue(base)
+		end
+		return interface
+	end
+end
+local function basesof(self)
+	local queue = OrderedSet()
+	queue:enqueue(self)
+	return ibases, queue
+end
+
+--------------------------------------------------------------------------------
+-- Exported module table -------------------------------------------------------
+
+local idl = {
+	BasicTypes = BasicTypes,
+	Container = Container,
+	ContainerKey = ContainerKey,
+	Contents = Contents,
+	istype = istype,
+	ValueKind = ValueKind,
+	ValueMemberAccess = ValueMemberAccess,
+	basesof = basesof,
+}
+
+--------------------------------------------------------------------------------
+-- Basic types -----------------------------------------------------------------
+
+for name in pairs(BasicTypes) do
+	local basictype = {_type = name}
+	idl[name] = basictype
+	BasicTypes[name] = basictype
+end
+
+--------------------------------------------------------------------------------
 -- User-defined type constructors ----------------------------------------------
 
 -- Note: internal structure is optimized for un/marshalling.
 
-string = { _type = "string", maxlength = 0 }
+idl.string = { _type = "string", maxlength = 0 }
 
-function Object(self)
-	asserttype(self, "table", "Object type definition")
-	if self.name  == nil then self.name = "" end
-	if self.repID == nil then setnameof(self, self.name) end
-	asserttype(self.name, "string", "Object type name")
-	asserttype(self.repID, "string", "Object type repository ID")
-	if self.repID == object.repID
-		then self = object
-		else self._type = "Object"
-	end
-	return self
-end
-
-function struct(self)
+function idl.struct(self)
 	self = Container(Contained(self))
 	self._type = "struct"
 	if self.fields == nil then self.fields = self end
@@ -259,7 +292,7 @@ function struct(self)
 	return self
 end
 
-function union(self)
+function idl.union(self)
 	self = Container(Contained(self))
 	self._type = "union"
 	if self.options == nil then self.options = self end
@@ -297,7 +330,7 @@ function union(self)
 	return self
 end
 
-function enum(self)
+function idl.enum(self)
 	self = Contained(self)
 	self._type = "enum"
 	if self.enumvalues == nil then self.enumvalues = self end
@@ -312,7 +345,7 @@ function enum(self)
 	return self
 end
 
-function sequence(self)
+function idl.sequence(self)
 	self._type = "sequence"
 	if self.maxlength   == nil then self.maxlength = 0 end
 	if self.elementtype == nil then self.elementtype = self[1] end
@@ -321,7 +354,7 @@ function sequence(self)
 	return self
 end
 
-function array(self)
+function idl.array(self)
 	self._type = "array"
 	asserttype(self.length, "number", "array type length")
 	if self.elementtype == nil then self.elementtype = self[1] end
@@ -329,23 +362,7 @@ function array(self)
 	return self
 end
 
-ValueKind = {
-	none = 0,
-	custom = 1,
-	abstract = 2,
-	truncatable = 3,
-}
-ValueMemberAccess = {
-	private = 0,
-	public = 1,
-}
-for list in pairs{[ValueKind]=true, [ValueMemberAccess]=true} do
-	local values = {}
-	for _,value in pairs(list) do values[value] = true end
-	for value in pairs(values) do list[value] = value end
-end
-
-function valuemember(self)
+function idl.valuemember(self)
 	self = Contained(self)
 	self._type = "valuemember"
 	checkfield(self)
@@ -357,7 +374,9 @@ function valuemember(self)
 	return self
 end
 
-function valuetype(self)
+local null = idl.null
+local valuemember = idl.valuemember
+function idl.valuetype(self)
 	self = Container(Contained(self))
 	self._type = "valuetype"
 	local kind = self.kind or (self.truncatable and ValueKind.truncatable)
@@ -386,7 +405,7 @@ function valuetype(self)
 	return self
 end
 
-function valuebox(self)
+function idl.valuebox(self)
 	self = Contained(self)
 	self._type = "valuebox"
 	if self.original_type == nil then self.original_type = self[1] end
@@ -399,7 +418,7 @@ function valuebox(self)
 	return self
 end
 
-function typedef(self)
+function idl.typedef(self)
 	self = Contained(self)
 	self._type = "typedef"
 	if self.original_type == nil then self.original_type = self[1] end
@@ -407,7 +426,7 @@ function typedef(self)
 	return self
 end
 
-function except(self)
+function idl.except(self)
 	self = Container(Contained(self))
 	self._type = "except"
 	if self.members == nil then self.members = self end
@@ -420,7 +439,7 @@ end
 
 -- Note: construtor syntax is optimized for use with Interface Repository
 
-function attribute(self)
+function idl.attribute(self)
 	self = Contained(self)
 	self._type = "attribute"
 	if self.type  == nil then self.type = self[1] end
@@ -436,7 +455,8 @@ function attribute(self)
 	return self
 end
 
-function operation(self)
+local void = idl.void
+function idl.operation(self)
 	self = Contained(self)
 	self._type = "operation"
 	
@@ -489,30 +509,13 @@ function operation(self)
 	return self
 end
 
-function module(self)
+function idl.module(self)
 	self = Container(Contained(self))
 	self._type = "module"
 	return self
 end
 
---------------------------------------------------------------------------------
-
-local function ibases(queue, interface)
-	interface = queue:successor(interface)
-	if interface then
-		for _, base in ipairs(interface.base_interfaces) do
-			queue:enqueue(base)
-		end
-		return interface
-	end
-end
-function basesof(self)
-	local queue = OrderedSet()
-	queue:enqueue(self)
-	return ibases, queue
-end
-
-function interface(self)
+function idl.interface(self)
 	self = Container(Contained(self))
 	self._type = "interface"
 	if self.base_interfaces == nil then self.base_interfaces = self end
@@ -527,7 +530,7 @@ function interface(self)
 	return self
 end
 
-function abstract_interface(self)
+function idl.abstract_interface(self)
 	self = Container(Contained(self))
 	self._type = "abstract_interface"
 	if self.base_interfaces == nil then self.base_interfaces = self end
@@ -542,7 +545,7 @@ function abstract_interface(self)
 	return self
 end
 
-function local_interface(self)
+function idl.local_interface(self)
 	self = Container(Contained(self))
 	self._type = "local_interface"
 	if self.base_interfaces == nil then self.base_interfaces = self end
@@ -557,18 +560,37 @@ function local_interface(self)
 	return self
 end
 
---------------------------------------------------------------------------------
--- IDL types used in the implementation of OiL ---------------------------------
-
-object = interface{
+idl.object = idl.interface{
 	repID = "IDL:omg.org/CORBA/Object:1.0",
 	name = "Object",
 }
-ValueBase = valuetype{
+
+local object = idl.object
+function idl.Object(self)
+	asserttype(self, "table", "Object type definition")
+	if self.name  == nil then self.name = "" end
+	if self.repID == nil then setnameof(self, self.name) end
+	asserttype(self.name, "string", "Object type name")
+	asserttype(self.repID, "string", "Object type repository ID")
+	if self.repID == object.repID
+		then self = object
+		else self._type = "Object"
+	end
+	return self
+end
+
+
+--------------------------------------------------------------------------------
+-- IDL types used in the implementation of OiL ---------------------------------
+
+idl.ValueBase = idl.valuetype{
 	repID = "IDL:omg.org/CORBA/ValueBase:1.0",
 	name = "ValueBase",
 	abstract = true,
 }
-OctetSeq = sequence{octet}
-Version = struct{{ type = octet, name = "major" },
-                 { type = octet, name = "minor" }}
+idl.OctetSeq = idl.sequence{idl.octet}
+idl.Version = idl.struct{{ type = idl.octet, name = "major" },
+                         { type = idl.octet, name = "minor" }}
+
+
+return idl

@@ -1,16 +1,18 @@
-
-local unpack = unpack
+local array = require "table"                                                   --[[VERBOSE]] local verbose = require "oil.verbose"
+local unpack = array.unpack or require("_G").unpack
 
 local Wrapper = require "loop.object.Wrapper"
 
-local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
+local class = oo.class
 
-module("oil.kernel.intercepted.Listener", oo.class)
 
-__new = Wrapper.__new
-__index = Wrapper.__index
+local Listener = class{
+	__new = Wrapper.__new,
+	__index = Wrapper.__index,
+}
 
-function getrequest(self, channel, probe)
+function Listener:getrequest(channel, probe)
 	local result, except = self.__object:getrequest(channel, probe)
 	if result then                                                                --[[VERBOSE]] verbose:interceptors(true, "intercepting request being sent")
 		local request = {
@@ -34,10 +36,10 @@ function getrequest(self, channel, probe)
 	return result, except
 end
 
-function sendreply(self, reply)
+function Listener:sendreply(reply)
 	local request = reply[self]
 	if request then
-		replt[self] = nil
+		reply[self] = nil
 		local interceptor = self.interceptor
 		if interceptor.sendreply then                                               --[[VERBOSE]] verbose:interceptors(true, "intercepting received reply")
 			interceptor:sendreply(reply, request)                                     --[[VERBOSE]] verbose:interceptors(false, "interception ended")
@@ -45,3 +47,5 @@ function sendreply(self, reply)
 	end
 	return self.__object:sendreply(reply)
 end
+
+return Listener

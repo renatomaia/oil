@@ -1,5 +1,5 @@
 -- Project: OiL - ORB in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : Remote Object Proxies
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
@@ -10,18 +10,20 @@ local setmetatable = _G.setmetatable
 local rawget = _G.rawget
 local rawset = _G.rawset
 
-local tabop = require "loop.table"
-local clear = tabop.clear
-local memoize = tabop.memoize
+local table = require "loop.table"
+local clear = table.clear
+local memoize = table.memoize
+
+local asserter = require "oil.assert"
+local assert = asserter.results
 
 local oo = require "oil.oo"
 local class = oo.class
 
-module(...); local _ENV = _M
 
-class(_ENV)
+local Proxies = class()
 
-function _ENV:__init()
+function Proxies:__init()
 	if self.class == nil then
 		local methodmaker = self.invoker
 		local OpCache = {
@@ -42,13 +44,13 @@ function _ENV:__init()
 			end
 		}
 		local function proxytostring(proxy)
-			return proxy.__reference:__tostring()
+			return assert(proxy.__reference:__tostring())
 		end
 		local function proxynarrow(proxy, type)
-			return self:newproxy{
+			return assert(self:newproxy{
 				__reference = proxy.__reference,
 				__type = type,
-			}
+			})
 		end
 		self.class = memoize(function(type)
 			local cache = setmetatable({}, OpCache)
@@ -71,7 +73,7 @@ function _ENV:__init()
 	end
 end
 
-function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies(true, "create proxy for remote object")
+function Proxies:newproxy(proxy)                                                --[[VERBOSE]] verbose:proxies(true, "create proxy for remote object")
 	local type = proxy.__type or proxy.__reference:gettype()
 	local result, except = self.types:resolve(type)
 	if result then                                                                --[[VERBOSE]] verbose:proxies("using interface ",result.repID)
@@ -80,7 +82,7 @@ function _ENV:newproxy(proxy)                                                   
 	return result, except
 end
 
-function _ENV:excepthandler(handler, type)                                      --[[VERBOSE]] verbose:proxies("setting exception handler for proxies of ",type)
+function Proxies:excepthandler(handler, type)                                   --[[VERBOSE]] verbose:proxies("setting exception handler for proxies of ",type)
 	local result, except = self.types:resolve(type)
 	if result then
 		local class = self.class[result]
@@ -90,9 +92,7 @@ function _ENV:excepthandler(handler, type)                                      
 	return result, except
 end
 
---------------------------------------------------------------------------------
 
---[[VERBOSE]] local select = _G.select
 --[[VERBOSE]] local type = _G.type
 --[[VERBOSE]] function verbose.custom:proxies(...)
 --[[VERBOSE]] 	local params
@@ -123,3 +123,6 @@ end
 --[[VERBOSE]] 		self.viewer.output:write(params == "(" and "()" or ")")
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end
+
+
+return Proxies

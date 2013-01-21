@@ -7,10 +7,12 @@
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local select  = _G.select
 local tonumber = _G.tonumber
-local unpack = _G.unpack
 
-local tabop = require "loop.table"
-local memoize = tabop.memoize
+local array = require "table"
+local unpack = array.unpack or _G.unpack
+
+local table = require "loop.table"
+local memoize = table.memoize
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -52,7 +54,7 @@ function Requester:getchannel(reference)
 	local channels = self.channels
 	local result, except = channels:retrieve(reference)
 	if result then
-		sock2channel = self.sock2channel
+		local sock2channel = self.sock2channel
 		result = sock2channel[result]
 		if result:unlocked("read") then --[[channel might be broken]]               --[[VERBOSE]] verbose:invoke(true, "check if channel is valid")
 			local ok

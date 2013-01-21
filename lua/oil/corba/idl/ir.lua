@@ -1,25 +1,17 @@
-local setfenv = setfenv
-
 local idl = require "oil.corba.idl"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
-
-module "oil.corba.idl.ir"
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
-
-local short     = idl.short
-local ushort    = idl.ushort
-local long      = idl.long
-local ulong     = idl.ulong
-local boolean   = idl.boolean
-local string    = idl.string
-local TypeCode  = idl.TypeCode
-local any       = idl.any
-local enum      = idl.enum
-local typedef   = idl.typedef
-local struct    = idl.struct
-local sequence  = idl.sequence
-local module    = idl.module
+local short = idl.short
+local ushort = idl.ushort
+local long = idl.long
+local ulong = idl.ulong
+local boolean = idl.boolean
+local string = idl.string
+local TypeCode = idl.TypeCode
+local any = idl.any
+local enum = idl.enum
+local typedef = idl.typedef
+local struct = idl.struct
+local sequence = idl.sequence
+local module = idl.module
 local interface = idl.interface
 local attribute = idl.attribute
 local operation = idl.operation
@@ -27,11 +19,12 @@ local operation = idl.operation
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-name = "CORBA"
-repID = "IDL:omg.org/CORBA:1.0"
-module(_M)
+local CORBA = module{
+	name = "CORBA",
+	repID = "IDL:omg.org/CORBA:1.0",
+}
 
-setfenv(1, definitions)
+local _ENV = CORBA.definitions; if _VERSION=="Lua 5.1" then setfenv(1,_ENV) end
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -845,3 +838,5 @@ AbstractInterfaceDef.base_interfaces    = { InterfaceDef }
 ExtAbstractInterfaceDef.base_interfaces = { AbstractInterfaceDef, InterfaceAttrExtension }
 LocalInterfaceDef.base_interfaces       = { InterfaceDef }
 ExtLocalInterfaceDef.base_interfaces    = { LocalInterfaceDef, InterfaceAttrExtension }
+
+return CORBA

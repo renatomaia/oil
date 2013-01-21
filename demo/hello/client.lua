@@ -1,7 +1,7 @@
-require "oil"                                           -- Load OiL package
+oil = require "oil"                                     -- Load OiL package
 
 oil.main(function()
-	local orb = oil.init()
+	orb = oil.init()
 	
 	hello = orb:newproxy(assert(oil.readfrom("ref.ior"))) -- Get proxy to object
 	

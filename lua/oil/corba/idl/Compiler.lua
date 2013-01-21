@@ -1,42 +1,34 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Interface Definition Language (IDL) compiler                      --
--- Authors: Renato Maia   <maia@inf.puc-rio.br>                               --
---          Ricardo Cosme <rcosme@tecgraf.puc-rio.br>                         --
---------------------------------------------------------------------------------
--- compiler:Facet
--- 	success:boolean, [except:table] load(idl:string)
--- 	success:boolean, [except:table] loadfile(filepath:string)
--- 
--- registry:Receptacle
--- 	types:table register(definition:table)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : Interface Definition Language (IDL) compiler
+-- Authors: Renato Maia   <maia@inf.puc-rio.br>
+--          Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 
-local pairs  = pairs
-local select = select
-local unpack = unpack
+local _G = require "_G"
+local ipairs = _G.ipairs
+local pairs = _G.pairs
+local select = _G.select
+
+local array = require "table"
+local unpack = array.unpack or _G.unpack
 
 local table  = require "loop.table"
+local copy = table.copy
+
 local luaidl = require "luaidl"
+local parseidl = luaidl.parse
+local parseidlfile = luaidl.parsefile
 
 local oo  = require "oil.oo"
-local idl = require "oil.corba.idl"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
+local class = oo.class
+local rawnew = oo.rawnew
 
-module("oil.corba.idl.Compiler", oo.class)
+local idl = require "oil.corba.idl"
+local idlinterface = idl.interface
+local idlmodule = idl.module
 
-context = false
 
---------------------------------------------------------------------------------
-DefaultOptions = {
+local DefaultOptions = {
 	callbacks = {
 		VOID      = idl.void,
 		SHORT     = idl.short,
@@ -72,12 +64,7 @@ DefaultOptions = {
 
 function DefaultOptions.callbacks.interface(def)
 	if def.definitions then -- not forward declarations
-		--<PROBLEM WITH LUAIDL>
-		--if def.abstract then
-		--	return idl.abstract_interface(def)
-		--end
-		--</PROBLEM WITH LUAIDL>
-		return idl.interface(def)
+		return idlinterface(def)
 	end
 	return def
 end
@@ -98,29 +85,34 @@ function DefaultOptions.callbacks.start()
 end
 
 function DefaultOptions.callbacks.finish()
-	for module in pairs(Modules) do idl.module(module) end
+	for module in pairs(Modules) do idlmodule(module) end
 	Modules = nil
 end
 
 --------------------------------------------------------------------------------
 
-function __new(self, ...)
-	self = oo.rawnew(self, ...)
-	self.defaults = table.copy(DefaultOptions)
+local Compiler = class{
+	context = false,
+	DefaultOptions = DefaultOptions,
+}
+
+function Compiler:__new(...)
+	self = rawnew(self, ...)
+	self.defaults = copy(DefaultOptions)
 	return self
 end
 
-function doresults(self, ...)
+function Compiler:doresults(...)
 	if ... then
 		return self.context.__component:register(...)
 	end
 	return ...
 end
 
-function options(self, idlpaths)
-	local options = table.copy(self.defaults)
+function Compiler:options(idlpaths)
+	local options = copy(self.defaults)
 	if idlpaths then
-		local incpath = table.copy(options.incpath)
+		local incpath = copy(options.incpath)
 		for index, incpath in ipairs(idlpaths) do
 			incpath[#incpath+1] = incpath
 		end
@@ -129,10 +121,12 @@ function options(self, idlpaths)
 	return options
 end
 
-function loadfile(self, filepath, idlpaths)
-	return self:doresults(luaidl.parsefile(filepath, self:options(idlpaths)))
+function Compiler:loadfile(filepath, idlpaths)
+	return self:doresults(parseidlfile(filepath, self:options(idlpaths)))
 end
 
-function load(self, idlspec, idlpaths)
-	return self:doresults(luaidl.parse(idlspec, self:options(idlpaths)))
+function Compiler:load(idlspec, idlpaths)
+	return self:doresults(parseidl(idlspec, self:options(idlpaths)))
 end
+
+return Compiler

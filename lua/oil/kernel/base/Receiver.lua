@@ -12,15 +12,14 @@ local class = oo.class
 
 local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module(...); local _ENV = _M
 
-class(_ENV)
+local Receiver = class()
 
-function _ENV:setup(configs)
+function Receiver:setup(configs)
 	return self.listener:setup(configs)
 end
 
-function _ENV:probe(timeout)                                                    --[[VERBOSE]] verbose:acceptor(true, "checking for invocation requests")
+function Receiver:probe(timeout)                                                    --[[VERBOSE]] verbose:acceptor(true, "checking for invocation requests")
 	local result, except = self.pending
 	if result == nil then                                                         --[[VERBOSE]] verbose:acceptor("waiting requests for ",timeout and timeout.." seconds" or "ever")
 		local listener = self.listener
@@ -41,7 +40,7 @@ function _ENV:probe(timeout)                                                    
 	return result, except
 end
 
-function _ENV:step(timeout)
+function Receiver:step(timeout)
 	local result, except = self:probe(timeout)
 	if result then                                                                --[[VERBOSE]] verbose:acceptor(true, "processing one single request")
 		self.pending = nil
@@ -51,7 +50,7 @@ function _ENV:step(timeout)
 	return result, except
 end
 
-function _ENV:start()
+function Receiver:start()
 	if self.stopped ~= false then                                                 --[[VERBOSE]] verbose:acceptor(true, "start processing invocation requests")
 		self.stopped = false
 		repeat
@@ -65,13 +64,15 @@ function _ENV:start()
 	return nil, Exception{ "already started", error = "badinitialize" }
 end
 
-function _ENV:stop(...)
+function Receiver:stop(...)
 	if self.stopped == false then                                                 --[[VERBOSE]] verbose:acceptor("attempt to stop invocation request processing")
 		self.stopped = pack(...)
 		return true
 	end
 end
 
-function _ENV:shutdown()                                                        --[[VERBOSE]] verbose:acceptor("attempt to shutdown the ORB")
+function Receiver:shutdown()                                                        --[[VERBOSE]] verbose:acceptor("attempt to shutdown the ORB")
 	return self.listener:shutdown()
 end
+
+return Receiver

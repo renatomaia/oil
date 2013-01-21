@@ -6,28 +6,31 @@
 --
 print("OiL Naming Service 1.1  Copyright (C) 2006-2008 Tecgraf, PUC-Rio")
 
-local select = select
-local io     = require "io"
-local os     = require "os"
-local oil    = require "oil"
+local _G = require "_G"
+local io = require "io"
+local os = require "os"
+local oil = require "oil"
+local verbose = require "oil.verbose"
 local naming = require "oil.corba.services.naming"
+local Arguments = require "loop.compiler.Arguments"
 
-module("oil.corba.services.nsd", require "loop.compiler.Arguments")
-_optpat = "^%-%-(%w+)(=?)(.-)$"
-verb = 0
-port = 0
-ior  = ""
-ir = ""
-function log(optlist, optname, optvalue)
+local args = Arguments{
+	_optpat = "^%-%-(%w+)(=?)(.-)$",
+	verb = 0,
+	port = 0,
+	ior  = ",",
+	ir = "",
+}
+function args.log(optlist, optname, optvalue)
 	local file, errmsg = io.open(optvalue, "w")
 	if file
-		then oil.verbose:output(file)
+		then verbose:output(file)
 		else return errmsg
 	end
 end
 
-local argidx, errmsg = _M(...)
-if not argidx or argidx <= select("#", ...) then
+local argidx, errmsg = args(...)
+if not argidx or argidx <= _G.select("#", ...) then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
 	io.stderr:write([[
 Usage:	nsd.lua [options]
@@ -43,13 +46,13 @@ Options:
 end
 
 oil.main(function()
-	oil.verbose:level(verb)
-	local orb = (port > 0) and oil.init{port=port} or oil.init()
-	if ir ~= ""
-		then orb:setIR(orb:narrow(orb:newproxy(ir)))
+	verbose:level(args.verb)
+	local orb = (args.port > 0) and oil.init{port=args.port} or oil.init()
+	if args.ir ~= ""
+		then orb:setIR(orb:narrow(orb:newproxy(args.ir)))
 		else orb:loadidlfile("CosNaming.idl")
 	end
-	ns = orb:newservant(naming.new())
-	if ior ~= "" then oil.writeto(ior, tostring(ns)) end
+	local ns = orb:newservant(naming.new())
+	if args.ior ~= "" then oil.writeto(args.ior, tostring(ns)) end
 	orb:run()
 end)

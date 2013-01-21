@@ -1,5 +1,5 @@
-require "Adaptor"
-require "oil"
+local Adaptor = require "Adaptor"
+local oil = require "oil"
 oil.main(function()
 	local orb = oil.init()
 	------------------------------------------------------------------------------

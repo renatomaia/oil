@@ -8,17 +8,15 @@ local _G = require "_G"                                                         
 local select = _G.select
 local setmetatable = _G.setmetatable
 
-local tabop = require "loop.table"
-local memoize = tabop.memoize
+local table = require "loop.table"
+local memoize = table.memoize
 
 local oo = require "oil.oo"
 local class = oo.class
 
-module(...); local _ENV = _M
+local Proxies = class()
 
-class(_ENV)
-
-function _ENV:__init()
+function Proxies:__init()
 	if self.class == nil then
 		local methodmaker = self.invoker
 		self.class = {
@@ -41,11 +39,13 @@ function _ENV:__init()
 	end
 end
 
-function _ENV:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies("create proxy for remote object")
+function Proxies:newproxy(proxy)                                                   --[[VERBOSE]] verbose:proxies("create proxy for remote object")
 	return setmetatable(proxy, self.class)
 end
 
-function _ENV:excepthandler(handler)                                            --[[VERBOSE]] verbose:proxies("setting exception handler for proxies")
+function Proxies:excepthandler(handler)                                            --[[VERBOSE]] verbose:proxies("setting exception handler for proxies")
 	self.class.__exceptions = handler
 	return true
 end
+
+return Proxies

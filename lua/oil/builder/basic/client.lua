@@ -1,21 +1,24 @@
-local ipairs = ipairs
-local require = require
-local builder = require "oil.builder"
+local _G = require "_G"
+local ipairs = _G.ipairs
+local require = _G.require
+
 local arch = require "oil.arch.basic.client"
 
-module "oil.builder.basic.client"
+local factories = {
+	ProxyManager = arch.ProxyManager{require "oil.kernel.base.Proxies"},
+}
 
-ProxyManager = arch.ProxyManager{require "oil.kernel.base.Proxies"}
-
-function create(comps)
-	comps = comps or {}
-	comps.proxykind=comps.proxykind or {"synchronous","asynchronous","protected"}
-	for _, kind in ipairs(comps.proxykind) do
-		if comps.proxykind[kind] == nil then
-			comps.proxykind[kind] = ProxyManager{
+function factories.create(built, facts)
+	if facts == nil then facts = factories end
+	built.proxykind = built.proxykind
+	               or {"synchronous","asynchronous","protected"}
+	for _, kind in ipairs(built.proxykind) do
+		if built.proxykind[kind] == nil then
+			built.proxykind[kind] = facts.ProxyManager{
 				invoker = require("oil.kernel.base.Proxies."..kind),
 			}
 		end
 	end
-	return comps
 end
+
+return factories

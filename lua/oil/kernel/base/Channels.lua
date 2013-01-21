@@ -1,5 +1,5 @@
 -- Project: OiL - ORB in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : Enhancements to the standard socket API
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
@@ -17,8 +17,8 @@ local running = coroutine.running
 local socket = require "socket.core"
 local gettime = socket.gettime
 
-local tabop = require "loop.table"
-local copy = tabop.copy
+local table = require "loop.table"
+local copy = table.copy
 
 local Wrapper = require "loop.object.Wrapper"
 
@@ -27,12 +27,11 @@ local Mutex = require "cothread.Mutex"
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local class = oo.class
 
-module(..., class)
-
 
 local function dummy() return true end
 
-LuaSocketOps = {
+
+local LuaSocketOps = {
 	unlocked = dummy,
 	trylock  = dummy,
 	freelock = dummy,
@@ -62,7 +61,7 @@ function LuaSocketOps:probe(count, timeout)
 end
 
 
-CoSocketOps = {
+local CoSocketOps = {
 	bytes = LuaSocketOps.bytes,
 	probe = LuaSocketOps.probe,
 }
@@ -92,7 +91,9 @@ function CoSocketOps:freelock(operation)
 end
 
 
-function setupsocket(self, socket, ...)
+local Channels = class()
+
+function Channels:setupsocket(socket, ...)
 	if socket then
 		-- setup of TCP socket options
 		local options = self.options
@@ -114,3 +115,5 @@ function setupsocket(self, socket, ...)
 	end
 	return socket, ...
 end
+
+return Channels

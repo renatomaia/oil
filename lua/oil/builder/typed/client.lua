@@ -1,16 +1,13 @@
-local setfenv = setfenv
-local require = require
-local builder = require "oil.builder"
-local arch    = require "oil.arch.typed.client"
-local basic   = require "oil.builder.basic.client"
+local arch = require "oil.arch.typed.client"
+local basic = require "oil.builder.basic.client"
+local create = basic.create
 
-module "oil.builder.typed.client"
+local factories = {
+	ProxyManager = arch.ProxyManager{require "oil.kernel.typed.Proxies"},
+}
 
-ProxyManager = arch.ProxyManager{require "oil.kernel.typed.Proxies"}
-
-function create(comps)
-	setfenv(basic.create, _M) -- to use the 'ProxyManager' factory above
-	comps = basic.create(comps)
-	setfenv(basic.create, basic)
-	return comps
+function factories.create(built)
+	create(built, factories)
 end
+
+return factories

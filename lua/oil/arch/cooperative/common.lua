@@ -1,9 +1,9 @@
-local port      = require "oil.port"
+local port = require "oil.port"
 local component = require "oil.component"
-local base      = require "oil.arch.basic.common"                               --[[VERBOSE]] local verbose = require "oil.verbose"
+local base = require "oil.arch.basic.common"
 
-module "oil.arch.cooperative.common"
-
-BasicSystem = component.Template({
-	tasks   = port.Facet,
-}, base.BasicSystem)
+return {
+	BasicSystem = component.Template({
+		tasks = port.Facet,
+	}, base.BasicSystem),
+}

@@ -5,6 +5,7 @@
 
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local error = _G.error
 local ipairs = _G.ipairs
 local pcall = _G.pcall
 local setmetatable = _G.setmetatable
@@ -193,7 +194,7 @@ function Referrer:decodestring(encoded)
 	return nil, Exception{
 		"invalid stringfied reference (got $reference)",
 		error = "badobjref",
-		reference = enconded,
+		reference = encoded,
 		format = token,
 	}
 end

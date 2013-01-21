@@ -1,13 +1,15 @@
-local require = require
 local builder = require "oil.builder"
-local arch    = require "oil.arch.ludo.byref"
+local create = builder.create
 
-module "oil.builder.ludo.byref"
+local arch = require "oil.arch.ludo.byref"
 
-LuaEncoder = arch.ValueEncoder{require "oil.ludo.CodecByRef"}
+local factories = {
+	LuaEncoder = arch.ValueEncoder{ require "oil.ludo.CodecByRef" },
+}
 
-function create(comps)
-	comps = builder.create(_M, comps)
-	comps.ValueEncoder = comps.LuaEncoder
-	return comps
+function factories.create(built)
+	create(factories, built)
+	ValueEncoder = LuaEncoder -- make alias
 end
+
+return factories

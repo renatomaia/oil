@@ -1,16 +1,7 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.4                                                               --
--- Title  : OiL main programming interface (API)                              --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : OiL main programming interface (API)
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 --------------------------------------------------------------------------------
 -- Interface:                                                                 --
 --   VERSION                                                                  --
@@ -25,7 +16,7 @@
 --   newproxy(objref, [iface])                                                --
 --   narrow(proxy, [iface])                                                   --
 --                                                                            --
---   newservant(impl, [iface], [key])                                          --
+--   newservant(impl, [iface], [key])                                         --
 --   deactivate(object, [type])                                               --
 --   tostring(object)                                                         --
 --                                                                            --
@@ -55,19 +46,17 @@
 -- Notes:                                                                     --
 --------------------------------------------------------------------------------
 
-local _G = require "_G"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local error = _G.error
 local ipairs = _G.ipairs
-local module = _G.module
 local pairs = _G.pairs
 local pcall = _G.pcall
 local require = _G.require
 local select = _G.select
 local setmetatable = _G.setmetatable
 local tostring = _G.tostring
-local traceback = _G.debug and debug.traceback -- only if available
+local traceback = _G.debug and _G.debug.traceback -- only if available
 local type = _G.type
-local unpack = _G.unpack
 local xpcall = _G.xpcall
 
 local io = require "io"
@@ -77,8 +66,9 @@ local coroutine = require "coroutine"
 local newcoroutine = coroutine.create
 local yield = coroutine.yield
 
-local table = require "table"
-local concat = table.concat
+local array = require "table"
+local concat = array.concat
+local unpack = array.unpack or _G.unpack
 
 local OrderedSet = require "loop.collection.OrderedSet"
 
@@ -101,8 +91,6 @@ local illegal = asserter.illegal
 -- More advanced features may be accessed through more specialized interfaces
 -- provided by internal components. OiL internal component organization is meant
 -- to be customized for the application.
-
-module "oil"                                                                    --[[VERBOSE]] verbose = require "oil.verbose"
 
 local Aliases = {
 	["lua"]               = {"lua.client","lua.server"},
@@ -176,7 +164,7 @@ end
 --------------------------------------------------------------------------------
 -- Class that implements the OiL's broker API.
 --
-ORB = class()
+local ORB = class()
 
 function ORB:__new(config)
 	self = rawnew(self, build(makeflavor(config.flavor), config))
@@ -275,8 +263,8 @@ end
 -- @return ... object IDL descriptors that represents the loaded definitions.
 --
 function ORB:loadparsedidl(parsedidl)
-	asserttype(parsedidl, "tabl", "IDL file path")
-	return assert(self.TypeRepository.types:register(filepath))
+	asserttype(parsedidl, "table", "IDL file path")
+	return assert(self.TypeRepository.types:register(parsedidl))
 end
 
 --------------------------------------------------------------------------------
@@ -776,11 +764,17 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-VERSION = "OiL 0.6"
+local oil = {                                                                   --[[VERBOSE]] verbose = verbose,
+	VERSION = "OiL 0.6",
+	ORB = ORB,
+}
 
+local cothread = _G.package.loaded.cothread
 if cothread == nil then
 	--[[DEBUG]] pcall(require, "inspector") -- must be required before 'coroutine.pcall'
-	require "coroutine.pcall" -- to avoid coroutine limitation of Lua 5.1
+	if _G._VERSION == "Lua 5.1" then
+		require "coroutine.pcall" -- to avoid coroutine limitation of Lua 5.1
+	end
 	local ok, result = pcall(require, "cothread")
 	if ok then
 		cothread = result
@@ -827,7 +821,8 @@ end
 -- @usage oil.init{ port = 8080, flavor = "corba;typed;base" }                 .
 -- @usage oil.init{ port = 8080, flavor = "ludo;cooperative;base" }            .
 --
-function init(config)
+local Default
+function oil.init(config)
 	if config == nil then
 		if Default then return Default end
 		Default = {}
@@ -856,13 +851,13 @@ local function extracer(ex)
 	return traceback(tostring(ex))
 end
 
-if cothread then
+if cothread ~= nil then
 	function cothread.error(thread, errmsg)
 		error(traceback(thread, tostring(errmsg)), 3)
 	end
 end
 
-function main(main, ...)
+function oil.main(main, ...)
 	asserttype(main, "function", "main function")
 	local success, except
 	if cothread then
@@ -892,7 +887,7 @@ end
 --
 -- @see main
 --
-function newthread(func, ...)
+function oil.newthread(func, ...)
 	asserttype(func, "function", "thread body")
 	return yield("next", newcoroutine(func) , ...)
 end
@@ -904,14 +899,14 @@ end
 --
 -- @usage oil.sleep(5.5)
 --
-if cothread then
-	function sleep(time)
+if cothread ~= nil then
+	function oil.sleep(time)
 		asserttype(time, "number", "time")
 		return yield("delay", time)
 	end
 else
 	local _sleep = require("socket.core").sleep
-	function sleep(time)
+	function oil.sleep(time)
 		asserttype(time, "number", "time")
 		return _sleep(time)
 	end
@@ -924,13 +919,13 @@ end
 --
 -- @usage local start = oil.time(); oil.sleep(3); print("I slept for", oil.time() - start)
 --
-if cothread then
-	function time()
+if cothread ~= nil then
+	function oil.time()
 		return yield("now")
 	end
 else
 	local _gettime = require("socket.core").gettime
-	function time()
+	function oil.time()
 		return _gettime()
 	end
 end
@@ -940,7 +935,7 @@ end
 --
 -- Utility function for writing stringfied IORs into a file.
 --
-function writeto(filepath, data, mode)
+function oil.writeto(filepath, data, mode)
 	local result, errmsg = open(filepath, mode or "w")
 	if result then
 		local file = result
@@ -955,7 +950,7 @@ end
 --
 -- Utility function for reading stringfied IORs from a file.
 --
-function readfrom(filepath, mode)
+function oil.readfrom(filepath, mode)
 	local result, errmsg = open(filepath, mode)
 	if result then
 		local file = result
@@ -964,3 +959,5 @@ function readfrom(filepath, mode)
 	end
 	return result, errmsg
 end
+
+return oil

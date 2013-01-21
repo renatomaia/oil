@@ -12,7 +12,7 @@ local ipairs   = ipairs
 local table    = table
 local string   = require "string"
 
-module 'luaidl.lex'
+local _ENV = module 'luaidl.lex'
 
 tab_tokens = {
   TK_ID = 257, TK_ABSTRACT = 258, TK_ANY = 259, TK_ATTRIBUTE = 260,
@@ -420,16 +420,16 @@ function lexer(stridl)
           else
             error_lex('malformed number'..is_near_value(tokenvalue))
           end
-          tokenvalue = tonumber(tokenvalue, 10)
+          tokenvalue = tonumber(tokenvalue)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         elseif (lookahead == 'd' or lookahead == 'D') then
-          tokenvalue = tonumber(tokenvalue, 10)
+          tokenvalue = tonumber(tokenvalue)
           lookahead = getchar(stridl)
           token = tab_tokens.TK_FIXED_LITERAL
           return token
         else
-          tokenvalue = tonumber(tokenvalue, 10)
+          tokenvalue = tonumber(tokenvalue)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         end
@@ -453,7 +453,7 @@ function lexer(stridl)
           tokenvalue = tokenvalue..lookahead
           lookahead = getchar(stridl)
         end
-        tokenvalue = tonumber(tokenvalue, 10)
+        tokenvalue = tonumber(tokenvalue)
         token = tab_tokens.TK_INTEGER_LITERAL
         return token
       end
@@ -502,16 +502,16 @@ function lexer(stridl)
           else
             error_lex('malformed number near'..is_near_value(tokenvalue))
           end
-          tokenvalue = tonumber(tokenvalue, 10)
+          tokenvalue = tonumber(tokenvalue)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         elseif (lookahead == 'd' or lookahead == 'D') then
-          tokenvalue = tonumber(tokenvalue, 10)
+          tokenvalue = tonumber(tokenvalue)
           lookahead = getchar(stridl)
           token = tab_tokens.TK_FIXED_LITERAL
           return token
         else
-          tokenvalue = tonumber(tokenvalue, 10)
+          tokenvalue = tonumber(tokenvalue)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         end
@@ -573,16 +573,16 @@ function lexer(stridl)
           else
             error_lex('malformed number near'..is_near_value(tokenvalue))
           end
-          tokenvalue = tonumber(tokenvalue, 10)
+          tokenvalue = tonumber(tokenvalue)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         elseif (lookahead == 'd' or lookahead == 'D') then
-          tokenvalue = tonumber(tokenvalue, 10)
+          tokenvalue = tonumber(tokenvalue)
           lookahead = getchar(stridl)
           token = tab_tokens.TK_FIXED_LITERAL
           return token
         else
-          tokenvalue = tonumber(tokenvalue, 10)
+          tokenvalue = tonumber(tokenvalue)
           token = tab_tokens.TK_FLOAT_LITERAL
           return token
         end
@@ -655,7 +655,7 @@ function lexer(stridl)
               lookahead = getchar(stridl)
             end
           end
-          tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp, 10))
+          tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp))
         elseif (lookahead == 'u') then
           error_lex('it doest not permited unicode characters in char type')
         else
@@ -743,7 +743,7 @@ function lexer(stridl)
                 lookahead = getchar(stridl)
               end
             end
-            tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp,  10))
+            tokenvalue = tokenvalue..string.char(tonumber(tokenvalue_tmp))
           elseif (lookahead == 'u') then
             error_lex('it doest not permited unicode characters in char type')
           else

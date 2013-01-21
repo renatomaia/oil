@@ -1,16 +1,18 @@
-local error = error
-local loadstring = loadstring
-local pcall = pcall
+local _G = require "_G"
+local error = _G.error
+local loadstring = _G.loadstring
+local pcall = _G.pcall
 
 local oo = require "oil.oo"
-local oil = require "oil"
+local class = oo.class
+local rawnew = oo.rawnew
 
-module("Adaptor", oo.class)
+local Adaptor = class{
+	__type = "Adaptation::Adaptor",
+}
 
-__type = "Adaptation::Adaptor"
-
-function _M:__new(...)
-	self = oo.rawnew(self, ...)
+function Adaptor:__new(...)
+	self = rawnew(self, ...)
 	if self.orb.types:resolve("Adaptation::Adaptor") == nil then
 		self.orb:loadidl[[
 			module Adaptation {
@@ -26,7 +28,7 @@ function _M:__new(...)
 	return self.orb:newservant(self)
 end
 
-function _M:update(iface, impl)
+function Adaptor:update(iface, impl)
 	if iface ~= "" then
 		self.orb:loadidl(iface)
 	end
@@ -46,3 +48,5 @@ function _M:update(iface, impl)
 		-- TODO: if errmsg then self.servant:__settype(errmsg) end
 	end
 end
+
+return Adaptor

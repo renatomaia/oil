@@ -6,6 +6,7 @@
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local ipairs = _G.ipairs
+local select = _G.select
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -45,7 +46,7 @@ function LuaProxies:__init()
 					operation = field,
 					n = select("#", ...), ...,
 				}
-				return assert(proxy, operation, request:getreply())
+				return assert(proxy, field, request:getreply())
 			end
 		end
 		self.class = ops

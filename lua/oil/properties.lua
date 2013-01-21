@@ -1,33 +1,16 @@
--- $Id$
---******************************************************************************
--- Copyright 2002 Noemi Rodriquez & Roberto Ierusalimschy. All rights reserved. 
---******************************************************************************
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : Properties management package for OiL
+-- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>
 
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Properties management package for OiL                             --
--- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>                       --
---------------------------------------------------------------------------------
--- Interface:                                                                 --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---------------------------------------------------------------------------------
+local _G = require "_G"
+local require = _G.require
+local rawget = _G.rawget
+local rawset = _G.rawset
 
-local require    = require
-local rawget     = rawget
-local rawset     = rawset
-local oo         = require "loop.base"
+local oo = require "loop.base"
 
-module("oil.properties", oo.class)                                              --[[VERBOSE]] local verbose = require "oil.verbose"
+local Properties = oo.class()
 
 --------------------------------------------------------------------------------
 -- Key constants ---------------------------------------------------------------
@@ -38,7 +21,7 @@ local DEFAULT = {}
 --------------------------------------------------------------------------------
 -- Properties implementation ---------------------------------------------------
 
-function __index(self, key)
+function Properties:__index(key)
     if key then
         local parent = rawget(self, PARENT)
         local default = rawget(self, DEFAULT)
@@ -50,8 +33,9 @@ function __index(self, key)
     end
 end
 
-function __new(self, parent, default)
+function Properties:__new(parent, default)
     return oo.rawnew(self, {[PARENT] = parent,
                             [DEFAULT]= default})
 end
 
+return Properties

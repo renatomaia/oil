@@ -1,59 +1,51 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : Mapping of Lua values into CDR using dynamic generated code       --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- codec:Facet
--- 	encoder:object encoder()
--- 	decoder:object decoder(stream:string)
--- 
--- proxies:Receptacle
--- 	proxy:object proxyto(ior:table, iface:table|string)
--- 
--- objects:Receptacle
--- 	proxy:object register(implementation:object, iface:table|string)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : Mapping of Lua values into CDR using dynamic generated code
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local ipairs     = ipairs
-local loadstring = loadstring
-local select     = select
-local unpack     = unpack
+
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local ipairs = _G.ipairs
+local loadstring = _G.loadstring
+local select = _G.select
+local unpack = _G.unpack
 
 local string = require "string"
-local table  = require "table"
+local strformat = string.format
 
-local oo     = require "oil.oo"
+local array = require "table"
+local concat = array.concat
+
+local oo = require "oil.oo"
+local class = oo.class
+local rawnew = oo.rawnew
+
 local assert = require "oil.assert"
-local idl    = require "oil.corba.idl"
-local Codec  = require "oil.corba.giop.Codec"                                   --[[VERBOSE]] local verbose = require "oil.verbose"
+local assertillegal = assert.illegal
+local assertresults = assert.results
 
-module "oil.corba.giop.CodecGen"
+local idl = require "oil.corba.idl"
+local idlchar = idl.char
+local idloctet = idl.octet
+local idlstring = idl.string
 
-oo.class(_M, Codec)
+local Codec = require "oil.corba.giop.Codec"
+local PrimitiveSizes = Codec.PrimitiveSizes
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-CodeGenerator = oo.class{
+local CodeGenerator = class{
 	stacksize = 0,
 	stacktop = 0,
-	source = table.concat,
+	source = concat,
 }
 
 local upvaluefmt = "_up%d_"
 local stackposfmt = "_%d_"
 
 function CodeGenerator:__new(...)
-	self = oo.rawnew(self, ...)
+	self = rawnew(self, ...)
 	if self.upvalues == nil then self.upvalues = {n=0} end
 	return self
 end
@@ -102,10 +94,10 @@ function CodeGenerator:compile(idltype)
 		positions[i+1] = stackposfmt:format(i)
 	end
 
-	source = string.format([=[
+	source = strformat([=[
 local assert = require "oil.assert"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
 return function(%s) %s end
-]=], table.concat(positions, ","), source)
+]=], concat(positions, ","), source)
 	
 	local upvalues = self.upvalues
 	if upvalues.n > 0 then
@@ -113,13 +105,13 @@ return function(%s) %s end
 		for i = 1, upvalues.n do
 			names[i] = upvaluefmt:format(i)
 		end
-		source = string.format("local %s = ...\n%s", table.concat(names, ","), source)
+		source = strformat("local %s = ...\n%s", concat(names, ","), source)
 	end
 	
-	local codename = string.format("(un)marshaller for %s %s",
+	local codename = strformat("(un)marshaller for %s %s",
 		idltype._type,
 		idltype.repID or idltype.name or "anonymous")
-	return assert.results(loadstring(source, codename))(
+	return assertresults(loadstring(source, codename))(
 		unpack(upvalues, 1, upvalues.n))
 end
 
@@ -135,7 +127,7 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-DecoderGenerator = oo.class({}, CodeGenerator)
+local DecoderGenerator = class({}, CodeGenerator)
 
 function DecoderGenerator:__new(...)
 	self = CodeGenerator.__new(self, ...)
@@ -253,7 +245,7 @@ end
 function DecoderGenerator:sequence(idltype)
 	local elementtype = idltype.elementtype
 	while elementtype._type == "typecode" do elementtype = elementtype.type end
-	if elementtype == idl.octet or elementtype == idl.char then
+	if elementtype == idloctet or elementtype == idlchar then
 		self:add "self.data:sub(self:jump("
 		self:ulong()
 		self:add "),self.cursor-1)"
@@ -270,7 +262,7 @@ function DecoderGenerator:array(idltype)
 	local length      = idltype.length
 	local elementtype = idltype.elementtype
 	while elementtype._type == "typecode" do elementtype = elementtype.type end
-	if elementtype == idl.octet or elementtype == idl.char then
+	if elementtype == idloctet or elementtype == idlchar then
 		self:add("self.data:sub(self:jump(",length,"),self.cursor-1)")
 	else
 		self:add "setmetatable({\n"
@@ -307,7 +299,7 @@ end
 
 --------------------------------------------------------------------------------
 
-Decoder = oo.class({}, Decoder)
+local Decoder = class({}, Codec.Decoder)
 
 function Decoder:alignedjump(size, align)
 	local shift = align - (self.cursor - 2) % align - 1
@@ -335,7 +327,7 @@ function Decoder:get(idltype)
 			idltype.unmarshall = unmarshall
 		else                                                                        --[[VERBOSE]] verbose:marshal("using dynamic unmarshaller for type ",idltype._type)
 			unmarshall = self[type] or
-			             assert.illegal(type, "supported type", "MARSHAL")
+			             assertillegal(type, "supported type", "MARSHAL")
 		end                                                                         --[[VERBOSE]] else verbose:marshal("generated unmarshaller found for type ",idltype._type)
 	end
 	return unmarshall(self, idltype)
@@ -343,9 +335,9 @@ end
 
 -- generate string decoder because 'Decoder:string()' does not get an argument.
 local gen = DecoderGenerator()
-gen:generate(idl.string)
-idl.string.unmarshall = gen:compile(idl.string)
-Decoder.string = idl.string.unmarshall
+gen:generate(idlstring)
+idlstring.unmarshall = gen:compile(idlstring)
+Decoder.string = idlstring.unmarshall
 
 Decoder.struct     = Decoder.get
 Decoder.union      = Decoder.get
@@ -358,7 +350,7 @@ Decoder.except     = Decoder.get
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
-EncoderGenerator = oo.class({
+local EncoderGenerator = class({
 	stacksize = 1,
 	stacktop = 1,
 }, CodeGenerator)
@@ -480,7 +472,7 @@ end
 function EncoderGenerator:sequence(idltype)
 	local elementtype = idltype.elementtype
 	while elementtype._type == "typecode" do elementtype = elementtype.type end
-	local dostring = elementtype == idl.octet or elementtype == idl.char
+	local dostring = elementtype == idloctet or elementtype == idlchar
 	if dostring then
 		self:add('if type(',self:top(),') == "string" then\n')
 			self:push('#',self:top())
@@ -505,7 +497,7 @@ end
 function EncoderGenerator:array(idltype)
 	local elementtype = idltype.elementtype
 	while elementtype._type == "typecode" do elementtype = elementtype.type end
-	local dostring = elementtype == idl.octet or elementtype == idl.char
+	local dostring = elementtype == idloctet or elementtype == idlchar
 	if dostring then
 		self:add('if type(',self:top(),') == "string" then\n')
 		self:rawput('c0', idltype.length)
@@ -540,7 +532,7 @@ end
 
 --------------------------------------------------------------------------------
 
-Encoder = oo.class({}, Encoder)
+local Encoder = class({}, Codec.Encoder)
 
 function Encoder:alignedjump(value)
 	local pos = self.cursor - 2
@@ -559,7 +551,7 @@ function Encoder:put(value, idltype)
 			idltype.marshall = marshall
 		else                                                                        --[[VERBOSE]] verbose:marshal("using dynamic marshaller for type ",idltype._type)
 			marshall = self[type] or
-			           assert.illegal(type, "supported type", "MARSHAL")
+			           assertillegal(type, "supported type", "MARSHAL")
 		end                                                                         --[[VERBOSE]] else verbose:marshal("generated marshaller found for type ",idltype._type)
 	end
 	return marshall(self, value, idltype)
@@ -567,9 +559,9 @@ end
 
 -- generate string encoder because 'Decoder:string()' does not get an argument.
 local gen = EncoderGenerator()
-gen:generate(idl.string)
-idl.string.marshall = gen:compile(idl.string)
-Encoder.string = idl.string.marshall
+gen:generate(idlstring)
+idlstring.marshall = gen:compile(idlstring)
+Encoder.string = idlstring.marshall
 
 Encoder.struct     = Encoder.put
 Encoder.union      = Encoder.put
@@ -589,3 +581,8 @@ Encoder.except     = Encoder.put
 --[[VERBOSE]] 	verbose:marshal(codec, type, value)
 --[[VERBOSE]] 	return value
 --[[VERBOSE]] end
+
+return class({
+	Decoder = Decoder,
+	Encoder = Encoder,
+}, Codec)

@@ -1,5 +1,5 @@
 local Viewer = require "loop.debug.Viewer"
-local oil    = require "oil"
+local oil = require "oil"
 
 if select("#", ...) == 0 then
 	io.stderr:write "usage: lua client.lua <time of client 1>, <time of client 2>, ..."

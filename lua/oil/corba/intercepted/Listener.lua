@@ -1,6 +1,9 @@
 local _G = require "_G"
 local error = _G.error
-local unpack = _G.unpack
+local pcall = _G.pcall
+
+local array = require "table"
+local unpack = array.unpack or _G.unpack
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local class = oo.class

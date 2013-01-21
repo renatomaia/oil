@@ -5,6 +5,7 @@
 
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local error = _G.error
 local pairs = _G.pairs
 local next = _G.next
 
@@ -14,8 +15,8 @@ local resume = coroutine.resume
 local running = coroutine.running
 local yield = coroutine.yield
 
-local tabop = require "loop.table"
-local memoize = tabop.memoize
+local table = require "loop.table"
+local memoize = table.memoize
 
 local cothread = require "cothread"
 cothread.plugin(require "cothread.plugin.socket")

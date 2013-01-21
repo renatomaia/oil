@@ -34,7 +34,7 @@ end
 
 --------------------------------------------------------------------------------
 
-require "oil"
+local oil = require "oil"
 oil.main(function()
 	require "adaptor"
 	

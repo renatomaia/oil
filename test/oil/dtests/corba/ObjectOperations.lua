@@ -14,7 +14,8 @@ table = require "loop.table"
 orb = oil.dtests.init()
 checks = oil.dtests.checks
 object = oil.dtests.resolve("Server", 2809, "object", nil, false, true)
-fake   = oil.dtests.resolve("_", 0, "", nil, true, true)
+inexistent = oil.dtests.resolve("Server", 2809, "inexistent", nil, true, true)
+fake = oil.dtests.resolve("_", 0, "", nil, true, true)
 
 cases = {
 	_interface = {
@@ -34,11 +35,11 @@ cases = {
 	},
 	_non_existent = {
 		[object] = checks.is(false),
-		[fake]   = checks.is(true),
+		[inexistent] = checks.is(true),
 	},
 	_is_equivalent = { object,
 		[object] = checks.is(true),
-		[fake]   = checks.is(false),
+		[fake] = checks.is(false),
 	},
 }
 

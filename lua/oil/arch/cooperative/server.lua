@@ -1,16 +1,15 @@
-local port      = require "oil.port"
+local port = require "oil.port"
 local component = require "oil.component"
-local arch      = require "oil.arch"
-local base      = require "oil.arch.basic.server"                                --[[VERBOSE]] local verbose = require "oil.verbose"
+local base = require "oil.arch.basic.server"
 
-module "oil.arch.cooperative.server"
+local module = {
+	RequestReceiver = component.Template({
+		tasks = port.Receptacle,
+	}, base.RequestReceiver),
+}
 
-RequestReceiver = component.Template({
-	tasks = port.Receptacle,
-}, base.RequestReceiver)
-
-function assemble(components)
-	arch.start(components)
-	RequestReceiver.tasks  = BasicSystem.tasks
-	arch.finish(components)
+function module.assemble(_ENV)
+	RequestReceiver.tasks = BasicSystem.tasks
 end
+
+return module

@@ -1,22 +1,17 @@
-local pairs = pairs
-
-local port      = require "oil.port"
+local port = require "oil.port"
 local component = require "oil.component"
-local arch      = require "oil.arch"                                            --[[VERBOSE]] local verbose = require "oil.verbose"
 
-module "oil.arch.corba.server"
-
-RequestListener = component.Template{
-	requests = port.Facet,
-	codec = port.Receptacle,
-	channels = port.Receptacle,
-	servants = port.Receptacle,
-	indexer = port.Receptacle,
+local module = {
+	RequestListener = component.Template{
+		requests = port.Facet,
+		codec = port.Receptacle,
+		channels = port.Receptacle,
+		servants = port.Receptacle,
+		indexer = port.Receptacle,
+	},
 }
 
-function assemble(components)
-	arch.start(components)
-	
+function module.assemble(_ENV)
 	ValueEncoder.servants = ServantManager.servants
 	
 	ServerChannels.sockets = BasicSystem.sockets
@@ -36,6 +31,6 @@ function assemble(components)
 	-- the ORB is listening and identify local references (islocal) and create
 	-- references to local servants (newreference).
 	ObjectReferrer.listener = RequestListener.requests
-	
-	arch.finish(components)
 end
+
+return module

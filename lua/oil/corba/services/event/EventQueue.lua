@@ -1,15 +1,11 @@
-local coroutine         = require "coroutine"
-local oil               = require "oil"
-local oo                = require "oil.oo"
-local assert            = require "oil.assert"
+local coroutine = require "coroutine"
+local oil = require "oil"
+local oo = require "oil.oo"
+local assert = require "oil.assert"
 
-module("oil.corba.services.event.EventQueue", oo.class)
+local EventQueue = oo.class{ count = 0 }
 
--- filo por enquanto
-
-count = 0
-
-function enqueue(self, event)
+function EventQueue:enqueue(event)
   self.count = self.count + 1
   self[self.count] = event
   if self.count > 0 and self.waiting_thread then
@@ -19,7 +15,7 @@ function enqueue(self, event)
   end
 end
 
-function dequeue(self)
+function EventQueue:dequeue()
   if self.count == 0 then
     assert.results(self.waiting_thread == nil)
     self.waiting_thread = coroutine.running()
@@ -31,3 +27,4 @@ function dequeue(self)
   return e
 end
 
+return EventQueue

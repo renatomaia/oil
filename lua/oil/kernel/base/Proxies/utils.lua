@@ -3,7 +3,6 @@ local error = _G.error
 local getmetatable = _G.getmetatable
 local rawget = _G.rawget
 
-module "oil.kernel.base.Proxies.utils"
 
 local function callhandler(self, ...)
 	local handler = rawget(self, "__exceptions")
@@ -12,9 +11,11 @@ local function callhandler(self, ...)
 	return handler(self, ...)
 end
 
-function assertresults(self, operation, success, except, ...)
-	if not success then
-		return callhandler(self, except, operation)
-	end
-	return except, ...
-end
+return {
+	assertresults = function (self, operation, success, except, ...)
+		if not success then
+			return callhandler(self, except, operation)
+		end
+		return except, ...
+	end,
+}

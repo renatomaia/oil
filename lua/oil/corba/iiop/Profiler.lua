@@ -1,5 +1,5 @@
 -- Project: OiL - ORB in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : IIOP Profile Encoder/Decoder
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 

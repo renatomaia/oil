@@ -22,7 +22,7 @@ function Server:write(tag, value)
 	Server.data[tag] = value
 end
 
-require "oil"
+local oil = require "oil"
 
 oil.main(function()
 	orb = oil.init()

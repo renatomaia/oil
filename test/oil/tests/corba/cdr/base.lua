@@ -18,7 +18,7 @@ local function hexdump(stream, expected)
 	local chars = {}
 	local wasdiff
 	for char in stream:gmatch("(.)") do
-		column = math.mod(count, 16)
+		column = count%16
 		if column == 0 then
 			dump[#dump+1] = lines:format(count)
 		elseif column == 8 then

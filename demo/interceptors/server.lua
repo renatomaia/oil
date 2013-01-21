@@ -1,5 +1,5 @@
 local Viewer = require "loop.debug.Viewer"
-local oil    = require "oil"
+local oil = require "oil"
 local socket = require "socket"
 
 oil.main(function()

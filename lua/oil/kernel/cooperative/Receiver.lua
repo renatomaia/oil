@@ -4,7 +4,7 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local _G = require "_G"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local pairs = _G.pairs
 local tostring = _G.tostring
 local stderr = _G.io and _G.io.stderr -- only if available
@@ -18,10 +18,9 @@ local oo = require "oil.oo"
 local class = oo.class
 
 local Exception = require "oil.Exception"
+local Receiver = require "oil.kernel.base.Receiver"
 
-local Receiver = require "oil.kernel.base.Receiver"                             --[[VERBOSE]] local verbose = require "oil.verbose"
-
-CoReceiver = class({}, Receiver)
+local CoReceiver = class({}, Receiver)
 
 function CoReceiver:probe(timeout)
 	local readers = self.readers

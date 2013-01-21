@@ -1,18 +1,15 @@
-local port      = require "oil.port"
+local port = require "oil.port"
 local component = require "oil.component"
-local arch      = require "oil.arch"
 
-module "oil.arch.ludo.server"
-
-RequestListener = component.Template{
-	requests = port.Facet,
-	channels = port.Receptacle,
-	codec    = port.Receptacle,
+local module = {
+	RequestListener = component.Template{
+		requests = port.Facet,
+		channels = port.Receptacle,
+		codec    = port.Receptacle,
+	},
 }
 
-function assemble(components)
-	arch.start(components)
-	
+function module.assemble(_ENV)
 	ServerChannels.sockets = BasicSystem.sockets
 	ServerChannels.dns = BasicSystem.dns
 	
@@ -25,6 +22,6 @@ function assemble(components)
 	-- the ORB is listening and identify local references (islocal) and create
 	-- references to local servants (newreference).
 	ObjectReferrer.listener = RequestListener.requests
-	
-	arch.finish(components)
 end
+
+return module

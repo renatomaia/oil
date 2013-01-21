@@ -1,20 +1,19 @@
-local port      = require "oil.port"
+local port = require "oil.port"
 local component = require "oil.component"
-local arch      = require "oil.arch"
 
-module "oil.arch.ludo.client"
-
-OperationRequester = component.Template{
-	requests = port.Facet,
-	channels = port.Receptacle,
-	codec    = port.Receptacle,
+local module = {
+	OperationRequester = component.Template{
+		requests = port.Facet,
+		channels = port.Receptacle,
+		codec = port.Receptacle,
+	},
 }
 
-function assemble(components)
-	arch.start(components)
+function module.assemble(_ENV)
 	ClientChannels.sockets = BasicSystem.sockets
 	ClientChannels.dns = BasicSystem.dns
 	OperationRequester.codec = ValueEncoder.codec
 	OperationRequester.channels = ClientChannels.channels
-	arch.finish(components)
 end
+
+return module

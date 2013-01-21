@@ -1,5 +1,5 @@
 -- Project: OiL - ORB in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : Factory of outgoing (client-side) channels
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
@@ -7,11 +7,11 @@
 local _G = require "_G"
 local setmetatable = _G.setmetatable
 
+local table = require "loop.table"
+local copy = table.copy
+
 local tuples = require "tuple"
 local tuple = tuples.index
-
-local tabop = require "loop.table"
-local copy = tabop.copy
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -52,6 +52,7 @@ function Connector:retrieve(profile)                                            
 		local sockets = self.sockets
 		socket, except = sockets:newsocket(self.options)
 		if socket then                                                              --[[VERBOSE]] verbose:channels("create new channel to ",host,":",port)
+			local success
 			success, except = socket:connect(host, port)
 			if success then
 				cache[connid] = socket

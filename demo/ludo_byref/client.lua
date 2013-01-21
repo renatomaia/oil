@@ -1,6 +1,6 @@
 oil = {cothread = false} -- disable multithreading support
 
-require "oil"
+local oil = require "oil"
 
 assert(cothread==nil)
 

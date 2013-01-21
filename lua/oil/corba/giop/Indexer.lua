@@ -1,28 +1,11 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : CORBA Interface Indexer                                           --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- members:Receptacle
--- 	member:table valueof(interface:table, name:string)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : CORBA Interface Indexer
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local oo      = require "oil.oo"
-local giop    = require "oil.corba.giop"
-local Indexer = require "oil.corba.idl.Indexer"                                 --[[VERBOSE]] local verbose = require "oil.verbose"
-
-module "oil.corba.giop.Indexer"
-
-oo.class(_M, Indexer)
+local oo = require "oil.oo"
+local giop = require "oil.corba.giop"
+local IDLIndexer = require "oil.corba.idl.Indexer"
 
 local CurrentInterface
 
@@ -53,8 +36,11 @@ function giop.ObjectOperations._component:implementation()
 	return nil
 end
 
-function valueof(self, interface, name)
-	local member = Indexer.valueof(self, interface, name)
+
+local Indexer = oo.class({}, IDLIndexer)
+
+function Indexer:valueof(interface, name)
+	local member = IDLIndexer.valueof(self, interface, name)
 	if member == nil then
 		CurrentInterface = interface -- setup current interface to be used by impls.
 		member = giop.ObjectOperations[name]
@@ -63,3 +49,5 @@ function valueof(self, interface, name)
 	end
 	return member
 end
+
+return Indexer

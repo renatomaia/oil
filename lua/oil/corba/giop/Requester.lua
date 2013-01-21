@@ -1,10 +1,10 @@
 -- Project: OiL - ORB in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : Client-side CORBA GIOP Protocol
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local _G = require "_G"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local assert = _G.assert
 local ipairs = _G.ipairs
 local pairs = _G.pairs
@@ -12,12 +12,14 @@ local pcall = _G.pcall
 local select = _G.select
 local setmetatable = _G.setmetatable
 local type = _G.type
-local unpack = _G.unpack
 
-local tabop = require "loop.table"
-local copy = tabop.copy
-local clear = tabop.clear
-local memoize = tabop.memoize
+local array = require "table"
+local unpack = array.unpack or _G.unpack
+
+local table = require "loop.table"
+local copy = table.copy
+local clear = table.clear
+local memoize = table.memoize
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -38,7 +40,7 @@ local SystemExceptionIDL = giop.SystemExceptionIDL
 local _non_existent = giop.ObjectOperations._non_existent
 
 local Exception = require "oil.corba.giop.Exception"
-local GIOPChannel = require "oil.corba.giop.Channel"                                --[[VERBOSE]] local verbose = require "oil.verbose"
+local GIOPChannel = require "oil.corba.giop.Channel"
 
 
 local WeakKeys = oo.class{__mode = "k"}
@@ -57,10 +59,7 @@ function OperationRequester:_is_equivalent(request)
 	    or ReplyFalse
 end
 
-local NonExistentErrors = {
-	badconnect = true,
-	badobjkey = true,
-}
+local NonExistentErrors = { badobjkey = true }
 function OperationReplier:_non_existent(request)
 	local except = request:getvalues()
 	if not request.success and NonExistentErrors[except.error] then
@@ -78,7 +77,7 @@ local function reissue(self, request, reference, addressing)                    
 			request.object_key = reference.object_key
 		else
 			request.object_key = nil
-			if adressing == 1 then                                                    --[[VERBOSE]] verbose:invoke("using IOR profile as addressing mode")
+			if addressing == 1 then                                                    --[[VERBOSE]] verbose:invoke("using IOR profile as addressing mode")
 				request.target = {profile=reference.ior_profile}
 			elseif addressing == 2 then                                               --[[VERBOSE]] verbose:invoke("using complete IOR as addressing mode")
 				request.target = {ior=reference}
@@ -132,14 +131,16 @@ function GIOPRequester:getchannel(reference)
 			if result then
 				result:upgradeto(decoded.giop_minor)
 				return result
-			end
-		else
-			except = profile.except
+			else
+				except.completed = "COMPLETED_NO"
+				except.profile = profile
+			end                                                                       --[[VERBOSE]] else verbose:invoke("ignoring unsupported IOR profile (",profile.except,")")
 		end
-		except.completed = "COMPLETED_NO"
-		except.profile = profile
 	end                                                                           --[[VERBOSE]] verbose:invoke("unable to connect using the provided IOR profiles")
-	return nil, Exception(except)
+	return nil, Exception(except or {
+		"no supported IOR profile found",
+		error = "badobjref",
+	})
 end
 
 function GIOPRequester:endrequest(request, success, result)
@@ -221,12 +222,12 @@ local function doreply(self, replied)
 			self:endrequest(replied, true, count)
 		end
 	elseif status:find("LOCATION_FORWARD", 1, true) == 1 then                     --[[VERBOSE]] verbose:invoke("got remote request to forward request through other channel")
-		local ok, reference = pcall(decoder.IOR, decoder)
+		local ok, result = pcall(decoder.IOR, decoder)
 		if ok then
 			if status == "LOCATION_FORWARD_PERM" then                                 --[[VERBOSE]] verbose:invoke("replacing current reference with a new one permanently")
-				reference = copy(reference, clear(replied.reference))
+				result = copy(result, clear(replied.reference))
 			end
-			reissue(self, replied, reference)
+			reissue(self, replied, result)
 		else                                                                        --[[VERBOSE]] verbose:invoke("error in decoding of reply with request for different addressing mode")
 			self:endrequest(replied, false, result)
 		end

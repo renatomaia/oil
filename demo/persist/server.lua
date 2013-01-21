@@ -1,4 +1,4 @@
-require "oil"
+local oil = require "oil"
 oil.main(function()
 	local orb = oil.init{ port = 2809 }
 	

@@ -1,59 +1,34 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : IDL Definition Repository                                         --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- importer:Facet
--- 	type:table register(definition:table)
--- 	type:table remove(definition:table)
--- 	[type:table] lookup(name:string)
--- 	[type:table] lookup_id(repid:string)
--- 
--- registry:Receptacle
--- 	type:table register(definition:table)
--- 	type:table remove(definition:table)
--- 	[type:table] lookup(name:string)
--- 	[type:table] lookup_id(repid:string)
--- 
--- delegated:Recetacle
--- 	[type:table] lookup(name:string)
--- 	[type:table] lookup_id(repid:string)
------------------------------------------------------------------------------- --
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : IDL Definition Repository
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local error  = error
-local ipairs = ipairs
-local pairs  = pairs
-local type   = type
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local error  = _G.error
+local ipairs = _G.ipairs
+local pairs  = _G.pairs
+local type   = _G.type
 
-local oo       = require "oil.oo"
+local oo = require "oil.oo"
+local class = oo.class
+
 local idl      = require "oil.corba.idl"
 local iridl    = require "oil.corba.idl.ir"
-local Registry = require "oil.corba.idl.Registry"                               --[[VERBOSE]] local verbose = require "oil.verbose"
+local Registry = require "oil.corba.idl.Registry"
 
-module "oil.corba.idl.Importer"
+local Importer = class({}, Registry)
 
-oo.class(_M, Registry)
-
-function context(self, context)
+function Importer:context(context)
 	self.context = context
 	local registry = context.__component
 	registry:register(iridl)
-	self.DefaultDefs = oo.class()
+	self.DefaultDefs = class()
 	for id, def in pairs(registry.definition_map) do
 		self.DefaultDefs[id] = def
 	end
 end
 
-function lookup(self, search_name)
+function Importer:lookup(search_name)
 	local context = self.context
 	local definition = context.__component:lookup(search_name)
 	if not definition then
@@ -67,7 +42,7 @@ function lookup(self, search_name)
 	return definition
 end
 
-function lookup_id(self, search_id)
+function Importer:lookup_id(search_id)
 	local context = self.context
 	local definition = context.__component:lookup_id(search_id)
 	if not definition then
@@ -105,7 +80,7 @@ local Contained = {
 	dk_ValueMember       = { const = idl.valuemember,        iface = "IDL:omg.org/CORBA/ValueMemberDef:1.0"       },
 }
 
-function register(self, object, history)
+function Importer:register(object, history)
 	local result
 	local registry = self.context.__component
 	if object._get_def_kind then -- is a remote definition
@@ -226,10 +201,12 @@ function register(self, object, history)
 	return result
 end
 
-function resolve(self, typeref, ...)
+function Importer:resolve(typeref, ...)
 	if type(typeref) == "table" and typeref.__reference then
 		return self:register(typeref)
 	else
 		return Registry.resolve(self, typeref, ...)
 	end
 end
+
+return Importer

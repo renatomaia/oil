@@ -4,7 +4,7 @@ if select("#", ...) == 0 then
 end
 arg = {...}
 
-require "oil"
+oil = require "oil"
 oil.main(function()
 	orb = oil.init()
 	proxy = orb:newproxy(assert(oil.readfrom("proxy.ior")))

@@ -7,7 +7,9 @@
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local select  = _G.select
 local tonumber = _G.tonumber
-local unpack = _G.unpack
+
+local array = require "table"
+local unpack = array.unpack or _G.unpack
 
 local oo = require "oil.oo"
 local class = oo.class

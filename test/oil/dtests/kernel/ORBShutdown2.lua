@@ -46,7 +46,15 @@ server = corba:newproxy(os.getenv("DTEST_HELPER")):getprocess("Server")
 checks:assert(server, checks.is(nil))
 
 if oil.dtests.flavor.corba then
-	checks:assert(obj:_non_existent(), checks.is(true))
+	ok, ex = pcall(obj._non_existent, obj)
+	checks:assert(ok, checks.is(false))
+	checks:assert(ex, checks.similar{
+		_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
+		completed = "COMPLETED_NO",
+		minor = 2,
+		error = "badconnect",
+		errmsg = "connection refused",
+	})
 else
 	ok, ex = pcall(obj.idle, obj)
 	checks:assert(ok, checks.is(false))
