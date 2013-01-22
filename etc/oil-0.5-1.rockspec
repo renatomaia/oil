@@ -49,7 +49,6 @@ build = {
 		["oil.arch.typed.client"] = "lua/oil/arch/typed/client.lua",
 		["oil.arch.typed.common"] = "lua/oil/arch/typed/common.lua",
 		["oil.arch.typed.server"] = "lua/oil/arch/typed/server.lua",
-		["oil.arch"] = "lua/oil/arch.lua",
 		["oil.assert"] = "lua/oil/assert.lua",
 		["oil.builder.basic.client"] = "lua/oil/builder/basic/client.lua",
 		["oil.builder.basic.common"] = "lua/oil/builder/basic/common.lua",

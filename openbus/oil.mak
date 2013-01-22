@@ -22,7 +22,6 @@ LUASRC= \
 	$(LUADIR)/oil/arch/typed/client.lua \
 	$(LUADIR)/oil/arch/typed/common.lua \
 	$(LUADIR)/oil/arch/typed/server.lua \
-	$(LUADIR)/oil/arch.lua \
 	$(LUADIR)/oil/assert.lua \
 	$(LUADIR)/oil/builder/basic/client.lua \
 	$(LUADIR)/oil/builder/basic/common.lua \
