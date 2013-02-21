@@ -246,11 +246,10 @@ end
 -- @return ... object IDL descriptors that represents the loaded definitions.
 --
 -- @usage oil.loadidlfile "/usr/local/corba/idl/CosNaming.idl"               .
--- @usage oil.loadidlfile("HelloWorld.idl", "/tmp/preprocessed.idl")         .
 --
-function ORB:loadidlfile(filepath)
+function ORB:loadidlfile(filepath, idlpaths)
 	asserttype(filepath, "string", "IDL file path")
-	return assert(self.TypeRepository.compiler:loadfile(filepath))
+	return assert(self.TypeRepository.compiler:loadfile(filepath, idlpaths))
 end
 
 --------------------------------------------------------------------------------
@@ -263,7 +262,7 @@ end
 -- @return ... object IDL descriptors that represents the loaded definitions.
 --
 function ORB:loadparsedidl(parsedidl)
-	asserttype(parsedidl, "table", "IDL file path")
+	asserttype(parsedidl, "table", "IDL description")
 	return assert(self.TypeRepository.types:register(parsedidl))
 end
 

@@ -111,10 +111,10 @@ end
 
 function Compiler:options(idlpaths)
 	local options = copy(self.defaults)
-	if idlpaths then
-		local incpath = copy(options.incpath)
-		for index, incpath in ipairs(idlpaths) do
-			incpath[#incpath+1] = incpath
+	if idlpaths 
+	local incpath = copy(options.incpath) or {}
+		for index, path in ipairs(idlpaths) do
+			incpath[#incpath+1] = path
 		end
 		options.incpath = incpath
 	end
