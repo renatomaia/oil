@@ -10,6 +10,9 @@ local ipairs = _G.ipairs
 local pcall = _G.pcall
 local tonumber = _G.tonumber
 
+local math = require "math"
+local min = math.min
+
 local oo = require "oil.oo"
 local class = oo.class
 
@@ -90,8 +93,7 @@ end
 local function decodeIIOPProfile(self, profile)
 	local decoder = self.codec:decoder(profile, true)
 	local version = decoder:struct(Version)
-	local profileidl = ProfileBody_v1_[version.minor]
-	if version.major ~= 1 or not profileidl then
+	if version.major ~= 1 then
 		error(Exception{
 			"$protocol version not supported (got $versionmajor.$versionminor)",
 			error = "badversion",
@@ -101,9 +103,11 @@ local function decodeIIOPProfile(self, profile)
 			minor = 0,
 		})
 	end
+	local minor = min(3, version.minor)
+	local profileidl = ProfileBody_v1_[minor]
 	profile = decoder:struct(profileidl)
 	profile.iiop_version = version -- add read version directly
-	profile.giop_minor = version.minor
+	profile.giop_minor = minor
 	return profile
 end
 function IIOPProfiler:decode(profile)                                           --[[VERBOSE]] verbose:references(true, "decoding IIOP profile")
