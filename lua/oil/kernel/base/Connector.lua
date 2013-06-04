@@ -21,6 +21,19 @@ local Exception = require "oil.Exception"                                       
 
 local WeakValues = class{ __mode = "v" }
 
+local function ipcomp(c)
+	return (c ~= nil) and (tonumber(c) < 256)
+end
+
+local IpPattern = "^(%d+)%.(%d+)%.(%d+)%.(%d+)$"
+local function resolvehost(self, host)
+	local a, b, c, d = host:match(IpPattern)
+	if ipcomp(a) and ipcomp(b) and ipcomp(c) and ipcomp(d) then
+		return host
+	end
+	return self.dns:toip(host) or host
+end
+
 local Connector = class()
 
 function Connector:__init()
@@ -32,8 +45,7 @@ function Connector:register(socket, profile)                                    
 end
 
 function Connector:retrieve(profile)                                            --[[VERBOSE]] verbose:channels("get channel to ",profile.host,":",profile.port)
-	local dns = self.dns
-	local host = dns:toip(profile.host) or profile.host
+	local host = resolvehost(self, profile.host)
 	local port = profile.port
 	local connid = tuple[host][port]
 	local cache = self.cache
