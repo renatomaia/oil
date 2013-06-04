@@ -33,7 +33,6 @@ local RequestID = giop.RequestID
 local ReplyID = giop.ReplyID
 local LocateRequestID = giop.LocateRequestID
 local LocateReplyID = giop.LocateReplyID
-local CloseConnectionID = giop.CloseConnectionID
 local MessageErrorID = giop.MessageErrorID
 local MessageType = giop.MessageType
 local SystemExceptionIDL = giop.SystemExceptionIDL
