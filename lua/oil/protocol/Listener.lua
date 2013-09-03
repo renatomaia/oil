@@ -5,12 +5,15 @@
 
 
 local _G = require "_G"
+local pairs = _G.pairs
 local select = _G.select
 local tonumber = _G.tonumber
-local unpack = _G.unpack
 
-local tabops = require "loop.table"
-local memoize = tabops.memoize
+local array = require "table"
+local unpack = array.unpack or _G.unpack
+
+local table = require "loop.table"
+local memoize = table.memoize
 
 local oo = require "oil.oo"
 local class = oo.class

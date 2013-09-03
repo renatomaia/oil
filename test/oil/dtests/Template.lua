@@ -1,13 +1,13 @@
-
-local assert   = assert
-local error    = error
-local ipairs   = ipairs
-local pairs    = pairs
-local rawget   = rawget
-local setfenv  = setfenv
-local tonumber = tonumber
-local tostring = tostring
-local type     = type
+local _G = require "_G"
+local assert   = _G.assert
+local error    = _G.error
+local ipairs   = _G.ipairs
+local pairs    = _G.pairs
+local rawget   = _G.rawget
+local setfenv  = _G.setfenv
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local type     = _G.type
 
 local coroutine = require "coroutine"
 local math      = require "math"
@@ -32,16 +32,8 @@ local PortUpperBound = 9999 -- inclusive
 local Message = "%s\n%d\n%s\n"
 local TableEntry = "[%q]=%q"
 local CodeBody = table.concat({
-	"OIL_FLAVOR=%q",
-	"local flavor = {}",
-	"for name in OIL_FLAVOR:gmatch('[^;]+') do flavor[name] = true end",
-	"if flavor['corba.intercepted'] then flavor.corba = true end",
-	"oil = oil or {}",
-	"oil.dtests = oil.dtests or {}",
-	"oil.dtests.flavor = flavor",
-	"oil.dtests.hosts = {%s}",
-	"oil.dtests.checks = ...",
 	"require 'oil.dtests.%s'",
+	"oil.dtests.setup(%q, {%s}, ...)",
 	"oil.main(function(...) %s\nend)",
 }, ";")
 
@@ -125,9 +117,9 @@ function newtest(self, infos)
 		-- start processes
 		for name, info in pairs(Processes) do
 			local code = CodeBody:format(
+				getpackage(info.command.flavor),
 				info.command.flavor,
 				table.concat(HostTable, ","),
-				getpackage(info.command.flavor),
 				info.code
 			)
 			assert(info.connection:send(Message:format(name, #code, code)))
@@ -305,7 +297,7 @@ function newsuite(self, required)
 		alt{"cooperative", ""};
 	};
 	local protocols = {
-		ludo    = true,
+		--ludo    = true,
 		[corba] = true,
 	}
 	if required.gencode          then corba[1][2]      = nil end

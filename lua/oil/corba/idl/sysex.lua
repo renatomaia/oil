@@ -1,21 +1,19 @@
-local pairs = pairs
+local _G = require "_G"
+local pairs = _G.pairs
 
 local idl  = require "oil.corba.idl"
-local giop = require "oil.corba.giop"                                           --[[VERBOSE]] local verbose = require "oil.verbose"
+local giop = require "oil.corba.giop"
 
-module "oil.corba.idl.sysex"
+local CORBA = idl.module{
+	name = "CORBA",
+	repID = "IDL:omg.org/CORBA:1.0",
+}
 
---------------------------------------------------------------------------------
-
-name = "CORBA"
-repID = "IDL:omg.org/CORBA:1.0"
-idl.module(_M)
-
---------------------------------------------------------------------------------
-
-for name, repID in pairs(giop.SystemExceptionIDs) do
-	definitions[name] = idl.except{
+for name in pairs(giop.SystemExceptionIDs) do
+	CORBA.definitions[name] = idl.except{
 		{name = "minor" , type = idl.ulong },
 		{name = "completed", type = giop.CompletionStatus },
 	}
 end
+
+return CORBA

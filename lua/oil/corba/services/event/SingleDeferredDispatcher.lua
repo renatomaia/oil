@@ -6,7 +6,7 @@ local next            = next
 local io              = io
 local coroutine       = coroutine
 
-module("oil.corba.services.event.SingleDeferredDispatcher", oo.class)
+local SingleDeferredDispatcher = oo.class()
 
 local calls = {} -- futures
 
@@ -30,7 +30,7 @@ local function waitforresults()
   until next(calls) == nil
 end
 
-function __new(class, event_queue, consumers)
+function SingleDeferredDispatcher.__new(class, event_queue, consumers)
   assert.type(event_queue, "table")
   local self = oo.rawnew(class, {
     event_queue = event_queue,
@@ -40,15 +40,15 @@ function __new(class, event_queue, consumers)
   return self
 end
 
-function add_consumer(self, push_consumer)
+function SingleDeferredDispatcher:add_consumer(push_consumer)
   self.consumers[push_consumer] = true
 end
 
-function rem_consumer(self, push_consumer)
+function SingleDeferredDispatcher:rem_consumer(push_consumer)
   self.consumers[push_consumer] = nil
 end
 
-function run(self)
+function SingleDeferredDispatcher:run()
   while true do
     local e = self.event_queue:dequeue()
     for c in pairs(self.consumers) do
@@ -58,3 +58,4 @@ function run(self)
   end
 end
 
+return SingleDeferredDispatcher

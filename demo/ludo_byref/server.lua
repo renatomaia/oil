@@ -1,6 +1,6 @@
 oil = {cothread = false} -- disable multithreading support
 
-require "oil"
+local oil = require "oil"
 
 oil.main(function()
 	local hello = { count = 0, quiet = true }

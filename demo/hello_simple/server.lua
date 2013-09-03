@@ -1,7 +1,7 @@
-require "oil"                                    -- Load OiL package
+local oil = require "oil"                   -- Load OiL package
 
 oil.main(function()
-	local hello = { count = 0, quiet = true }      -- Get object implementation
+	local hello = { count = 0, quiet = true } -- Get object implementation
 	function hello:say_hello_to(name)
 		self.count = self.count + 1
 		local msg = "Hello " .. name .. "! ("..self.count.." times)"
@@ -17,12 +17,12 @@ oil.main(function()
 
 	local orb = oil.init{ flavor = "ludo" }
 	
-	hello = orb:newservant(hello)                  -- Create Ludo object
+	hello = orb:newservant(hello)             -- Create Ludo object
 
-	local ref = tostring(hello)                -- Get object's reference
+	local ref = tostring(hello)               -- Get object's reference
 	if not oil.writeto("ref.ludo", ref) then
 		print(ref)
 	end
 
-	orb:run()                                      -- Start ORB main loop
+	orb:run()                                 -- Start ORB main loop
 end)

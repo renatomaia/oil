@@ -3,18 +3,21 @@
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: init.lua
 -- 
-local assert  = assert
-local error   = error
-local pcall   = pcall
-local require = require
-local type    = type
-local unpack  = unpack
+local _G = require "_G"
+local assert  = _G.assert
+local error   = _G.error
+local pcall   = _G.pcall
+local require = _G.require
+local type    = _G.type
 
 local io      = require "io"
 local os      = require "os"
 local string  = require "string"
+local array   = require "table"
 
-module 'luaidl'
+local unpack  = array.unpack or _G.unpack
+
+local _ENV = module 'luaidl'
 
 local preprocessor  = require 'luaidl.pre'
 local parser        = require 'luaidl.sin'

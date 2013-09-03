@@ -1,4 +1,4 @@
-require "oil"
+local oil = require "oil"
 
 orb = oil.init()
 orb:loadidl[[
@@ -45,7 +45,7 @@ function Adaptor:apply_change(triggers, state, code, iface)
 		local function trigger(object, ...)
 			adaptor(object) -- update object state
 			oo.rawnew(adapted, object) -- update object class
-			return object[operation](object, unpack(arg))
+			return object[operation](object, ...)
 		end
 		original[operation] = trigger
 	end

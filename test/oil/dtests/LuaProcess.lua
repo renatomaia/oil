@@ -1,5 +1,9 @@
-require "coroutine.pcall"
-require "coroutine.debug51"
+if _VERSION == "Lua 5.1" then
+	require "coroutine.pcall"
+	require "coroutine.debug51"
+else
+	--require "coroutine.debug"
+end
 
 local socket = require "socket"
 local Results = require "loop.test.Results"

@@ -3,19 +3,17 @@
 -- Title  : Factory of incomming (server-side) channels
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local _G = require "_G"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local ipairs = _G.ipairs
 local select = _G.select
 
 local oo = require "oil.oo"
 local class = oo.class
 
-local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
-
-module(...); local _ENV = _M
+local Exception = require "oil.Exception"
 
 
-AccessPoint = class()
+local AccessPoint = class()
 
 function AccessPoint:accept(timeout)
 	local poll = self.poll
@@ -116,9 +114,9 @@ function AccessPoint:address()
 end
 
 
-class(_ENV)
+local Acceptor = class()
 
-function _ENV:newaccess(configs)
+function Acceptor:newaccess(configs)
 	local options = self.options
 	local sockets = self.sockets
 	local socket, except = sockets:newsocket(options)
@@ -161,3 +159,5 @@ function _ENV:newaccess(configs)
 		poll = poll,
 	}
 end
+
+return Acceptor

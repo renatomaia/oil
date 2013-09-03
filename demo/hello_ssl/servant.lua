@@ -1,4 +1,4 @@
-require "oil"                                   -- Load OiL package
+local require "oil"                       -- Load OiL package
 
 local params = {
    key = "certs/serverkey.pem",
@@ -14,9 +14,9 @@ oil.Config.ssl = params
 oil.verbose:level(5)
 oil.init()
 
-oil.loadidlfile("hello.idl")                    -- Load the interface from IDL file
+oil.loadidlfile("hello.idl")              -- Load the interface from IDL file
 
-local hello = { count = 0, quiet = true }       -- Get object implementation
+local hello = { count = 0, quiet = true } -- Get object implementation
 function hello:say_hello_to(name)
 	self.count = self.count + 1
 	local msg = "Hello " .. name .. "! ("..self.count.." times)"
@@ -24,14 +24,14 @@ function hello:say_hello_to(name)
 	return msg
 end
 
-hello = oil.newobject(hello, "Hello")           -- Create CORBA object
+hello = oil.newobject(hello, "Hello")     -- Create CORBA object
 
 local file = io.open("hello.ior", "w")
 if file then
-	file:write(oil.getreference(hello))                      -- Write object ref. into file
+	file:write(oil.getreference(hello))     -- Write object ref. into file
 	file:close()
 else
-	print(oil.getreference(hello))                           -- Show object ref. on screen
+	print(oil.getreference(hello))          -- Show object ref. on screen
 end
 
-print(oil.run())                                -- Start ORB main loop
+print(oil.run())                          -- Start ORB main loop

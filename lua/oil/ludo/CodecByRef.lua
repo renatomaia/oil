@@ -1,46 +1,27 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua                                                  --
--- Release: 0.5                                                               --
--- Title  : Client-side CORBA GIOP Protocol specific to IIOP                  --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- channels:Facet
--- 	channel:object retieve(configs:table)
--- 	channel:object select(channel|configs...)
--- 	configs:table default(configs:table)
--- 
--- sockets:Receptacle
--- 	socket:object tcp()
--- 	input:table, output:table select([input:table], [output:table], [timeout:number])
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Client-side CORBA GIOP Protocol specific to IIOP
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local getmetatable = getmetatable
-local pairs = pairs
-local tonumber = tonumber
-local tostring = tostring
-local rawget = rawget
-local rawset = rawset
 
-local table        = require "loop.table"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local getmetatable = _G.getmetatable
+local pairs = _G.pairs
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local rawget = _G.rawget
+local rawset = _G.rawset
+
+local table = require "loop.table"
+local copy = table.copy
+
 local StringStream = require "loop.serial.StringStream"
 
-local oo    = require "oil.oo"
-local Codec = require "oil.ludo.Codec"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
+local class = oo.class
 
-module "oil.ludo.CodecByRef"
+local Codec = require "oil.ludo.Codec"
 
-oo.class(_M, Codec)
-
---------------------------------------------------------------------------------
---------------------------------------------------------------------------------
 
 -- TODO:[maia] copied from loop.serial.Serializer. Make it a member function
 local function getidfor(value)
@@ -61,7 +42,7 @@ local function resolveref(self, reference)
 	local servants = self.servants
 	if servants ~= nil and self.localrefs == "implementation" then
 		local entry = servants:localref(reference)
-		if entry ~= nil then                                                          --[[VERBOSE]] verbose:unmarshal("local object with key '",objkey,"' restored")
+		if entry ~= nil then                                                          --[[VERBOSE]] verbose:unmarshal("local object with key '",entry.__objkey,"' restored")
 			return entry.__servant
 		end
 	end
@@ -95,22 +76,24 @@ local function serialtable(self, value, id)                                     
 	end
 end
 
-local LuDOStream = oo.class({
+
+local LuDOStream = class({
 	table        = serialtable,
 	thread       = serialproxy,
 	userdata     = serialproxy,
 	["function"] = serialproxy,
 }, StringStream)
 
-function encoder(self)
-	return LuDOStream(table.copy(self.names, {servants = self.servants}))
+
+local CodecByRef = class({ localrefs = "implementation" }, Codec)
+
+function CodecByRef:encoder()
+	return LuDOStream(copy(self.names, {servants = self.servants}))
 end
 
-localrefs = "implementation"
-
-function decoder(self, stream)
+function CodecByRef:decoder(stream)
 	return StringStream{
-		environment = table.copy(self.values, {
+		environment = copy(self.values, {
 			resolveref = resolveref,
 			localrefs = self.localrefs,
 			proxies = self.proxies,
@@ -119,3 +102,5 @@ function decoder(self, stream)
 		data = stream,
 	}
 end
+
+return CodecByRef

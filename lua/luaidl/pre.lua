@@ -13,7 +13,7 @@ local string = require "string"
 local table  = require "table"
 local type   = type
 
-module 'luaidl.pre'
+local _ENV = module 'luaidl.pre'
 
 local tab_macros
 local currNumLine
@@ -108,7 +108,7 @@ function scanner(source, ptab_options)
   numLine = 1
   -- ugly!
   source = source..'\n'
-  for strLine in string.gfind(source, "(.-\n)") do
+  for strLine in string.gmatch(source, "(.-\n)") do
     strLine = string.gsub(strLine, "^%s*#%s*(%w+)%s*([^%s]*)%s*([^%s]*)", processDirective)
     if (isProcessing) then
       strLine = macroExpansion(strLine)

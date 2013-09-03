@@ -5,7 +5,7 @@ local template = Template{"Client"} -- master process name
 Client = [=====================================================================[
 checks = oil.dtests.checks
 
-Exception = newproxy()
+Exception = io.stderr
 
 Interceptor = {}
 function Interceptor:sendrequest(request)

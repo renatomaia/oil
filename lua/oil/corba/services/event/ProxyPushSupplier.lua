@@ -1,12 +1,12 @@
 local pcall = pcall
 
-local oil               = require "oil"
-local oo                = require "oil.oo"
-local assert            = require "oil.assert"
+local oil = require "oil"
+local oo = require "oil.oo"
+local assert = require "oil.assert"
 
-module("oil.corba.services.event.ProxyPushSupplier", oo.class)
+local ProxyPushSupplier = oo.class()
 
-function __new(class, admin)
+function ProxyPushSupplier.__new(class, admin)
   return oo.rawnew(class, {
     admin = admin,
     connected = false,
@@ -24,7 +24,7 @@ end
 -- meet those requirements, the ProxyPushSupplier raises the TypeError
 -- exception.
 
-function connect_push_consumer(self, push_consumer)                
+function ProxyPushSupplier:connect_push_consumer(push_consumer)                
   if self.connected then
     assert.exception{"IDL:omg.org/CosEventChannelAdmin/AlreadyConnected:1.0"}
   elseif not push_consumer then
@@ -51,7 +51,7 @@ end
 -- call and subsequently receives another disconnect call, it shall raise a
 -- CORBA::OBJECT_NOT_EXIST exception.
 
-function disconnect_push_supplier(self)
+function ProxyPushSupplier:disconnect_push_supplier()
   if not self.connected then
     assert.exception{"IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"}
   end
@@ -62,3 +62,4 @@ function disconnect_push_supplier(self)
   self.push_consumer = nil
 end
 
+return ProxyPushSupplier

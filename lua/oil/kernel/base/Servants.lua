@@ -13,8 +13,8 @@ local rawset = _G.rawset
 local tostring = _G.tostring
 local type = _G.type
 
-local tabop = require "loop.table"
-local memoize = tabop.memoize
+local table = require "loop.table"
+local memoize = table.memoize
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -22,10 +22,8 @@ local getclass = oo.getclass
 
 local Exception = require "oil.Exception"
 
-module(...); local _ENV = _M
 
-
-function hashof(object)
+local function hashof(object)
 	local meta = getmetatable(object)
 	local backup
 	if meta then
@@ -46,7 +44,7 @@ local function pindex(indexable, field)
 	local ok, value = pcall(index, indexable, field)
 	if ok then return value end
 end
-function getfield(object, field)
+local function getfield(object, field)
 	return pindex(object, field)
 	    or pindex(getmetatable(object), field)
 end
@@ -59,7 +57,7 @@ local MethodWrapper = memoize(function(method)
 end, "k")
 
 
-Registered = class()
+local Registered = class()
 
 function Registered:__index(field)
 	local value = Registered[field]
@@ -86,20 +84,23 @@ end
 
 
 
-class(_ENV)
+local Servants = class{
+	hashof = hashof,
+	getfield = getfield,
+	Registered = Registered,
+	prefix = "_",
+}
 
-_ENV.prefix = "_"
-
-function _ENV:__init()
+function Servants:__init()
 	self.map = self.map or {}
 end
 
-function _ENV:getkey(servant)
+function Servants:getkey(servant)
 	return getfield(servant, "__objkey")
 	    or self.prefix..hashof(servant)
 end
 
-function _ENV:makeentry(entry)
+function Servants:makeentry(entry)
 	local servant = entry.__servant
 	if entry.__objkey == nil then
 		entry.__objkey = self:getkey(servant)
@@ -110,7 +111,7 @@ function _ENV:makeentry(entry)
 	return entry
 end
 
-function _ENV:addentry(entry)
+function Servants:addentry(entry)
 	local key = entry.__objkey
 	local map = self.map
 	local current = map[key]
@@ -126,7 +127,7 @@ function _ENV:addentry(entry)
 	return entry
 end
 
-function _ENV:removeentry(key)
+function Servants:removeentry(key)
 	local map = self.map
 	local entry = map[key]
 	if entry == nil then
@@ -141,7 +142,7 @@ function _ENV:removeentry(key)
 end
 
 
-function _ENV:register(...)
+function Servants:register(...)
 	local result, except = self:makeentry(...)
 	if result then
 		assert(result.__servant ~= nil)
@@ -162,7 +163,7 @@ function _ENV:register(...)
 	return result, except
 end
 
-function _ENV:unregister(value)
+function Servants:unregister(value)
 	if type(value) ~= "string" then
 		if getclass(value) == Registered then
 			value = value.__objkey
@@ -173,11 +174,11 @@ function _ENV:unregister(value)
 	return self:removeentry(value)
 end
 
-function _ENV:retrieve(key)
+function Servants:retrieve(key)
 	return self.map[key]
 end
 
-function _ENV:localref(reference)
+function Servants:localref(reference)
 	local result, except = self.listener:getaddress("probe")
 	if result then
 		local key = reference:islocal(result)
@@ -186,3 +187,5 @@ function _ENV:localref(reference)
 		end
 	end
 end
+
+return Servants

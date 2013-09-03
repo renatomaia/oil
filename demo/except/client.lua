@@ -1,4 +1,4 @@
-require "oil"
+local oil = require "oil"
 
 local function returnexception(proxy, exception, operation)
 	if
@@ -20,9 +20,9 @@ oil.main(function()
 		Server:write("a_number", "bad value") -- raises an exception to be captured!
 	end)
 	if not success then
-		if exception[1] == "IDL:Control/AccessError:1.0" 
+		if exception._repid == "IDL:Control/AccessError:1.0" 
 			then print(string.format("Got error: %s '%s'", exception.reason, exception.tagname))
-			else print("Got unkown exception:", exception[1])
+			else print("Got unkown exception:", exception)
 		end
 	end
 	
@@ -37,9 +37,9 @@ oil.main(function()
 		Server:write("unknown", 1234) -- exception will be re-raised by 'returnexception'
 	end)
 	if not success then
-		if exception[1] == "IDL:Control/AccessError:1.0" 
+		if exception._repid == "IDL:Control/AccessError:1.0" 
 			then print(string.format("Got error: %s '%s'", exception.reason, exception.tagname))
-			else print("Got unkown exception:", exception[1])
+			else print("Got unkown exception:", exception)
 		end
 	end
 end)

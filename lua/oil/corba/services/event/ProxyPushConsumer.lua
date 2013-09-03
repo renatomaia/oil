@@ -1,15 +1,15 @@
 local pcall = pcall
 
-local oil               = require "oil"
-local oo                = require "oil.oo"
-local assert            = require "oil.assert"
+local oil = require "oil"
+local oo = require "oil.oo"
+local assert = require "oil.assert"
 
-module("oil.corba.services.event.ProxyPushConsumer", oo.class)
+local ProxyPushConsumer = oo.class()
 
 -- Proxies are in one of three states: disconnected, connected, or destroyed.  
 -- Push/pull operations are only valid in the connected state.
 
-function __new(class, admin)                                        
+function ProxyPushConsumer.__new(class, admin)                                        
   assert.results(admin)
   return oo.rawnew(class, {
     admin = admin,
@@ -21,7 +21,7 @@ end
 -- A supplier communicates event data to the consumer by invoking the push 
 -- operation and passing the event data as a parameter.
 
-function push(self, data)                                           
+function ProxyPushConsumer:push(data)                                           
   if not self.connected then
     assert.exception{"IDL:omg.org/CosEventComm/Disconnected:1.0"}
   end
@@ -40,7 +40,7 @@ end
 -- If the ProxyPushConsumer is already connected to a PushSupplier, then the
 -- AlreadyConnected exception is raised.
 
-function connect_push_supplier(self, push_supplier)                 
+function ProxyPushConsumer:connect_push_supplier(push_supplier)                 
   if self.connected then
     assert.exception{"IDL:omg.org/CosEventChannelAdmin/AlreadyConnected:1.0"}
   end
@@ -63,7 +63,7 @@ end
 -- a disconnect call and subsequently receives another disconnect call, it shall
 -- raise a CORBA::OBJECT_NOT_EXIST exception.
 
-function disconnect_push_consumer(self)
+function ProxyPushConsumer:disconnect_push_consumer()
   if not self.connected then
     assert.exception{"IDL:omg.org/CORBA/OBJECT_NOT_EXIST:1.0"}
   end
@@ -75,3 +75,4 @@ function disconnect_push_consumer(self)
   end
 end
 
+return ProxyPushConsumer

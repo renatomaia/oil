@@ -1,23 +1,23 @@
-local ipairs = ipairs
+local _G = require "_G"
+local ipairs = _G.ipairs
 
-local port      = require "oil.port"
+local port = require "oil.port"
 local component = require "oil.component"
-local arch      = require "oil.arch"
 
-module "oil.arch.basic.client"
-
-ProxyManager = component.Template{
-	proxies   = port.Facet,
-	requester = port.Receptacle,
-	referrer  = port.Receptacle,
+local module = {
+	ProxyManager = component.Template{
+		proxies = port.Facet,
+		requester = port.Receptacle,
+		referrer = port.Receptacle,
+	},
 }
 
-function assemble(components)
-	arch.start(components)
+function module.assemble(_ENV)
 	for _, kind in ipairs(proxykind) do
 		local ProxyManager = proxykind[kind]
 		ProxyManager.requester = OperationRequester.requests
 		ProxyManager.referrer = ObjectReferrer.references
 	end
-	arch.finish(components)
 end
+
+return module

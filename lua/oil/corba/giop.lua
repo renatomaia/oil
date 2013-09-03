@@ -1,5 +1,5 @@
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : General Inter-ORB Protocol (GIOP) IDL specifications
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 -- Notes  :
@@ -7,7 +7,7 @@
 
 local idl = require "oil.corba.idl"
 
-module "oil.corba.giop"
+local _ENV = {}; if _VERSION == "Lua 5.1" then setfenv(1, _ENV) end
 
 --------------------------------------------------------------------------------
 -- Interoperable Object Reference ----------------------------------------------
@@ -68,8 +68,8 @@ CompletionStatus = idl.enum{
 	"COMPLETED_MAYBE",
 }
 SystemExceptionIDL = idl.struct{
-	{name = "minor"       , type = idl.ulong },
-	{name = "completed"   , type = CompletionStatus },
+	{name = "minor"    , type = idl.ulong },
+	{name = "completed", type = CompletionStatus },
 }
 
 SystemExceptionIDs = {
@@ -298,3 +298,7 @@ MessageHeader_v1_[2] = { -- GIOP 1.2
 --------------------------------------------------------------------------------
 
 MessageHeader_v1_[3] = MessageHeader_v1_[2] -- GIOP 1.3, same as GIOP 1.2
+
+--------------------------------------------------------------------------------
+
+return _ENV

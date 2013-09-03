@@ -1,4 +1,4 @@
-require "oil"
+local oil = require "oil"
 
 local orb = oil.init()
 orb:loadidlfile "../hello/hello.idl"

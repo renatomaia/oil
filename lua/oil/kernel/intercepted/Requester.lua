@@ -1,17 +1,21 @@
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local select = _G.select
 
-local select = select
-local unpack = unpack
+local array = require "table"
+local unpack = array.unpack or _G.unpack
 
 local Wrapper = require "loop.object.Wrapper"
 
-local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
+local class = oo.class
 
-module("oil.kernel.intercepted.Requester", oo.class)
 
-__new = Wrapper.__new
-__index = Wrapper.__index
+local Requester = class{
+	__new = Wrapper.__new,
+	__index = Wrapper.__index,
+}
 
-function newrequest(self, reference, operation, ...)
+function Requester:newrequest(reference, operation, ...)
 	local request = {
 		reference = reference,
 		operation = operation,
@@ -42,7 +46,7 @@ function newrequest(self, reference, operation, ...)
 	return result, except
 end
 
-function getreply(self, opreq, ...)
+function Requester:getreply(opreq, ...)
 	local result, except = self.__object:getreply(opreq, ...)
 	if result then
 		local interceptor = self.interceptor
@@ -56,3 +60,5 @@ function getreply(self, opreq, ...)
 	end
 	return result, except
 end
+
+return Requester

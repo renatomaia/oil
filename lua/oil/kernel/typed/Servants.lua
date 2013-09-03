@@ -16,6 +16,7 @@ local Exception = require "oil.Exception"
 local Servants = require "oil.kernel.base.Servants"
 local getfield = Servants.getfield
 local hashof = Servants.hashof
+local Registered = Servants.Registered
 
 local TypedServants = class({}, Servants)
 

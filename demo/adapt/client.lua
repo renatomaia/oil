@@ -4,7 +4,7 @@ if select("#", ...) == 0 then
 end
 local arg = {...}
 --------------------------------------------------------------------------------
-require "oil"
+local oil = require "oil"
 oil.main(function()
 	local orb = oil.init()
 	------------------------------------------------------------------------------
@@ -33,6 +33,7 @@ oil.main(function()
 		};
 	]]
 	local NewServerImpl = [[
+		local oil = require "oil"
 		local server_impl = ...
 		function server_impl:do_something_for(seconds)
 			local message = "about to sleep for "..seconds.." seconds"

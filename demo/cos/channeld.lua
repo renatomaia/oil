@@ -6,32 +6,35 @@
 --
 print("OiL Event Channel 1.1  Copyright (C) 2006-2008 Tecgraf, PUC-Rio")
 
-local select = select
-local io     = require "io"
-local os     = require "os"
-local oil    = require "oil"
-local event  = require "oil.corba.services.event"
+local _G = require "_G"
+local io = require "io"
+local os = require "os"
+local oil = require "oil"
+local verbose = require "oil.verbose"
+local event = require "oil.corba.services.event"
+local Arguments = require "loop.compiler.Arguments"
 
-module("oil.corba.services.channeld", require "loop.compiler.Arguments")
-_optpat = "^%-%-(%w+)(=?)(.-)$"
-_alias = { maxqueue = "oil.cos.event.max_queue_length" }
-verb = 0
-port = 0
-ior  = ""
-ir = ""
-ns = ""
-name = ""
-function log(optlist, optname, optvalue)
+local args = Arguments{
+	_optpat = "^%-%-(%w+)(=?)(.-)$",
+	_alias = { maxqueue = "oil.cos.event.max_queue_length" },
+	verb = 0,
+	port = 0,
+	ior  = "",
+	ir = "",
+	ns = "",
+	name = "",
+}
+function args.log(optlist, optname, optvalue)
 	local file, errmsg = io.open(optvalue, "w")
 	if file
-		then oil.verbose:output(file)
+		then verbose:output(file)
 		else return errmsg
 	end
 end
-_M[_alias.maxqueue] = 0
+args[args._alias.maxqueue] = 0
 
-local argidx, errmsg = _M(...)
-if not argidx or argidx <= select("#", ...) then
+local argidx, errmsg = args(...)
+if not argidx or argidx <= _G.select("#", ...) then
 	if errmsg then io.stderr:write("ERROR: ", errmsg, "\n") end
 	io.stderr:write([[
 Usage:	channeld.lua [options]
@@ -50,23 +53,26 @@ Options:
 end
 
 oil.main(function()
-	oil.verbose:level(verb)
-	local orb = (port > 0) and oil.init{port=port} or oil.init()
+	verbose:level(args.verb)
+	local orb = (args.port > 0) and oil.init{port=args.port} or oil.init()
 	
-	if ir ~= ""
-		then orb:setIR(orb:narrow(orb:newproxy(ir)))
+	if args.ir ~= ""
+		then orb:setIR(orb:narrow(orb:newproxy(args.ir)))
 		else orb:loadidlfile("CosEvent.idl")
 	end
 	
-	local channel = orb:newservant(event.new(_M))
-	if ior ~= "" then oil.writeto(ior, tostring(channel)) end
+	local channel = orb:newservant(event.new(args))
+	if args.ior ~= "" then oil.writeto(args.ior, tostring(channel)) end
 	
-	if name ~= "" then
+	if args.name ~= "" then
+		local ns = args.ns
 		if ns ~= ""
 			then ns = orb:narrow(orb:newproxy(ns))
 			else ns = orb:narrow(orb:newproxy("corbaloc::/NameService"))
 		end
-		if ns then ns:rebind({{id=name,kind="EventChannel"}}, channel) end
+		if ns ~= nil then
+			ns:rebind({{id=args.name,kind="EventChannel"}}, channel)
+		end
 	end
 	
 	orb:run()

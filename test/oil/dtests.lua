@@ -1,13 +1,29 @@
-local OIL_FLAVOR = OIL_FLAVOR
+local flavor
 
-local oil = require "oil"
+oil = require "oil"
 
-module "oil.dtests"
+oil.dtests = {
+	setup = function (flavorspec, hosts, checks)
+		flavor = flavorspec
+		local flavorset = {}
+		for name in flavorspec:gmatch('[^;]+') do
+			flavorset[name] = true
+		end
+		if flavorset['corba.intercepted'] then
+			flavorset.corba = true
+		end
+		oil.dtests.flavor = flavorset
+		oil.dtests.hosts = hosts
+		oil.dtests.checks = checks
+	end,
 
-function init(config)
-	config = config or {}
-	config.flavor = OIL_FLAVOR
-	config.tcpoptions = {reuseaddr=true}
-	orb = oil.init(config)
-	return orb
-end
+	init = function (config)
+		config = config or {}
+		config.flavor = flavor
+		config.tcpoptions = {reuseaddr=true}
+		oil.dtests.orb = oil.init(config)
+		return oil.dtests.orb
+	end,
+}
+
+return oil.dtests

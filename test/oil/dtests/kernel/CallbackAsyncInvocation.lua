@@ -33,8 +33,8 @@ Caller = oil.dtests.resolve("Server", 2809, "object")
 
 oil.newthread(orb.run, orb)
 Caller:call({ ack = function() called = true end })
---oil.sleep(.1)
---checks:assert(called, checks.is(true))
+oil.sleep(.1)
+checks:assert(called, checks.is(true))
 orb:shutdown()
 Caller:idle()
 --[Client]=====================================================================]

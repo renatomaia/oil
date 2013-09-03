@@ -4,16 +4,18 @@ local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
 orb = oil.dtests.init{ port = 2809 }
-oil.sleep(2)
+orb:newservant{ __type = "::CORBA::InterfaceDef", __objkey = "object" }
+orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
 orb = oil.dtests.init()
 checks = oil.dtests.checks
-object = oil.dtests.resolve("Server", 2809, "object", nil, true, true)
+object = oil.dtests.resolve("Server", 2809, "object", nil, false, true)
+inexistent = oil.dtests.resolve("Server", 2809, "inexistent", nil, true, true)
 
 -- synchronous call
-result = object:_non_existent()
+result = inexistent:_non_existent()
 checks:assert(result, checks.is(true))
 --[Client]=====================================================================]
 

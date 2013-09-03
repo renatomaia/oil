@@ -1,19 +1,7 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5 alpha                                                         --
--- Title  : Interoperable Naming Service                                      --
--- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>                       --
---------------------------------------------------------------------------------
--- Interface:                                                                 --
---   new() Creates a new instance of a CORBA Naming Service                   --
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : Interoperable Naming Service
+-- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>
 --------------------------------------------------------------------------------
 -- Notes:                                                                     --
 --   See Naming Service Specification v1.3                                    --
@@ -36,14 +24,13 @@
 --------------------------------------------------------------------------------
 
 local next = next
+local pairs = pairs
 
 local string = require "string"
 local table  = require "table"
 
 local oo     = require "oil.oo"
 local assert = require "oil.assert"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
-
-module "oil.corba.services.naming"
 
 --------------------------------------------------------------------------------
 -- Converting between CosNames, Stringified Names and URLs ---------------------
@@ -130,7 +117,7 @@ end
 --------------------------------------------------------------------------------
 -- BindingIterator interface implementation ------------------------------------
 
-BindingIterator = oo.class()
+local BindingIterator = oo.class()
 
 function BindingIterator:__new(bindings)
   return oo.rawnew(self, {bindings = bindings})
@@ -169,7 +156,7 @@ end
 --------------------------------------------------------------------------------
 -- NamingContext interface implementation --------------------------------------
 
-NamingContext = oo.class()
+local NamingContext = oo.class()
 
 function NamingContext:__new()
   return oo.rawnew(self, { bindings = {} })
@@ -372,10 +359,6 @@ function NamingContext:destroy()
   end
 end
 
-local function BindingList(b, how_many)
-  return bl, bi
-end
-
 function NamingContext:list(how_many)
   local i = 1
   local bl = {}
@@ -393,7 +376,7 @@ end
 --------------------------------------------------------------------------------
 -- NamingContextExt interface implementation -----------------------------------
 
-NamingContextExt = oo.class({}, NamingContext)
+local NamingContextExt = oo.class({}, NamingContext)
 
 function NamingContextExt:to_string(n)
   return to_string(n)
@@ -427,8 +410,10 @@ end
 -- @return 2 string Repository ID of interface supported by the Naming Service.
 -- @return 3 string Object key used in the Naming Service object reference.
 
-function new()
-  return NamingContextExt(),
-         "NameService",
-         "IDL:omg.org/CosNaming/NamingContextExt:1.0"
-end
+return {
+  new = function ()
+    return NamingContextExt(),
+           "NameService",
+           "IDL:omg.org/CosNaming/NamingContextExt:1.0"
+  end,
+}

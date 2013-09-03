@@ -1,23 +1,11 @@
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : Event Service
+-- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>
 --------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5 alpha                                                         --
--- Title  : Event Service                                                     --
--- Authors: Leonardo S. A. Maciel <leonardo@maciel.org>                       --
---------------------------------------------------------------------------------
--- Interface:                                                                 --
---   new() Creates a new instance of a CORBA Event Channel                    --
---------------------------------------------------------------------------------
--- Notes:                                                                     --
---   This implementation currently does not support typed events.             --
---   This implementation currently does not support pull event model.         --
+-- Notes:
+--   This implementation currently does not support typed events.
+--   This implementation currently does not support pull event model.
 --------------------------------------------------------------------------------
 
 local oil               = require "oil"
@@ -30,8 +18,6 @@ local EventDispatcher   = require "oil.corba.services.event.SingleSynchronousDis
 local ConsumerAdmin     = require "oil.corba.services.event.ConsumerAdmin"
 local SupplierAdmin     = require "oil.corba.services.event.SupplierAdmin"
 
-module "oil.corba.services.event"
-
 --------------------------------------------------------------------------------
 -- In this new version, ConsumerAdmin and SupplierAdmin objects were
 -- suppressed and the event channel implements their interface.
@@ -40,7 +26,7 @@ module "oil.corba.services.event"
 local EventChannel = oo.class()
 
 function EventChannel.__new(class)
-  self = oo.rawnew(class, {
+  local self = oo.rawnew(class, {
     push_consumer_count = 0,
     push_supplier_count = 0,
     event_queue = EventQueue(),
@@ -118,9 +104,10 @@ end
 -- @return 2 string Repository ID of interface supported by the Event Channel.
 -- @return 3 string Default Event Channel object key.
 
-function new()
-  return EventChannel(),
-         "DefaultEventChannel",
-         "IDL:omg.org/CosEventChannelAdmin/EventChannel:1.0"
-end
-
+return {
+  new = function()
+    return EventChannel(),
+           "DefaultEventChannel",
+           "IDL:omg.org/CosEventChannelAdmin/EventChannel:1.0"
+  end,
+}

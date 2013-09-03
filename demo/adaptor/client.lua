@@ -1,4 +1,4 @@
-require "oil"
+local oil = require "oil"
 oil.main(function()
 	orb = oil.init()
 	orb:loadidl[[
@@ -153,24 +153,24 @@ oil.main(function()
 	function getauthors()
 		local authors = {}
 		for i=1, math.random(6) do
-			table.insert(authors, Authors[math.random(table.getn(Authors))])
+			table.insert(authors, Authors[math.random(#Authors)])
 		end      
 		return authors
 	end
                          
 	while true do            
 		c1:submit{             
-			title = Titles[math.random(table.getn(Titles))];
+			title = Titles[math.random(#Titles)];
 			authors = getauthors();
 		}
 		oil.sleep(1)
 		c2:submit{             
-			title = Titles[math.random(table.getn(Titles))];
+			title = Titles[math.random(#Titles)];
 			authors = getauthors();
 		}
 		oil.sleep(1)
 		c3:submit{             
-			title = Titles[math.random(table.getn(Titles))];
+			title = Titles[math.random(#Titles)];
 			authors = getauthors();
 		}
 		oil.sleep(1)

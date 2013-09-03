@@ -38,10 +38,8 @@ do -- add new operation 'settimelimit' on sockets
 	registry["udp{unconnected}"].__index.settimelimit = settimelimit
 end
 
-module(...); local _ENV = _M
 
-
-EventPoll = class()
+local EventPoll = class()
 
 function EventPoll:__init()
 	self.ready = {}
@@ -97,9 +95,9 @@ end
 
 
 
-class(_ENV)
+local Sockets = class()
 
-function _ENV:setoptions(options, socket, ...)
+function Sockets:setoptions(options, socket, ...)
 	if options and socket then
 		for name, value in pairs(options) do
 			socket:setoption(name, value)
@@ -108,10 +106,12 @@ function _ENV:setoptions(options, socket, ...)
 	return socket, ...
 end
 
-function _ENV:newsocket(options)
+function Sockets:newsocket(options)
 	return self:setoptions(options, tcpsocket())
 end
 
-function _ENV:newpoll()
+function Sockets:newpoll()
 	return EventPoll()
 end
+
+return Sockets

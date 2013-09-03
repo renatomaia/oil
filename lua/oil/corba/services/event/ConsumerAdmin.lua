@@ -1,37 +1,37 @@
 local pcall = pcall
 
-local oil               = require "oil"
-local oo                = require "oil.oo"
-local assert            = require "oil.assert"
-local UnorderedArrayedSet = require "loop.collection.ArrayedSet"
+local oil = require "oil"
+local oo = require "oil.oo"
+local assert = require "oil.assert"
+local ArrayedSet = require "loop.collection.ArrayedSet"
 local ProxyPushSupplier = require "oil.corba.services.event.ProxyPushSupplier"
 
-module("oil.corba.services.event.ConsumerAdmin", oo.class)
+local ConsumerAdmin = oo.class()
 
-function __new(class, channel)
+function ConsumerAdmin.__new(class, channel)
   return oo.rawnew(class, {
     channel = channel,
-    proxypushsuppliers = UnorderedArrayedSet()
+    proxypushsuppliers = ArrayedSet()
   })
 end
 
 -- The obtain_push_supplier operation returns a ProxyPushSupplier object. The
 -- ProxyPushSupplier object is then used to connect a push-style consumer.
 
-function obtain_push_supplier(self)
+function ConsumerAdmin:obtain_push_supplier()
   return ProxyPushSupplier(self)
 end
 
 -- invoked by ProxyPushSupplier to signal it's connected
 
-function add_push_consumer(self, proxy, push_consumer)
+function ConsumerAdmin:add_push_consumer(proxy, push_consumer)
   self.proxypushsuppliers:add(proxy)
   self.channel:add_push_consumer(push_consumer)
 end
 
 -- invoked by ProxyPushSupplier to signal it's disconnected
 
-function rem_push_consumer(self, proxy, push_consumer)
+function ConsumerAdmin:rem_push_consumer(proxy, push_consumer)
   assert.results(self.proxypushsuppliers:contains(proxy))
   self.proxypushsuppliers:remove(proxy)
   self.channel:rem_push_consumer(push_consumer)
@@ -41,7 +41,7 @@ end
 -- must reverse iterate over proxypushsuppliers because the disconnection
 -- removes the consumer from the array.
 
-function destroy(self)
+function ConsumerAdmin:destroy()
   for i=#self.proxypushsuppliers,1,-1 do
     local proxy = self.proxypushsuppliers[i]
     pcall(proxy.disconnect_push_supplier, proxy) 
@@ -50,3 +50,4 @@ function destroy(self)
   self.channel = nil
 end
 
+return ConsumerAdmin

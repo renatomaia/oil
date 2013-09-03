@@ -12,11 +12,13 @@ local pcall = _G.pcall
 local select = _G.select
 local tostring = _G.tostring
 local type = _G.type
-local unpack = _G.unpack
 local stderr = _G.io and _G.io.stderr -- only if available
 
-local tabops = require "loop.table"
-local memoize = tabops.memoize
+local array = require "table"
+local unpack = array.unpack or _G.unpack
+
+local table = require "loop.table"
+local memoize = table.memoize
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -29,7 +31,6 @@ local ReplyID = giop.ReplyID
 local LocateRequestID = giop.LocateRequestID
 local LocateReplyID = giop.LocateReplyID
 local CancelRequestID = giop.CancelRequestID
-local CloseConnectionID = giop.CloseConnectionID
 local MessageErrorID = giop.MessageErrorID
 local MessageType = giop.MessageType
 local SystemExceptionIDs = giop.SystemExceptionIDs

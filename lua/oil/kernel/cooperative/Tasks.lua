@@ -1,5 +1,5 @@
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : Cooperatibe Threads API Wrapper
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
@@ -12,16 +12,19 @@ local yield = coroutine.yield
 local oo = require "oil.oo"
 local class = oo.class
 
-module(..., class)
 
-function current(self)
+local Tasks = class()
+
+function Tasks:current()
 	return running()
 end
 
-function start(self, func, ...)
+function Tasks:start(func, ...)
 	return yield("next", create(func), ...)
 end
 
-function remove(self, thread)
+function Tasks:remove(thread)
 	return yield("unschedule", thread)
 end
+
+return Tasks

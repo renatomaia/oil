@@ -1,4 +1,4 @@
-require "oil"                                             -- Load OiL package
+local oil = require "oil"                                -- Load OiL package
 
 oil.main(function()
 	local orb = oil.init{ flavor = "ludo" }

@@ -45,8 +45,6 @@ ok, ex = pcall(sync.concat, sync, "first", "second")
 assert(ok == false)
 assert(type(ex) == "table")
 
-oil.verbose:print("ex = ",ex)
-
 assert(ex._repid == "IDL:omg.org/CORBA/UNKNOWN:1.0")
 assert(ex.completed == "COMPLETED_MAYBE")
 

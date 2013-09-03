@@ -83,18 +83,20 @@ suite:add("TypeAsFieldAndMetaField",
 
 --------------------------------------------------------------------------------
 
-suite:add("Userdata",
-	function()
-		return idl.any
-	end,
-	function()
-		local Userdata = newproxy(true)
-		local Metatable = getmetatable(Userdata)
-		Metatable.__index = {number=123, text="text"}
-		Metatable.__type = StructType()
-		return Userdata
-	end,
-	ExpectedValue)
+if _VERSION == "Lua 5.1" then
+	suite:add("Userdata",
+		function()
+			return idl.any
+		end,
+		function()
+			local Userdata = newproxy(true)
+			local Metatable = getmetatable(Userdata)
+			Metatable.__index = {number=123, text="text"}
+			Metatable.__type = StructType()
+			return Userdata
+		end,
+		ExpectedValue)
+end
 
 --------------------------------------------------------------------------------
 

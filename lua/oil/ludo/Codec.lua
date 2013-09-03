@@ -1,28 +1,10 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua                                                  --
--- Release: 0.5                                                               --
--- Title  : Client-side CORBA GIOP Protocol specific to IIOP                  --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- channels:Facet
--- 	channel:object retieve(configs:table)
--- 	channel:object select(channel|configs...)
--- 	configs:table default(configs:table)
--- 
--- sockets:Receptacle
--- 	socket:object tcp()
--- 	input:table, output:table select([input:table], [output:table], [timeout:number])
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua
+-- Release: 0.6
+-- Title  : Client-side LuDO Protocol
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local _G = require "_G"
+
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local loadstring = _G.loadstring
 local pairs = _G.pairs
 local setfenv = _G.setfenv
@@ -37,12 +19,12 @@ local copy = table.copy
 
 local StringStream = require "loop.serial.StringStream"
 
-local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
 local class = oo.class
 
 local Referrer = require "oil.ludo.Referrer"
 
-module("oil.ludo.Codec", class)
+local Codec = class()
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -50,14 +32,14 @@ module("oil.ludo.Codec", class)
 local WeakKey    = class{ __mode = "k" }
 local WeakValues = class{ __mode = "v" }
 
-function __init(self)
+function Codec:__init()
 	self.names = WeakKey(self.names)
 	self.values = WeakValues(self.values)
 	self.names[Referrer.Reference] = "LuDOReference"
 	self.values.LuDOReference = Referrer.Reference
 end
 
-function localresources(self, resources)
+function Codec:localresources(resources)
 	local names = self.names
 	local values = self.values
 	for name, resource in pairs(resources) do
@@ -66,11 +48,11 @@ function localresources(self, resources)
 	end
 end
 
-function encoder(self)
+function Codec:encoder()
 	return StringStream(copy(self.names))
 end
 
-function decoder(self, stream)
+function Codec:decoder(stream)
 	return StringStream{
 		environment = copy(self.values, {
 			loadstring = loadstring,
@@ -82,3 +64,5 @@ function decoder(self, stream)
 		data = stream,
 	}
 end
+
+return Codec

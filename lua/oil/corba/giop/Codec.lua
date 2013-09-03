@@ -1,5 +1,5 @@
 -- Project: OiL - ORB in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : Mapping of Lua values into Common Data Representation (CDR)
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
@@ -16,9 +16,9 @@ local type = _G.type
 local math = require "math"
 local huge = math.huge
 
-local table = require "table"
-local concat = table.concat
-local unpack = table.unpack or _G.unpack
+local array = require "table"
+local concat = array.concat
+local unpack = array.unpack or _G.unpack
 
 local struct = require "struct"
 local binpack = struct.pack
@@ -42,8 +42,6 @@ local truncatable = idl.ValueKind.truncatable
 local giop = require "oil.corba.giop"
 local IOR = giop.IOR
 
-module("oil.corba.giop.Codec", class)
-
 local IndirectionTag = 0xffffffff
 
 --------------------------------------------------------------------------------
@@ -60,7 +58,7 @@ local UnionLabelInfo = {
 	name = "label",
 	type = idl.void, -- this field is changed at run-time
 }
-TypeCodeInfo = {
+local TypeCodeInfo = {
 	[0]  = {name = "null"     , type = "empty", idl = idl.null     }, 
 	[1]  = {name = "void"     , type = "empty", idl = idl.void     }, 
 	[2]  = {name = "short"    , type = "empty", idl = idl.short    },
@@ -220,7 +218,7 @@ TypeCodeInfo = {
 	[IndirectionTag] = {name = "indirection marker", type = "fake"},
 }
 
-PrimitiveSizes = {
+local PrimitiveSizes = {
 	boolean    =  1,
 	char       =  1,
 	octet      =  1,
@@ -265,7 +263,7 @@ end
 --------------------------------------------------------------------------------
 -- Unmarshalling buffer class --------------------------------------------------
 
-Encoder = class {
+local Encoder = class {
 	previousend = 0,
 	index = 1,
 	cursor = 1,
@@ -615,13 +613,13 @@ local SingleRepID = 0x00000002
 local ListOfRepID = 0x00000006
 local ChunkedFlag = 0x00000008
 
-local function reserve(self, size, noupdate)
+local function reserve(self, size, noupdate, value)
 	local sizeindex = self.ChunkSizeIndex
 	if sizeindex then
 		local newsize = size + (self[sizeindex] or MinValueTag)
 		if newsize >= MinValueTag then -- update current chunk size
 			if size >= MinValueTag then
-				illegal(data, "value too large")
+				illegal(value, "value too large")
 			end                                                                       --[[VERBOSE]] verbose:marshal("[new encoding chunk]")
 			self.ChunkSizeIndex = nil -- disable chunk encoding
 			self:long(0) --[[start a new chunk (size is initially 0)]]
@@ -641,17 +639,18 @@ local function reservedalign(self, size)
 end
 
 local function reservedrawput(self, format, data, size)
-	reserve(self, size)
+	reserve(self, size, false, data)
 	return Encoder.rawput(self, format, data, size)
 end
 
 local ulongsize = PrimitiveSizes.ulong
 local function reservedstring(self, value)
-	reserve(self, alignment(self, ulongsize) -- alignment for the stating ulong
+	reserve(self, alignment(self, ulongsize) -- alignment for the starting ulong
 	            + ulongsize                  -- size of ulong with the string size
 	            + #value                     -- number of bytes in the string
 	            + 1,                         -- terminating '\0' of the string
-	        "no update")
+	        "no update",
+	        value)
 	return Encoder.string(self, value)
 end
 
@@ -662,7 +661,8 @@ local function reservedsequence(self, value, idltype)
 		reserve(self, alignment(self, ulongsize) -- alignment for the ulong
 		            + ulongsize                  -- size of ulong with item count
 		            + count * itemsize,          -- size of the contents
-		       "no update")
+		       "no update",
+		       value)
 	end
 	return Encoder.sequence(self, value, idltype)
 end
@@ -671,7 +671,7 @@ local function reservedarray(self, value, idltype)
 	local itemsize = PrimitiveSizes[idltype.elementtype._type]
 	if itemsize then
 		local count = (type(value) == "string") and #value or (value.n or #value)
-		reserve(self, count * itemsize, "no update") -- size of the contents
+		reserve(self, count * itemsize, "no update", value) -- size of the contents
 	end
 	return Encoder.array(self, value, idltype)
 end
@@ -899,7 +899,7 @@ end
 --------------------------------------------------------------------------------
 -- Unmarshalling buffer class --------------------------------------------------
 
-Decoder = class{
+local Decoder = class{
 	localrefs = "implementation",
 	previousend = 0,
 	cursor = 1,
@@ -1037,7 +1037,7 @@ function Decoder:Object(idltype)                                                
 			local servants = self.context.servants
 			if servants ~= nil then
 				local entry = servants:localref(ior)
-				if entry ~= nil then                                                    --[[VERBOSE]] verbose:unmarshal("reference to local object with key '",objkey,"' resolved")
+				if entry ~= nil then                                                    --[[VERBOSE]] verbose:unmarshal("reference to local object with key '",entry.__objkey,"' resolved")
 					if self.localrefs == "implementation" then
 						entry = entry.__servant
 					end
@@ -1428,9 +1428,16 @@ end
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
+local Codec = class{
+	PrimitiveSizes = PrimitiveSizes,
+	TypeCodeInfo = TypeCodeInfo,
+	Encoder = Encoder,
+	Decoder = Decoder,
+}
+
 -- NOTE: second parameter indicates an encasulated octet-stream, therefore
 --       endianess must be read from stream.
-function decoder(self, octets, getorder)
+function Codec:decoder(octets, getorder)
 	local decoder = self.Decoder{
 		localrefs = self.localrefs,
 		data = octets,
@@ -1441,7 +1448,7 @@ function decoder(self, octets, getorder)
 end
 
 -- NOTE: Presence of a parameter indicates an encapsulated octet-stream.
-function encoder(self, putorder)
+function Codec:encoder(putorder)
 	local encoder = self.Encoder{
 		context = self, 
 	}
@@ -1514,3 +1521,5 @@ end
 --[[VERBOSE]] 		CURSOR[cursor] = value
 --[[VERBOSE]] 	end
 --[[VERBOSE]] end
+
+return Codec

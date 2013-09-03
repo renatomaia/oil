@@ -1,103 +1,98 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : IDL Definition Registry                                           --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- interfaces:Facet
--- 	interface:table register(definition:table)
--- 	interface:table resolve(id:string)
--- 	[interface:table] lookup(name:string)
--- 	[interface:table] lookup_id(repid:string)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : IDL Definition Registry
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local _G = require "_G"
-local error        = error
-local getmetatable = getmetatable
-local ipairs       = ipairs
-local next         = next
-local pairs        = pairs
-local rawget       = rawget
-local select       = select
-local setmetatable = setmetatable
-local type         = type
-local unpack       = unpack
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local error = _G.error
+local getmetatable = _G.getmetatable
+local ipairs = _G.ipairs
+local next = _G.next
+local pairs = _G.pairs
+local rawget = _G.rawget
+local rawset = _G.rawset
+local select = _G.select
+local setmetatable = _G.setmetatable
+local type = _G.type
 
 local string = require "string"
-local table  = require "table"
+local gmatch = string.gmatch
+
+local array = require "table"
+local remove = array.remove
+local unpack = array.unpack or _G.unpack
 
 local OrderedSet = require "loop.collection.OrderedSet"
-local Publisher  = require "loop.object.Publisher"
+local Publisher = require "loop.object.Publisher"
 
-local oo        = require "oil.oo"
-local assert    = require "oil.assert"
-local idl       = require "oil.corba.idl"
-local iridl     = require("oil.corba.idl.ir").definitions
-local Exception = require "oil.corba.giop.Exception"                            --[[VERBOSE]] local verbose = require "oil.verbose"
+local oo = require "oil.oo"
+local class = oo.class
+local getclass = oo.getclass
+local getmember = oo.getmember
+local isclass = oo.isclass
+local isinstanceof = oo.isinstanceof
+local rawnew = oo.rawnew
+local topdown = oo.topdown
 
-module "oil.corba.idl.Registry"
+local assert = require "oil.assert"
+local asserttype = assert.type
+local assertillegal = assert.illegal
+
+local idl = require "oil.corba.idl"
+local idlContainer = idl.Container
+local void = idl.void
+local null = idl.null
+local ValueBase = idl.ValueBase
+
+local iridl = require("oil.corba.idl.ir").definitions
+local Exception = require "oil.corba.giop.Exception"
 
 --------------------------------------------------------------------------------
 -- Internal classes ------------------------------------------------------------
 
-  IRObject                = oo.class()
-  Contained               = oo.class({}, IRObject)
-  Container               = oo.class({}, IRObject)
-  IDLType                 = oo.class({}, IRObject)
+  local IRObject                = class()
+  local Contained               = class({}, IRObject)
+  local Container               = class({}, IRObject)
+  local IDLType                 = class({}, IRObject)
   
-  PrimitiveDef            = oo.class({ __type = "IDL:omg.org/CORBA/PrimitiveDef:1.0"            }, IDLType)
-  ArrayDef                = oo.class({ __type = "IDL:omg.org/CORBA/ArrayDef:1.0"                }, IDLType)
-  SequenceDef             = oo.class({ __type = "IDL:omg.org/CORBA/SequenceDef:1.0"             }, IDLType)
-  StringDef               = oo.class({ __type = "IDL:omg.org/CORBA/StringDef:1.0"               }, IDLType)
---WstringDef              = oo.class({ __type = "IDL:omg.org/CORBA/WstringDef:1.0"              }, IDLType)
---FixedDef                = oo.class({ __type = "IDL:omg.org/CORBA/FixedDef:1.0"                }, IDLType)
+  local PrimitiveDef            = class({ __type = "IDL:omg.org/CORBA/PrimitiveDef:1.0"            }, IDLType)
+  local ArrayDef                = class({ __type = "IDL:omg.org/CORBA/ArrayDef:1.0"                }, IDLType)
+  local SequenceDef             = class({ __type = "IDL:omg.org/CORBA/SequenceDef:1.0"             }, IDLType)
+  local StringDef               = class({ __type = "IDL:omg.org/CORBA/StringDef:1.0"               }, IDLType)
+--local WstringDef              = class({ __type = "IDL:omg.org/CORBA/WstringDef:1.0"              }, IDLType)
+--local FixedDef                = class({ __type = "IDL:omg.org/CORBA/FixedDef:1.0"                }, IDLType)
   
-  MemberDef               = oo.class(nil                                                         , Contained)
+  local MemberDef               = class(nil                                                         , Contained)
   
-  AttributeDef            = oo.class({ __type = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, MemberDef)
-  OperationDef            = oo.class({ __type = "IDL:omg.org/CORBA/OperationDef:1.0"            }, MemberDef)
-  ValueMemberDef          = oo.class({ __type = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, MemberDef)
-  ConstantDef             = oo.class({ __type = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
-  TypedefDef              = oo.class({ __type = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, IDLType, Contained)
+  local AttributeDef            = class({ __type = "IDL:omg.org/CORBA/AttributeDef:1.0"            }, MemberDef)
+  local OperationDef            = class({ __type = "IDL:omg.org/CORBA/OperationDef:1.0"            }, MemberDef)
+  local ValueMemberDef          = class({ __type = "IDL:omg.org/CORBA/ValueMemberDef:1.0"          }, MemberDef)
+  local ConstantDef             = class({ __type = "IDL:omg.org/CORBA/ConstantDef:1.0"             }, Contained)
+  local TypedefDef              = class({ __type = "IDL:omg.org/CORBA/TypedefDef:1.0"              }, IDLType, Contained)
   
-  StructDef               = oo.class({ __type = "IDL:omg.org/CORBA/StructDef:1.0"               }, TypedefDef , Container)
-  UnionDef                = oo.class({ __type = "IDL:omg.org/CORBA/UnionDef:1.0"                }, TypedefDef , Container)
-  EnumDef                 = oo.class({ __type = "IDL:omg.org/CORBA/EnumDef:1.0"                 }, TypedefDef)
-  AliasDef                = oo.class({ __type = "IDL:omg.org/CORBA/AliasDef:1.0"                }, TypedefDef)
---NativeDef               = oo.class({ __type = "IDL:omg.org/CORBA/NativeDef:1.0"               }, TypedefDef)
-  ValueBoxDef             = oo.class({ __type = "IDL:omg.org/CORBA/ValueBoxDef:1.0"             }, TypedefDef)
+  local StructDef               = class({ __type = "IDL:omg.org/CORBA/StructDef:1.0"               }, TypedefDef , Container)
+  local UnionDef                = class({ __type = "IDL:omg.org/CORBA/UnionDef:1.0"                }, TypedefDef , Container)
+  local EnumDef                 = class({ __type = "IDL:omg.org/CORBA/EnumDef:1.0"                 }, TypedefDef)
+  local AliasDef                = class({ __type = "IDL:omg.org/CORBA/AliasDef:1.0"                }, TypedefDef)
+--local NativeDef               = class({ __type = "IDL:omg.org/CORBA/NativeDef:1.0"               }, TypedefDef)
+  local ValueBoxDef             = class({ __type = "IDL:omg.org/CORBA/ValueBoxDef:1.0"             }, TypedefDef)
   
-  Repository              = oo.class({ __type = "IDL:omg.org/CORBA/Repository:1.0"              }, Container)
-  ModuleDef               = oo.class({ __type = "IDL:omg.org/CORBA/ModuleDef:1.0"               }, Contained, Container)
-  ExceptionDef            = oo.class({ __type = "IDL:omg.org/CORBA/ExceptionDef:1.0"            }, Contained, Container)
-  InterfaceDef            = oo.class({ __type = "IDL:omg.org/CORBA/InterfaceDef:1.0"            }, IDLType, Contained, Container)
-  ValueDef                = oo.class({ __type = "IDL:omg.org/CORBA/ValueDef:1.0"                }, Container, Contained, IDLType)
+  local Repository              = class({ __type = "IDL:omg.org/CORBA/Repository:1.0"              }, Container)
+  local ModuleDef               = class({ __type = "IDL:omg.org/CORBA/ModuleDef:1.0"               }, Contained, Container)
+  local ExceptionDef            = class({ __type = "IDL:omg.org/CORBA/ExceptionDef:1.0"            }, Contained, Container)
+  local InterfaceDef            = class({ __type = "IDL:omg.org/CORBA/InterfaceDef:1.0"            }, IDLType, Contained, Container)
+  local ValueDef                = class({ __type = "IDL:omg.org/CORBA/ValueDef:1.0"                }, Container, Contained, IDLType)
   
-  AbstractInterfaceDef    = oo.class({ __type = "IDL:omg.org/CORBA/AbstractInterfaceDef:1.0"    }, InterfaceDef)
-  LocalInterfaceDef       = oo.class({ __type = "IDL:omg.org/CORBA/LocalInterfaceDef:1.0"       }, InterfaceDef)
+  local AbstractInterfaceDef    = class({ __type = "IDL:omg.org/CORBA/AbstractInterfaceDef:1.0"    }, InterfaceDef)
+  local LocalInterfaceDef       = class({ __type = "IDL:omg.org/CORBA/LocalInterfaceDef:1.0"       }, InterfaceDef)
   
---ExtAttributeDef         = oo.class({ __type = "IDL:omg.org/CORBA/ExtAttributeDef:1.0"         }, AttributeDef)
---ExtValueDef             = oo.class({ __type = "IDL:omg.org/CORBA/ExtValueDef:1.0"             }, ValueDef)
---ExtInterfaceDef         = oo.class({ __type = "IDL:omg.org/CORBA/ExtInterfaceDef:1.0"         }, InterfaceDef, InterfaceAttrExtension)
---ExtAbstractInterfaceDef = oo.class({ __type = "IDL:omg.org/CORBA/ExtAbstractInterfaceDef:1.0" }, AbstractInterfaceDef, InterfaceAttrExtension)
---ExtLocalInterfaceDef    = oo.class({ __type = "IDL:omg.org/CORBA/ExtLocalInterfaceDef:1.0"    }, LocalInterfaceDef, InterfaceAttrExtension)
+--local ExtAttributeDef         = class({ __type = "IDL:omg.org/CORBA/ExtAttributeDef:1.0"         }, AttributeDef)
+--local ExtValueDef             = class({ __type = "IDL:omg.org/CORBA/ExtValueDef:1.0"             }, ValueDef)
+--local ExtInterfaceDef         = class({ __type = "IDL:omg.org/CORBA/ExtInterfaceDef:1.0"         }, InterfaceDef, InterfaceAttrExtension)
+--local ExtAbstractInterfaceDef = class({ __type = "IDL:omg.org/CORBA/ExtAbstractInterfaceDef:1.0" }, AbstractInterfaceDef, InterfaceAttrExtension)
+--local ExtLocalInterfaceDef    = class({ __type = "IDL:omg.org/CORBA/ExtLocalInterfaceDef:1.0"    }, LocalInterfaceDef, InterfaceAttrExtension)
   
-  ObjectRef               = oo.class() -- fake class
-
---[[VERBOSE]] local ClassName = {}
---[[VERBOSE]] for name, class in pairs(_M) do
---[[VERBOSE]] 	if oo.isclass(class) then
---[[VERBOSE]] 		ClassName[class] = name
---[[VERBOSE]] 	end
---[[VERBOSE]] end
+  local ObjectRef               = class() -- fake class
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
@@ -112,7 +107,7 @@ local Empty = setmetatable({}, { __newindex = function(_, field) verbose:debug("
 --
 
 function IRObject:__new(...)
-	self = oo.rawnew(self, ...)
+	self = rawnew(self, ...)
 	self.references = self.references or {}
 	self.observer = self.observer or Publisher()
 	return self
@@ -184,7 +179,7 @@ Contained.definition_fields = {
 function Contained:update(new)
 	new.defined_in = new.defined_in or self.containing_repository
 	if new.defined_in.containing_repository ~= self.containing_repository then
-		assert.illegal(defined_in,
+		assertillegal(new.defined_in,
 		              "container, repository does not match",
 		              "BAD_PARAM")
 	end
@@ -216,7 +211,7 @@ end
 function Contained:_set_id(id)
 	local definitions = self.containing_repository.definition_map
 	if definitions[id] and definitions[id] ~= self then
-		assert.illegal(id, "repository ID, already exists", "BAD_PARAM", 2)
+		assertillegal(id, "repository ID, already exists", "BAD_PARAM", 2)
 	end
 	if self.repID then
 		definitions[self.repID] = nil
@@ -231,7 +226,7 @@ end
 function Contained:_set_name(name)
 	local contents = self.defined_in.definitions
 	if contents[name] and contents[name] ~= self then
-		assert.illegal(name, "contained name, name clash", "BAD_PARAM", 1)
+		assertillegal(name, "contained name, name clash", "BAD_PARAM", 1)
 	end
 	local old = self.name
 	contents:_remove(self)
@@ -262,12 +257,12 @@ end
 
 function Contained:move(new_container, new_name, new_version)
 	if new_container.containing_repository ~= self.containing_repository then
-		assert.illegal(new_container, "container", "BAD_PARAM", 4)
+		assertillegal(new_container, "container", "BAD_PARAM", 4)
 	end
 	
 	local new = new_container.definitions
 	if new[new_name] and new[new_name] ~= self then
-		assert.illegal(new_name, "contained name, already exists", "BAD_PARAM", 3)
+		assertillegal(new_name, "contained name, already exists", "BAD_PARAM", 3)
 	end
 	
 	if self.defined_in then
@@ -292,7 +287,7 @@ end
 --
 function Container:update()
 	if not self.expandable then self.definitions = nil end
-	idl.Container(self)
+	idlContainer(self)
 end
 
 local function isingle(self, ended)
@@ -314,7 +309,7 @@ function Container:lookup(search_name)
 		scope = self
 		search_name = "::"..search_name
 	end
-	for nextscope in string.gmatch(search_name, "::([^:]+)") do
+	for nextscope in gmatch(search_name, "::([^:]+)") do
 		if not scope or not scope.definitions then return nil end
 		scope = scope.definitions[nextscope]
 	end
@@ -602,7 +597,7 @@ local PrimitiveTypes = {
 PrimitiveDef.def_kind = "dk_Primitive"
 
 function PrimitiveDef:__new(object)
-	self = oo.rawnew(self, object)
+	self = rawnew(self, object)
 	IDLType.update(self)
 	return self
 end
@@ -616,7 +611,7 @@ end
 function ObjectRef:__new(object, registry)
 	if object.repID ~= PrimitiveTypes.pk_objref.repID then
 		return registry.repository:lookup_id(object.repID) or
-		       assert.illegal(new, "Object type, use interface definition instead")
+		       assertillegal(object,"Object type, use interface definition instead")
 	end
 	return PrimitiveTypes.pk_objref
 end
@@ -785,13 +780,13 @@ function OperationDef:_set_result_def(type_def, registry)
 		self.result_def = type_def
 		self.result = newval
 		self:watch(self.result_def, "result")
-		if current == idl.void then
+		if current == void then
 			if self.outputs == Empty then
 				self.outputs = { newval }
 			else
 				self.outputs = { newval, unpack(self.outputs) }
 			end
-		elseif newval == idl.void then
+		elseif newval == void then
 			self.outputs = { unpack(self.outputs, 2) }
 		else
 			self.outputs = { newval, unpack(self.outputs, 2) }
@@ -804,7 +799,7 @@ function OperationDef:_get_params() return self.parameters end
 function OperationDef:_set_params(parameters, registry)
 	local inputs = {}
 	local outputs = {}
-	if self.result ~= idl.void then
+	if self.result ~= void then
 		outputs[#outputs+1] = self.result
 	end
 	for index, param in ipairs(parameters) do
@@ -819,7 +814,7 @@ function OperationDef:_set_params(parameters, registry)
 			inputs[#inputs+1] = param.type
 			outputs[#outputs+1] = param.type
 		else
-			assert.illegal(mode, "operation parameter mode")
+			assertillegal(param.mode, "operation parameter mode")
 		end
 	end
 	for index, param in ipairs(self.parameters) do
@@ -886,7 +881,7 @@ function ValueMemberDef:move(new_container, new_name, new_version)
 		local members = old_container.members
 		for index, member in ipairs(members) do
 			if member == self then
-				table.remove(members, index)
+				remove(members, index)
 				break
 			end
 		end
@@ -896,7 +891,7 @@ function ValueMemberDef:move(new_container, new_name, new_version)
 		local members = new_container.members
 		members[#members+1] = self
 	elseif new_container ~= self.containing_repository then
-		assert.illegal(new_container, "ValueMemberDef container", "BAD_PARAM", 4)
+		assertillegal(new_container, "ValueMemberDef container", "BAD_PARAM", 4)
 	end
 end
 
@@ -1146,7 +1141,7 @@ Repository.repID = ""
 Repository.absolute_name = ""
 
 function Repository:__new(object)
-	self = oo.rawnew(self, object)
+	self = rawnew(self, object)
 	self.containing_repository = self
 	self.definition_map = self.definition_map or {}
 	Container.update(self, self)
@@ -1256,16 +1251,16 @@ local function changeinheritance(container, old, new, type)
 	local actual = {}
 	for index, base in ipairs(new) do
 		if type then
-			actual[index] = assert.type(base, type, "inherited definition",
+			actual[index] = asserttype(base, type, "inherited definition",
 			                            "BAD_PARAM", 4)
 		end
 		for _, contained in ipairs(container.definitions) do
 			if #base:lookup_name(contained.name, -1, "dk_All", false) > 0 then
-				assert.illegal(ifaces,
-				               "inheritance, member '"..
-				               member.name..
-				               "' override not allowed",
-				               "BAD_PARAM", 5)
+				assertillegal(base,
+				              "inheritance, member '"..
+				              contained.name..
+				              "' override not allowed",
+				              "BAD_PARAM", 5)
 			end
 		end
 	end
@@ -1481,7 +1476,7 @@ function ValueDef:update(new)
 		self:_set_is_abstract(new.is_abstract)
 		self:_set_is_truncatable(new.is_truncatable)
 	end
-	if new.base_value == idl.null then
+	if new.base_value == null then
 		self:_set_base_value(nil)
 	else
 		self:_set_base_value(new.base_value)
@@ -1496,8 +1491,8 @@ end
 
 function ValueDef:get_description()
 	local base_value = self.base_value
-	if base_value == idl.null then
-		base_value = idl.ValueBase
+	if base_value == null then
+		base_value = ValueBase
 	end
 	local abstract_base_values = {}
 	for index, base in ipairs(self.abstract_base_values) do
@@ -1524,7 +1519,7 @@ end
 function ValueDef:is_a(id)
 	if id == self.repID then return true end
 	local base = self.inherited
-	if base ~= idl.null and base:is_a(id) then return true end
+	if base ~= null and base:is_a(id) then return true end
 	for _, base in ipairs(self.abstract_base_values) do
 		if base:is_a(id) then return true end
 	end
@@ -1589,24 +1584,24 @@ end
 
 function ValueDef:_set_base_value(base)
 	if base then
-		local actual = assert.type(base, "idl valuetype", "base value",
+		local actual = asserttype(base, "idl valuetype", "base value",
 		                           "BAD_PARAM", 4)
 		if actual.is_abstract then
-			assert.illegal(actual, "invalid base value", "BAD_PARAM", 4)
+			assertillegal(actual, "invalid base value", "BAD_PARAM", 4)
 		end
 		local list = changeinheritance(
 			self, {self.base_value}, {base}, "idl valuetype")
 		self.inherited = actual
 		base = list[1]
 	else
-		base = idl.null
+		base = null
 	end
 	self.base_value = base
 end
 
 function ValueDef:_get_base_value()
 	local base = self.base_value
-	if base == idl.null then base = nil end
+	if base == null then base = nil end
 	return base
 end
 
@@ -1614,7 +1609,7 @@ function ValueDef:_set_abstract_base_values(bases)
 	for i = 1, #bases do
 		local base = bases[i]
 		if not base.is_abstract then
-			assert.illegal(base, "invalid abstract base value", "BAD_PARAM", 4)
+			assertillegal(base, "invalid abstract base value", "BAD_PARAM", 4)
 		end
 	end
 	self.abstract_base_values, self.inherited = changeinheritance(
@@ -1658,46 +1653,19 @@ ValueDef.create_operation = InterfaceDef.create_operation
 
 
 --------------------------------------------------------------------------------
--- Implementation --------------------------------------------------------------
-
-oo.class(_M, Repository)
-
-Classes = {
-	const              = ConstantDef,
-	struct             = StructDef,
-	union              = UnionDef,
-	enum               = EnumDef,
-	sequence           = SequenceDef,
-	array              = ArrayDef,
-	string             = StringDef,
-	typedef            = AliasDef,
-	except             = ExceptionDef,
-	module             = ModuleDef,
-	interface          = InterfaceDef,
-	abstract_interface = AbstractInterfaceDef,
-	local_interface    = LocalInterfaceDef,
-	attribute          = AttributeDef,
-	operation          = OperationDef,
-	valuetype          = ValueDef,
-	valuemember        = ValueMemberDef,
-	valuebox           = ValueBoxDef,
-	Object             = ObjectRef,
-}
-
---------------------------------------------------------------------------------
 
 local function getupdate(self, value, name, typespec)                           --[[VERBOSE]] verbose:repository("[attribute ",name,"]")
 	if type(typespec) == "string" then
-		assert.type(value, typespec, name, "BAD_PARAM")
+		asserttype(value, typespec, name, "BAD_PARAM")
 	elseif type(typespec) == "table" then
-		if oo.isclass(typespec) then
+		if isclass(typespec) then
 			value = self[value]
 			local actual = value
-			while actual._type=="typedef" and not oo.isinstanceof(actual, typespec) do
+			while actual._type=="typedef" and not isinstanceof(actual, typespec) do
 				actual = actual.original_type
 			end
-			if not oo.isinstanceof(actual, typespec) then
-				assert.illegal(value, name)
+			if not isinstanceof(actual, typespec) then
+				assertillegal(value, name)
 			end
 		else
 			local new = {}
@@ -1722,10 +1690,10 @@ local function getupdate(self, value, name, typespec)                           
 	return value
 end
 
-Registry = oo.class()
+local DefinitionRegistry = class()
 
-function Registry:__new(object)
-	self = oo.rawnew(self, object)
+function DefinitionRegistry:__new(object)
+	self = rawnew(self, object)
 	self[PrimitiveTypes.pk_null      ] = PrimitiveTypes.pk_null
 	self[PrimitiveTypes.pk_void      ] = PrimitiveTypes.pk_void
 	self[PrimitiveTypes.pk_short     ] = PrimitiveTypes.pk_short
@@ -1748,7 +1716,9 @@ function Registry:__new(object)
 	return self
 end
 
-function Registry:__index(definition)
+local Registry -- forward declaration of class
+
+function DefinitionRegistry:__index(definition)
 	if definition then
 		local repository = self.repository
 		local class = repository.Classes[definition._type]
@@ -1771,21 +1741,21 @@ function Registry:__index(definition)
 				result.containing_repository = repository
 				self[definition] = result -- to avoid loops in cycles during 'getupdate'
 				self[result] = result
-				for class in oo.topdown(class) do                                       --[[VERBOSE]] verbose:repository("[",ClassName[class],"]")
-					local update = oo.getmember(class, "update")
+				for class in topdown(class) do                                       --[[VERBOSE]] verbose:repository("[",class.__type,"]")
+					local update = getmember(class, "update")
 					if update then
-						local fields = oo.getmember(class, "definition_fields")
+						local fields = getmember(class, "definition_fields")
 						local new = fields and getupdate(self, definition, "object", fields)
 						update(result, new, self)
 					end
 				end                                                                     --[[VERBOSE]] verbose:repository(false)
-				if oo.isinstanceof(result, Container) then
+				if isinstanceof(result, Container) then
 					for _, contained in ipairs(definition.definitions) do
 						getupdate(self, contained, "contained", Contained)
 					end
 				end
 			end
-		elseif oo.getclass(definition) == _M then
+		elseif getclass(definition) == Registry then
 			result = self.repository
 		end
 		self[definition] = result
@@ -1795,20 +1765,46 @@ function Registry:__index(definition)
 end
 
 --------------------------------------------------------------------------------
+-- Implementation --------------------------------------------------------------
 
-function put(self, definition, registry)
+Registry = class({
+	Registry = DefinitionRegistry,
+	Classes = {
+		const              = ConstantDef,
+		struct             = StructDef,
+		union              = UnionDef,
+		enum               = EnumDef,
+		sequence           = SequenceDef,
+		array              = ArrayDef,
+		string             = StringDef,
+		typedef            = AliasDef,
+		except             = ExceptionDef,
+		module             = ModuleDef,
+		interface          = InterfaceDef,
+		abstract_interface = AbstractInterfaceDef,
+		local_interface    = LocalInterfaceDef,
+		attribute          = AttributeDef,
+		operation          = OperationDef,
+		valuetype          = ValueDef,
+		valuemember        = ValueMemberDef,
+		valuebox           = ValueBoxDef,
+		Object             = ObjectRef,
+	},
+}, Repository)
+
+function Registry:put(definition, registry)
 	definition = definition.type or definition
 	registry = registry or self.Registry{ repository = self }
 	return registry[definition]
 end
 
-function register(self, ...)
+function Registry:register(...)
 	local registry = self.Registry{ repository = self }
 	local results = {}
 	local count = select("#", ...)
 	for i = 1, count do
 		local definition = select(i, ...)
-		assert.type(definition, "table", "IR object definition", "BAD_PARAM")
+		asserttype(definition, "table", "IR object definition", "BAD_PARAM")
 		results[i] = registry[definition]
 	end
 	return unpack(results, 1, count)
@@ -1818,7 +1814,7 @@ local TypeCodesOfInterface = {
 	Object = true,
 	abstract_interface = true,
 }
-function resolve(self, typeref, servant)
+function Registry:resolve(typeref, servant)
 	local luatype = type(typeref)
 	local result, errmsg
 	if luatype == "table" then
@@ -1844,7 +1840,7 @@ function resolve(self, typeref, servant)
 			idltype = typeref,
 		}
 	end
-	if servant then
+	if result ~= nil and servant ~= nil then
 		if result==PrimitiveTypes.pk_objref
 		or result._type=="abstract_interface" then
 			result, errmsg = nil, Exception{
@@ -1856,3 +1852,5 @@ function resolve(self, typeref, servant)
 	end
 	return result, errmsg
 end
+
+return Registry

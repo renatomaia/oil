@@ -6,8 +6,12 @@
 
 local _G = require "_G"                                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 local assert = _G.assert
+local error = _G.error
 local ipairs = _G.ipairs
+local next = _G.next
+local pairs = _G.pairs
 local pcall = _G.pcall
+local setmetatable = _G.setmetatable
 local type = _G.type
 
 local coroutine = require "coroutine"
@@ -37,6 +41,7 @@ local RequestID = giop.RequestID
 local ReplyID = giop.ReplyID
 local CancelRequestID = giop.CancelRequestID
 local LocateRequestID = giop.LocateRequestID
+local LocateReplyID = giop.LocateReplyID
 local CloseConnectionID = giop.CloseConnectionID
 local MessageErrorID = giop.MessageErrorID
 local FragmentID = giop.FragmentID
@@ -481,8 +486,8 @@ local MessageHandlers = {
 		channel:signal("read", request) -- notify thread waiting for this reply
 		return request
 	end,
-	[CancelRequestID] = function(channel, header, decoder)                      --[[VERBOSE]] verbose:listen("got cancelation of request ",requestid)
-		if channel:unregister(header.request_id, "incoming") == nil then          --[[VERBOSE]] verbose:listen("canceled request ",requestid," does not exist")
+	[CancelRequestID] = function(channel, header, decoder)                      --[[VERBOSE]] verbose:listen("got cancelation of request ",header.requestid)
+		if channel:unregister(header.request_id, "incoming") == nil then          --[[VERBOSE]] verbose:listen("canceled request ",header.requestid," does not exist")
 			return failedGIOP(channel, "remote ORB canceled a request with unknown ID")
 		end
 		return true
@@ -495,7 +500,7 @@ local MessageHandlers = {
 			reply.locate_status = "LOC_NEEDS_ADDRESSING_MODE"                       --[[VERBOSE]] verbose:listen("different addressing information is required")
 			types = AddressingType
 			values = KeyAddrValue
-		elseif self.context.servants:retrieve(objkey) then
+		elseif channel.context.servants:retrieve(objkey) then
 			reply.locate_status = "OBJECT_HERE"                                     --[[VERBOSE]] verbose:listen("object found here")
 		else
 			reply.locate_status = "UNKNOWN_OBJECT"                                  --[[VERBOSE]] verbose:listen("object is unknown")
@@ -516,7 +521,7 @@ local MessageHandlers = {
 	[MessageErrorID] = function(channel, minor)
 		if next(channel.incoming) == nil and minor < channel.version then         --[[VERBOSE]] verbose:invoke("got remote request to use GIOP 1.",minor," instead of GIOP 1.",channel.version)
 			-- notify threads waiting for replies to reissue them in a new connection
-			for requestid in pairs(channel.outgoing) do
+			for requestid, request in pairs(channel.outgoing) do
 				request.reference.ior_profile_decoded.giop_minor = minor
 				channel:signal("read", channel:unregister(requestid, "outgoing"))
 			end

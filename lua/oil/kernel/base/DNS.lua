@@ -1,5 +1,5 @@
 -- Project: OiL - ORB in Lua: An Object Request Broker in Lua
--- Release: 0.5
+-- Release: 0.6
 -- Title  : DNS API Wrapper
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
@@ -11,12 +11,15 @@ local hostname2ip = socket.dns.toip
 local oo = require "oil.oo"
 local class = oo.class
 
-module(..., class)
 
-function gethostname(self)
+local DNS = class()
+
+function DNS:gethostname()
 	return thishostname()
 end
 
-function toip(self, hostname)
+function DNS:toip(hostname)
 	return hostname2ip(hostname)
 end
+
+return DNS

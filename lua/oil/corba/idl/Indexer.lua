@@ -1,37 +1,27 @@
---------------------------------------------------------------------------------
-------------------------------  #####      ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
------------------------------- ##   ## ##  ##     ------------------------------
------------------------------- ##   ##  #  ##     ------------------------------
-------------------------------  #####  ### ###### ------------------------------
---------------------------------                --------------------------------
------------------------ An Object Request Broker in Lua ------------------------
---------------------------------------------------------------------------------
--- Project: OiL - ORB in Lua: An Object Request Broker in Lua                 --
--- Release: 0.5                                                               --
--- Title  : IDL Interface Indexer                                             --
--- Authors: Renato Maia <maia@inf.puc-rio.br>                                 --
---------------------------------------------------------------------------------
--- indexer:Facet
--- 	[interface:table] typeof(name:string)
--- 	member:table valueof(interface:table, name:string)
--- 
--- registry:Receptacle
--- 	[interface:table] lookup_id(repid:string)
--- 	[interface:table] lookup(name:string)
---------------------------------------------------------------------------------
+-- Project: OiL - ORB in Lua: An Object Request Broker in Lua
+-- Release: 0.6
+-- Title  : IDL Interface Indexer
+-- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local ipairs = ipairs
 
-local oo     = require "oil.oo"
-local idl    = require "oil.corba.idl"                                          --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local ipairs = _G.ipairs
 
-module("oil.corba.idl.Indexer", oo.class)
+local oo = require "oil.oo"
+local class = oo.class
+
+local idl = require "oil.corba.idl"
+local operation = idl.operation
+
+local Indexer = class{
+	patterns = { "^_([gs]et)_(.+)$" },
+	builders = {},
+}
 
 --------------------------------------------------------------------------------
 -- Internal Functions ----------------------------------------------------------
 
-function findmember(self, interface, name)
+function Indexer:findmember(interface, name)
 	for interface in interface:hierarchy() do
 		local contained = interface.definitions[name]
 		if
@@ -43,13 +33,10 @@ function findmember(self, interface, name)
 	end
 end
 
-patterns = { "^_([gs]et)_(.+)$" }
-
-builders = {}
-function builders:get(attribute, interface, opname, attribop)
+function Indexer.builders:get(attribute, interface, opname, attribop)
 	if attribute._type == "attribute" then
 		local attribname = attribute.name
-		return idl.operation{ attribute = attribute, attribop = attribop,
+		return operation{ attribute = attribute, attribop = attribop,
 			name = opname,
 			defined_in = interface,
 			result = attribute.type,
@@ -59,10 +46,11 @@ function builders:get(attribute, interface, opname, attribop)
 		}
 	end
 end
-function builders:set(attribute, interface, opname, attribop)
+
+function Indexer.builders:set(attribute, interface, opname, attribop)
 	if attribute._type == "attribute" then
 		local attribname = attribute.name
-		return idl.operation{ attribute = attribute, attribop = attribop,
+		return operation{ attribute = attribute, attribop = attribop,
 			name = opname,
 			defined_in = interface,
 			parameters = { {type = attribute.type, name = "value"} },
@@ -76,7 +64,7 @@ end
 --------------------------------------------------------------------------------
 -- Interface Operations --------------------------------------------------------
 
-function valueof(self, interface, name)
+function Indexer:valueof(interface, name)
 	local member = self:findmember(interface, name)
 	if member == nil then
 		local action
@@ -84,7 +72,7 @@ function valueof(self, interface, name)
 			action, member = name:match(pattern)
 			if action then
 				member, interface = self:findmember(interface, member)
-				if member then
+				if member ~= nil then
 					member = self.builders[action](self, member, interface, name, action)
 					if member then
 						break
@@ -95,3 +83,5 @@ function valueof(self, interface, name)
 	end
 	return member
 end
+
+return Indexer

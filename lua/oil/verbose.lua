@@ -7,7 +7,6 @@
 local _G = require "_G"
 local rawget = _G.rawget
 local type = _G.type
-local unpack = _G.unpack
 
 local math = require "math"
 local ceil = math.ceil
@@ -20,6 +19,7 @@ local strrep = string.rep
 
 local table = require "table"
 local concat = table.concat
+local unpack = table.unpack or _G.unpack
 
 local coroutine = require "coroutine"
 local running = coroutine.running
@@ -58,6 +58,7 @@ function verbose:hexastream(codec, cursor, prefix)
 		local stream = codec:getdata()
 		if prefix then stream = string.rep("\0", prefix)..stream end
 		local last = #stream
+		local opened
 		for count = 1, last do
 			if cursor[count] ~= nil then
 				for count = last, count, -1 do
@@ -72,7 +73,7 @@ function verbose:hexastream(codec, cursor, prefix)
 				local text = {}
 				local opnened
 				for count = count-(count-1)%16, last do
-					column = (count-1)%16
+					local column = (count-1)%16
 					-- write line start if necessary
 					if column == 0 then
 						output:write(lines:format(base+count-1))
