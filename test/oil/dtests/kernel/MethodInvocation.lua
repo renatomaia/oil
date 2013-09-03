@@ -1,8 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 Worker = { execs = 0 }
 function Worker:count()
 	return self.execs
@@ -24,9 +24,9 @@ if oil.dtests.flavor.corba then
 end
 orb:newservant(Worker, "worker")
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 oil.dtests.init()
 checks = oil.dtests.checks
 worker = oil.dtests.resolve("Server", 2809, "worker")
@@ -73,6 +73,6 @@ checks:assert(worker:count(), checks.is(6, "wrong number of performed operations
 checks:assert(ok == true, "operation results does not indicates success")
 checks:assert(result, checks.is(.1, "wrong results."))
 
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite()
+return T:newsuite()

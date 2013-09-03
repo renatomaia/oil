@@ -5,6 +5,12 @@ else
 	--require "coroutine.debug"
 end
 
+local _G = require "_G"
+local loadstring = _G.loadstring or _G.load
+local tonumber = _G.tonumber
+local tostring = _G.tostring
+local assert = _G.assert
+
 local socket = require "socket"
 local Results = require "loop.test.Results"
 local Message = "%s\n%d\n%s\n"

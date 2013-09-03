@@ -1,6 +1,6 @@
 local _G = require "_G"
 local error = _G.error
-local loadstring = _G.loadstring
+local loadstring = _G.loadstring or _G.load
 local pcall = _G.pcall
 
 local oo = require "oil.oo"

@@ -6,15 +6,15 @@
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local ipairs = _G.ipairs
-local loadstring = _G.loadstring
+local loadstring = _G.loadstring or _G.load
 local select = _G.select
-local unpack = _G.unpack
 
 local string = require "string"
 local strformat = string.format
 
 local array = require "table"
 local concat = array.concat
+local unpack = array.unpack or _G.unpack
 
 local oo = require "oil.oo"
 local class = oo.class

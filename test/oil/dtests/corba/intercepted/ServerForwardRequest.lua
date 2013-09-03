@@ -1,8 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 checks = oil.dtests.checks
 
 Object = {}
@@ -18,9 +18,9 @@ orb:loadidl[[
 ]]
 orb:newservant(Object, "object", "::MyInterface")
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Middle = [=====================================================================[
+T.Middle = [===================================================================[
 checks = oil.dtests.checks
 
 Interceptor = {}
@@ -34,9 +34,9 @@ orb = oil.dtests.init{ port = 2808 }
 orb:setserverinterceptor(Interceptor)
 forward = oil.dtests.resolve("Server", 2809, "object")
 orb:run()
---[Middle]=====================================================================]
+----[Middle]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 checks = oil.dtests.checks
 
 orb = oil.dtests.init()
@@ -49,6 +49,6 @@ checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&secon
 ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(true))
 checks:assert(res, checks.is("first&second"))
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite{ corba = true, interceptedcorba = true }
+return T:newsuite{ corba = true, interceptedcorba = true }

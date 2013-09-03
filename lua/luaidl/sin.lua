@@ -350,20 +350,20 @@
 --(378)                         |     empty
 --(379) <context>               :=    TK_STRING_LITERAL
 
-local type     = type
-local pairs    = pairs
-local tonumber = tonumber
-local require  = require
-local error    = error
-local ipairs   = ipairs
+local _G       = require "_G"
+local type     = _G.type
+local pairs    = _G.pairs
+local tonumber = _G.tonumber
+local require  = _G.require
+local error    = _G.error
+local ipairs   = _G.ipairs
 
 local math     = require "math"
 local string   = require "string"
 local table    = require "table"
 
-module 'luaidl.sin'
-
 local lex = require 'luaidl.lex'
+local _ENV = {}; if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end
 
 local tab_firsts = {}
 local tab_follow = {}
@@ -1904,7 +1904,7 @@ rules.mult_expr_l = function (lExpression, type, numrule)
     if not (tonumber(lExpression) and tonumber(rExpression)) then
       semanticError(tab_ERRORMSG[25])
     end
-    local expression = math.mod(lExpression, rExpression)
+    local expression = math.fmod(lExpression, rExpression)
     return rules.mult_expr_l(expression, type, numrule)
   elseif (
           tab_follow.rule_111[token] or
@@ -2203,7 +2203,7 @@ rules.case = function ()
         table.insert(currentScope, {name = name, type = tab_type_spec, label = case})
       end
       if case == 'none' then
-        currentScope.default = table.getn(currentScope)
+        currentScope.default = #currentScope
       end
     end
     recognize(";")
@@ -3681,3 +3681,5 @@ function parse(stridl, options)
   end
   return output
 end
+
+return _ENV

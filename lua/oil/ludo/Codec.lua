@@ -5,7 +5,7 @@
 
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
-local loadstring = _G.loadstring
+local loadstring = _G.loadstring or _G.load
 local pairs = _G.pairs
 local setfenv = _G.setfenv
 local setmetatable = _G.setmetatable

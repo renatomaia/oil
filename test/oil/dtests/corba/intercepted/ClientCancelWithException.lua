@@ -1,8 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 checks = oil.dtests.checks
 
 Exception = io.stderr
@@ -54,6 +54,6 @@ ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.is(Exception))
 checks:assert(InterceptedResult, checks.is(Exception))
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite{ corba = true, interceptedcorba = true }
+return T:newsuite{ corba = true, interceptedcorba = true }

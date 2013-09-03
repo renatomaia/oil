@@ -1,14 +1,14 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 orb = oil.dtests.init{ port = 2809 }
 orb:newservant{ __type = "::CORBA::InterfaceDef", __objkey = "object" }
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 orb = oil.dtests.init()
 checks = oil.dtests.checks
 object = oil.dtests.resolve("Server", 2809, "object", nil, false, true)
@@ -17,6 +17,6 @@ inexistent = oil.dtests.resolve("Server", 2809, "inexistent", nil, true, true)
 -- synchronous call
 result = inexistent:_non_existent()
 checks:assert(result, checks.is(true))
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite{ corba = true }
+return T:newsuite{ corba = true }

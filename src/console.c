@@ -64,47 +64,48 @@ static void l_message (const char *pname, const char *msg) {
 
 
 static int report (lua_State *L, int status) {
-  if (status && !lua_isnil(L, -1)) {
-  	const char *msg;
-    if (lua_istable(L, -1)) {
-      lua_getfield(L, LUA_GLOBALSINDEX, "tostring");
-      lua_insert(L, -2);
-      lua_call(L, 1, 1);
-    }
-    msg = lua_tostring(L, -1);
+  if (status != LUA_OK && !lua_isnil(L, -1)) {
+    const char *msg = lua_tostring(L, -1);
     if (msg == NULL) msg = "(error object is not a string)";
     l_message(progname, msg);
     lua_pop(L, 1);
+    /* force a complete garbage collection in case of errors */
+    lua_gc(L, LUA_GCCOLLECT, 0);
   }
   return status;
 }
 
+/* the next function is called unprotected, so it must avoid errors */
+static void finalreport (lua_State *L, int status) {
+  if (status != LUA_OK) {
+    const char *msg = (lua_type(L, -1) == LUA_TSTRING) ? lua_tostring(L, -1)
+                                                       : NULL;
+    if (msg == NULL) msg = "(error object is not a string)";
+    l_message(progname, msg);
+    lua_pop(L, 1);
+  }
+}
 
 static int traceback (lua_State *L) {
-  lua_getfield(L, LUA_GLOBALSINDEX, "debug");
-  if (!lua_istable(L, -1)) {
-    lua_pop(L, 1);
-    return 1;
+  const char *msg = lua_tostring(L, 1);
+  if (msg)
+    luaL_traceback(L, L, msg, 1);
+  else if (!lua_isnoneornil(L, 1)) {  /* is there an error object? */
+    if (!luaL_callmeta(L, 1, "__tostring"))  /* try its 'tostring' metamethod */
+      lua_pushliteral(L, "(no error message)");
   }
-  lua_getfield(L, -1, "traceback");
-  if (!lua_isfunction(L, -1)) {
-    lua_pop(L, 2);
-    return 1;
-  }
-  lua_pushvalue(L, 1);  /* pass error message */
-  lua_pushinteger(L, 2);  /* skip this function and traceback */
-  lua_call(L, 2, 1);  /* call debug.traceback */
   return 1;
 }
 
 
-static int docall (lua_State *L, int narg, int clear) {
+static int docall (lua_State *L, int narg, int nres) {
   int status;
   int base = lua_gettop(L) - narg;  /* function index */
   lua_pushcfunction(L, traceback);  /* push traceback function */
   lua_insert(L, base);  /* put it under chunk and args */
+  globalL = L;  /* to be available to 'laction' */
   signal(SIGINT, laction);
-  status = lua_pcall(L, narg, (clear ? 0 : LUA_MULTRET), base);
+  status = lua_pcall(L, narg, nres, base);
   signal(SIGINT, SIG_DFL);
   lua_remove(L, base);  /* remove traceback function */
   return status;
@@ -132,40 +133,48 @@ static int getargs (lua_State *L, int argc, char **argv, int n) {
 
 
 static int dofile (lua_State *L, const char *name) {
-  int status = luaL_loadfile(L, name) || docall(L, 0, 1);
+  int status = luaL_loadfile(L, name);
+  if (status == LUA_OK) status = docall(L, 0, 0);
   return report(L, status);
 }
 
 
 static int dostring (lua_State *L, const char *s, const char *name) {
-  int status = luaL_loadbuffer(L, s, strlen(s), name) || docall(L, 0, 1);
+  int status = luaL_loadbuffer(L, s, strlen(s), name);
+  if (status == LUA_OK) status = docall(L, 0, 0);
   return report(L, status);
 }
 
 
 static int dolibrary (lua_State *L, const char *name) {
+  int status;
   lua_getglobal(L, "require");
   lua_pushstring(L, name);
-  return report(L, lua_pcall(L, 1, 0, 0));
+  status = docall(L, 1, 1);  /* call 'require(name)' */
+  if (status == LUA_OK)
+    lua_setglobal(L, name);  /* global[name] = require return */
+  return report(L, status);
 }
 
 
 static const char *get_prompt (lua_State *L, int firstline) {
   const char *p;
-  lua_getfield(L, LUA_GLOBALSINDEX, firstline ? "_PROMPT" : "_PROMPT2");
+  lua_getglobal(L, firstline ? "_PROMPT" : "_PROMPT2");
   p = lua_tostring(L, -1);
   if (p == NULL) p = (firstline ? LUA_PROMPT : LUA_PROMPT2);
-  lua_pop(L, 1);  /* remove global */
   return p;
 }
 
+
+/* mark in error messages for incomplete statements */
+#define EOFMARK   "<eof>"
+#define marklen   (sizeof(EOFMARK)/sizeof(char) - 1)
 
 static int incomplete (lua_State *L, int status) {
   if (status == LUA_ERRSYNTAX) {
     size_t lmsg;
     const char *msg = lua_tolstring(L, -1, &lmsg);
-    const char *tp = msg + lmsg - (sizeof(LUA_QL("<eof>")) - 1);
-    if (strstr(msg, LUA_QL("<eof>")) == tp) {
+    if (lmsg >= marklen && strcmp(msg + lmsg - marklen, EOFMARK) == 0) {
       lua_pop(L, 1);
       return 1;
     }
@@ -179,7 +188,9 @@ static int pushline (lua_State *L, int firstline) {
   char *b = buffer;
   size_t l;
   const char *prmt = get_prompt(L, firstline);
-  if (lua_readline(L, b, prmt) == 0)
+  int readstatus = lua_readline(L, b, prmt);
+  lua_pop(L, 1);  /* remove result from 'get_prompt' */
+  if (readstatus == 0)
     return 0;  /* no input */
   l = strlen(b);
   if (l > 0 && b[l-1] == '\n')  /* line ends with newline? */
@@ -199,7 +210,9 @@ static int loadline (lua_State *L) {
   if (!pushline(L, 1))
     return -1;  /* no input */
   for (;;) {  /* repeat until gets a complete line */
-    status = luaL_loadbuffer(L, lua_tostring(L, 1), lua_strlen(L, 1), "=stdin");
+    size_t l;
+    const char *line = lua_tolstring(L, 1, &l);
+    status = luaL_loadbuffer(L, line, l, "=stdin");
     if (!incomplete(L, status)) break;  /* cannot try to add lines? */
     if (!pushline(L, 0))  /* no more input? */
       return -1;
@@ -219,12 +232,13 @@ static void dotty (lua_State *L) {
   progname = NULL;
   print_version();
   while ((status = loadline(L)) != -1) {
-    if (status == 0) status = docall(L, 0, 0);
+    if (status == LUA_OK) status = docall(L, 0, LUA_MULTRET);
     report(L, status);
-    if (status == 0 && lua_gettop(L) > 0) {  /* any result to print? */
+    if (status == LUA_OK && lua_gettop(L) > 0) {  /* any result to print? */
+      luaL_checkstack(L, LUA_MINSTACK, "too many results to print");
       lua_getglobal(L, "print");
       lua_insert(L, 1);
-      if (lua_pcall(L, lua_gettop(L)-1, 0, 0) != 0)
+      if (lua_pcall(L, lua_gettop(L)-1, 0, 0) != LUA_OK)
         l_message(progname, lua_pushfstring(L,
                                "error calling " LUA_QL("print") " (%s)",
                                lua_tostring(L, -1)));
@@ -312,8 +326,8 @@ static int handle_argv (lua_State *L, int argc, char **argv, int *interactive) {
       clearinteractive(interactive);
       status = luaL_loadfile(L, filename);
       lua_insert(L, -(narg+1));
-      if (status == 0)
-        status = docall(L, narg, 0);
+      if (status == LUA_OK)
+        status = docall(L, narg, LUA_MULTRET);
       else
         lua_pop(L, narg);      
       return report(L, status);
@@ -333,25 +347,19 @@ static int handle_luainit (lua_State *L) {
 }
 
 
-struct Smain {
-  int argc;
-  char **argv;
-  int status;
-};
-
-
 static int pmain (lua_State *L) {
-  struct Smain *s = (struct Smain *)lua_touserdata(L, 1);
+  int argc = (int)lua_tointeger(L, 1);
+  char **argv = (char **)lua_touserdata(L, 2);
   int status;
   int interactive = 1;
-  if (s->argv[0] && s->argv[0][0]) progname = s->argv[0];
+  if (argv[0] && argv[0][0]) progname = argv[0];
   globalL = L;
   luaL_openlibs(L);      /* open libraries */
   luapreload_oilall(L);  /* preload all OiL libraries */
   status = handle_luainit(L);
-  if (status == 0) {
-    status = handle_argv(L, s->argc, s->argv, &interactive);
-    if (status == 0 && interactive) dotty(L);
+  if (status == LUA_OK) {
+    status = handle_argv(L, argc, argv, &interactive);
+    if (status == LUA_OK && interactive) dotty(L);
   }
   s->status = status;
   return 0;
@@ -359,18 +367,20 @@ static int pmain (lua_State *L) {
 
 
 int main (int argc, char **argv) {
-  int status;
-  struct Smain s;
-  lua_State *L = lua_open();  /* create state */
+  int status, result;
+  lua_State *L = luaL_newstate();  /* create state */
   if (L == NULL) {
     l_message(argv[0], "cannot create state: not enough memory");
     return EXIT_FAILURE;
   }
-  s.argc = argc;
-  s.argv = argv;
-  status = lua_cpcall(L, &pmain, &s);
-  report(L, status);
+    /* call 'pmain' in protected mode */
+  lua_pushcfunction(L, &pmain);
+  lua_pushinteger(L, argc);  /* 1st argument */
+  lua_pushlightuserdata(L, argv); /* 2nd argument */
+  status = lua_pcall(L, 2, 1, 0);
+  result = lua_toboolean(L, -1);  /* get result */
+  finalreport(L, status);
   lua_close(L);
-  return (status || s.status) ? EXIT_FAILURE : EXIT_SUCCESS;
+  return (result && status == LUA_OK) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 

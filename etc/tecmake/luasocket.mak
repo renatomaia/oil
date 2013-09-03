@@ -3,7 +3,7 @@ LIBNAME = luasocket
 
 include base.mak
 
-USE_LUA51=yes
+USE_LUA52=yes
 
 SRC=    $(LUASOCKET_SRC)
 EXPINC= luasocket.h

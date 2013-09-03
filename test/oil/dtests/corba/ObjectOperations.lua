@@ -1,14 +1,14 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 orb = oil.dtests.init{ port = 2809 }
 orb:newservant{ __type = "::CORBA::InterfaceDef", __objkey = "object" }
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 table = require "loop.table"
 
 orb = oil.dtests.init()
@@ -66,6 +66,6 @@ for opname, opdesc in pairs(cases) do
 		end
 	end
 end
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite{ corba = true }
+return T:newsuite{ corba = true }

@@ -1,7 +1,7 @@
 PROJNAME = oil
 LIBNAME = oilbit
 
-USE_LUA51=yes
+USE_LUA52=yes
 
 SRC=    oilbit.c
 EXPINC= oilbit.h

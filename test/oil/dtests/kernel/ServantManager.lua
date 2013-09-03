@@ -1,7 +1,7 @@
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 ObjectMapMeta = {}
 
 orb = oil.dtests.init{
@@ -40,9 +40,9 @@ function ObjectMapMeta:__index(objkey)
 end
 
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 checks = oil.dtests.checks
 
 orb = oil.dtests.init()
@@ -56,6 +56,6 @@ end
 for i = 1, 3 do
 	checks:assert(var[i]:get(), checks.is("var"..i))
 end
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite()
+return T:newsuite()

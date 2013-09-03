@@ -1,7 +1,7 @@
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 orb = oil.dtests.init{ port = 2809 }
 if oil.dtests.flavor.corba then
 	iface = orb:loadidl "interface Terminator { void shutdown(); void idle(); };"
@@ -13,15 +13,15 @@ orb:newservant{
 	shutdown = function() orb:shutdown() end,
 }
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Caller = [=====================================================================[
+T.Caller = [===================================================================[
 orb = oil.dtests.init()
 obj = oil.dtests.resolve("Server", 2809, "object")
 obj:idle()
---[Caller]=====================================================================]
+----[Caller]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 checks = oil.dtests.checks
 
 oil.sleep(3)
@@ -57,6 +57,6 @@ else
 		error = "badconnect",
 	})
 end
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite{ cooperative = true }
+return T:newsuite{ cooperative = true }

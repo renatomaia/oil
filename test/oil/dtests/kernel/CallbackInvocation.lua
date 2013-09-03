@@ -1,7 +1,7 @@
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 Caller = {}
 function Caller:call(obj)
 	obj:ack()
@@ -17,9 +17,9 @@ if oil.dtests.flavor.corba then
 end
 orb:newservant(Caller, "object")
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 checks = oil.dtests.checks
 
 orb = oil.dtests.init()
@@ -29,6 +29,6 @@ Caller = oil.dtests.resolve("Server", 2809, "object")
 Caller:call({ ack = function() end })
 
 orb:shutdown()
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite{ cooperative = true, corba = true }
+return T:newsuite{ cooperative = true, corba = true }

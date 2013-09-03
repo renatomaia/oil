@@ -3,7 +3,7 @@ LIBNAME = $(LIBPFX)socket
 
 include base.mak
 
-USE_LUA51=yes
+USE_LUA52=yes
 
 SRC=    $(PC_DIR)/$(LIBPFX)socket.c $(LUASOCKET_SRC)
 EXPINC= $(PC_DIR)/$(LIBPFX)socket.h luasocket.h

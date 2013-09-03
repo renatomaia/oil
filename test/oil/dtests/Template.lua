@@ -4,7 +4,6 @@ local error    = _G.error
 local ipairs   = _G.ipairs
 local pairs    = _G.pairs
 local rawget   = _G.rawget
-local setfenv  = _G.setfenv
 local tonumber = _G.tonumber
 local tostring = _G.tostring
 local type     = _G.type
@@ -21,7 +20,7 @@ local utils = require "dtest.run.utils"
 
 local Suite = require "loop.test.Suite"
 
-module("oil.dtests.Template", oo.class)
+local Template = oo.class()
 
 local sockets = oil.BasicSystem.sockets
 local helper = utils.helper
@@ -60,14 +59,13 @@ local function getpackage(flavor)
 	error("no oil.dtests package available for flavor "..flavor)
 end
 
-function __init(self, object)
+function Template.__init(self, object)
 	self = oo.rawnew(self, object)
-	setfenv(3, self)
 	return self
 end
 
 local Empty = {}
-function newtest(self, infos)
+function Template.newtest(self, infos)
 	if not infos then infos = Empty end
 	return function(checks)
 		-- find a free port
@@ -285,7 +283,7 @@ local function getname(cltflavor, srvflavor)
 	       table.concat(common)
 end
 
-function newsuite(self, required)
+function Template.newsuite(self, required)
 	required = required or {}
 	local ludo = "ludo"
 	local corba = seq{
@@ -346,3 +344,5 @@ function newsuite(self, required)
 	
 	return suite
 end
+
+return Template

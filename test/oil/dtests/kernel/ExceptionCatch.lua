@@ -1,7 +1,7 @@
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 Raiser = {}
 function Raiser:raisenow()
 	error{ _repid = "IDL:ExceptionRaiser/RaisedException:1.0",
@@ -24,9 +24,9 @@ end
 orb:newservant(Raiser, "raiser")
 
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 orb = oil.dtests.init()
 checks = oil.dtests.checks
 
@@ -130,6 +130,6 @@ for raiser, exchecker in pairs(raisers) do
 	checks:assert(not ok, "exception was not raised.")
 	exchecker(exception)
 end
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite()
+return T:newsuite()

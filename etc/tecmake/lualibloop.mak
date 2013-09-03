@@ -3,7 +3,7 @@ LIBNAME = $(LIBPFX)loop
 
 include base.mak
 
-USE_LUA51=yes
+USE_LUA52=yes
 
 SRC=    $(PC_DIR)/$(LIBPFX)loop.c
 EXPINC= $(PC_DIR)/$(LIBPFX)loop.h

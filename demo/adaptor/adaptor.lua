@@ -1,3 +1,5 @@
+local _G = require "_G"
+local loadstring = _G.loadstring or _G.load
 local oil = require "oil"
 
 orb = oil.init()

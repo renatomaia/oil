@@ -1,8 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 Attributes = {
 	changes = 0,
 	field = 0,
@@ -31,9 +31,9 @@ if oil.dtests.flavor.corba then
 end
 orb:newservant(Attributes, "object")
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 oil.dtests.init()
 checks = oil.dtests.checks
 sync = oil.dtests.resolve("Server", 2809, "object")
@@ -93,6 +93,6 @@ assert(ok == true and res == 5678)
 
 ok, res = prot:_get_changes()
 assert(ok == true and res == 3)
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite()
+return T:newsuite()

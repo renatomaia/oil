@@ -1,6 +1,9 @@
 local streampath = (os.getenv("OIL_HOME") or "..")..
                    "/test/oil/tests/corba/cdr/streams/"
 
+local math = require "math"
+local log10 = math.log10 or function(n) return math.log(n, 10) end
+
 local struct = require "struct"
 local oo = require "loop.base"
 local Suite = require "loop.test.Suite"
@@ -11,7 +14,7 @@ local CodecGen = require "oil.corba.giop.CodecGen"
 local SequenceTestKey = {}
 
 local function hexdump(stream, expected)
-	local lines = string.format("%%0%dx:", math.ceil(math.log10(math.ceil(#stream/16))+1))
+	local lines = string.format("%%0%dx:", math.ceil(log10(math.ceil(#stream/16))+1))
 	local count = 0
 	local pos = cursor
 	local dump = {}

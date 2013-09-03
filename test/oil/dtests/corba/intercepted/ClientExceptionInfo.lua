@@ -1,8 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 checks = oil.dtests.checks
 
 Interceptor = {}
@@ -124,6 +124,6 @@ checks:assert(res, checks.similar{
                    })
 checks:assert(Interceptor.lastConcatRequest, checks.is(false))
 
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite{ corba = true, interceptedcorba = true }
+return T:newsuite{ corba = true, interceptedcorba = true }

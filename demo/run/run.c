@@ -21,19 +21,19 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 	
-	L = lua_open();
+	L = luaL_newstate();
 	luaL_openlibs(L);
 
 #ifndef PRELOAD
 	 // open the LuaSocket library
-	luaL_findtable(L, LUA_GLOBALSINDEX, "package.loaded", 1);
+	luaL_getsubtable(L, LUA_REGISTRYINDEX, "_PRELOAD");
 	luaopen_socket_core(L);
 	lua_setfield(L, -2, "socket.core");
 	// open the OiL bit library (only OiL C library)
 	luaopen_oil_bit(L);
 #else
 	// preload the LuaSocket library
-	luaL_findtable(L, LUA_GLOBALSINDEX, "package.preload", 1);
+	luaL_getsubtable(L, LUA_REGISTRYINDEX, "_PRELOAD");
 	lua_pushcfunction(L, luaopen_socket_core);
 	lua_setfield(L, -2, "socket.core");
 	 // preload all OiL libraries

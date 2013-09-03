@@ -13,8 +13,8 @@ INSTALL_TOP= $(LUA_HOME)
 INSTALL_BIN= $(INSTALL_TOP)/bin
 INSTALL_INC= $(INSTALL_TOP)/include
 INSTALL_LIB= $(INSTALL_TOP)/lib
-INSTALL_LMOD= $(INSTALL_TOP)/share/lua/5.1
-INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/5.1
+INSTALL_LMOD= $(INSTALL_TOP)/share/lua/5.2
+INSTALL_CMOD= $(INSTALL_TOP)/lib/lua/5.2
 
 # How to install. You may prefer "install" instead of "cp" if you have it.
 # To remove debug information from binaries, use "install -s" in INSTALL_EXEC.
@@ -63,11 +63,11 @@ LUASOCKET= luasocket
 LUASTRUCT= struct
 OILALL= oilall
 
-vLOOP= 2.3
+vLOOP= 3.0
 vLIDL= 1.0.5
 vSOCK= 2.0.2
 vSTRC= 1.2
-vOIL=  0.5
+vOIL=  0.6
 
 CLIBS= $(LUASOCKET).$(vSOCK) \
        $(LUASTRUCT).$(vSTRC)

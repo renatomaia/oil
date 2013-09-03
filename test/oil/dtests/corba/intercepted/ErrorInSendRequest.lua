@@ -1,8 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 checks = oil.dtests.checks
 
 obj = {concat = function(self, s1, s2) return s1..s2 end}
@@ -15,9 +15,9 @@ orb:loadidl[[
 ]]
 orb:newservant(obj, "object", "::MyInterface")
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 checks = oil.dtests.checks
 
 Interceptor = {}
@@ -60,6 +60,6 @@ ok, res = prot:concat("first", "second")
 assert(ok == false)
 assert(type(ex) == "string")
 assert(ex:match("Oops!$"))
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite{ corba = true, interceptedcorba = true }
+return T:newsuite{ corba = true, interceptedcorba = true }

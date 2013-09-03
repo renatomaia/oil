@@ -17,12 +17,10 @@ local array   = require "table"
 
 local unpack  = array.unpack or _G.unpack
 
-local _ENV = module 'luaidl'
+local _ENV = { VERSION = '1.0.5' }; if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end
 
 local preprocessor  = require 'luaidl.pre'
 local parser        = require 'luaidl.sin'
-
-VERSION = '1.0.5'
 
 ---
 -- Auxiliar functions
@@ -117,3 +115,5 @@ function parsefile(filename, options)
   return parseAux(stridl, options)
 end
 --------------------------------------------------------------------------
+
+return _ENV

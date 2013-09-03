@@ -1,7 +1,7 @@
 local Template = require "oil.dtests.Template"
-local template = Template{"Client"} -- master process name
+local T = Template{"Client"} -- master process name
 
-Server = [=====================================================================[
+T.Server = [===================================================================[
 checker = {}
 function checker:isSelf(obj)
 	return proxy:_is_equivalent(obj)
@@ -14,14 +14,14 @@ if oil.dtests.flavor.corba then
 end
 proxy = orb:newproxy(tostring(orb:newservant(checker, "checker")), nil, checker.__type)
 orb:run()
---[Server]=====================================================================]
+----[Server]===================================================================]
 
-Client = [=====================================================================[
+T.Client = [===================================================================[
 checks = oil.dtests.checks
 
 oil.dtests.init()
 checker = oil.dtests.resolve("Server", 2809, "checker")
 checks:assert(checker:isSelf(checker), checks.is(true))
---[Client]=====================================================================]
+----[Client]===================================================================]
 
-return template:newsuite()
+return T:newsuite()

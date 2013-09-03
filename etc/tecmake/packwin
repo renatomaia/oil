@@ -1,7 +1,7 @@
 #!/bin/sh
 
-VERSION=0.5
-RELEASE=
+VERSION=0.6
+RELEASE=beta2
 
 PACKAGE=oil-$VERSION-$RELEASE
 
@@ -45,7 +45,7 @@ done
 
 PACKAGE=oil-$VERSION-$RELEASE-win32
 mkdir $PACKAGE
-cp $LUA51/bin/Win32/* $PACKAGE
+cp $LUA52/bin/Win32/* $PACKAGE
 mkdir $PACKAGE/oil   ; cp lib/dll8/oilbit.dll    $PACKAGE/oil/bit.dll
 mkdir $PACKAGE/socket; cp lib/dll8/luasocket.dll $PACKAGE/socket/core.dll
 cp -R lua $PACKAGE
