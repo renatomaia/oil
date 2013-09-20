@@ -764,7 +764,7 @@ end
 --------------------------------------------------------------------------------
 
 local oil = {                                                                   --[[VERBOSE]] verbose = verbose,
-	VERSION = "OiL 0.6",
+	VERSION = "OiL 0.6betaCompatLua52",
 	ORB = ORB,
 }
 
