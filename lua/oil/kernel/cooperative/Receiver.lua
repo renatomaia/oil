@@ -142,6 +142,7 @@ function CoReceiver:stop(...)
 		yield("last", thread, ...)
 		return true
 	end
+	return nil, Exception{ "ORB is not running", error = "badinitialize" }
 end
 
 return CoReceiver

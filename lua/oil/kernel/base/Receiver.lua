@@ -26,13 +26,11 @@ function Receiver:probe(timeout)                                                
 		repeat
 			result, except = listener:getchannel(timeout)
 			if result then
-				result, except = result:getrequest(0)
+				local result, except = result:getrequest(0)
 				if result then                                                          --[[VERBOSE]] verbose:acceptor("new request received")
 					self.pending = result
-				elseif except.error == "timeout" then
-					except = nil
-				elseif except.error == "terminated" then
-					except = nil
+				elseif except.error ~= "timeout" and except.error ~= "terminated" then
+					if stderr then stderr:write(tostring(except), "\n") end
 				end
 			end
 		until result or except
@@ -69,6 +67,7 @@ function Receiver:stop(...)
 		self.stopped = pack(...)
 		return true
 	end
+	return nil, Exception{ "ORB is not running", error = "badinitialize" }
 end
 
 function Receiver:shutdown()                                                        --[[VERBOSE]] verbose:acceptor("attempt to shutdown the ORB")
