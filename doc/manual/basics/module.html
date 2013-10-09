@@ -1,82 +1,163 @@
-<p>OiL is provided as a Lua module that can be required by the following command (for further information about Lua modules, see the <a href="http://www.lua.org/manual/5.1/manual.html#pdf-require">Lua's manual</a>):</p>
+<%
+local Reference = {
+	oil = {
+		init = {
+			parameters = "[config]",
+			results = "orb",
+			summary = "Initialize a broker",
+			description = {
+[[Initialize a broker or ORB instance on table <code>config</code> using its fields as configuration options.
+The actual configuration options varies accordingly to the ]]..link("Flavors","ORB flavor")..[[.
+For more information, see section ]]..link("Brokers")..[[.]],
 
-<pre>  require "oil"</pre>
+[[The returned value is the same table <code>config</code> now containing an initialized ORB and all values of the configuration options used, including default values adopted.
+This returned table implements the <a href="#orb">ORB interface</a> and shall not be modified by the application.]],
 
-<p>The application must first load this module to use OiL.
-It provides a set of helper functions that are used to <%=link("Brokers","create brokers")%>, <%=link("Threads","control multithreading")%> and other miscellaneous helper operations that provides features of the underlying operating system, as described below:</p>
+[[If parameter <code>config</code> already contains an initialized ORB, this function have no effect and only returns table <code>config</code> unmodified.
+All calls of this function without parameter <code>config</code> returns the same ORB, which is initialized with default configuration options.
+To create different ORBs with the default configuration, pass a different empty table as parameter <code>config</code>.]],
+			},
+			examples = {
+[[orb = oil.init{ host="orb.tecgraf.puc-rio.br" }]],
+[[oil.init{ host="10.223.10.56", port=2089 }:run()]],
+[[print("Default port chosen:", oil.init().port)]],
+			},
+		},
+		main = {
+			parameters = "func [, ...]",
+			results = "...",
+			summary = "Runs code with multhreading support, if available",
+			description = {
+[[The application's main function is executed in a new thread if the current assembly provides thread support.
+This function only returns when the application terminates.]],
+			},
+			examples = {
+[[oil.main(function() oil.init():run() end)]],
+			},
+		},
+		newthread = {
+			parameters = "func [, ...]",
+			results = "thread",
+			summary = "Creates and starts the execution of a new the thread",
+			description = {
+[[Creates a new thread to execute the function <code>func</code> with the extra parameters provided.
+This function immediately starts the execution of the new thread.
+The original thread will be resumed again accordingly to the the scheduler's internal policy.
+This function can only be invoked from others threads, including the one executing the application's main function (see <code>main</code>).]],
+			},
+		},
+	},
+	
+	orb = { "object",
+		pending = {
+			parameters = "",
+			results = "",
+			summary = "",
+			description = {
+[[
+]],
+			},
+		},
+	},
+}
 
-<h3>Fields</h3>
-<dl>
-	<dt><a href="#tasks"><b><code>oil.tasks</code></b></a></dt> 
-	<dd>Internal coroutine scheduler used by OiL.</dd>
-</dl>
+local sorted do
+	local function iterator(next, last)
+		local key = next[last]
+		return key, next.map[key]
+	end
+	function sorted(map, comp)
+		local keys = {}
+		for key in pairs(map) do
+			if type(key) == "string" then
+				keys[#keys+1] = key
+			end
+		end
+		table.sort(keys, comp)
+		local next = {map=map}
+		local last = next
+		for _, key in ipairs(keys) do
+			next[last] = key
+			last = key
+		end
+		return iterator, next, next
+	end
+end
 
-<h3>Functions</h3>
-<dl>
-	<dt><a href="#init"><b><code>oil.init</code></b></a><code>([config])</code></dt>
-	<dd>Initialize a broker.</dd>
-	<dt><a href="#main"><b><code>oil.main</code></b></a><code>(function)</code></dt>
-	<dd>Function executes the main function of the application.</dd>
-	<dt><a href="#newthread"><b><code>oil.newthread</code></b></a><code>(function, ...)</code></dt>
-	<dd>Creates and starts the execution of a new the thread.</dd>
-	<dt><a href="#pcall"><b><code>oil.pcall</code></b></a><code>(function, ...)</code></dt>
-	<dd>Function that must be used to perform protected calls in applications.</dd>
-	<dt><a href="#readfrom"><b><code>oil.readfrom</code></b></a><code>(filename)</code></dt>
-	<dd>Read the contents of a file.</dd>
-	<dt><a href="#sleep"><b><code>oil.sleep</code></b></a><code>(delay)</code></dt>
-	<dd>Suspends the execution of the current thread for some time.</dd>
-	<dt><a href="#time"><b><code>oil.time</code></b></a><code>()</code></dt>
-	<dd>Get the current system time.</dd>
-	<dt><a href="#writeto"><b><code>oil.writeto</code></b></a><code>(filename, text)</code></dt>
-	<dd>Writes a text into file.</dd>
-</dl>
+local index = {level=0}
+local contents = {level=0}
+
+local function out(output, text, ...)
+	local ident = ""
+	local inc = ...
+	if select("#", ...) == 0 then inc = 0 end
+	if inc ~= nil then
+		if inc < 0 then output.level = output.level+inc end
+		ident = string.rep("\t", output.level)
+		if inc > 0 then output.level = output.level+inc end
+	end
+	output[#output+1] = ident
+	output[#output+1] = text:gsub("\n", "\n"..ident)
+	output[#output+1] = "\n"
+end
+
+out(index, '<table>', 1)
+for name, ref in sorted(Reference) do
+	out(contents, '<h3>'..name..'</h3>')
+	out(contents, '<dl>', 1)
+	local sep = (ref[1] == "object") and ":" or "."
+	for field, desc in sorted(ref) do
+		local id = name..sep..field
+
+		out(index, '<tr>', 1)
+		out(index, '<td><a href="#'..id..'"><code>'..id..'</code></a></td>')
+		out(index, '<td>'..(desc.summary or "")..'</td>')
+		out(index, '</tr>', -1)
+
+		local parameters = desc.parameters or ""
+		local results = desc.results or ""
+		if results ~= "" then
+			results = "<code>"..results.." = </code>"
+		end
+		out(contents, '<dt>'..results..'<a name="'..id..'"><code>'..id..'</code></a><code>('..parameters..')</code></dt>')
+		out(contents, '<dd>', 1)
+		local description = desc.description
+		if description ~= nil then
+			for _, paragraph in ipairs(description) do
+				out(contents, '<p>'..paragraph..'</p>')
+			end
+		end
+		local examples = desc.examples
+		if examples ~= nil then
+			out(contents, '<p>Example:</p>')
+			out(contents, '')
+			for _, example in ipairs(examples) do
+				out(contents, '<pre>'..example..'</pre>', nil)
+			end
+			out(contents, '')
+		end
+		out(contents, '</dd>', -1)
+	end
+	out(contents, '</dl>', -1)
+end
+out(index, '</table>', -1)
+
+return table.concat(index).."\n<hr>\n"..table.concat(contents)
+%>
+
+<hr>
+<hr>
+<hr>
+<hr>
+<hr>
 
 <h3>Definitions</h3>
-
-	<dt><a name="tasks"><b><code>oil.tasks</code></b></a></dt>
-	<dd>
-	<p>
-		<b>Internal coroutine scheduler used by OiL.</b>
-		This scheduler implements the API described in <a href="http://loop.luaforge.net/library/thread/Scheduler.html">loop.thread.Scheduler</a>.<br>
-	<p>
-		<i>Usage:</i>
-		<pre>
-oil.tasks:register(coroutine.create(function() return broker:run() end))
-oil.tasks:run()
-		</pre>
-	</dd>
-	
-	<dt><a name="main"><b><code>oil.main</code></b></a><code>(func)</code></dt>
-	<dd>
-	<p>
-		<b>Executes the main function of the application.</b>
-		The application's main function is executed in a new thread if the current assembly provides thread support.
-		This function only returns when the application terminates.<br>
-	<p>
-		<i>Parameters:</i>
-		<table>
-		<tr>
-			<td valign="top"><code>func</code></td>
-			<td valign="top"><b>function</b></td>
-			<td valign="top"></td>
-			<td>Application's main function.</td>
-		</tr>
-		</table>
-	<p>
-		<i>Usage:</i>
-		<pre>
-oil.main(function() oil.init():run() end)
-		</pre>
-	</dd>
-	
+<dl>
 	<dt><a name="newthread"><b><code>oil.newthread</code></b></a><code>(func, ...)</code></dt>
 	<dd>
 	<p>
-		<b>Creates and starts the execution of a new the thread.</b>
-		Creates a new thread to execute the function <code>func</code> with the extra parameters provided.
-		This function immediately starts the execution of the new thread.
-		The original thread will be resumed again accordingly to the the scheduler's internal policy.
-		This function can only be invoked from others threads, including the one executing the application's main function (see <code>main</code>).<br>
+		<b>.</b>
+		<br>
 	<p>
 		<i>Parameters:</i>
 		<table>
@@ -142,44 +223,6 @@ oil.sleep(5.5)
 		<pre>
 local start = oil.time(); oil.sleep(3); print("I slept for", oil.time() - start)
 		</pre>
-	</dd>
-	
-	<dt><a name="pcall"><b><code>oil.pcall</code></b></a><code>(func, ...)</code></dt>
-	<dd>
-	<p>
-		<b>A "coroutine-safe" version of the <code>pcall</code> function of the Lua standard library.<br>
-	<p>
-		<i>Parameters:</i>
-		<table>
-		<tr>
-			<td valign="top"><code>func</code></td>
-			<td valign="top"><b>function</b></td>
-			<td valign="top"></td>
-			<td>Function to be executed in protected mode.</td>
-		</tr>
-		<tr>
-			<td valign="top"><code>...</code></td>
-			<td valign="top"><b>any</b></td>
-			<td valign="top"></td>
-			<td>Additional parameters passed to protected function.</td>
-		</tr>
-		</table>
-	<p>
-		<i>Return values:</i>
-		<table>
-		<tr>
-			<td valign="top"><code>success</code></td>
-			<td valign="top"><b>boolean</b></td>
-			<td valign="top"></td>
-			<td><code>true</code> if function execution did not raised any errors or <code>false</code> otherwise.</td>
-		</tr>
-		<tr>
-			<td valign="top"><code>...</code></td>
-			<td valign="top"><b>any</b></td>
-			<td valign="top"></td>
-			<td>Values returned by the function or an the error raised by the function.</td>
-		</tr>
-		</table>
 	</dd>
 	
 	<dt><a name="writeto"><b><code>oil.writeto</code></b></a><code>(filepath, text)</code></dt>
@@ -295,5 +338,4 @@ oil.init{ host = "10.223.10.56", port = 8080 }
 print("ORB port:", oil.init().port)
 		</pre>
 	</dd>
-	
 </dl>	

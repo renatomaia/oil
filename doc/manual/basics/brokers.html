@@ -1,18 +1,18 @@
 <p>Brokers are the central concept of OiL.
-They maintain the list of active servants that are able to receive remote invocations.
-Brokers also create proxies that provide means to perform invocations on remote servants.
+They maintain the list of active servants exposed as distributed object that receive remote invocations.
+Brokers also create proxies that provide means to perform invocations on remote objects.
 Basically, brokers can be seen as the way invocation are performed through the distributed environment.</p>
 
 <h2><a name="creation">Creation</a></h2>
 
-<p>Brokers are created by operation <%=link("Module","<code>oil.init</code>","#init")%><code>([config])</code> that returns an initialized broker.
+<p>Brokers are created by operation <%=link("Module.init")%><code>([config])</code> that returns an initialized broker.
 The optional parameter <code>config</code> is a table containing the description of the parameters used to initialize the broker.
 If no parameter is informed, then a default broker is created and returned.
-All future calls to operation <%=link("Module","<code>oil.init</code>","#init")%><code>()</code> without a parameter return the same default broker.
+All future calls to operation <%=link("Module.init")%><code>()</code> without a parameter return the same default broker.
 The <code>config</code> table might contain the field <code>flavor</code>, which defines the flavor used to create the new broker.
-For more information about flavors, check section <%=link"Flavors"%>.
+For more information about flavors, check section <%=link("Flavors")%>.
 Other additional fields are defined by the underlying RMI protocol selected for the broker.
-To get details about these additional fields, see the specific documentation of the RMI protocol that your intend to use.</p>
+To get details about these additional fields, see the specific documentation of the RMI protocol that your intend to use (<%=link("Config", "CORBA")%>, <%=link("LuDO", "LuDO")%>).</p>
 
 <pre>require "oil"
 

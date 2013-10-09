@@ -13,40 +13,20 @@
 	<dt>Improved Features</dt>
 	<dd>
 		<ul>
-			<li>New API:</li>
-				<ul>
-					<li><code>orb:newproxy(ref, ['synchronous','asynchronous','protected'], type)</code></li>
-					<li><code>orb:setinterceptor(iceptor, 'corba')</code></li>
-				</ul>
-			<li>New interceptor implementation with more information and more about the call.</li>
-			<li>New ORB assembler and builder scripts and simplification of field <code>flavor</code>.</li>
-			<li>Interface parameter (3rd) of <code>newservant</code> now overwrites field <code>__type</code> of the servant's implementation.</li>
+			<li></li>
 		</ul>
 	</dd>
 	<dt>Removed/Deprecated Features</dt>
 	<dd>
 		<ul>
-			<li>Module <code>oil.compat</code> is no more available.</li>
-			<li>Alternative proxies (<code>__deferred</code> and <code>__try</code>) are not created automatically.
-				Instead, use the following commands to explicitly create such proxies whenever necessary.
-				<ul>
-					<li><code>deferred = orb:newproxy(proxy, "asynchronous")</code></li>
-					<li><code>try = orb:newproxy(proxy, "protected")</code></li>
-				</ul>
-			</li>
-			<li>Pseudo-method <code>proxy:_narrow()</code> is deprecated in favor of <code>orb:narrow(proxy)</code>.</li>
-			<li>Operation <code>orb:setclientinterceptor(iceptor)</code> is deprecated in favor of <code>orb:setinterceptor(iceptor, "corba.client")</code>.</li>
-			<li>Operation <code>orb:setserverinterceptor(iceptor)</code> is deprecated in favor of <code>orb:setinterceptor(iceptor, "corba.server")</code>.</li>
+			<li>Field <code>oil.tasks</code></li>
+			<li>Function <code>oil.pcall</code></li>
 		</ul>
 	</dd>
 	<dt>Bug Fixes</dt>
 	<dd>
 		<ul>
-			<li>Bugfix in processing of forward declarations in IDLs.</li>
-			<li>Bugfix to invoke interceptors when exceptions are raised.</li>
-			<li>Bugfix to prevent <code>_non_existent</code> to raise exceptions like <code>COMM_FAILURE</code>.</li>
-			<li>Bugfix to prevent that marshal errors stops the <code>orb:run()</code> method.</li>
-			<li>Bugfix when unknown repIDs are imported from a remote IR.</li>
-			<li>Bugfix to make <code>idl2lua.lua</code> script raise errors when there are problems with the contents of the IDL file.</li>
+			<li></li>
 		</ul>
 	</dd>
+</dl>

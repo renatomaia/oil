@@ -54,16 +54,18 @@ local function processDirective(...)
       tab_macros[macro] = value
     elseif (directive == "include") then
       local incFilename = string.sub(macro, 2, -2)
-      local path = homedir..incFilename
-      local fh, msg = io.open(path)
-      if not fh then
-        for _, v in ipairs(incpath) do
-          path = v..'/'..incFilename
-          fh, msg = io.open(path)
-          if fh then
-            break
-          end
+      local path
+      local fh, msg
+      for _, v in ipairs(incpath) do
+        path = v..'/'..incFilename
+        fh, msg = io.open(path)
+        if fh then
+          break
         end
+      end
+      if not fh then
+        path = homedir..incFilename
+        fh, msg = io.open(path)
       end
       if not fh then
         error(msg, 2)
