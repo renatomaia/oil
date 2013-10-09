@@ -46,6 +46,14 @@ function Codec:localresources(resources)
 		names[resource] = name
 		values[name] = resource
 	end
+	local proxykind = resources.proxykind
+	for _, kind in ipairs(proxykind) do
+		local manager = proxykind[kind]
+		local class = manager.class
+		local name = kind.."ProxyClass"
+		names[class] = name
+		values[name] = class
+	end
 end
 
 function Codec:encoder()
