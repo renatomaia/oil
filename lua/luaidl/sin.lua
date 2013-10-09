@@ -2977,7 +2977,7 @@ rules.readonly_attr_spec_dec_tail = function (attribute)
   if (tab_firsts.rule_227[token]) then
     rules.raises_expr(attribute)
   elseif (tab_firsts.rule_228[token]) then
-    rules.simple_dcl_l(type, true)
+    rules.simple_dcl_l(attribute.type, true)
   elseif (token == ';') then
     -- empty
   else
