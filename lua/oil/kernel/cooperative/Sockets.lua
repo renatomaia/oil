@@ -87,7 +87,7 @@ function Poll:clear()
 end
 
 function Poll:getready(timeout)
-	local socket, errmsg = self.poll:getready()
+	local socket, errmsg = self.poll:getready(timeout)
 	if socket == nil then return nil, errmsg end
 	return self.wrapperOf[socket]
 end

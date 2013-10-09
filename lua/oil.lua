@@ -84,6 +84,8 @@ local assert = asserter.results
 local asserttype = asserter.type
 local illegal = asserter.illegal
 
+local currenttime
+
 --------------------------------------------------------------------------------
 -- OiL main programming interface (API).
 
@@ -474,6 +476,7 @@ end
 -- @usage while oil.pending() do oil.step() end                                .
 --
 function ORB:pending(timeout)
+	if timeout ~= nil then timeout = timeout+currenttime() end
 	return assert(self.RequestReceiver.acceptor:probe(timeout))
 end
 
@@ -488,7 +491,8 @@ end
 -- @usage while oil.pending() do oil.step() end                                .
 --
 function ORB:step(timeout)
-	return assert(self.RequestReceiver.acceptor:step(timeout))
+	if timeout ~= nil then timeout = timeout+currenttime() end
+	return self.RequestReceiver.acceptor:step(timeout)
 end
 
 --------------------------------------------------------------------------------
@@ -777,10 +781,13 @@ if cothread == nil then
 	local ok, result = pcall(require, "cothread")
 	if ok then
 		cothread = result
-		cothread.plugin(require "cothread.plugin.socket")
-		--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
-		--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
 	end
+end
+
+if cothread then
+	cothread.plugin(require "cothread.plugin.socket")
+	--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
+	--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
 end
 
 --------------------------------------------------------------------------------
@@ -850,7 +857,7 @@ local function extracer(ex)
 	return traceback(tostring(ex))
 end
 
-if cothread ~= nil then
+if cothread then
 	function cothread.error(thread, errmsg)
 		error(traceback(thread, tostring(errmsg)), 3)
 	end
@@ -898,7 +905,7 @@ end
 --
 -- @usage oil.sleep(5.5)
 --
-if cothread ~= nil then
+if cothread then
 	function oil.sleep(time)
 		asserttype(time, "number", "time")
 		return yield("delay", time)
@@ -918,16 +925,14 @@ end
 --
 -- @usage local start = oil.time(); oil.sleep(3); print("I slept for", oil.time() - start)
 --
-if cothread ~= nil then
-	function oil.time()
+if cothread then
+	function currenttime()
 		return yield("now")
 	end
 else
-	local _gettime = require("socket.core").gettime
-	function oil.time()
-		return _gettime()
-	end
+	currenttime = require("socket.core").gettime
 end
+oil.time = currenttime
 
 --------------------------------------------------------------------------------
 -- Writes a text into file.
