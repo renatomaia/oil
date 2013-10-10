@@ -31,6 +31,10 @@ local PortUpperBound = 9999 -- inclusive
 local Message = "%s\n%d\n%s\n"
 local TableEntry = "[%q]=%q"
 local CodeBody = table.concat({
+	"local _G = require '_G'",
+	"local table = require 'table'",
+	"local unpack = _G.unpack or table.unpack",
+	"local loadstring = _G.loadstring or _G.load",
 	"require 'oil.dtests.%s'",
 	"oil.dtests.setup(%q, {%s}, ...)",
 	"oil.main(function(...) %s\nend)",
