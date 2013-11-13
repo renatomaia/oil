@@ -3,8 +3,6 @@ LIBNAME = oilall
 
 include base.mak
 
-USE_LUA52=yes
-
 PL_LUA= $(LUASRC_DIR)/preloader.lua
 PL_FLAGS= -p OIL_API
 
