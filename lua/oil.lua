@@ -775,12 +775,13 @@ if cothread == nil then
 		require "coroutine.pcall" -- to avoid coroutine limitation of Lua 5.1
 	end
 	local ok, result = pcall(require, "cothread")
-	if ok then
-		cothread = result
-		cothread.plugin(require "cothread.plugin.socket")
-		--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
-		--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
-	end
+	if ok then cothread = result end
+end
+
+if cothread then
+	cothread.plugin(require "cothread.plugin.socket")
+	--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
+	--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
 end
 
 --------------------------------------------------------------------------------
