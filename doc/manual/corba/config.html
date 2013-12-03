@@ -6,7 +6,7 @@ For the last group, we will present only the options specific to the IIOP, which
 
 <h2>General Options</h2>
 
-<p>As described in section <%=link("Brokers",nil,"#creation")%>, the <code>config</code> argument of operation <%=link("Module","<code>oil.init</code>","#creation")%> can define component instances that should be used to assemble the broker, as well as define the specific flavor that will define which component implementations will be used in the creation of the broker.
+<p>The <code>config</code> argument of operation <%=link("Reference.oil.init")%> can define component instances that should be used to assemble the broker, as well as define the specific flavor that will define which component implementations will be used in the creation of the broker.
 Standard OiL defines only four standard flavors for creation of CORBA brokers, as listed below.</p>
 
 <dl>
@@ -28,7 +28,7 @@ The use of the keyword <code>cooperative</code> is optional to define if the bro
 However, it is preferable that it come after the <code>corba</code> keyword.
 The <code>intercepted</code> keyword defines the support for interception of remote invocations (see section <%=link"Intercept"%>) and must precede the <code>corba</code> keyword, because it defines alternative implementation of CORBA specific components.
 Finally, the <code>base</code> keyword must be present in all flavors because it defines the basic implementation of the core components of OiL ORBs.
-For more information about flavors, see section <%=link("Arch","Flavors","#flavors")%>.</p>
+For more information about flavors, see section <%=link("Architecture","Flavors","#flavors")%>.</p>
 
 <h2>CORBA Options</h2>
 

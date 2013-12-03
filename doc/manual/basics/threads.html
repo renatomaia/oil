@@ -8,12 +8,8 @@ In this section, we present the multithreading support of OiL and how it is used
 <p>Lua does not provide standard support for multithreading.
 However, it provides the concept of coroutines, which can be used to implement a cooperative multithreading infrastructure.
 Unlike preemptive multithreading, as provided by Java or POSIX Threads, the execution switch between threads does not occur automatically.
-Instead the code executed by the coroutine must explicitly signal for execution switch by invocation of operation <code>coroutine.yield()</code>.</p>
-
-<p>Lua coroutines are created by operation <code>coroutine.create(function)</code>.
-The function passed as parameter is the code executed by the coroutine.
-Every time the coroutine executes function <code>coroutine.yield()</code> the coroutine yields the execution to the function that initiated its execution by calling operation <code>coroutine.resume(coroutine)</code>.
-For further information about Lua coroutines, check the chapter on <a href="http://www.lua.org/pil/9.html">Coroutines</a> of the book <a href="http://www.lua.org/pil2/">Programming in Lua</a></p>
+Instead the code executed by the coroutine must explicitly signal for execution switch by operation <%=link"LuaManual.coroutine.yield"%>.
+For further information about Lua coroutines, see <%=link"LuaManual.Coroutines"%>.</p>
 
 <h2>Scheduler</h2>
 
@@ -23,10 +19,10 @@ The scheduler keeps a collection of all the threads of the system.
 These threads are then scheduled for execution, in such way that whenever a coroutine yields its execution, the scheduler chooses another coroutine for execution following a round-robin algorithm.</p>
 
 <p>Since the coroutine scheduler is not part of the standard virtual machine of Lua, it must be created and started by the application.
-This can be done by operation <%=link("Module","<code>oil.main</code>","#main")%><code>(mainbody)</code> that creates and initiates the execution of the scheduler with a single thread registered that executes the function <code>mainbody</code> provided as parameter.
-After this operations is called, other threads can be created with operation <%=link("Module","<code>oil.newthread</code>","#newthread")%><code>(function, ...)</code> that register new coroutines to execute the function informed as the first parameter, and starts its execution immediately.
-The scheduler also provides other operations to register or unregister as described <a href="http://loop.luaforge.net/library/thread/Scheduler.html">here</a>.</p>
+This can be done by operation <%=link("Reference.oil.main")%> that creates and initiates the execution of the scheduler with a single thread registered that executes the function <code>mainbody</code> provided as parameter.
+After this operations is called, other threads can be created with operation <%=link("Reference.oil.newthread")%> that creates new coroutines to execute a function.</p>
 
+<!--
 <h2>Synchronization</h2>
 
 <p>Cooperative multithreading is far more simple to understand and use.
@@ -61,17 +57,16 @@ function Mutex:leave()
 end</pre>
 
 <p>A similar approach can be used to provide other synchronization mechanisms to common problems like <a href="http://en.wikipedia.org/wiki/Producer-consumer_problem">Producers and Consumers</a></p>
+-->
 
 <h2><a name="limitations">Limitations</a></h2>
 
 <p>The multithreading model used by OiL presents two strong limitations.
 The first one is due to a limitation of the coroutines in Lua, which cannot yield execution inside some special places, like metamethods, for interators or C functions exported to Lua.
-A particular case for this is that coroutines cannot yield execution inside a <code><a href="http://www.lua.org/manual/5.1/manual.html#pdf-pcall">pcall</a>(function, ...)</code>.
+A particular case for this is that coroutines cannot yield execution inside a <%=link"LuaManual.pcall"%>.
 Therefore, you usually cannot invoke a remote operation inside such functions because OiL will most likely generate an yield to allow other threads to execute while it waits for the reply of the remote invocation.
-To alleviate the problem of the <a href="http://www.lua.org/manual/5.1/manual.html#pdf-pcall"><code>pcall</code></a> function, OiL provides the alternative implementation <%=link("Module","<code>oil.pcall</code>","#pcall")%><code>(function, ...)</code>, which can be used inside threads.</p>
+To alleviate the problem of the <%=link"LuaManual.pcall"%> function, OiL load a module that redefines this function so it can be used to execute functions that yield.</p>
 
 <p>The other limitation is that the thread scheduler is not integrated to the underlying operating system.
 Therefore, any blocking system call performed by a thread will eventually suspend the execution of the application as a whole since the coroutine does not yield the execution back to the scheduler.
-This is particularly true for file operations that suspend the entire execution of the application regardless of the number of other independent threads that might be ready to execute.
-For socket operations in particular, OiL provides a cooperative API similar to the one provided by <a href="http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/">LuaSocket</a>, as described <a href="http://loop.luaforge.net/library/thread/CoSocket.html">here</a>.
-This cooperative socket API is provided by field <code>oil.tasks.sockets</code>.</p>
+This is particularly true for file operations that suspend the entire execution of the application regardless of the number of other independent threads that might be ready to execute.</p>

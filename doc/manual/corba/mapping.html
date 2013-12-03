@@ -22,6 +22,7 @@ In this section, we describe the mapping OiL uses to convert IDL types to Lua ty
 	</li>
 	<li><a href="#TypeCode">TypeCodes</a></li>
 	<li><a href="#any">Anys</a></li>
+	<li><a href="#valuetype">Value Types</a></li>
 </ol>
 
 <h2><a name="basic">Basic Types</a></h2>
@@ -359,7 +360,7 @@ broker:newobject(impl, nil, "Hello")
 
 <p>Exceptions are mapped to Lua errors, but instead of a textual message, exceptions are errors that carry a table as the error value.
 Like structures, this table maps the name of fields defined in the IDL to their values.
-However, it contains an additional field at index 1 that contains the repository ID of the exception.
+However, it contains the additional field <code>_repid</code> that contains the repository ID of the exception.
 For example, suppose the following IDL exception definition.</p>
 
 <pre>
@@ -388,7 +389,8 @@ function impl:run_script(path)
 	local chunk, errmsg = loadfile(path)
 	if not chunk then
 		-- raise CompilationError exception
-		error{ "IDL:CompilationError:1.0",
+		error{
+			_repid = "IDL:CompilationError:1.0",
 			script = path,
 			message = errmsg,
 		}
@@ -396,7 +398,8 @@ function impl:run_script(path)
 	local success, errmsg = pcall(chunk)
 	if not success then
 		-- raise ExecutionError exception
-		error{ "IDL:ExecutionError:1.0",
+		error{
+			_repid = "IDL:ExecutionError:1.0",
 			script = path,
 			message = errmsg,
 		}
@@ -411,15 +414,13 @@ broker:newobject(impl, nil, "RemoteLua")
 <pre>
 local remoteLua = broker:newproxy(oil.readfrom("ref.ior"), "RemoteLua")
 
-local success, errmsg = oil.pcall(remoteLua.run_script, remoteLua, "/usr/lua/scripts/error.lua")
+local success, errmsg = pcall(remoteLua.run_script, remoteLua, "/usr/lua/scripts/error.lua")
 if not success then
-	print("Caught an exception with repID:", errmsg[1])
+	print("Caught an exception with repID:", errmsg._repid)
 	print("  Failed scrpt:", errmsg.script)
 	print("  Error message:", errmsg.message)
 end
 </pre>
-
-<p>The use of <code>oil.pcall</code> instead of the ordinary <code>pcall</code> is due to current limitations of the OiL implementation, as discussed in section <%=link("Threads", nil, "#limitations")%>.</p>
 
 <h2><a name="TypeCode">TypeCodes</a></h2>
 
@@ -524,6 +525,23 @@ local HelloObjectRef = oil.corba.idl.Object{
 }
 </pre>
 
+<h3>Value Type</h3>
+<pre>
+local BaseValueType = oil.corba.idl.valuetype{
+	repID = "IDL:Base:1.0",
+	name = "Base",
+	{ type = oil.corba.idl.string , name = "text"  , access = "private" },
+	{ type = oil.corba.idl.double , name = "number", access = "public" },
+}
+
+local MyValueType = oil.corba.idl.valuetype{
+	repID = "IDL:MyValue:1.0",
+	name = "MyValue",
+	base_value = BaseValueType,
+	{ type = oil.corba.idl.boolean, name = "logic" , access = "public" },
+}
+</pre>
+
 <h2><a name="any">Anys</a></h2>
 
 <p>Some Lua values can be automatically mapped to <code>any</code>s because OiL defines a default mapping for them.
@@ -542,10 +560,15 @@ This default mapping is illustrated in the table below.</p>
 	</tbody>
 </table>
 
-<p>To marshal other values as <code>any</code>s or to encode any of the values of the table above with a different IDL type than the default one, you must create a table to represent the <code>any</code>.
-This table must contain a field <code>_anyval</code> with the actual value of the <code>any</code> and a field <code>_anytype</code> with the type of the any.
-Alternatively, the application may create values with custom metatables.
-In that case, the <code>any</code> type is defined by the field <code>__type</code> of the custom metatable.
+<p>To marshal other values as <code>any</code>s or to encode some of the values of the table above with a different IDL type than the default one, you must create a table to represent the <code>any</code>.
+This table must have a field <code>_anyval</code> containing the actual value of the <code>any</code> and a field <code>_anytype</code> with the type of the <code>any</code>, as illustrated below</p>
+
+<pre>local any_with_long = {
+	_anyval = 123,
+	_anytype = oil.corba.idl.long,
+}</pre>
+
+<p>Alternatively, you can set field <code>__type</code> of the metatable of a Lua value to define the IDL type it must be encoded in a <code>any</code>.
 Finally, the type of the any can be defined as the metatable of the table containing the actual value.
 For illustrative purpose, the code below creates different <code>any</code>s using the different possibilities allowed by OiL.</p>
 
@@ -554,7 +577,7 @@ For illustrative purpose, the code below creates different <code>any</code>s usi
 local longany = setmetatable({ _anyval = 4 }, oil.corba.idl.long)
 
 -- any value containing a struct
-local MyStruct = oil.corba.idl.struct{
+local MyStructType = oil.corba.idl.struct{
   repID = "IDL:MyStruct:1.0",
   name = "MyStruct",
   { type = oil.corba.idl.string , name = "text"   },
@@ -565,15 +588,94 @@ local structany1 = setmetatable({
   text = "some text",
   number = 123,
   logic = true,
-}, MyStruct)
+}, MyStructType)
 
 -- any value containing a struct with a custom metatable
 local structany2 = setmetatable({}, {
   __index = structany1,
-  __type  = MyStruct,
+  __type  = MyStructType,
 })
 
 -- any value containing a sequence of anys
 local myanyseq = { longany, structany1, structany2 }
 local seqany = setmetatable(myanyseq, oil.corba.idl.sequence{oil.corba.idl.any})
+</pre>
+
+<h2><a name="valuetype">Value Types</a></h2>
+
+<p>Value Types are mapped to a Lua like structs, that is, a table that maps all the name of the fields defined in the IDL definition into their proper values.
+However, unlike structs, <code>nil</code> can be mapped as Value Types.</p>
+
+<p>The table representing the Value Type shall have a metatable with field <code>__type</code> to define the actual Value Type it must be encoded.
+For example, suppose the followin Value Type definition:</p>
+
+<pre>
+valuetype Book {
+	public long   isbn;
+	public string title;
+	public string author;
+	public string publisher;
+	public long   year;
+};
+valuetype RentableBook : truncable Book {
+	private boolean rented;
+};
+interface Library {
+	Book get_book(in long isbn);
+	void add_book(in Book book);
+};
+</pre>
+
+<p>To call operation <code>add_book</code> with a Value Type of type <code>RentableBook</code> you can do the following:</p>
+
+<pre>
+book = {
+	isbn      = 8590379817,
+	title     = "Programming in Lua",
+	author    = "Roberto Ierusalimschy",
+	publisher = "Lua.org",
+	year      = 2003,
+}
+setmetatable(book, { __type = "::RentableBook" }
+library:add_book(book)
+</pre>
+
+<p>You can also define constructor for Value Types received by the ORB to add the implementation of any operation provided by the Valeu Type, as illustrated below:</p>
+
+<pre>
+local orb = oil.init()
+
+orb:loadidlfile[[
+// extracted from book "Pure CORBA" by Filtan Bolton
+
+abstract interface IAccount {
+	// operations
+	boolean withdraw(in long amount);
+	void    pay_in(in long amount);
+};
+
+valuetype AccountVal supports IAccount {
+	// state members
+	public  long   m_account_id;
+	public  string m_owner;
+	private long   m_balance;
+};
+
+interface PassByValue {
+	void pass_account_val(in IAccount val);
+};
+]]
+
+orb.valuefactories["IDL:AccountVal:1.0"] = function(val)
+	function val:withdraw(value)
+		if self.m_balance >= value then
+			self.m_balance = self.m_balance - value
+			return true
+		end
+		return false
+	end
+	function val:pay_in(value)
+		self.m_balance = self.m_balance + value
+	end
+end
 </pre>
