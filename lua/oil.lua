@@ -18,7 +18,6 @@
 --                                                                            --
 --   newservant(impl, [iface], [key])                                         --
 --   deactivate(object, [type])                                               --
---   tostring(object)                                                         --
 --                                                                            --
 --   pending()                                                                --
 --   step()                                                                   --
@@ -231,9 +230,9 @@ end
 --          };
 --        ]]                                                                 .
 --
-function ORB:loadidl(idlspec)
+function ORB:loadidl(idlspec, idlpaths)
 	asserttype(idlspec, "string", "IDL specification")
-	return assert(self.TypeRepository.compiler:load(idlspec))
+	return assert(self.TypeRepository.compiler:load(idlspec, idlpaths))
 end
 
 --------------------------------------------------------------------------------
@@ -277,7 +276,7 @@ end
 --
 -- @return proxy CORBA object that exports the local interface repository.
 --
--- @usage oil.writeto("ir.ior", oil.tostring(oil.getLIR()))                    .
+-- @usage oil.writeto("ir.ior", oil.getLIR())                               .
 --
 function ORB:getLIR()
 	return self:newservant(self.types,
@@ -733,7 +732,7 @@ function ORB:getinterceptor(kind)
 		local clticeptor = self.OperationRequester.interceptor
 		if corbakind == ".server" then
 			return srviceptor
-		elseif corbakind ~= ".client" then
+		elseif corbakind == ".client" then
 			return clticeptor
 		elseif srviceptor == clticeptor then
 			return srviceptor
@@ -851,7 +850,7 @@ end
 -- @param main function Appplication's main function.
 --
 -- @usage oil.main(orb.run, orb)
--- @usage oil.main(function() print(oil.tostring(oil.getLIR())) oil.run() end)
+-- @usage oil.main(function() print(oil.getLIR()) oil.run() end)
 --
 local function extracer(ex)
 	return traceback(tostring(ex))
@@ -946,7 +945,7 @@ function oil.writeto(filepath, data, mode)
 		result, errmsg = file:write(tostring(data))
 		file:close()
 	end
-	return result, errmsg
+	return (result ~= nil), errmsg
 end
 
 --------------------------------------------------------------------------------
@@ -954,8 +953,8 @@ end
 --
 -- Utility function for reading stringfied IORs from a file.
 --
-function oil.readfrom(filepath, mode)
-	local result, errmsg = open(filepath, mode)
+function oil.readfrom(filepath, binary)
+	local result, errmsg = open(filepath, binary and "rb" or "r")
 	if result then
 		local file = result
 		result, errmsg = file:read("*a")
