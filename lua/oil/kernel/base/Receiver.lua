@@ -19,18 +19,21 @@ function Receiver:setup(configs)
 	return self.listener:setup(configs)
 end
 
-function Receiver:probe(timeout)                                                    --[[VERBOSE]] verbose:acceptor(true, "checking for invocation requests")
+function Receiver:probe(timeout)                                                --[[VERBOSE]] verbose:acceptor(true, "checking for invocation requests")
 	local result, except = self.pending
 	if result == nil then                                                         --[[VERBOSE]] verbose:acceptor("waiting requests for ",timeout and timeout.." seconds" or "ever")
 		local listener = self.listener
 		repeat
 			result, except = listener:getchannel(timeout)
 			if result then
-				local result, except = result:getrequest(0)
+				result, except = result:getrequest(0)
 				if result then                                                          --[[VERBOSE]] verbose:acceptor("new request received")
 					self.pending = result
-				elseif except.error ~= "timeout" and except.error ~= "terminated" then
-					if stderr then stderr:write(tostring(except), "\n") end
+				else
+					if except.error ~= "timeout" and except.error ~= "terminated" then
+						if stderr then stderr:write(tostring(except), "\n") end
+					end
+					except = nil
 				end
 			end
 		until result or except

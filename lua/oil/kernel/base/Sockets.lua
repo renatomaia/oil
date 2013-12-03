@@ -31,11 +31,17 @@ do -- add new operation 'settimelimit' on sockets
 		if timeout and timeout >= 0 then timeout = max(0, timeout-gettime()) end
 		return self:settimeout(timeout)
 	end
-	registry["tcp{client}"].__index.settimelimit = settimelimit
-	registry["tcp{server}"].__index.settimelimit = settimelimit
-	registry["tcp{master}"].__index.settimelimit = settimelimit
-	registry["udp{connected}"].__index.settimelimit = settimelimit
-	registry["udp{unconnected}"].__index.settimelimit = settimelimit
+	local socketclasses = {
+		"tcp{client}",
+		"tcp{server}",
+		"tcp{master}",
+		"udp{connected}",
+		"udp{unconnected}",
+	}
+	for _, socketclass in ipairs(socketclasses) do
+		local methods = registry[socketclass].__index
+		methods.settimelimit = settimelimit
+	end
 end
 
 

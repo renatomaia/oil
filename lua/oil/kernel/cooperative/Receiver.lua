@@ -110,7 +110,7 @@ function CoReceiver:start()
 	if self.thread == nil then                                                    --[[VERBOSE]] verbose:acceptor("start processing invocation requests")
 		-- process any pending request
 		local pending = self.pending
-		if pending then                                                             --[[VERBOSE]] verbose:acceptor("processing one pending request previously probed")
+		if pending ~= nil then                                                      --[[VERBOSE]] verbose:acceptor("processing one pending request previously probed")
 			self.pending = nil
 			local dispatcher = newthread(self.dorequest)
 			yield("last", dispatcher, self, pending)

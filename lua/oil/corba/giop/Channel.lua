@@ -620,10 +620,10 @@ function GIOPChannel:getrequest(timeout)
 		if requester ~= nil then
 			local decoder = context.servicedecoder
 			if decoder ~= nil then
-				bidir = decoder:decodebidir(request.service_context)
-				if bidir ~= nil then
+				local addresses = decoder:decodebidir(request.service_context)
+				if addresses ~= nil then
 					self.bidir_role = "acceptor"
-					requester:addbidirchannel(self, bidir)                              --[[VERBOSE]] else verbose:listen("no bi-directional GIOP indication found in request received")
+					requester:addbidirchannel(self, addresses)                          --[[VERBOSE]] else verbose:listen("no bi-directional GIOP indication found in request received")
 				end
 			end
 		end
@@ -668,7 +668,14 @@ function GIOPChannel:sendreply(request)
 end
 
 function GIOPChannel:close()
-	if next(self.incoming) == nil then
+	local pending = false
+	for id, request in pairs(self.incoming) do
+		if request.setreply ~= nil then
+			pending = true
+			break
+		end
+	end
+	if not pending then
 		local result, except
 		if self.server or self.version >= 2  then
 			result, except = sendmsg(self, CloseConnectionID)
