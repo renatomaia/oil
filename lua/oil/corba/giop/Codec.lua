@@ -496,9 +496,9 @@ function Encoder:union(value, idltype)                                          
 end
 
 function Encoder:enum(value, idltype)                                           --[[VERBOSE]] verbose:marshal(true, self, idltype, value)
-	value = idltype.labelvalue[value] or tonumber(value)
-	if not value then illegal(value, "enum value") end
-	self:ulong(value)                                                             --[[VERBOSE]] verbose:marshal(false)
+	local number = idltype.labelvalue[value] or tonumber(value)
+	if not number then illegal(value, "enum value") end
+	self:ulong(number)                                                             --[[VERBOSE]] verbose:marshal(false)
 end
 
 function Encoder:string(value)                                                  --[[VERBOSE]] verbose:marshal(true, self, idl.string, value)
