@@ -594,6 +594,7 @@ local PrimitiveTypes = {
 	pk_objref     = idl.object,
 }
 
+PrimitiveTypes.pk_objref.absolute_name = "CORBA::Object"
 PrimitiveDef.def_kind = "dk_Primitive"
 
 function PrimitiveDef:__new(object)
@@ -609,11 +610,12 @@ end
 --------------------------------------------------------------------------------
 
 function ObjectRef:__new(object, registry)
-	if object.repID ~= PrimitiveTypes.pk_objref.repID then
+	local pk_objref = PrimitiveTypes.pk_objref
+	if object.repID ~= pk_objref.repID then
 		return registry.repository:lookup_id(object.repID) or
 		       assertillegal(object,"Object type, use interface definition instead")
 	end
-	return PrimitiveTypes.pk_objref
+	return pk_objref
 end
 
 --------------------------------------------------------------------------------
@@ -1827,11 +1829,16 @@ function Registry:resolve(typeref, servant)
 	if luatype == "string" then
 		result = self:lookup_id(typeref) or self:lookup(typeref)
 		if not result then
-			errmsg = Exception{
-				"unknown interface (got $interface_id)",
-				error = "badtype",
-				interface_id = typeref,
-			}
+			local pk_objref = PrimitiveTypes.pk_objref
+			if typeref == pk_objref.repID or typeref == pk_objref.absolute_name then
+				result, errmsg = PrimitiveTypes.pk_objref
+			else
+				errmsg = Exception{
+					"unknown interface (got $interface_id)",
+					error = "badtype",
+					interface_id = typeref,
+				}
+			end
 		end
 	elseif result == nil then
 		result, errmsg = nil, Exception{
