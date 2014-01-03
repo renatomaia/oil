@@ -109,6 +109,12 @@ function GIOPRequester:addbidirchannel(channel, addresses)                      
 	end
 end
 
+function GIOPRequester:removechannel(channel)                                   --[[VERBOSE]] verbose:invoke("discard channel as outgoing request channel")
+	local socket = channel.socket
+	self.sock2channel[socket] = nil
+	self.channels:unregister(socket)
+end
+
 function GIOPRequester:getchannel(reference)
 	local result, except = reference.ior_profile_data
 	if result ~= nil then                                                         --[[VERBOSE]] verbose:invoke("reusing previous profile with tag ",reference.ior_profile_tag)

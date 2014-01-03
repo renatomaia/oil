@@ -16,14 +16,12 @@ if oil.dtests.flavor.corba then
 	Caller.__type = "Caller"
 end
 orb:newservant(Caller, "object")
-orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
 checks = oil.dtests.checks
 
 orb = oil.dtests.init()
-oil.newthread(orb.run, orb)
 
 Caller = oil.dtests.resolve("Server", 2809, "object")
 Caller:call({ ack = function() end })

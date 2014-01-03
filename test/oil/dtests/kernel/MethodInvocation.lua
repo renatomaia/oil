@@ -27,7 +27,7 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-oil.dtests.init()
+orb = oil.dtests.init()
 checks = oil.dtests.checks
 worker = oil.dtests.resolve("Server", 2809, "worker")
 
@@ -73,6 +73,7 @@ checks:assert(worker:count(), checks.is(6, "wrong number of performed operations
 checks:assert(ok == true, "operation results does not indicates success")
 checks:assert(result, checks.is(.1, "wrong results."))
 
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite()

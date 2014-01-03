@@ -60,6 +60,8 @@ ok, res = prot:concat("first", "second")
 assert(ok == false)
 assert(type(ex) == "string")
 assert(ex:match("Oops!$"))
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

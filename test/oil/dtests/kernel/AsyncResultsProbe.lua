@@ -27,7 +27,7 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-oil.dtests.init()
+orb = oil.dtests.init()
 checks = oil.dtests.checks
 worker = oil.dtests.resolve("Server", 2809, "worker")
 
@@ -48,6 +48,8 @@ checks:assert(ok == true, "operation results indicated a unexpected error.")
 checks:assert(result, checks.is(.1, "wrong results."))
 checks:assert(future:evaluate(), checks.is(.1, "wrong results."))
 checks:assert(worker:count(), checks.is(2, "wrong number of performed operations."))
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ cooperative = true }

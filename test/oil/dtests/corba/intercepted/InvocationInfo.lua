@@ -180,6 +180,7 @@ checks:assert(Interceptor.lastConcatRequest, checks.is(false))
 
 checks:assert(sync:_get_success(), checks.is(true))
 
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

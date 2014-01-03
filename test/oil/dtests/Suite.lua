@@ -9,7 +9,7 @@ return Suite{
 	ORBShutdown = require "oil.dtests.kernel.ORBShutdown",
 	ORBShutdown2 = require "oil.dtests.kernel.ORBShutdown2",
 	ORBShutdownWithoutRun = require "oil.dtests.kernel.ORBShutdownWithoutRun",
-	ORBRestart = require "oil.dtests.kernel.ORBRestart",
+	ORBShutdownWithPendingCalls = require "oil.dtests.kernel.ORBShutdownWithPendingCalls",
 	StepTimeout = require "oil.dtests.kernel.StepTimeout",
 	ServantLocator = require "oil.dtests.kernel.ServantLocator",
 	ServantManager = require "oil.dtests.kernel.ServantManager",

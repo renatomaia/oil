@@ -114,11 +114,11 @@ function Channel:close()
 end
 
 function Channel:acquire()
-	self.context.access:remove(self.socket)
+	self.access:remove(self.socket)
 end
 
 function Channel:release()
-	self.context.access:add(self.socket)
+	self.access:add(self.socket)
 end
 
 return Channel

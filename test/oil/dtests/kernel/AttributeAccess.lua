@@ -34,7 +34,7 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-oil.dtests.init()
+orb = oil.dtests.init()
 checks = oil.dtests.checks
 sync = oil.dtests.resolve("Server", 2809, "object")
 
@@ -93,6 +93,8 @@ assert(ok == true and res == 5678)
 
 ok, res = prot:_get_changes()
 assert(ok == true and res == 3)
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite()

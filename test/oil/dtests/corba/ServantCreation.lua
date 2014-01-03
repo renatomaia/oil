@@ -23,13 +23,15 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-oil.dtests.init()
+orb = oil.dtests.init()
 checks = oil.dtests.checks
 object1 = oil.dtests.resolve("Server", 2809, "object1")
 object2 = oil.dtests.resolve("Server", 2809, "object2")
 
 checks:assert(object1:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0"), checks.is(true))
 checks:assert(object2:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0"), checks.is(true))
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite()

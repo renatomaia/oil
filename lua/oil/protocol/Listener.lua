@@ -31,6 +31,7 @@ function Listener:__init()
 		return self.Channel{
 			socket = socket,
 			context = self,
+			access = self.access,
 			server = true,
 		}
 	end)
@@ -41,7 +42,7 @@ function Listener:setup(configs)
 		self.configs = configs -- delay actual initialization (see 'getaccess')
 		return true
 	end
-	return nil, Exception{ "already started", error = "already started" }
+	return nil, Exception{ "already started", error = "badsetup" }
 end
 
 function Listener:getaccess(probe)
@@ -49,7 +50,7 @@ function Listener:getaccess(probe)
 	if result == nil and not probe then
 		result = self.configs
 		if result == nil then
-			except = Exception{ "terminated", error = "terminated" }
+			except = Exception{ "setup missing", error = "badsetup" }
 		else                                                                        --[[VERBOSE]] verbose:listen("creating new access point")
 			result, except = self.channels:newaccess(result)
 			if result ~= nil then
@@ -95,17 +96,25 @@ function Listener:shutdown()
 	if not access then
 		return nil, except
 	end                                                                           --[[VERBOSE]] verbose:listen(true, "shutting down server")
+	access:close()
+	local excepts = {}
 	local sock2channel = self.sock2channel
-	for socket in pairs(access:close()) do
-		local channel = sock2channel[socket]                                        --[[VERBOSE]] verbose:listen("closing channel")
+	for socket, channel in pairs(sock2channel) do                                 --[[VERBOSE]] verbose:listen("closing channel")
 		local closed, except = channel:close()
-		if not closed then                                                          --[[VERBOSE]] verbose:listen(false, "shutdown failed while closing channel")
-			return nil, except
+		if not closed then                                                          --[[VERBOSE]] verbose:listen("shutdown failed while closing channel: ",except)
+			excepts[#excepts+1] = except
 		end
 	end
 	self.access = nil
 	self.address = nil
 	self.configs = nil                                                            --[[VERBOSE]] verbose:listen(false, "shutdown initialized")
+	if #excepts > 0 then
+		return nil, Exception{
+			"unable to close all incoming connections",
+			error = "badshutdown",
+			excepts = excepts,
+		}
+	end
 	return true
 end
 

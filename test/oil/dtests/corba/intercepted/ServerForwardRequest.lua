@@ -31,8 +31,8 @@ function Interceptor:receiverequest(request)
 end
 
 orb = oil.dtests.init{ port = 2808 }
-orb:setserverinterceptor(Interceptor)
 forward = oil.dtests.resolve("Server", 2809, "object")
+orb:setserverinterceptor(Interceptor)
 orb:run()
 --[Middle]=====================================================================]
 
@@ -49,6 +49,8 @@ checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&secon
 ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(true))
 checks:assert(res, checks.is("first&second"))
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

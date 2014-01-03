@@ -18,7 +18,6 @@ orb:newservant{
 	shutdown = function() orb:shutdown() end,
 }
 repeat orb:step() until done
-orb:run()
 --[Server]=====================================================================]
 
 Caller = [=====================================================================[
@@ -63,6 +62,8 @@ else
 		error = "badconnect",
 	})
 end
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ cooperative = true }

@@ -65,6 +65,8 @@ assert(ok == false)
 assert(type(ex) == "table")
 assert(ex._repid == "IDL:omg.org/CORBA/UNKNOWN:1.0")
 assert(ex.completed == "COMPLETED_MAYBE")
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

@@ -54,6 +54,8 @@ ok, res = prot:concat("first", "second")
 checks:assert(ok, checks.is(false))
 checks:assert(res, checks.is(Exception))
 checks:assert(InterceptedResult, checks.is(Exception))
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

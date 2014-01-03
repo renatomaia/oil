@@ -66,6 +66,8 @@ for opname, opdesc in pairs(cases) do
 		end
 	end
 end
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true }

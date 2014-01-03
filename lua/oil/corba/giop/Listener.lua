@@ -12,7 +12,6 @@ local pcall = _G.pcall
 local select = _G.select
 local tostring = _G.tostring
 local type = _G.type
-local stderr = _G.io and _G.io.stderr -- only if available
 
 local array = require "table"
 local unpack = array.unpack or _G.unpack
@@ -43,8 +42,8 @@ local GIOPChannel = require "oil.corba.giop.Channel"
 
 
 
-local function unknownex(error)
-	if stderr then stderr:write(tostring(error), "\n") end
+local function unknownex(self, error)
+	self.unotifiederror = error
 	return Exception{ SystemExceptionIDs.UNKNOWN,
 		minor = 0,
 		completed = "COMPLETED_MAYBE",
@@ -153,10 +152,10 @@ function ServerRequest:getreplybody()
 			ExMsgBody[2] = except
 			return UserExTypes, ExMsgBody
 		elseif not SystemExceptions[repid] then                                   --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
-			except = OiLEx2SysEx[except.error] or unknownex(except)                 --[[VERBOSE]] else verbose:listen("got system exception ",except)
+			except = OiLEx2SysEx[except.error] or unknownex(self, except)           --[[VERBOSE]] else verbose:listen("got system exception ",except)
 		end
 	else
-		except = unknownex(except)
+		except = unknownex(self, except)
 	end
 	self.reply_status = "SYSTEM_EXCEPTION"
 	ExMsgBody[1] = except._repid
@@ -169,10 +168,11 @@ function ServerRequest:setreply(success, ...)
 	if channel ~= nil then                                                      --[[VERBOSE]] verbose:listen("set reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
 		Request.setreply(self, success, ...)
 		local success, except = channel:sendreply(self)
-		if not success and except.error ~= "terminated" and stderr then           --[[VERBOSE]] verbose:listen("error sending reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
-			stderr:write(tostring(except), "\n")
+		if not success and except.error ~= "terminated" then                      --[[VERBOSE]] verbose:listen("error sending reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
+			return false, except
 		end                                                                       --[[VERBOSE]] else verbose:listen("ignoring reply for cancelled request ",self.request_id," to ",self.objectkey,":",self.operation)
 	end
+	return true
 end
 
 
@@ -182,23 +182,23 @@ local GIOPListener = class({
 	Channel = GIOPChannel,
 }, Listener)
 
-function GIOPListener:addbidircontext(servctxt)
-	local encoder = self.serviceencoder
-	if encoder ~= nil then
-		local address = self:getaddress("probe")
-		if address ~= nil then
-			if servctxt == nil then servctxt = {} end
-			encoder:encodebidir(servctxt, address)
-			return servctxt
-		end
-	end
-end
-
 function GIOPListener:addbidirchannel(channel)                                --[[VERBOSE]] verbose:listen("add bidirectional channel as incoming request channel")
 	channel.context = self
+	channel.access = self.access
 	local socket = channel.socket
 	self.sock2channel[socket] = channel
 	self.access:add(socket, true)
+end
+
+function GIOPListener:removechannel(channel)                                  --[[VERBOSE]] verbose:listen("discard channel as incoming request channel")
+	--channel.context = nil
+	--channel.access = nil
+	local socket = channel.socket
+	self.sock2channel[socket] = nil
+	local access = self.access
+	if access ~= nil then
+		access:remove(socket)
+	end
 end
 
 return GIOPListener

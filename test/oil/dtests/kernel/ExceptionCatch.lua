@@ -130,6 +130,8 @@ for raiser, exchecker in pairs(raisers) do
 	checks:assert(not ok, "exception was not raised.")
 	exchecker(exception)
 end
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite()

@@ -17,6 +17,8 @@ inexistent = oil.dtests.resolve("Server", 2809, "inexistent", nil, true, true)
 -- synchronous call
 result = inexistent:_non_existent()
 checks:assert(result, checks.is(true))
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true }

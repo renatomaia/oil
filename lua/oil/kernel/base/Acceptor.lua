@@ -65,7 +65,7 @@ end
 function AccessPoint:close()
 	local poll = self.poll
 	local socket = self.socket
-	if socket then
+	if socket ~= nil then
 		poll:remove(socket)
 		socket:close()
 		self.socket = nil

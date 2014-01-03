@@ -64,9 +64,9 @@ function Poll:add(wrapper, ready)
 	self.wrapperOf[socket] = wrapper
 	local poll = self.poll
 	poll:add(socket, "r")
-	if ready then
-		yield("next", poll.thread, socket, "r") -- simulate that socket is ready
-	end
+	--if ready then
+	--	yield("next", poll.thread, socket, "r") -- simulate that socket is ready
+	--end
 end
 
 function Poll:remove(wrapper)
@@ -77,7 +77,7 @@ end
 
 function Poll:clear()
 	local wrapperOf = self.wrapperOf
-	local sockets = self.poll:clear().r
+	local sockets = self.poll:clear()
 	local results = {}
 	for socket in pairs(sockets) do
 		results[wrapperOf[socket]] = true

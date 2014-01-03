@@ -74,6 +74,8 @@ checks:assert(res, checks.similar{
                    	completed = "COMPLETED_NO",
                    	minor = 123,
                    })
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

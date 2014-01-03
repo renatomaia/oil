@@ -32,6 +32,8 @@ orb:loadidl(newiface)
 
 checks:assert(object:say_hello(), checks.is("Hello, World!"))
 checks:assert(object.dostring, checks.is(nil, "old method was not removed from proxy class cache"))
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true }

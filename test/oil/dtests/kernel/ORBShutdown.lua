@@ -12,7 +12,6 @@ orb:newservant{
 	idle = function() oil.sleep(1) end,
 	shutdown = function() orb:shutdown() end,
 }
-orb:run()
 --[Server]=====================================================================]
 
 Caller = [=====================================================================[
@@ -57,6 +56,8 @@ else
 		error = "badconnect",
 	})
 end
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ cooperative = true }

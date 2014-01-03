@@ -207,6 +207,7 @@ function ORB:__new(config)
 			self.ValueEncoder.localrefs = config.localrefs
 		end
 	end
+	self.RequestReceiver.acceptor.notifyerror = config.onerror
 	assert(self.RequestReceiver.acceptor:setup(self))
 	
 	return self
@@ -519,9 +520,8 @@ end
 --
 function ORB:shutdown()
 	local acceptor = self.RequestReceiver.acceptor
-	assert(acceptor:stop(true))
+	acceptor:stop()
 	assert(acceptor:shutdown())
-	assert(acceptor:setup(self)) -- so it can be started again
 end
 
 --------------------------------------------------------------------------------

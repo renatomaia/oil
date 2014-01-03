@@ -25,9 +25,9 @@ function Dispatcher:dispatch(request)
 		local object = entry.__servant
 		local method = object[request.operation]
 		if method ~= nil then                                                       --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
-			request:setreply(pcall(method, object, request:getvalues()))
+			return request:setreply(pcall(method, object, request:getvalues()))
 		else                                                                        --[[VERBOSE]] verbose:dispatcher("missing implementation of ",request.operation)
-			request:setreply(false, Exception{
+			return request:setreply(false, Exception{
 				"servant $key does not implement $operation",
 				error = "badobjimpl",
 				operation = request.operation,
@@ -36,7 +36,7 @@ function Dispatcher:dispatch(request)
 			})
 		end
 	else                                                                          --[[VERBOSE]] verbose:dispatcher("got illegal object ",key)
-		request:setreply(false, Exception{
+		return request:setreply(false, Exception{
 			"unknown servant (got $key)",
 			error = "badobjkey",
 			key = key,

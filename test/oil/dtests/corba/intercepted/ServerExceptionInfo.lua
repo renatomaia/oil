@@ -198,6 +198,7 @@ checks:assert(res, checks.similar{
                    })
 checks:assert(Interceptor.lastConcatRequest, checks.is(false))
 
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite{ corba = true, interceptedcorba = true }

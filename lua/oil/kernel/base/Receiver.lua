@@ -3,6 +3,8 @@
 -- Title  : Request Acceptor
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
+local _G = require "_G"
+local stderr = _G.io and _G.io.stderr -- only if available
 
 local vararg = require "vararg"
 local pack = vararg.pack
@@ -14,6 +16,23 @@ local Exception = require "oil.Exception"                                       
 
 
 local Receiver = class()
+
+function Receiver:notifyerror(tag, except)
+	if stderr ~= nil then
+		stderr:write("OiL caught error: [", tag, "] ", tostring(except), "\n")
+	end
+end
+
+function Receiver:dorequest(request)
+	local success, except = self.dispatcher:dispatch(request)
+	if not success then
+		self:notifyerror("reply", except)
+	end
+	except = request.unotifiederror
+	if except ~= nil then
+		self:notifyerror("dispatch", except)
+	end
+end
 
 function Receiver:setup(configs)
 	return self.listener:setup(configs)
@@ -31,10 +50,12 @@ function Receiver:probe(timeout)                                                
 					self.pending = result
 				else
 					if except.error ~= "timeout" and except.error ~= "terminated" then
-						if stderr then stderr:write(tostring(except), "\n") end
+						self:notifyerror("request", except)
 					end
 					except = nil
 				end
+			else
+				self:notifyerror("connection", except)
 			end
 		until result or except
 	end                                                                           --[[VERBOSE]] verbose:acceptor(false)
@@ -45,35 +66,31 @@ function Receiver:step(timeout)
 	local result, except = self:probe(timeout)
 	if result then                                                                --[[VERBOSE]] verbose:acceptor(true, "processing one single request")
 		self.pending = nil
-		self.dispatcher:dispatch(result)                                            --[[VERBOSE]] verbose:acceptor(false, "request completed")
+		self:dorequest(result)                                                      --[[VERBOSE]] verbose:acceptor(false, "request completed")
 		return true
 	end
 	return result, except
 end
 
 function Receiver:start()
-	if self.stopped ~= false then                                                 --[[VERBOSE]] verbose:acceptor(true, "start processing invocation requests")
-		self.stopped = false
-		repeat
-			local result, except = self:step()
-			if not result then return nil, except end
-		until self.stopped                                                          --[[VERBOSE]] verbose:acceptor(false, "invocation request processing stopped")
-		local values = self.stopped
-		self.stopped = nil
-		return values()
+	if not self.started then                                                      --[[VERBOSE]] verbose:acceptor(true, "start processing invocation requests")
+		self.started = true
+		repeat until not self:step() or not self.started
+		self.started = false                                                        --[[VERBOSE]] verbose:acceptor(false, "invocation request processing stopped")
+		return true
 	end
 	return nil, Exception{ "already started", error = "badinitialize" }
 end
 
-function Receiver:stop(...)
-	if self.stopped == false then                                                 --[[VERBOSE]] verbose:acceptor("attempt to stop invocation request processing")
-		self.stopped = pack(...)
+function Receiver:stop()
+	if self.started then                                                          --[[VERBOSE]] verbose:acceptor("attempt to stop invocation request processing")
+		self.started = false
 		return true
 	end
 	return nil, Exception{ "ORB is not running", error = "badinitialize" }
 end
 
-function Receiver:shutdown()                                                        --[[VERBOSE]] verbose:acceptor("attempt to shutdown the ORB")
+function Receiver:shutdown()                                                    --[[VERBOSE]] verbose:acceptor("attempt to shutdown the ORB")
 	return self.listener:shutdown()
 end
 

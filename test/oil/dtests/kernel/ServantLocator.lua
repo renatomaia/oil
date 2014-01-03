@@ -61,6 +61,8 @@ end
 for i = 1, 3 do
 	checks:assert(var[i]:get(), checks.is("var"..i))
 end
+
+orb:shutdown()
 --[Client]=====================================================================]
 
 return template:newsuite()
