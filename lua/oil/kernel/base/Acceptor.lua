@@ -149,7 +149,7 @@ function Acceptor:newaccess(configs)
 			port = port,
 		}
 	end                                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
-	local poll = sockets.newpoll()
+	local poll = sockets:newpoll()
 	poll:add(socket)
 	return AccessPoint{
 		options = options,
