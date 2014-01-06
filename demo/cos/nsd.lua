@@ -54,5 +54,4 @@ oil.main(function()
 	end
 	local ns = orb:newservant(naming.new())
 	if args.ior ~= "" then oil.writeto(args.ior, tostring(ns)) end
-	orb:run()
 end)

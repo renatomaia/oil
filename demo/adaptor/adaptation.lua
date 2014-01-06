@@ -61,4 +61,5 @@ oil.main(function()
 		]]
 	)
 	
+	orb:shutdown()
 end)

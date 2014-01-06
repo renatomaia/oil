@@ -42,4 +42,6 @@ oil.main(function()
 			else print("Got unkown exception:", exception)
 		end
 	end
+	
+	orb:shutdown()
 end)

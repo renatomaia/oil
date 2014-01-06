@@ -8,5 +8,4 @@ oil.main(function()
 	
 	orb = oil.init{flavor="cooperative;ludo"}
 	oil.writeto("ref.ludo", orb:newservant(Invoker))
-	orb:run()
 end)

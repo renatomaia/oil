@@ -23,9 +23,6 @@ oil.main(function()
 	helloCORBA = orbCORBA:newservant(hello, nil, "Hello") -- Create CORBA object
 	helloLuDO  = orbLuDO:newservant(hello)                -- Create LuDO object
 	
-	oil.writeto("ref.ior", orbCORBA:tostring(helloCORBA))
-	oil.writeto("ref.ludo", orbLuDO:tostring(helloLuDO))
-	
-	oil.newthread(orbCORBA.run, orbCORBA)
-	oil.newthread(orbLuDO.run, orbLuDO)
+	oil.writeto("ref.ior", tostring(helloCORBA))
+	oil.writeto("ref.ludo", tostring(helloLuDO))
 end)

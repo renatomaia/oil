@@ -51,7 +51,4 @@ oil.main(function()
 	end
 	local servant = orb:newservant(impl)
 	assert(oil.writeto("server.ior", servant))
-	
-	-- start processing requests
-	orb:run()
 end)

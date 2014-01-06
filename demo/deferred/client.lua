@@ -34,4 +34,6 @@ oil.main(function()
 			end
 		end
 	until next(calls) == nil
+	
+	orb:shutdown()
 end)

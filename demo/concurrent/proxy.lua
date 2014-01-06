@@ -15,5 +15,4 @@ oil.main(function()
 	end
 	proxy = orb:newservant(proxy_impl, nil, "Concurrency::Proxy")
 	assert(oil.writeto("proxy.ior", tostring(proxy)))
-	orb:run()
 end)

@@ -30,6 +30,4 @@ oil.main(function()
 	oil.writeto("proxy.ior", tostring(proxy))
 	oil.writeto("proxyadaptor.ior", tostring(adaptor))
 	------------------------------------------------------------------------------
-	orb:run()
-	------------------------------------------------------------------------------
 end)

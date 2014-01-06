@@ -5,7 +5,6 @@ oil.main(function()
 		flavor = "cooperative;ludo",
 		localrefs = "proxy", -- disable local reference resolution
 	}
-	oil.newthread(orb.run, orb)
 	
 	local Hello = {}
 	function Hello:say(who)

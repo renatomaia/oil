@@ -2,20 +2,15 @@
 
 LUA=lua
 
-echo "Building demo ..."
-make
-
 echo "Starting server"
-./servant &
+$LUA server.lua &
 pid=$!
 trap "kill $pid > /dev/null 2> /dev/null" 0
 
-echo "Starting client ..."
-cd ../hello
 for((i=0;i<10;++i));do if test -r ref.ior;then break;else sleep 1;fi;done
+
+echo "Starting client"
 $LUA client.lua
 
 echo "Demo finished."
-rm -f hello.ref
-cd ../c++
-make clean
+rm -f ref.ior

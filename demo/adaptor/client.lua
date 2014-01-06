@@ -148,8 +148,10 @@ oil.main(function()
 		{ name ="Oub Zvpja Kvt"              , email ="rlx@rvjb.ktl.id"           },
 		{ name ="Idksfgrnl Wmkmrnoe Eqgsok"  , email ="iwvru@wazuj.yaw.ch"        },
 		{ name ="Gg Iyxzo Kmnd"              , email ="zsjhb@zcwjjzz.xwx.pg"      },
-	}                        
-           
+	}
+
+	math.randomseed(os.time() * 1000)
+
 	function getauthors()
 		local authors = {}
 		for i=1, math.random(6) do

@@ -40,5 +40,4 @@ oil.main(function()
 	oil.writeto("fork.ior",
 		tostring(
 			orb:newservant(ForkHome, nil, "ForkHome")))
-	orb:run()
 end)

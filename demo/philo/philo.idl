@@ -29,7 +29,7 @@ interface Philosopher {
 	attribute Fork left_fork;
 	attribute Fork right_fork;
 	attribute Observer info;
-	oneway void start();
+	void start();
 };
 interface PhilosopherHome : Adaptor {
 	Philosopher create(in string name);
