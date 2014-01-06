@@ -509,10 +509,6 @@ local MessageHandlers = {
 		return sendmsg(channel, LocateReplyID, reply, types, values)
 	end,
 	[CloseConnectionID] = function(channel)
-		-- cancel all pending incoming requests
-		for requestid in pairs(channel.incoming) do
-			channel:unregister(requestid, "incoming")
-		end
 		-- notify threads waiting for replies to reissue them in a new connection
 		for requestid in pairs(channel.outgoing) do
 			channel:signal("read", channel:unregister(requestid, "outgoing"))
@@ -695,18 +691,18 @@ function GIOPChannel:close()
 		listener:removechannel(self)
 	end
 	if next(self.incoming) == nil then
-		if not self.closenotified and (self.server or self.version >= 2) then
+		if not self.closenotified and (self.server or self.version >= 2) then       --[[VERBOSE]] verbose:listen("sending channel closing notification")
 			result, except = sendmsg(self, CloseConnectionID)
 			self.closenotified = result
 		end
 		if result then
 			if next(self.outgoing) == nil then
-				local closed, closeexcept = Channel.close(self)                         --[[VERBOSE]] verbose:listen("channel closed")
+				local closed, closeexcept = Channel.close(self)                         --[[VERBOSE]] verbose:invoke("channel closed")
 				if result or except.error == "terminated" then
 					result, except = closed, closeexcept
 				end
 			else
-				self.closing = true                                                     --[[VERBOSE]] verbose:listen("channel marked for closing after pending outgoing requests are replied")
+				self.closing = true                                                     --[[VERBOSE]] verbose:invoke("channel marked for closing after pending outgoing requests are replied")
 			end
 		end
 	else
