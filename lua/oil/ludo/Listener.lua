@@ -8,7 +8,6 @@ local _G = require "_G"
 local select = _G.select
 local tonumber = _G.tonumber
 local tostring = _G.tostring
-local stderr = _G.io and _G.io.stderr -- only if available
 
 local array = require "table"
 local unpack = array.unpack or _G.unpack
@@ -33,13 +32,14 @@ function ServerRequest:setreply(...)                                            
 	channel:trylock("write")
 	local success, except = channel:sendvalues(self.request_id, ...)
 	channel:freelock("write")
-	if not success and except.error ~= "terminated" and stderr then
-		stderr:write(tostring(except), "\n")
+	if not success and except.error ~= "terminated" then
+		return false, except
 	end
 	channel.pending = channel.pending-1
 	if channel.closing and channel.pending == 0 then
 		LuDOChannel.close(channel)
 	end
+	return true
 end
 
 
