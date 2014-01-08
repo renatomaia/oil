@@ -25,4 +25,4 @@ checks:assert(checker:isSelf(checker), checks.is(true))
 orb:shutdown()
 --[Client]=====================================================================]
 
-return template:newsuite()
+return template:newsuite{ corba = true }

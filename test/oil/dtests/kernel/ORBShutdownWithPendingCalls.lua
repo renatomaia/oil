@@ -34,13 +34,19 @@ checks = oil.dtests.checks
 orb = oil.dtests.init()
 Service = oil.dtests.resolve("Server", 2809, "object")
 thread = cothread.running()
-Service:signal{ notify = function()
-	notified = true
-	cothread.schedule(thread)
-	Service:sleep(.1)
-	completed = true
-	cothread.schedule(thread)
-end }
+Callback = {
+	notify = function()
+		notified = true
+		cothread.schedule(thread)
+		Service:sleep(.1)
+		completed = true
+		cothread.schedule(thread)
+	end,
+}
+if oil.dtests.flavor.ludo then
+	Callback = orb:newproxy(tostring(orb:newservant(Callback)))
+end
+Service:signal(Callback)
 if not notified then oil.sleep(3) end
 orb:shutdown()
 if not completed then oil.sleep(3) end

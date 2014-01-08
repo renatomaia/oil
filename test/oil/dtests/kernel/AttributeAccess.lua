@@ -97,4 +97,4 @@ assert(ok == true and res == 3)
 orb:shutdown()
 --[Client]=====================================================================]
 
-return template:newsuite()
+return template:newsuite{ corba = true }

@@ -289,7 +289,7 @@ function newsuite(self, required)
 	required = required or {}
 	local ludo = "ludo"
 	local corba = seq{
-		alt{"gencode"          , ""};
+		""; --alt{"corba.gencode", ""};
 		alt{"corba.intercepted", "corba"};
 	}
 	local flavors = seq{
@@ -297,7 +297,7 @@ function newsuite(self, required)
 		alt{"cooperative", ""};
 	};
 	local protocols = {
-		--ludo    = true,
+		[ludo]    = true,
 		[corba] = true,
 	}
 	if required.gencode          then corba[1][2]      = nil end

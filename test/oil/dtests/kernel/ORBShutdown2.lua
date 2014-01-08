@@ -55,6 +55,7 @@ if oil.dtests.flavor.corba then
 		errmsg = "connection refused",
 	})
 else
+	corba:shutdown()
 	ok, ex = pcall(obj.idle, obj)
 	checks:assert(ok, checks.is(false))
 	checks:assert(ex, checks.similar{
