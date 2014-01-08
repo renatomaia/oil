@@ -1,7 +1,6 @@
 local Suite = require "loop.test.Suite"
 
 return Suite{
-	AttributeAccess = require "oil.dtests.kernel.AttributeAccess",
 	MethodInvocation = require "oil.dtests.kernel.MethodInvocation",
 	CallbackInvocation = require "oil.dtests.kernel.CallbackInvocation",
 	CallbackAsyncInvocation = require "oil.dtests.kernel.CallbackAsyncInvocation",
@@ -14,13 +13,14 @@ return Suite{
 	ServantLocator = require "oil.dtests.kernel.ServantLocator",
 	ServantManager = require "oil.dtests.kernel.ServantManager",
 	AsyncResultsProbe = require "oil.dtests.kernel.AsyncResultsProbe",
-	LocalReference = require "oil.dtests.kernel.LocalReference",
-	LocalRef2Servant = require "oil.dtests.kernel.LocalRef2Servant",
-	LocalRef2Proxy = require "oil.dtests.kernel.LocalRef2Proxy",
 	CORBA = Suite{
 		IDLChanges = require "oil.dtests.corba.IDLChanges",
 		ServantCreation = require "oil.dtests.corba.ServantCreation",
 		ObjectOperations = require "oil.dtests.corba.ObjectOperations",
+		AttributeAccess = require "oil.dtests.corba.AttributeAccess",
+		LocalReference = require "oil.dtests.corba.LocalReference",
+		LocalRef2Servant = require "oil.dtests.corba.LocalRef2Servant",
+		LocalRef2Proxy = require "oil.dtests.corba.LocalRef2Proxy",
 		NonExistentErrors = require "oil.dtests.corba.NonExistentErrors",
 		InterceptedGIOP = Suite{
 			InvocationCallInfo = require "oil.dtests.corba.intercepted.InvocationInfo",
