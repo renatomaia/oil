@@ -75,6 +75,24 @@ local oo = require "oil.oo"
 local class = oo.class	
 local rawnew = oo.rawnew
 
+local cothread = _G.package.loaded.cothread
+if cothread == nil then
+	--[[DEBUG]] pcall(require, "inspector") -- must be required before 'coroutine.pcall'
+	if _G._VERSION == "Lua 5.1" then
+		require "coroutine.pcall" -- to avoid coroutine limitation of Lua 5.1
+	end
+	local ok, result = pcall(require, "cothread")
+	if ok then
+		cothread = result
+	end
+end
+
+if cothread then
+	cothread.plugin(require "cothread.plugin.socket")
+	--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
+	--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
+end
+
 local builder = require "oil.builder"
 local build = builder.build
 
@@ -93,82 +111,20 @@ local currenttime
 -- provided by internal components. OiL internal component organization is meant
 -- to be customized for the application.
 
-local Aliases = {
-	["lua"]               = {"lua.client","lua.server"},
-	["ludo"]              = {"ludo.client","ludo.server"},
-	["corba"]             = {"corba.client","corba.server"},
-	["cooperative"]       = {"cooperative.client","cooperative.server"},
-	["corba.intercepted"] = {"corba.intercepted.client","corba.intercepted.server"},
-}
-
-local Dependencies = {
-	-- LuDO support
-	["ludo.client"] = {"ludo.common","basic.client"},
-	["ludo.server"] = {"ludo.common","basic.server"},
-	-- LuDO extension for by reference semantics
-	["ludo.byref"]  = {"ludo.common"},
-	-- CORBA support
-	["corba.client"] = {"corba.common","typed.client"},
-	["corba.server"] = {"corba.common","typed.server"},
-	-- CORBA extension for interception
-	["corba.intercepted.client"] = {"corba.client"},
-	["corba.intercepted.server"] = {"corba.server"},
-	-- CORBA extension for marshal code generation
-	["corba.gencode"] = {"corba.common"},
-	-- kernel extension for cooperative multithreading
-	["cooperative.client"] = {"cooperative.common","basic.client"},
-	["cooperative.server"] = {"cooperative.common","basic.server"},
-	-- kernel extension for type-check
-	["typed.client"] = {"typed.common","basic.client"},
-	["typed.server"] = {"typed.common","basic.server"},
-	-- kernel support
-	["basic.client"] = {"basic.common"},
-	["basic.server"] = {"basic.common"},
-}
-
-local function makeflavor(flavors)
-	local packs = OrderedSet()
-	for pack in flavors:gmatch("[^;]+") do
-		local aliases = Aliases[pack]
-		if aliases then
-			for _, alias in ipairs(aliases) do
-				packs:add(alias)
-			end
-		else
-			packs:add(pack)
-		end
-	end
-	for pack in packs:sequence() do
-		local deps = Dependencies[pack]
-		if deps then
-			for _, dep in ipairs(deps) do
-				if packs:contains(dep) then
-					local place
-					for item in packs:sequence() do
-						if item == dep then
-							packs:removefrom(place)
-						end
-						place = item
-					end
-				end
-				packs:add(dep)
-			end
-		end
-	end
-	flavors = {}
-	for pack in packs:sequence() do
-		flavors[#flavors+1] = pack
-	end
-	return concat(flavors, ";")
-end
-
 --------------------------------------------------------------------------------
 -- Class that implements the OiL's broker API.
 --
 local ORB = class()
 
 function ORB:__new(config)
-	self = rawnew(self, build(makeflavor(config.flavor), config))
+	if type(config.flavor) == "string" then
+		local flavors = {}
+		for name in config.flavor:gmatch("[^;]+") do
+			flavors[#flavors+1] = name
+		end
+		config.flavor = flavors
+	end
+	self = rawnew(self, build(config))
 	
 	if self.TypeRepository ~= nil then
 		----------------------------------------------------------------------------
@@ -770,24 +726,6 @@ local oil = {                                                                   
 	VERSION = "OiL 0.6",
 	ORB = ORB,
 }
-
-local cothread = _G.package.loaded.cothread
-if cothread == nil then
-	--[[DEBUG]] pcall(require, "inspector") -- must be required before 'coroutine.pcall'
-	if _G._VERSION == "Lua 5.1" then
-		require "coroutine.pcall" -- to avoid coroutine limitation of Lua 5.1
-	end
-	local ok, result = pcall(require, "cothread")
-	if ok then
-		cothread = result
-	end
-end
-
-if cothread then
-	cothread.plugin(require "cothread.plugin.socket")
-	--[[VERBOSE]] verbose.viewer.labels = cothread.verbose.viewer.labels
-	--[[VERBOSE]] verbose.tabsof = cothread.verbose.tabsof
-end
 
 --------------------------------------------------------------------------------
 -- Initialize the OiL main ORB.

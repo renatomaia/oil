@@ -54,31 +54,13 @@ function Connector:__init()
 	end, "v")
 end
 
-function Connector:register(socket, profile)                                    --[[VERBOSE]] verbose:channels(true, "got bidirectional channel to ",profile.host,":",profile.port)
-	local host = self.resolvedhosts[profile.host].host                            --[[VERBOSE]] if profile.host ~= host then verbose:channels("channel registered as ",host,":",profile.port) end
-	local connid = tuple[host][profile.port]
-	self.cache[connid] = socket
-	addto(self.keyindex, connid, socket)                                          --[[VERBOSE]] verbose:channels(false)
+function Connector:resolveprofile(profile)
+	local host = self.resolvedhosts[profile.host].host                            --[[VERBOSE]] if profile.host ~= host then verbose:channels("getting channel to ",host,":",port," instead") end
+	local port = profile.port
+	return tuple[host][port], host, port
 end
 
-function Connector:unregister(socket)
-	local cache = self.cache
-	local keys = self.keyindex
-	local connid = keys[socket]
-	if connid ~= nil then
-		keys[socket] = nil
-		while connid ~= socket do                                                   --[[VERBOSE]] local verbose_host, verbose_port = connid(); verbose:channels("discarding channel to ",verbose_host,":",verbose_port)
-			cache[connid] = nil
-			connid, keys[connid] = keys[connid], nil
-		end
-		return socket
-	end
-end
-
-function Connector:retrieve(profile)                                            --[[VERBOSE]] verbose:channels(true, "get channel to ",profile.host,":",profile.port)
-	local host = self.resolvedhosts[profile.host].host
-	local port = profile.port                                                     --[[VERBOSE]] if profile.host ~= host then verbose:channels("getting channel to ",host,":",port," instead") end
-	local connid = tuple[host][port]
+function Connector:connectto(connid, host, port)
 	local cache = self.cache
 	local socket, except = cache[connid]
 	if socket ~= nil then
@@ -118,6 +100,32 @@ function Connector:retrieve(profile)                                            
 		end
 	end                                                                           --[[VERBOSE]] verbose:channels(false)
 	return socket, except
+end
+
+function Connector:register(socket, profile)                                    --[[VERBOSE]] verbose:channels(true, "got bidirectional channel to ",profile.host,":",profile.port)
+	local connid, host, port = self:resolveprofile(profile)                       --[[VERBOSE]] if host ~= profile.host then verbose:channels("channel registered as ",host,":",profile.port) end
+	self.cache[connid] = socket
+	addto(self.keyindex, connid, socket)                                          --[[VERBOSE]] verbose:channels(false)
+end
+
+function Connector:unregister(socket)
+	local cache = self.cache
+	local keys = self.keyindex
+	local connid = keys[socket]
+	if connid ~= nil then
+		keys[socket] = nil
+		while connid ~= socket do                                                   --[[VERBOSE]] local verbose_host, verbose_port = connid(); verbose:channels("discarding channel to ",verbose_host,":",verbose_port)
+			cache[connid] = nil
+			connid, keys[connid] = keys[connid], nil
+		end
+		return socket
+	end
+end
+
+function Connector:retrieve(profile)                                            --[[VERBOSE]] verbose:channels(true, "get channel to ",profile.host,":",profile.port)
+	local host = self.resolvedhosts[profile.host].host
+	local port = profile.port
+	return self:connectto(self:resolveprofile(profile))
 end
 
 return Connector
