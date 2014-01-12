@@ -1,6 +1,6 @@
 local _G = require "_G"
 local error = _G.error
-local loadstring = _G.loadstring
+local load = _G.load
 local pcall = _G.pcall
 
 local oo = require "oil.oo"
@@ -33,7 +33,7 @@ function Adaptor:update(iface, impl)
 		self.orb:loadidl(iface)
 	end
 	if impl ~= "" then
-		local result, errmsg = loadstring(impl)
+		local result, errmsg = load(impl)
 		if not result then
 			error(self.orb:newexcept{"Adaptation::CodeError",
 				message=errmsg

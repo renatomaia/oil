@@ -3,8 +3,6 @@ local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-checks = oil.dtests.checks
-
 obj = {concat = function(self, s1, s2) return s1..s2 end}
 
 orb = oil.dtests.init{ port = 2809 }
@@ -18,8 +16,6 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 Interceptor = {}
 function Interceptor:receivereply(request)
 	if request.object_key == "object"

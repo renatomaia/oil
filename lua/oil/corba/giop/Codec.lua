@@ -18,7 +18,7 @@ local huge = math.huge
 
 local array = require "table"
 local concat = array.concat
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local struct = require "struct"
 local binpack = struct.pack

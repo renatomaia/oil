@@ -20,7 +20,7 @@ local gmatch = string.gmatch
 
 local array = require "table"
 local remove = array.remove
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local OrderedSet = require "loop.collection.OrderedSet"
 local Publisher = require "loop.object.Publisher"

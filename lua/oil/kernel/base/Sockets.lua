@@ -4,13 +4,11 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 local _G = require "_G"
+local ipairs = _G.ipairs
 local pairs = _G.pairs
 
 local math = require "math"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local max = math.max
-
-local table = require "table"
-local remove = table.remove
 
 local socket = require "socket.core"
 local tcpsocket = socket.tcp

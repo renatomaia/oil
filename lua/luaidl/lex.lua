@@ -4,15 +4,18 @@
 -- Filename: lex.lua
 --
 
-local type     = type
-local pairs    = pairs
-local tonumber = tonumber
-local error    = error
-local ipairs   = ipairs
-local table    = table
+local _G = require "_G"
+local type     = _G.type
+local pairs    = _G.pairs
+local tonumber = _G.tonumber
+local error    = _G.error
+local ipairs   = _G.ipairs
+local table    = _G.table
 local string   = require "string"
 
-local _ENV = module 'luaidl.lex'
+local _ENV = {}
+if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
+
 
 tab_tokens = {
   TK_ID = 257, TK_ABSTRACT = 258, TK_ANY = 259, TK_ATTRIBUTE = 260,
@@ -801,3 +804,5 @@ function lexer(stridl)
     end
   end
 end
+
+return _ENV

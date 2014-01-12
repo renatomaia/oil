@@ -10,7 +10,7 @@ local select = _G.select
 local tonumber = _G.tonumber
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local table = require "loop.table"
 local memoize = table.memoize

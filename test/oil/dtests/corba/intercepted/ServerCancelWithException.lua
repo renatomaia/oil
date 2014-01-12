@@ -22,8 +22,8 @@ function Interceptor:sendreply(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		checks:assert(request.success, checks.is(false))
-		checks:assert(request.results[1], checks.similar{
+		assert(request.success == false)
+		checks.assert(request.results[1], checks.like{
 		              	_repid = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
 		              	completed = "COMPLETED_NO",
 		              	minor = 321,
@@ -52,24 +52,24 @@ async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
 ok, res = pcall(sync.concat, sync, "first", "second")
-checks:assert(ok, checks.is(false))
-checks:assert(res, checks.similar{
+assert(ok == false)
+checks.assert(res, checks.like{
                    	_repid = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
                    	completed = "COMPLETED_NO",
                    	minor = 123,
                    })
 
 ok, res = async:concat("first", "second"):results()
-checks:assert(ok, checks.is(false))
-checks:assert(res, checks.similar{
+assert(ok == false)
+checks.assert(res, checks.like{
                    	_repid = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
                    	completed = "COMPLETED_NO",
                    	minor = 123,
                    })
 
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(false))
-checks:assert(res, checks.similar{
+assert(ok == false)
+checks.assert(res, checks.like{
                    	_repid = "IDL:omg.org/CORBA/NO_PERMISSION:1.0",
                    	completed = "COMPLETED_NO",
                    	minor = 123,

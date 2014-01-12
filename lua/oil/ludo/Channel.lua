@@ -50,19 +50,12 @@ end
 
 
 
-function LuDOChannel:sendvalues(request_id, ...)                                            --[[VERBOSE]] verbose:message("sending values ",verbose.viewer:tostring(...))
+function LuDOChannel:sendvalues(request_id, ...)
 	local ok, result = pcall(encodemsg, self, request_id, ...)
 	if ok then
 		self:trylock("write")
 		ok, result = self:send(result)
-		self:freelock("write")
-	else                                                                          --[[VERBOSE]] verbose:message("message encoding failed")
-		local ok, result = pcall(encodemsg, self, request_id, false, result)
-		if ok then
-			self:trylock("write")
-			self:send(result)
-			self:freelock("write")
-		end
+		self:freelock("write")                                                      --[[VERBOSE]] else verbose:message("message encoding failed")
 	end
 	return ok, result
 end
@@ -87,7 +80,7 @@ function LuDOChannel:receivevalues(timeout)
 		end
 	end
 	local bytes, except = self:receive(size, timeout)
-	if bytes ~= nil then
+	if bytes ~= nil then                                                          --[[VERBOSE]] verbose:message("got message ",bytes)
 		return pcall(decodemsg, self, bytes)
 	elseif except.error == "timeout" then                                         --[[VERBOSE]] verbose:message("message was not available before timeout")
 		self.pendingsize = size

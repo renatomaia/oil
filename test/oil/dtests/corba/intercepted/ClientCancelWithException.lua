@@ -3,8 +3,6 @@ local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 Exception = io.stderr
 
 Interceptor = {}
@@ -20,7 +18,7 @@ function Interceptor:receivereply(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		checks:assert(request.success, checks.is(false))
+		assert(request.success == false)
 		InterceptedResult = request.results[1]
 	end
 end
@@ -39,21 +37,21 @@ prot = orb:newproxy(sync, "protected")
 
 InterceptedResult = nil
 ok, res = pcall(sync.concat, sync, "first", "second")
-checks:assert(ok, checks.is(false))
-checks:assert(res, checks.is(Exception))
-checks:assert(InterceptedResult, checks.is(Exception))
+assert(ok == false)
+assert(res == Exception)
+assert(InterceptedResult == Exception)
 
 InterceptedResult = nil
 ok, res = async:concat("first", "second"):results()
-checks:assert(ok, checks.is(false))
-checks:assert(res, checks.is(Exception))
-checks:assert(InterceptedResult, checks.is(Exception))
+assert(ok == false)
+assert(res == Exception)
+assert(InterceptedResult == Exception)
 
 InterceptedResult = nil
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(false))
-checks:assert(res, checks.is(Exception))
-checks:assert(InterceptedResult, checks.is(Exception))
+assert(ok == false)
+assert(res == Exception)
+assert(InterceptedResult == Exception)
 
 orb:shutdown()
 --[Client]=====================================================================]

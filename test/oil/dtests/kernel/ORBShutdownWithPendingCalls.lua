@@ -24,12 +24,10 @@ if oil.dtests.flavor.corba then
 	Service.__type = "Service"
 end
 orb:newservant(Service, "object")
-orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
 cothread = require "cothread"
-checks = oil.dtests.checks
 
 orb = oil.dtests.init()
 Service = oil.dtests.resolve("Server", 2809, "object")

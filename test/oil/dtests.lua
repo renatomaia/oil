@@ -3,7 +3,9 @@ local flavor
 oil = require "oil"
 
 oil.dtests = {
-	setup = function (flavorspec, hosts, checks)
+	checks = require "loop.test.checks",
+
+	setup = function (flavorspec, hosts)
 		flavor = flavorspec
 		local flavorset = {}
 		for name in flavorspec:gmatch('[^;]+') do
@@ -14,7 +16,6 @@ oil.dtests = {
 		end
 		oil.dtests.flavor = flavorset
 		oil.dtests.hosts = hosts
-		oil.dtests.checks = checks
 	end,
 
 	init = function (config)

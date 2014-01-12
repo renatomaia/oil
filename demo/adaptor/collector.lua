@@ -10,7 +10,7 @@ function Adaptor:__new(class)
 end
 
 function Adaptor:apply_change(triggers, state, code, iface)
-	local adaptor, errmsg = loadstring("return function(self)\n"..state.."\nend")
+	local adaptor, errmsg = load("return function(self)\n"..state.."\nend")
 	if not adaptor then
 		oil.assert.exception{ "IDL:CompileError:1.0",
 			message = errmsg,
@@ -34,7 +34,7 @@ function Adaptor:apply_change(triggers, state, code, iface)
 
 	orb:loadidl(iface)
 	
-	local updater, errmsg = loadstring(code)
+	local updater, errmsg = load(code)
 	if not updater then
 		oil.assert.exception{ "IDL:CompileError:1.0",
 			message = errmsg,

@@ -2,7 +2,7 @@ local _G = require "_G"                                                         
 local select = _G.select
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local Wrapper = require "loop.object.Wrapper"
 

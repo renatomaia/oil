@@ -2,8 +2,6 @@ local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 orb = oil.dtests.init()
 
 orb:step(0)

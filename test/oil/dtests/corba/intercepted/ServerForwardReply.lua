@@ -3,8 +3,6 @@ local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-checks = oil.dtests.checks
-
 Object = {}
 function Object:concat(str1, str2)
 	return str1.."&"..str2
@@ -21,8 +19,6 @@ orb:run()
 --[Server]=====================================================================]
 
 Middle = [=====================================================================[
-checks = oil.dtests.checks
-
 Interceptor = {}
 function Interceptor:sendreply(reply)
 	if reply.object_key == "object" then
@@ -37,24 +33,16 @@ orb:run()
 --[Middle]=====================================================================]
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 orb = oil.dtests.init()
-
---require("oil.verbose"):level(5)
-
 sync = oil.dtests.resolve("Middle", 2808, "object")
-
---require("oil.verbose"):level(0)
-
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
-checks:assert(sync:concat("first", "second"), checks.is("first&second"))
-checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&second"))
+assert(sync:concat("first", "second") == "first&second")
+assert(async:concat("first", "second"):evaluate() == "first&second")
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(true))
-checks:assert(res, checks.is("first&second"))
+assert(ok == true)
+assert(res == "first&second")
 
 orb:shutdown()
 --[Client]=====================================================================]

@@ -3,8 +3,6 @@ local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-checks = oil.dtests.checks
-
 obj = {concat = function(s1, s2) return s1..s2 end}
 
 Interceptor = {}
@@ -28,8 +26,6 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 orb = oil.dtests.init()
 sync = oil.dtests.resolve("Server", 2809, "object")
 orb:loadidl[[

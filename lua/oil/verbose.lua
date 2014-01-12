@@ -17,9 +17,9 @@ local format = string.format
 local byte = string.byte  
 local strrep = string.rep
 
-local table = require "table"
-local concat = table.concat
-local unpack = table.unpack or _G.unpack
+local array = require "table"
+local concat = array.concat
+local unpack = array.unpack
 
 local coroutine = require "coroutine"
 local running = coroutine.running
@@ -112,7 +112,7 @@ function verbose:hexastream(codec, cursor, prefix)
 					end
 					-- write ASCII text if last column, or a blank space if middle column
 					if column == 15 then
-						output:write("  |"..table.concat(text).."|")
+						output:write("  |"..concat(text).."|")
 						text = {}
 					elseif column == 7 then
 						output:write("  ")
@@ -127,19 +127,19 @@ end
 
 --------------------------------------------------------------------------------
 
---[[DEBUG]] local inspector = _G.require("inspector")
---[[DEBUG]] local inspect = inspector.activate
---[[DEBUG]] 
---[[DEBUG]] verbose:flag("debug", true)
---[[DEBUG]] verbose:flag("print", true)
---[[DEBUG]] 
---[[DEBUG]] inspector.showsource = true
---[[DEBUG]] function verbose.pause:debug()
---[[DEBUG]] 	if running() then
---[[DEBUG]] 		yield("inspect")
---[[DEBUG]] 	else
---[[DEBUG]] 		inspect(4)
---[[DEBUG]] 	end
---[[DEBUG]] end
+-- [[DEBUG]] local inspector = _G.require("inspector")
+-- [[DEBUG]] local inspect = inspector.activate
+-- [[DEBUG]] 
+-- [[DEBUG]] verbose:flag("debug", true)
+-- [[DEBUG]] verbose:flag("print", true)
+-- [[DEBUG]] 
+-- [[DEBUG]] inspector.showsource = true
+-- [[DEBUG]] function verbose.pause:debug()
+-- [[DEBUG]] 	if running() then
+-- [[DEBUG]] 		yield("inspect")
+-- [[DEBUG]] 	else
+-- [[DEBUG]] 		inspect(4)
+-- [[DEBUG]] 	end
+-- [[DEBUG]] end
 
 return verbose

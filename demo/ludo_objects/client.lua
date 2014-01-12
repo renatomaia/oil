@@ -2,7 +2,7 @@ local oil = require "oil"
 
 oil.main(function()
 	orb = oil.init{
-		flavor = "cooperative;ludo",
+		flavor = "cooperative;ludo;ludo.byref",
 		localrefs = "proxy", -- disable local reference resolution
 	}
 	
@@ -10,7 +10,6 @@ oil.main(function()
 	function Hello:say(who)
 		print(string.format("Hello, %s!", tostring(who)))
 	end
-	
 	Invoker = orb:newproxy(oil.readfrom("ref.ludo"))
 	proxy = orb:newproxy(tostring(orb:newservant(Hello)))
 	

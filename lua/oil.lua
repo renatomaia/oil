@@ -67,7 +67,7 @@ local yield = coroutine.yield
 
 local array = require "table"
 local concat = array.concat
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local OrderedSet = require "loop.collection.OrderedSet"
 
@@ -77,7 +77,7 @@ local rawnew = oo.rawnew
 
 local cothread = _G.package.loaded.cothread
 if cothread == nil then
-	--[[DEBUG]] pcall(require, "inspector") -- must be required before 'coroutine.pcall'
+	-- [[DEBUG]] pcall(require, "inspector") -- must be required before 'coroutine.pcall'
 	if _G._VERSION == "Lua 5.1" then
 		require "coroutine.pcall" -- to avoid coroutine limitation of Lua 5.1
 	end

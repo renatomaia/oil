@@ -14,7 +14,7 @@ local setmetatable = _G.setmetatable
 local type = _G.type
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local table = require "loop.table"
 local copy = table.copy

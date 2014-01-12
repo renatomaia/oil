@@ -43,18 +43,16 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 orb = oil.dtests.init()
 
 local var = {}
 for i = 1, 3 do
 	var[i] = oil.dtests.resolve("Server", 2809, "var"..i)
-	checks:assert(var[i]:get(), checks.is("var"..i))
+	assert(var[i]:get() == "var"..i)
 	var[i]:set("I'm variable number "..i)
 end
 for i = 1, 3 do
-	checks:assert(var[i]:get(), checks.is("var"..i))
+	assert(var[i]:get() == "var"..i)
 end
 
 orb:shutdown()

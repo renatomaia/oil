@@ -35,7 +35,6 @@ orb:run()
 
 Client = [=====================================================================[
 orb = oil.dtests.init()
-checks = oil.dtests.checks
 sync = oil.dtests.resolve("Server", 2809, "object")
 
 -- synchronous call

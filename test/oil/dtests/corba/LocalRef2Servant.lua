@@ -17,11 +17,9 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 orb = oil.dtests.init()
 checker = oil.dtests.resolve("Server", 2809, "checker")
-checks:assert(checker:isSelf(checker), checks.is(true))
+assert(checker:isSelf(checker))
 orb:shutdown()
 --[Client]=====================================================================]
 

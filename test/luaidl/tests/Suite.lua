@@ -92,7 +92,7 @@ for _, name in ipairs(files) do
 		if file then
 			local old = FileStream{file=file}:get()
 			file:close()
-			checks:assert(new, checks.similar(old, "output changed"))
+			checks.assert(new, checks.like(old, "output changed"))
 		else
 			file = assert(io.open(luafile, "w"))
 			FileStream{file=file}:put(new)

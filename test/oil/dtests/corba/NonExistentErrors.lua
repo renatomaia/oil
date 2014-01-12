@@ -10,13 +10,11 @@ orb:run()
 
 Client = [=====================================================================[
 orb = oil.dtests.init()
-checks = oil.dtests.checks
 object = oil.dtests.resolve("Server", 2809, "object", nil, false, true)
 inexistent = oil.dtests.resolve("Server", 2809, "inexistent", nil, true, true)
 
 -- synchronous call
-result = inexistent:_non_existent()
-checks:assert(result, checks.is(true))
+assert(inexistent:_non_existent())
 
 orb:shutdown()
 --[Client]=====================================================================]

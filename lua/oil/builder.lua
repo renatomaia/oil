@@ -1,16 +1,25 @@
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local assert = _G.assert
+local error = _G.error
+local getmetatable = _G.getmetatable
 local ipairs = _G.ipairs
 local pairs = _G.pairs
 local require = _G.require
+local setmetatable = _G.setmetatable
 
 local port = require "oil.port"
 local component = require "oil.component"
 
 local function callwithenv(func, env)
-	local backup = getfenv(func)
-	setfenv(func, env)
+	local backup
+	if _G._VERSION == "Lua 5.1" then
+		backup = _G.getfenv(func)
+		_G.setfenv(func, env)
+	end
 	func(env)
-	setfenv(func, backup)
+	if _G._VERSION == "Lua 5.1" then
+		_G.setfenv(func, backup)
+	end
 end
 
 local function inheritable(bases, field, table)
@@ -555,6 +564,10 @@ local function addflavor(set, info)
 	add(set, info)
 end
 
+local none = setmetatable({}, { __newindex = function() end })
+local AssembleEnvMeta = { __index = function() return none end }
+
+
 local module = {}
 
 function module.build(config)
@@ -595,6 +608,8 @@ function module.build(config)
 		end
 	end
 	-- call component assembly functions
+	local meta = getmetatable(config)
+	setmetatable(config, AssembleEnvMeta)
 	for index = #list, 1, -1 do
 		local info = list[index]
 		local assemble = info.assemble
@@ -602,6 +617,7 @@ function module.build(config)
 			callwithenv(assemble, config)
 		end
 	end
+	setmetatable(config, meta)
 	return config
 end
 

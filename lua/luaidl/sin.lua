@@ -350,18 +350,20 @@
 --(378)                         |     empty
 --(379) <context>               :=    TK_STRING_LITERAL
 
-local type     = type
-local pairs    = pairs
-local tonumber = tonumber
-local require  = require
-local error    = error
-local ipairs   = ipairs
+local _G = require "_G"
+local type     = _G.type
+local pairs    = _G.pairs
+local tonumber = _G.tonumber
+local require  = _G.require
+local error    = _G.error
+local ipairs   = _G.ipairs
 
 local math     = require "math"
 local string   = require "string"
 local table    = require "table"
 
-module 'luaidl.sin'
+local _ENV = {}
+if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
 
 local lex = require 'luaidl.lex'
 
@@ -3681,3 +3683,5 @@ function parse(stridl, options)
   end
   return output
 end
+
+return _ENV

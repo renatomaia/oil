@@ -4,7 +4,11 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 local _G = require "_G"
-local stderr = _G.io and _G.io.stderr -- only if available
+local tostring = _G.tostring
+
+local package = require "package"
+local io = package.loaded.io
+local stderr = io and io.stderr -- only if available
 
 local vararg = require "vararg"
 local pack = vararg.pack

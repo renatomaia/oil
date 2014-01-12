@@ -3,8 +3,6 @@ local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-checks = oil.dtests.checks
-
 Object = {}
 function Object:concat(str1, str2)
 	return str1.."&"..str2
@@ -23,8 +21,8 @@ function Interceptor:sendreply(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		checks:assert(request.success, checks.is(true))
-		checks:assert(request.results[1], checks.is("first&second"))
+		assert(request.success == true)
+		assert(request.results[1] == "first&second")
 		request.reply_service_context = { [1234] = "1234" }
 	end
 end
@@ -48,8 +46,8 @@ function Interceptor:receivereply(reply)
 	if reply.object_key == "object"
 	and reply.operation_name == "concat"
 	then
-		checks:assert(reply.reply_service_context, checks.typeis("table"))
-		checks:assert(reply.reply_service_context, checks.similar({[1234]="1234"}, nil, {isomorphic=true}))
+		assert(type(reply.reply_service_context) == "table")
+		checks.assert(reply.reply_service_context, checks.like({[1234]="1234"}, nil, {isomorphic=true}))
 		self.success = true
 	end
 end
@@ -61,18 +59,18 @@ async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
 Interceptor.success = nil
-checks:assert(sync:concat("first", "second"), checks.is("first&second"))
-checks:assert(Interceptor.success, checks.is(true))
+assert(sync:concat("first", "second") == "first&second")
+assert(Interceptor.success == true)
 
 Interceptor.success = nil
-checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&second"))
-checks:assert(Interceptor.success, checks.is(true))
+assert(async:concat("first", "second"):evaluate() == "first&second")
+assert(Interceptor.success == true)
 
 Interceptor.success = nil
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(true))
-checks:assert(res, checks.is("first&second"))
-checks:assert(Interceptor.success, checks.is(true))
+assert(ok == true)
+assert(res == "first&second")
+assert(Interceptor.success == true)
 
 orb:shutdown()
 --[Client]=====================================================================]

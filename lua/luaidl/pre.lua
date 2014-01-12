@@ -4,16 +4,19 @@
 -- Filename: pre.lua
 --
 
-local error  = error
+local _G = require "_G"
+local error  = _G.error
+local ipairs = _G.ipairs
+local pairs  = _G.pairs
+local type   = _G.type
+
 local io     = require "io"
 local os     = require "os"
-local ipairs = ipairs
-local pairs  = pairs
 local string = require "string"
 local table  = require "table"
-local type   = type
 
-local _ENV = module 'luaidl.pre'
+local _ENV = {}
+if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
 
 local tab_macros
 local currNumLine
@@ -149,3 +152,5 @@ function run(source, ptab_options)
   end
   return scanner(source, tab_options)
 end
+
+return _ENV

@@ -2,7 +2,7 @@ local oil = require "oil"                               -- Load OiL package
 
 oil.main(function()
 	local orbCORBA = oil.init()
-	local orbLuDO = oil.init{ flavor = "ludo;cooperative;base" }
+	local orbLuDO = oil.init{ flavor = "cooperative;ludo" }
 	
 	orbCORBA:loadidlfile("hello.idl")
 	

@@ -12,7 +12,9 @@ local CORBA_Object = idl.object
 local giop = require "oil.corba.giop"
 local CORBA_Transient = giop.SystemExceptionIDs.TRANSIENT
 
-local _ENV = require "oil.dtests"; if _VERSION == "Lua 5.1" then setfenv(1, _ENV) end
+local _ENV = require "oil.dtests"
+
+if _G._VERSION=="Lua 5.1" then setfenv(1, _ENV) end
 
 timeout = 3
 querytime = .5

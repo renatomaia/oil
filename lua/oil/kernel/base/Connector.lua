@@ -6,6 +6,7 @@
 
 local _G = require "_G"
 local setmetatable = _G.setmetatable
+local tonumber = _G.tonumber
 
 local table = require "loop.table"
 local copy = table.copy
@@ -55,8 +56,8 @@ function Connector:__init()
 end
 
 function Connector:resolveprofile(profile)
-	local host = self.resolvedhosts[profile.host].host                            --[[VERBOSE]] if profile.host ~= host then verbose:channels("getting channel to ",host,":",port," instead") end
-	local port = profile.port
+	local host = self.resolvedhosts[profile.host].host
+	local port = profile.port                                                     --[[VERBOSE]] if profile.host ~= host then verbose:channels("getting channel to ",host,":",port," instead") end
 	return tuple[host][port], host, port
 end
 

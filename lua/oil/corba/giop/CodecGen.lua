@@ -6,15 +6,15 @@
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local ipairs = _G.ipairs
-local loadstring = _G.loadstring
+local load = _G.load
 local select = _G.select
-local unpack = _G.unpack
 
 local string = require "string"
 local strformat = string.format
 
 local array = require "table"
 local concat = array.concat
+local unpack = array.unpack
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -111,7 +111,7 @@ return function(%s) %s end
 	local codename = strformat("(un)marshaller for %s %s",
 		idltype._type,
 		idltype.repID or idltype.name or "anonymous")
-	return assertresults(loadstring(source, codename))(
+	return assertresults(load(source, codename))(
 		unpack(upvalues, 1, upvalues.n))
 end
 

@@ -3,8 +3,6 @@ local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-checks = oil.dtests.checks
-
 Interceptor = {}
 function Interceptor:receiverequest(request)
 	if request.object_key == "object"
@@ -18,8 +16,8 @@ function Interceptor:sendreply(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		checks:assert(request.success, checks.is(true))
-		checks:assert(request.results[1], checks.is("first second"))
+		assert(request.success == true)
+		assert(request.results[1] == "first second")
 		request.results[1] = "first&second"
 	end
 end
@@ -36,8 +34,6 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 orb = oil.dtests.init()
 sync = oil.dtests.resolve("Server", 2809, "object")
 orb:loadidl[[
@@ -49,11 +45,11 @@ sync = orb:narrow(sync, "MyInterface")
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
-checks:assert(sync:concat("first", "second"), checks.is("first&second"))
-checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&second"))
+assert(sync:concat("first", "second") == "first&second")
+assert(async:concat("first", "second"):evaluate() == "first&second")
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(true))
-checks:assert(res, checks.is("first&second"))
+assert(ok == true)
+assert(res == "first&second")
 
 orb:shutdown()
 --[Client]=====================================================================]

@@ -5,7 +5,7 @@ local template = Template{"Client"} -- master process name
 Server = [=====================================================================[
 Lua = {}
 function Lua:dostring(chunk)
-	assert(loadstring(chunk))()
+	assert(load(chunk))()
 end
 
 orb = oil.dtests.init{ port = 2809 }
@@ -16,7 +16,6 @@ orb:run()
 
 Client = [=====================================================================[
 orb = oil.dtests.init()
-checks = oil.dtests.checks
 object = oil.dtests.resolve("Server", 2809, "object")
 
 local newiface = "interface Lua { string say_hello(); };"
@@ -30,8 +29,8 @@ object:dostring([[
 
 orb:loadidl(newiface)
 
-checks:assert(object:say_hello(), checks.is("Hello, World!"))
-checks:assert(object.dostring, checks.is(nil, "old method was not removed from proxy class cache"))
+assert(object:say_hello() == "Hello, World!")
+assert(object.dostring == nil, "old method was not removed from proxy class cache")
 
 orb:shutdown()
 --[Client]=====================================================================]

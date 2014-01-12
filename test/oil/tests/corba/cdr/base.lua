@@ -104,7 +104,7 @@ local function newcase(suite, testID, codec, byteorder, shift, idltype, value, e
 			end
 			decoder:jump(shift)
 			local actual = decoder:get(idltype)
-			checks:assert(actual, checks.similar(expected[i], nil, {metatable = true}))
+			checks.assert(actual, checks.like(expected[i], nil, {metatable = true}))
 		end
 		
 		streams = table.concat(streams)
@@ -116,7 +116,7 @@ local function newcase(suite, testID, codec, byteorder, shift, idltype, value, e
 		else
 			local previous = file:read("*a")
 			if streams ~= previous then
-				checks:assert(false, "wrong stream\nGot:\n"..
+				checks.assert(false, "wrong stream\nGot:\n"..
 					hexdump(streams, previous)..
 					"\nExpected:\n"..
 					hexdump(previous, streams))

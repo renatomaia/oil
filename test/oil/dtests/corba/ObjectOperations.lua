@@ -9,8 +9,6 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-table = require "loop.table"
-
 orb = oil.dtests.init()
 checks = oil.dtests.checks
 object = oil.dtests.resolve("Server", 2809, "object", nil, false, true)
@@ -19,7 +17,7 @@ fake = oil.dtests.resolve("_", 0, "", nil, true, true)
 
 cases = {
 	_interface = {
-		[object] = checks.similar{
+		[object] = checks.like{
 			__type = "IDL:omg.org/CORBA/InterfaceDef:1.0",
 			__reference = {
 				type_id = "IDL:omg.org/CORBA/InterfaceDef:1.0",
@@ -47,22 +45,22 @@ for opname, opdesc in pairs(cases) do
 	for proxy, checker in pairs(opdesc) do
 		if proxy ~= 1 then
 			-- synchronous call
-			result = proxy[opname](proxy, unpack(opdesc))
-			checks:assert(result, checker)
+			result = proxy[opname](proxy, table.unpack(opdesc))
+			checks.assert(result, checker)
 			
 			-- asynchronous call
 			async = orb:newproxy(proxy, "asynchronous", proxy.__type)
-			future = async[opname](async, unpack(opdesc))
+			future = async[opname](async, table.unpack(opdesc))
 			ok, result = future:results()
-			checks:assert(ok, checks.is(true, "operation results indicated a unexpected error."))
-			checks:assert(result, checker)
-			checks:assert(future:evaluate(), checker)
+			assert(ok == true, "operation results indicated a unexpected error.")
+			checks.assert(result, checker)
+			checks.assert(future:evaluate(), checker)
 			
 			-- protected synchronous call
 			prot = orb:newproxy(proxy, "protected", proxy.__type)
-			ok, result = prot[opname](prot, unpack(opdesc))
-			checks:assert(ok, checks.is(true, "operation results indicated a unexpected error."))
-			checks:assert(result, checker)
+			ok, result = prot[opname](prot, table.unpack(opdesc))
+			assert(ok == true, "operation results indicated a unexpected error.")
+			checks.assert(result, checker)
 		end
 	end
 end

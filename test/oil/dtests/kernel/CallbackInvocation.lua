@@ -19,8 +19,6 @@ orb:newservant(Caller, "object")
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 orb = oil.dtests.init()
 
 Caller = oil.dtests.resolve("Server", 2809, "object")

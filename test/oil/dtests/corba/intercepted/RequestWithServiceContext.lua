@@ -7,7 +7,7 @@ checks = oil.dtests.checks
 
 Object = {}
 function Object:concat(str1, str2)
-	checks:assert(Interceptor.success, checks.is(true))
+	assert(Interceptor.success == true)
 	Interceptor.success = nil
 	return str1.."&"..str2
 end
@@ -17,8 +17,8 @@ function Interceptor:receiverequest(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		checks:assert(request.service_context,                 checks.typeis("table"))
-		checks:assert(request.service_context,                 checks.similar({[1234]="1234"}, nil, {isomorphic=true}))
+		assert(type(request.service_context) == "table")
+		checks.assert(request.service_context, checks.like({[1234]="1234"}, nil, {isomorphic=true}))
 		self.success = true
 	end
 end
@@ -35,8 +35,6 @@ orb:run()
 --[Server]=====================================================================]
 
 Client = [=====================================================================[
-checks = oil.dtests.checks
-
 Interceptor = {}
 function Interceptor:sendrequest(request)
 	if request.object_key == "object"
@@ -52,11 +50,11 @@ sync = oil.dtests.resolve("Server", 2809, "object")
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
-checks:assert(sync:concat("first", "second"), checks.is("first&second"))
-checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&second"))
+assert(sync:concat("first", "second") == "first&second")
+assert(async:concat("first", "second"):evaluate() == "first&second")
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(true))
-checks:assert(res, checks.is("first&second"))
+assert(ok == true)
+assert(res == "first&second")
 
 orb:shutdown()
 --[Client]=====================================================================]

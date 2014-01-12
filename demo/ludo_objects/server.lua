@@ -6,6 +6,6 @@ oil.main(function()
 		object[method](object, ...)
 	end
 	
-	orb = oil.init{flavor="cooperative;ludo"}
+	orb = oil.init{flavor="cooperative;ludo;ludo.byref"}
 	oil.writeto("ref.ludo", orb:newservant(Invoker))
 end)

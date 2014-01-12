@@ -9,7 +9,7 @@ local pcall = _G.pcall
 local tostring = _G.tostring
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local oo = require "oil.oo"
 local class = oo.class
