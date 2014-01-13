@@ -52,6 +52,7 @@ LUASRC= \
 	$(LUADIR)/oil/kernel/base/Receiver.lua \
 	$(LUADIR)/oil/kernel/base/Servants.lua \
 	$(LUADIR)/oil/kernel/base/Sockets.lua \
+	$(LUADIR)/oil/kernel/cooperative/Connector.lua \
 	$(LUADIR)/oil/kernel/cooperative/Receiver.lua \
 	$(LUADIR)/oil/kernel/cooperative/Sockets.lua \
 	$(LUADIR)/oil/kernel/cooperative/Tasks.lua \
