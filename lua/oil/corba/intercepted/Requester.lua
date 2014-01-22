@@ -74,6 +74,7 @@ function IceptedRequester:dorequest(request)                                    
 			if success then
 				success = intercepted.success
 				if success ~= nil then                                                  --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
+					if channel ~= nil then channel:unregister(request.id, "outgoing") end
 					-- update returned values
 					local results = intercepted.results or {}
 					if success then
@@ -89,13 +90,12 @@ function IceptedRequester:dorequest(request)                                    
 				else
 					updaterequest(request, intercepted)
 					if request.reference ~= reference then
-						if channel ~= nil then
-							channel:unregister(request.id, "outgoing")
-						end
+						if channel ~= nil then channel:unregister(request.id,"outgoing") end
 						return self:dorequest(request)
 					end
 				end
 			else                                                                      --[[VERBOSE]] verbose:interceptors("error on interception: ",except)
+				if channel ~= nil then channel:unregister(request.id, "outgoing") end
 				self:endrequest(request, false, except)
 				return self.Request(request)
 			end
