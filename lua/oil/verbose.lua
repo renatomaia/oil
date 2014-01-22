@@ -46,6 +46,7 @@ function verbose:output(output)
 end
 
 verbose:newlevel{ "broker" }
+verbose:newlevel{ "interceptors" }
 verbose:newlevel{ "invoke", "listen" }
 verbose:newlevel{ "channels" }
 verbose:newlevel{ "message" }
@@ -131,7 +132,7 @@ end
 -- [[DEBUG]] local inspect = inspector.activate
 -- [[DEBUG]] 
 -- [[DEBUG]] verbose:flag("debug", true)
--- [[DEBUG]] verbose:flag("print", true)
+--[[DEBUG]] verbose:flag("print", true)
 -- [[DEBUG]] 
 -- [[DEBUG]] inspector.showsource = true
 -- [[DEBUG]] function verbose.pause:debug()
