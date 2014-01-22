@@ -650,7 +650,6 @@ function GIOPChannel:sendreply(request)
 		local service_context = request.service_context
 		if service_context == nil then request.service_context = Empty end
 		success, except = sendmsg(self, ReplyID, request, types, values)
-		if service_context == nil then request.service_context = nil end
 		if not success then                                                       --[[VERBOSE]] verbose:listen(true, "unable to send reply: ",except)
 			--TODO: test below does not makes sense.
 			--if type(except) ~= "table" then
@@ -675,6 +674,7 @@ function GIOPChannel:sendreply(request)
 				end
 			end
 		end
+		if service_context == nil then request.service_context = nil end
 		self:unregister(requestid, "incoming")                                    --[[VERBOSE]] else verbose:listen("no pending request found with id ",requestid,", reply discarded")
 	end                                                                         --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully processed" or "failed: ", except or "")
 	return success, except
