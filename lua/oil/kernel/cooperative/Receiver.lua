@@ -81,7 +81,7 @@ function CoReceiver:dolistener()
 			yield("last", reader, self, result)
 		end
 	until not result
-	if except.error ~= "terminated" then
+	if except.error ~= "terminated" and except.error ~= "badsetup" then
 		self:notifyerror("connection", except)
 	end
 end
