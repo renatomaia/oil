@@ -12,10 +12,10 @@ local function callhandler(self, ...)
 end
 
 return {
-	assertresults = function (self, operation, success, except, ...)
+	assertresults = function (self, operation, success, ...)
 		if not success then
-			return callhandler(self, except, operation)
+			return callhandler(self, ..., operation)
 		end
-		return except, ...
+		return ...
 	end,
 }

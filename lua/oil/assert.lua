@@ -1,8 +1,9 @@
 local _G = require "_G"
 local error = _G.error
-local pairs = _G.pairs
 local luatype = _G.type
-local require = _G.require                                                      --[[VERBOSE]] local verbose = require "oil.verbose"
+local pairs = _G.pairs
+local require = _G.require
+local select = _G.select                                                        --[[VERBOSE]] local verbose = require "oil.verbose"
 
 local TypeCheckers = {}
 
@@ -11,9 +12,9 @@ local module = {
 	TypeCheckers = TypeCheckers,
 }
 
-function module.results(result, ...)
-	if result == nil then error(..., 2) end
-	return result, ...
+function module.results(...)
+	if ... == nil then error(select(2, ...), 2) end
+	return ...
 end
 
 function module.illegal(value, description, except)
