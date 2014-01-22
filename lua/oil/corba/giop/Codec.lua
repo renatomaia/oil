@@ -435,11 +435,11 @@ function Encoder:Object(value, idltype)                                         
 				if servants then                                                        --[[VERBOSE]] verbose:marshal(true, "implicit servant creation")
 					value = assert(servants:register{__servant=value,__type=idltype})     --[[VERBOSE]] verbose:marshal(false)
 					if not value.__type:is_a(idltype.repID) then
-						illegal(value, idltype.repID..", got a "..value.__type.repID,"BAD_PARAM")
+						illegal(value, idltype.repID..", got a "..value.__type.repID,"badtype")
 					end
 					reference = value.__reference
 				else
-					illegal(value, "Object, unable to create from value", "MARHSAL")
+					illegal(value, "Object, unable to create from value")
 				end                                                                     --[[VERBOSE]] else verbose:marshal("using proxy or servant object")
 			end
 		end
@@ -591,7 +591,7 @@ function Encoder:abstract_interface(value, idltype)                             
 			          or pindex(value, "__type")
 			if not istype(actualtype) then
 				illegal(value, "abstract interface, unable to figure out actual type",
-				               "BAD_PARAM")
+				               "badtype")
 			end
 		end
 		isvalue = (actualtype._type == "valuetype")
