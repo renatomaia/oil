@@ -61,12 +61,5 @@ end</pre>
 
 <h2><a name="limitations">Limitations</a></h2>
 
-<p>The multithreading model used by OiL presents two strong limitations.
-The first one is due to a limitation of the coroutines in Lua, which cannot yield execution inside some special places, like metamethods, for interators or C functions exported to Lua.
-A particular case for this is that coroutines cannot yield execution inside a <%=link"LuaManual.pcall"%>.
-Therefore, you usually cannot invoke a remote operation inside such functions because OiL will most likely generate an yield to allow other threads to execute while it waits for the reply of the remote invocation.
-To alleviate the problem of the <%=link"LuaManual.pcall"%> function, OiL load a module that redefines this function so it can be used to execute functions that yield.</p>
-
-<p>The other limitation is that the thread scheduler is not integrated to the underlying operating system.
-Therefore, any blocking system call performed by a thread will eventually suspend the execution of the application as a whole since the coroutine does not yield the execution back to the scheduler.
+<p>Since the thread scheduler is not integrated to the underlying operating system, any blocking system call performed by a thread will eventually suspend the execution of the application as a whole since the coroutine does not yield the execution back to the scheduler.
 This is particularly true for file operations that suspend the entire execution of the application regardless of the number of other independent threads that might be ready to execute.</p>

@@ -21,15 +21,12 @@ oil.main(function()
 	end
 	
 	-- initialize a LuDO ORB
-	local orb = oil.init{flavor="ludo"}
+	local orb = oil.init{flavor="cooperative;ludo"}
 	
 	-- registers a servant and save a textual
 	-- reference for it in a file 'hello.ref'.
 	oil.writeto("hello.ref",
 		orb:newservant(hello))
-	
-	-- starts processing remote invocations
-	orb:run()
 end)
 </pre>
 
@@ -61,9 +58,6 @@ oil.main(function()
 	-- file 'hello.ref'.
 	oil.writeto("hello.ref",
 		orb:newservant(hello, nil, "Hello"))
-	
-	-- starts processing remote invocations
-	orb:run()
 end)</pre>
 
 <h2><a name="references">Obtaining Object References</a></h2>

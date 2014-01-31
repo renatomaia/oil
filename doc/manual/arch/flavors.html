@@ -5,7 +5,7 @@ The value of this field must be a string with the names of the different layers 
 
 <pre>
 broker = oil.init{
-	flavor = "intercepted;cooperative;corba;base"
+	flavor = "intercepted;cooperative;corba"
 }
 </pre>
 
@@ -17,10 +17,9 @@ In the example above, the extension layer <%=link("RMI","intercepted","#intercep
 The same is true for extension layer <%=link("Core","typed","#typed")%> and extended layer <%=link("Core","base","#base")%>.
 Theoretically, complementary layers can come in any order relative to one another.
 However, it is a good practice to put RMI layers first than the core layer because the RMI layer might extend the core layer in some way.
-See section <%=link("Architecture","Architectural Layers","#layer")%> for the list of layers defined by OiL.</p>
+See <%=link("CORBA")%> for the list of CORBA flavors supported by OiL, and <%=link("LuDO")%> for a list of LuDO flavors supported by OiL.</p>
 
 <p>The flavor is a feature used to help the creation of brokers from combination of assemblies defined as architectural layers.
-For a description about the definition of layers see section <%=link"Layers"%>.
 However, you do not have to define a new layer to can create different assemblies.
 Moreover, you can provide a flavor that completes a partial assembly you provide to function <%=link("Reference.oil.init")%>.
 As an example, consider the following code that provides RMI components and completes the broker assembly with components from layer <%=link("Core","base","#base")%>.</p>
@@ -28,7 +27,7 @@ As an example, consider the following code that provides RMI components and comp
 <pre>
 -- create assembly
 broker = oil.init{
-	flavor = "cooperative;base",
+	flavor = "cooperative",
 	OperationRequester = MyProtocolRequester(),
 	ObjectReferrer     = MyProtocolReferrer(),
 	RequestListener    = MyProtocolListener(),

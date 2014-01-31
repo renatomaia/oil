@@ -4,49 +4,6 @@
 
 <pre>   luarocks install oil</pre>
 
-<a name="win32bin"><h2>Binaries</h2></a>
-
-<p>If you just want to use OiL in a Microsoft Windows platform then use one of the following binary packages below:</p>
-
-<ul>
-	<li>
-		<strong>Executables and Demos</strong>
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5-win32.zip">win32</a>]
-		<br>
-		This package includes the Lua stand-alone interpreter, all C libraries required by OiL already compiled, and all OiL's implementation as Lua scripts so they can be edited and dynamically loaded in the Lua interpreter.
-		This package also includes all OiL demos.
-		Use this package to try OiL out and study its implementation and demos.
-	</li>
-	<br>
-	<li>
-		<strong>Pre-Compiled Libraries</strong>
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5-vc6.zip">vc6</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5-vc7.zip">vc7</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5-vc8.zip">vc8</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5-dll.zip">dll6</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5-dll7.zip">dll7</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5-dll8.zip">dll8</a>]
-		<br>
-		This package includes pre-compiled libraries of OiL and all its required libraries (<a href="http://loop.luaforge.net/">LOOP</a>, LuaIDL, and <a href="http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/">LuaSocket</a>).
-		The DLL version of these libraries can be installed in the Lua path for C libraries (see <a href="http://www.lua.org/manual/5.1/manual.html#pdf-package.loaders">Lua's manual</a>) and dynamically loaded in the Lua's stand-alone interpreter.
-		Use this package to install OiL in a environment that already have Lua installed.
-	</li>
-	<br>
-	<li>
-		<strong>Pre-Loading Library</strong>
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oilall-0.5-vc6.zip">vc6</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oilall-0.5-vc7.zip">vc7</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oilall-0.5-vc8.zip">vc8</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oilall-0.5-dll.zip">dll6</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oilall-0.5-dll7.zip">dll7</a>]
-		[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oilall-0.5-dll8.zip">dll8</a>]
-		<br>
-		This package includes a library that can be linked into an application to pre-load the full OiL implementation.
-		For an example of the use of this package, see demo <code>run</code> included in the <a href="#source">source package</a>).
-		Use this package to embed OiL in applications.
-	</li>
-</ul>
-
 <a name="source"><h2>Source</h2></a>
 
 <p>OiL is provided as free software under the terms of the <a href="http://www.opensource.org/licenses/mit-license.html">MIT license</a>, which are the same terms of the <a href="http://www.lua.org/license.html">Lua's license</a>.
@@ -54,75 +11,29 @@ You can download the OiL package from the following link.
 The package below also contains the source code of <a href="http://loop.luaforge.net/">LOOP</a> and <a href="http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/">LuaSocket</a> libraries.</p>
 <ul>
 	<li>
-	OiL 0.5
-	[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5.tar.gz">tar.gz</a>]
-	[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.5.zip">zip</a>]
+	OiL 0.6
+	[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.6.tar.gz">tar.gz</a>]
+	[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.6.zip">zip</a>]
 	</li>
 </ul>
 
 <strong>See also:</strong>
 <ul>
 	<li><%=link"Changes"%></li>
-	<li><%=link"Previous"%></li>
+	<li><%=link"History"%></li>
 </ul>
 
-<h3>Building from Source</h3>
+<p>To make the OiL packages available for any Lua application you may simply execute the application in the folder you unpacked OiL.
+Therefore, to give it a try, just execute the Lua stand-alone interpreter in the directory you unpacked OiL.
+However, to properly install OiL in your environment you must unpack it in the Lua package directory, which is defined by the <code>luaconf.h</code> file during the compilation of Lua. The default values for this directory are listed below:</p>
 
-<p>OiL is almost entirely written in Lua, however it requires some supporting libraries written in C.
-Therefore, to install OiL, you need to compile this libraries.
-To do such, you must first read and edit the <code>config</code> file included in the source package.</p>
+<dl>
+	<dt>Unix</dt>
+	<dd>Lua 5.1: <code>/usr/local/share/lua/5.1/</code>
+	<br>Lua 5.2: <code>/usr/local/share/lua/5.2/</code></dd>
+	<dt>Windows</dt>
+	<dd>Directory where the application (<i>e.g.</i> stand-alone interpreter) is installed.
+	Therefore, to use OiL in Windows you may simply unpack the <code>loop</code> package in the same folder the Lua stand-alone interpreter (or other Lua application) is installed.</dd>
+</dl>
 
-<p>For your convenience, the package includes some pre-configured compilation options for platforms Linux, Solaris and MacOS X.
-If you want to use one of these configurations, use one of the following commands before the installation.</p>
-
-<center>
-	<table width=50%>
-		<tr>
-			<td><strong>Linux:</strong></td>
-			<td><code>$ make linux</code></td>
-		</tr>
-		<tr>
-			<td><strong>Solaris:</strong></td>
-			<td><code>$ make solaris</code></td>
-		</tr>
-		<tr>
-			<td><strong>MacOS X:</strong></td>
-			<td><code>$ make macosx</code></td>
-		</tr>
-	</table>
-</center>
-
-<h3>Installing from Source</h3>
-
-<p>After you built OiL, you can choose one of the installation procedures described below.</p>
-
-<ul>
-	<li><strong>Standard</strong><br>
-		Installs the Lua files and C libraries of modules that compose OiL.
-		This option is useful for playing with OiL implementation, because you will be able to modify its implementation by changing the Lua files.
-		<pre>$ make install</pre>
-	</li>
-	<li><strong>Pre-Compiled</strong><br>
-		Installs a set of libraries containing all modules that compose OiL implementation already pre-compiled.
-		This option is useful for users that don't intend to make changes in OiL implementation.
-		<pre>$ make install-precomp</pre>
-	</li>
-	<li><strong>Pre-Loading</strong><br>
-		Installs a single library containing all C libraries and Lua files pre-compiled for preloading into embedded Lua applications.
-		This option is useful for developers that intend to include OiL in other applications by linking into a single file.
-		See demo 'run' for more details.
-		<pre>$ make install-preload</pre>
-	</li>
-</ul>
-
-<h3>Environment setup</h3>
-
-<p>In order to load OiL package in the Lua stand-alone interpreter, you must add the paths where you installed OiL and LuaSocket to the <code>LUA_PATH</code> and <code>LUA_CPATH</code> environment variables. For example, if you installed Lua files of OiL and LuaSocket (see <code>INSTALL_LMOD</code> macro in file <code>config</code>) into directory <code>/usr/local/share/lua/5.1/</code> then <code>LUA_PATH</code> must be set to:</p>
-
-<p><code>LUA_PATH=";;/usr/local/share/lua/5.1/?.lua"</code></p>
-
-<p>A similar approach is used for the <code>LUA_CPATH</code> environment variable. Supose you have installed the C libraries of OiL and LuaSocket (see <code>INSTALL_CMOD</code> macro in file <code>config</code>) into directory <code>/usr/local/lib/lua/5.1/</code> then <code>LUA_CPATH</code> must be set to:</p>
-
-<p><code>LUA_CPATH=";;/usr/local/lib/lua/5.1/?.so"</code></p>
-
-<p>For further information on the use of <code>LUA_PATH</code> and  <code>LUA_CPATH</code> environment variable, check the <a href="http://www.lua.org/manual/5.1/manual.html#pdf-package.path">Lua manual</a>.</p>
+<p>You can also define the directories Lua searches for packages by setting the <%=link("LuaManual.LuaPath", "<code>LUA_PATH</code>")%>.</p>

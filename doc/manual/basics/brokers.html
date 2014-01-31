@@ -1,16 +1,30 @@
 <p>Brokers (<em>a.k.a.</em> ORB) are the central concept of OiL.
-They maintain the list of active servants exposed as distributed object that can receive remote invocations.
+They maintain the list of active servants exposed as distributed object that can be invoked remotely.
 Brokers also create proxies that provide means to perform invocations on remote objects.
 Basically, brokers can be seen as the way invocation are performed through the distributed environment.
 Brokers are obtained using operation <%=link("Reference.oil.init")%>.</p>
 
 <h2>Start Up</h2>
 
-<p>Typically, the application calls method <%=link"Reference.orb:run"%> to start processing invocations sent to the broker.
+<p>Brokers with multhreading support (flavor contains word <code>cooperative</code>) are able to process incoming requests to registered servants as soon as they are obtained through the <%=link("Reference.oil.init")%> operation.</p>
+
+<h2>Shut Down</h2>
+
+<p>Method <%=link"Reference.orb:shutdown"%> is used to release all the resources allocated by the broker and terminate its function.
+Every application shall call this operation to terminate correctly.
+After a call to this method, no additional invocation is accepted or requested.
+Any further remote invocation results in errors raised in the requesting process.
+However, every pending invocation initiated before the call of <%=link"Reference.orb:shutdown"%> are completed normally.
+This method can be called at any time after the broker is initialized (see <%=link("Reference.oil.init")%>).
+Operation <%=link"Reference.orb:shutdown"%> should not be called more than once.</p>
+
+<h2>Singlethread</h2>
+
+<p>Brokers without multithreading support only process incoming requests when the application calls method <%=link"Reference.orb:run"%>.
 This method executes continuously processing every invocation destined to the servants registered in the broker.
 The <%=link"Reference.orb:run"%> method only returns when the broker is shutdown.</p>
 
-<p>It is important to notice that no invocation will be dispatched to local servants until the broker starts processing remote requests, as the method <%=link"Reference.orb:run"%> does.
+<p>It is important to notice that with brokers withou multithreading support no invocation will be dispatched to local servants until the method <%=link"Reference.orb:run"%> is called.
 For instance, suppose we have to register an object into a remote registry represented by a remote object <code>registry</code> that provides method <code>register(user)</code>.
 Moreover, suppose that this <code>register</code> method inspects the object provided as parameter <code>user</code> by calling some methods.
 In this scenario the following code would result in a deadlock, because during the invocation of <code>registry:register(user)</code> all invocations to <code>user</code> would be help up since <%=link"Reference.orb:run"%> is not executing.</p>
@@ -27,27 +41,7 @@ oil.main(function()
 	orb:run()
 end)</pre>
 
-
-<p>To avoid, this problem, a possible solution is to execute method <%=link"Reference.orb:run"%> in a separate thread like in the example below.
-For more information about threads, check section <%=link"Threads"%></p>
-
-<pre>require "oil"
-
-oil.main(function()
-	local orb = oil.init()
-	
-	-- call orb:run() in a new thread
-	oil.newthread(orb.run, orb)
-	
-	-- continue execution while other thread
-	-- processes remote invocations.
-	registry = orb:newproxy(oil.readfrom("registry.ref"))
-	registry:register(user)
-end)</pre>
-
-<h2>Processing</h2>
-
-<p>An alternative to method <%=link"Reference.orb:run"%>, which process invocations continuously, is to use a combination of methods <%=link"Reference.orb:pending"%> and <%=link"Reference.orb:step"%>.
+<p>To avoid, this problem, use a combination of methods <%=link"Reference.orb:pending"%> and <%=link"Reference.orb:step"%>.
 The former indicates whether a remote invocation is pending to be processed or not.
 The later is used to process a single invocation request.
 If no invocation request is pending then <%=link"Reference.orb:step"%> blocks until an invocation request is received.
@@ -61,11 +55,3 @@ end
 
 <p>This model of execution is useful to integrate OiL with other event loops when multithreading is not available.
 Note however, that while method <%=link"Reference.orb:run"%> is executing, there is not need to call method <%=link"Reference.orb:step"%>.</p>
-
-<h2>Shut Down</h2>
-
-<p>Method <%=link"Reference.orb:shutdown"%> is used to stop the execution of <%=link"Reference.orb:run"%> and release all the resources currently used by the broker.
-After a call to this method, no additional invocation is accepted.
-Any further remote invocation results in errors raised in the client process.
-However, every pending invocation initiated before the call of <%=link"Reference.orb:shutdown"%> are completed normally.
-This method can be called at any time when method <%=link"Reference.orb:run"%> is executing, otherwise an exception is raised.</p>

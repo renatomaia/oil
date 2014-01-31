@@ -389,7 +389,7 @@ end)
 <p>OiL guarantees that for each single invocation both methods of the interceptor is invoked in the same thread.
 Moreover, this thread is the same that initiated the invocation (in case of a client interceptor) or the thread that will execute the invocation (in case of a server interceptor).
 However, while an invocation is being executed, others can be issued and the interceptor be invoked again, but it will execute in a different thread.
-Therefore, you can use the current thread (<code>oil.tasks.current</code>) to identify an invocation.
+Therefore, you can use the current thread (<%=link("LuaManual.coroutine.running")%>) to identify an invocation.
 On the server side, the ORB may reuse a thread that executed a previous invocation that finished to execute other invocations.</p>
 
 <h2>Multiple Interceptors</h2>

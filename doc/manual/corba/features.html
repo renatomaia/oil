@@ -151,7 +151,9 @@ require "oil"
 oil.main(function()
 	local broker = oil.init()
 	broker:loadidl[[
-		interface MyObject {};
+		interface Hello {
+			void say();
+		};
 		interface RefHolder {
 			attribute MyObject reference;
 		};
@@ -186,6 +188,9 @@ oil.main(function()
 	local holder = factory:create()
 	
 	local original = {}
+	function original:say()
+		print("Hello")
+	end 
 	
 	holder:_set_reference(original)          -- implicitly created servant
 	local restored = holder:_get_reference() -- automatically resolved reference
@@ -193,6 +198,8 @@ oil.main(function()
 	assert(rawequal(original, restored))
 end)
 </pre>
+
+<p>For more information on how to disable local reference resolution see field <%=link"Reference.orbcfg.localrefs"%></p>
 
 <h2><a name="narrow">Interface Discovery and Narrowing</a></h2>
 

@@ -63,6 +63,13 @@ return refman{
 					when is <code>true</code> disables the Nagle's algorithm for the connection.
 				]],
 			},
+			timeout = {
+				type = "number",
+				default = false,
+				description = [[
+					defines the timeout in seconds of the sockets related operations invoked by the ORB.
+				]],
+			},
 		},
 	},
 	orbcfg = {
@@ -236,27 +243,80 @@ return refman{
 			This object also provides the additional fields described below.
 		]],
 		fields = {
-			__exceptions = {
+			__setexcatch = {
 				type = "method",
-				summary = "Handler of exceptions raised by the proxy",
+				summary = "Defines a exception handling function for the proxy",
 				description = [[
-					might be added to the proxy by the application to be invoked to handle exceptions raised on methods invoked using the proxy.
-					When a proxy provides this method, the invocations performed throught it do not raise errors.
-					Instead, the error is passed to the handler, that might re-raise it to raise the error to the original invocation.
-					Otherwise, the values returned by the exception handler are used as the results of the invocation that raised the exception originally.
-					The exception handler function receives the following parameters:
-					<dl>
-						<dt>proxy</dt>
-						<dd>object proxy that performed the operation.</dd>
-						<dt>exception</dt>
-						<dd>exception/error raised.</dd>
-						<dt>operation</dt>
-						<dd>descriptor of the operation that raised the exception.</dd>
-					</dl>
+					defines the exception handling function for the proxy.
 				]],
-				eventual = [[
-					the methods of the proxy might raise errors that shall be handled properly by the application, using funciton ]]..link"LuaManual.pcall"..[[ from the ]]..link"LuaManual.StdLibs"..[[ for example
+				parameters = {
+					{
+						name = "handler",
+						type = "function",
+						summary = "Exception handler function",
+						description = [[
+							is invoked to handle exceptions raised on operations invoked using a proxy.
+							This function receives the following parameters:
+							<dl>
+								<dt>proxy</dt>
+								<dd>object proxy that performed the operation.</dd>
+								<dt>exception</dt>
+								<dd>exception/error raised.</dd>
+								<dt>operation</dt>
+								<dd>descriptor of the operation that raised the exception.</dd>
+							</dl>
+							The results produced by this function (returned values or error raised) will become the results of the invocation that raised the exception.
+						]],
+					},
+				},
+				results = {
+					{
+						name = "success",
+						type = "boolean",
+						summary = "Indication that the timeout was changed",
+					},
+					{
+						name = "result",
+						type = {"function","error"},
+						summary = "Result of the operation",
+						description = [[
+							is the previously defined exceptions handler function in case of success (<code>success == true</code>), or a message describing the error that occurred.
+						]],
+					},
+				},
+			},
+			__settimeout = {
+				type = "method",
+				summary = "Defines a timeout for proxy invocations",
+				description = [[
+					defines the timeout for the methods invoked using proxies created by this ORB.
 				]],
+				parameters = {
+					{
+						name = "timeout",
+						type = "number",
+						summary = "Timeout in seconds",
+						description = [[
+							minimum time (in seconds) the ORB might spend to complete operations invoked using a proxy.
+							Operations may complete before the time defined as the timeout.
+						]],
+					},
+				},
+				results = {
+					{
+						name = "success",
+						type = "boolean",
+						summary = "Indication that the timeout was changed",
+					},
+					{
+						name = "result",
+						type = {"number","error"},
+						summary = "Result of the operation",
+						description = [[
+							is the previously defined timeout in case of success (<code>success == true</code>), or a message describing the error that occurred.
+						]],
+					},
+				},
 			},
 		},
 	},
@@ -491,6 +551,16 @@ return refman{
 					waits for an invocation request and process it.
 					Only one single invocation request is processed.
 				]],
+				parameters = {
+					{
+						name = "timeout",
+						type = "number",
+						summary = "time to wait for invocation requests",
+						description = [[
+							indicates the minimum time the ORB might wait for a new invocation request before processing it.
+						]],
+					}
+				},
 				results = {
 					{
 						name = "success",
@@ -651,6 +721,62 @@ return refman{
 					},
 				},
 			},
+			setexhandler = {
+				type = "method",
+				summary = "Sets the dispatch exception handling function",
+				description = [[
+					sets a function to be called to manipulate an error raised during a dispatch and produce potentially new error value to be raised.
+				]],
+				parameters = {
+					{
+						name = "handler",
+						type = "function",
+						summary = "Dispatch exception handling function",
+						description = [[
+							executes in the same thread and execution point where the error was raised.
+							This function receives as parameter the value of the original error raised during the dispatch of the servant and shall return the value of the error that must be raised in place of the original value.</dd>
+							</dl>
+						]],
+					},
+				},
+			},
+			setonerror = {
+				type = "method",
+				summary = "Sets a notification function for uncaught ORB errors",
+				description = [[
+					sets a function to be executed whenever the ORB catch an error that it cannot report back to the application.
+				]],
+				parameters = {
+					{
+						name = "callback",
+						summary = "is called to notify an uncaught error.",
+						description = [[
+							is called to notify an uncaught error.
+							This function cannot avoid the exception raised nor change the value of the error.
+							It is simply a notification of an error raised.
+							This function receives the following parameters:
+							<dl>
+								<dt>error</dt>
+								<dd>the value of the uncaught error.</dd>
+								<dt>tag</dt>
+								<dd>an indication of the context where the error was raised.
+								The possible values are:
+									<dl>
+										<dt>connection</dt>
+										<dd>while connection establishment from a remote client.</dd>
+										<dt>request</dt>
+										<dd>while extracting request from remote client.</dd>
+										<dt>dispatch</dt>
+										<dd>while dispatching a request to the application.</dd>
+										<dt>reply</dt>
+										<dd>while sending a reply of an invocation back to the client.</dd>
+									</dl>
+								</dd>
+							</dl>
+						]],
+					},
+				},
+			},
 			setexcatch = {
 				type = "method",
 				summary = "Defines a exception handling function for proxies",
@@ -686,7 +812,39 @@ return refman{
 							If this parameter is provided, then the exception handling function will be applied only to proxies of that interface.
 						]],
 						eventual = [[
-							then the handler will be applied to all proxies created by the ORB.
+							then the handler will be applied to all proxies created by the ORB that do not have a exception handler function defined.
+						]],
+					},
+				},
+			},
+			settimeout = {
+				type = "method",
+				summary = "Defines a timeout for proxy invocations",
+				description = [[
+					defines the timeout for the methods invoked using proxies created by this ORB.
+					Timeouts are not cumulative.
+					For example, if there is a timeout defined for all proxies and another one only for proxies of a given type, then the later will be used for proxies of that given type.
+					Additionally, timeouts are not inherited through interface hierarchies.
+				]],
+				parameters = {
+					{
+						name = "timeout",
+						type = "number",
+						summary = "Timeout in seconds",
+						description = [[
+							minimum time (in seconds) the ORB might spend to complete operations invoked using its proxies.
+							Operations may complete before the time defined as the timeout.
+						]],
+					},
+					{
+						name = "interface",
+						summary = "Interface of the proxies",
+						description = [[
+							defines an object interface, like intefaces described in CORBA IDL.
+							If this parameter is provided, then the timeout will be applied only to proxies of that interface.
+						]],
+						eventual = [[
+							then the timeout will be applied to all proxies created by the ORB that do not have a timeout defined.
 						]],
 					},
 				},
