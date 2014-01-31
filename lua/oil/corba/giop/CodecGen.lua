@@ -381,7 +381,7 @@ local function numbermarshaller(format, size, align)
 	end
 end
 EncoderGenerator.null       = function() end
-EncoderGenerator.void       = DecoderGenerator.null
+EncoderGenerator.void       = EncoderGenerator.null
 EncoderGenerator.short      = numbermarshaller("i2", PrimitiveSizes.short     )
 EncoderGenerator.long       = numbermarshaller("i4", PrimitiveSizes.long      )
 EncoderGenerator.longlong   = numbermarshaller("i8", PrimitiveSizes.longlong  )
