@@ -1,8 +1,9 @@
 local database = (os.getenv("OIL_HOME") or "..").."/test/luaidl/tests/db/"
 
-local luaidl     = require "luaidl"
+local luaidl = require "luaidl"
 local FileStream = require "loop.serial.FileStream"
-local Suite      = require "loop.test.Suite"
+local Suite = require "loop.test.Suite"
+local checks = require "loop.test.checks"
 
 local files = {
 	"valuetype",
@@ -85,7 +86,7 @@ for _, name in ipairs(files) do
 	local path = database..name
 	local idlfile = path..".idl"
 	local luafile = path..".lua"
-	Suite[name] = function(checks)
+	Suite[name] = function()
 		checks.viewer.maxdepth = -1
 		local new = {luaidl.parsefile(idlfile)}
 		local file = io.open(luafile)
