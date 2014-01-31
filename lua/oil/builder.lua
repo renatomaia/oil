@@ -38,7 +38,7 @@ end
 local DefinedFields = {"template","factory"}
 local Flavors = {}
 
-local function newflavor(info)
+local function newlayer(info)
 	local name = info.name
 	assert(Flavors[name] == nil, "flavor duplicated")
 	for _, field in pairs(DefinedFields) do
@@ -63,7 +63,7 @@ local function newflavor(info)
 end
 
 
-newflavor{
+newlayer{
 	name = "kernel.base",
 	define = function (_ENV)
 		template.SocketChannels = component.Template{
@@ -89,7 +89,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "kernel.client",
 	extends = { "kernel.base" },
 	define = function (_ENV)
@@ -134,7 +134,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "kernel.server",
 	extends = { "kernel.base" },
 	define = function (_ENV)
@@ -172,7 +172,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "cooperative.base",
 	extends = { "kernel.base" },
 	define = function (_ENV)
@@ -183,7 +183,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "cooperative.client",
 	extends = { "cooperative.base", "kernel.client" },
 	define = function (_ENV)
@@ -193,7 +193,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "cooperative.server",
 	extends = { "cooperative.base", "kernel.server" },
 	define = function (_ENV)
@@ -203,7 +203,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "typed.base",
 	define = function (_ENV)
 		template.TypeRepository = component.Template{
@@ -213,7 +213,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "typed.client",
 	extends = { "typed.base", "kernel.client" },
 	define = function (_ENV)
@@ -236,7 +236,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "typed.server",
 	extends = { "typed.base", "kernel.server" },
 	define = function (_ENV)
@@ -257,7 +257,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "corba.base",
 	extends = { "typed.base" },
 	define = function (_ENV)
@@ -335,7 +335,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "corba.client",
 	extends = { "corba.base", "typed.client" },
 	define = function (_ENV)
@@ -358,7 +358,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "corba.server",
 	extends = { "corba.base", "typed.server" },
 	define = function (_ENV)
@@ -389,7 +389,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "corba.intercepted.client",
 	extends = { "corba.client" },
 	define = function (_ENV)
@@ -403,7 +403,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "corba.intercepted.server",
 	extends = { "corba.server" },
 	define = function (_ENV)
@@ -417,7 +417,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "corba.gencode",
 	extends = { "corba.base" },
 	define = function (_ENV)
@@ -427,7 +427,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "ludo.base",
 	define = function (_ENV)
 		template.ValueEncoder = component.Template{
@@ -457,7 +457,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "ludo.client",
 	extends = { "ludo.base", "kernel.client" },
 	define = function (_ENV)
@@ -478,7 +478,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "ludo.server",
 	extends = { "ludo.base", "kernel.server" },
 	define = function (_ENV)
@@ -499,7 +499,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "ludo.byref",
 	extends = { "ludo.base" },
 	define = function (_ENV)
@@ -519,7 +519,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "lua.client",
 	extends = { "kernel.client" },
 	define = function (_ENV)
@@ -529,7 +529,7 @@ newflavor{
 	end,
 }
 
-newflavor{
+newlayer{
 	name = "lua.server",
 	extends = { "kernel.server" },
 	define = function (_ENV)
@@ -540,11 +540,11 @@ newflavor{
 	end,
 }
 
-newflavor{name="lua", extends={"lua.client","lua.server"}}
-newflavor{name="ludo", extends={"ludo.client","ludo.server"}}
-newflavor{name="corba", extends={"corba.client","corba.server"}}
-newflavor{name="cooperative", extends={"cooperative.client","cooperative.server"}}
-newflavor{name="corba.intercepted", extends={"corba.intercepted.client","corba.intercepted.server"}}
+newlayer{name="lua", extends={"lua.client","lua.server"}}
+newlayer{name="ludo", extends={"ludo.client","ludo.server"}}
+newlayer{name="corba", extends={"corba.client","corba.server"}}
+newlayer{name="cooperative", extends={"cooperative.client","cooperative.server"}}
+newlayer{name="corba.intercepted", extends={"corba.intercepted.client","corba.intercepted.server"}}
 
 
 local OrderedSet = require "loop.collection.OrderedSet"
