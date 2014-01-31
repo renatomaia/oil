@@ -92,12 +92,14 @@ for raiser, exchecker in pairs(raisers) do
 		excount = excount + 1
 		return excount
 	end
-	for case = 1, 2 do
+	for case = 1, 3 do
 		if case == 1 then
-			raiser.__exceptions = handler
-			async.__exceptions = handler
+			raiser:__setexcatch(handler)
+			async:__setexcatch(handler)
 		elseif case == 2 then
 			orb:setexcatch(handler, "ExceptionRaiser")
+		elseif case == 3 then
+			orb:setexcatch(handler)
 		end
 		
 		excount = 0
@@ -116,10 +118,12 @@ for raiser, exchecker in pairs(raisers) do
 		assert(result == excount, "wrong operation result after exception catch.")
 		
 		if case == 1 then
-			raiser.__exceptions = nil
-			async.__exceptions = nil
+			raiser:__setexcatch(nil)
+			async:__setexcatch(nil)
 		elseif case == 2 then
 			orb:setexcatch(nil, "ExceptionRaiser")
+		elseif case == 3 then
+			orb:setexcatch(nil)
 		end
 	end
 	

@@ -65,13 +65,12 @@ function Connector:connectto(connid, host, port)
 	local cache = self.cache
 	local socket, except = cache[connid]
 	if socket ~= nil then
-		socket:settimeout(0)
+		local _, timeout, tmkind = socket:settimeout(0)
 		local success, except = socket:receive(0)
+		socket:settimeout(timeout, tmkind)
 		if not success and except == "closed" then
 			self:unregister(socket)
 			socket = nil
-		else
-			socket:settimeout(nil)
 		end
 	end
 	if socket == nil then

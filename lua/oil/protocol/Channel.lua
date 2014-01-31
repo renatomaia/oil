@@ -82,8 +82,14 @@ function Channel:receive(count, timeout)
 		end
 	end
 	local socket = self.socket
-	socket:settimelimit(timeout)
+	local tmchanged, tmbak, tmkind
+	if timeout ~= nil then
+		tmchanged, tmbak, tmkind = socket:settimeout(timeout, "isTimeStamp")
+	end
 	local result, except, partial = socket:receive(missing)
+	if tmchanged then
+		socket:settimeout(tmbak, tmkind)
+	end
 	if result then
 		self.bytes = ""
 		return bytes..result

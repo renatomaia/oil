@@ -4,15 +4,13 @@
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
 
-local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
-local pcall = _G.pcall
-
-local oo = require "oil.oo"
+local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local class = oo.class
 
 local Exception = require "oil.Exception"
+local BaseDispatcher = require "oil.kernel.base.Dispatcher"
 
-local Dispatcher = class{ context = false }
+local Dispatcher = class({}, BaseDispatcher)
 
 function Dispatcher:dispatch(request)
 	local context = self.context
@@ -25,7 +23,7 @@ function Dispatcher:dispatch(request)
 	local object, method = request:preinvoke(entry, operation)
 	if object ~= nil then
 		if method ~= nil then                                                       --[[VERBOSE]] verbose:dispatcher("dispatching ",request)
-			return request:setreply(pcall(method, object, request:getvalues()))
+			return request:setreply(self:pcall(method, object, request:getvalues()))
 		else                                                                        --[[VERBOSE]] verbose:dispatcher("missing implementation of ",request.operation)
 			return request:setreply(false, Exception{
 				"servant $key does not implement $operation",

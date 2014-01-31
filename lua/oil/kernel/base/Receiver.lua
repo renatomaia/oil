@@ -21,7 +21,7 @@ local Exception = require "oil.Exception"                                       
 
 local Receiver = class()
 
-function Receiver:notifyerror(tag, except)
+function Receiver:notifyerror(except, tag)
 	if stderr ~= nil then
 		stderr:write("OiL caught error: [", tag, "] ", tostring(except), "\n")
 	end
@@ -30,11 +30,11 @@ end
 function Receiver:dorequest(request)
 	local success, except = self.dispatcher:dispatch(request)
 	if not success then
-		self:notifyerror("reply", except)
+		self:notifyerror(except, "reply")
 	end
 	except = request.unotifiederror
 	if except ~= nil then
-		self:notifyerror("dispatch", except)
+		self:notifyerror(except, "dispatch")
 	end
 end
 
@@ -44,7 +44,7 @@ end
 
 function Receiver:probe(timeout)                                                --[[VERBOSE]] verbose:acceptor(true, "checking for invocation requests")
 	local result, except = self.pending
-	if result == nil then                                                         --[[VERBOSE]] verbose:acceptor("waiting requests for ",timeout and timeout.." seconds" or "ever")
+	if result == nil then                                                         --[[VERBOSE]] verbose:acceptor("waiting requests for ",timeout and tostring(timeout).." seconds" or "ever")
 		local listener = self.listener
 		repeat
 			result, except = listener:getchannel(timeout)
@@ -54,12 +54,12 @@ function Receiver:probe(timeout)                                                
 					self.pending = result
 				else
 					if except.error ~= "timeout" and except.error ~= "terminated" then
-						self:notifyerror("request", except)
+						self:notifyerror(except, "request")
 					end
 					except = nil
 				end
 			else
-				self:notifyerror("connection", except)
+				self:notifyerror(except, "connection")
 			end
 		until result or except
 	end                                                                           --[[VERBOSE]] verbose:acceptor(false)

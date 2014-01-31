@@ -35,23 +35,6 @@ local rawnew = oo.rawnew
 local Sockets = require "oil.kernel.base.Sockets"
 
 
-
-local function findupvalue(func, name)
-	local debug = require "debug"
-	local math = require "math"
-	for i = 1, math.huge do
-		local upname, value = debug.getupvalue(func, i)
-		if upname == nil then break end
-		if upname == name then return value end
-	end
-	error("upvalue "..name.." not found!")
-end
-local CoSocket = findupvalue(socket.cosocket, "CoSocket")
-function CoSocket:settimelimit(timestamp)
-	self:settimeout(timestamp, "isTimestamp")
-end
-
-
 local Poll = class()
 
 function Poll:__init()

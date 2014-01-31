@@ -5,10 +5,11 @@
 
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
-local select = _G.select
-local setmetatable = _G.setmetatable
 local rawget = _G.rawget
 local rawset = _G.rawset
+local select = _G.select
+local setmetatable = _G.setmetatable
+local type = _G.type
 
 local table = require "loop.table"
 local clear = table.clear
@@ -20,26 +21,46 @@ local assert = asserter.results
 local oo = require "oil.oo"
 local class = oo.class
 
+local utils = require "oil.kernel.base.Proxies.utils"
+local ExHandlerKey = utils.ExHandlerKey
+local TimeoutKey = utils.TimeoutKey
+
+local function proxysetexcatch(self, handler)                                   --[[VERBOSE]] verbose:proxies("setting exception handler for proxy ",self)
+	local old = rawget(self, ExHandlerKey)
+	self[ExHandlerKey] = handler
+	return true, old
+end
+local function proxysettimeout(self, timeout)                                   --[[VERBOSE]] verbose:proxies("setting timeout ",timeout," for proxy ",self)
+	local old = rawget(self, TimeoutKey)
+	self[TimeoutKey] = timeout
+	return true, old
+end
+
 
 local Proxies = class()
 
 function Proxies:__init()
+	self.global = self.global or {}
 	if self.class == nil then
 		local methodmaker = self.invoker
 		local OpCache = {
 			__index = function(cache, field)
-				local operation = self.indexer:valueof(cache.__type, field)
-				if operation then                                                       --[[VERBOSE]] verbose:proxies("create proxy operation '",field,"'")
-					local function invoker(proxy, ...)                                    --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
-						return self.requester:newrequest{
-							reference = proxy.__reference,
-							operation = operation,
-							n = select("#", ...), ...,
-						}
+				if type(field) == "string" then
+					local operation = self.indexer:valueof(cache.__type, field)
+					if operation then                                                     --[[VERBOSE]] verbose:proxies("create proxy operation '",field,"'")
+						local function invoker(proxy, ...)                                  --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
+							return self.requester:newrequest{
+								reference = proxy.__reference,
+								operation = operation,
+								n = select("#", ...), ...,
+							}
+						end
+						invoker = methodmaker(invoker, operation)
+						cache[field] = invoker
+						return invoker                                                      --[[VERBOSE]] else verbose:proxies("indexed operation '",field,"' does not exist")
 					end
-					invoker = methodmaker(invoker, operation)
-					cache[field] = invoker
-					return invoker                                                        --[[VERBOSE]] else verbose:proxies("indexed operation '",field,"' does not exist")
+				else
+					return self.global[field]
 				end
 			end
 		}
@@ -56,13 +77,17 @@ function Proxies:__init()
 			local cache = setmetatable({}, OpCache)
 			local updater = {}
 			function updater:notify()
-				local handler = rawget(cache, "__exceptions")
+				local handler = rawget(cache, ExHandlerKey)
+				local timeout = rawget(cache, TimeoutKey)
 				clear(cache)
 				cache.__index = cache
 				cache.__type = type
 				cache.__tostring = proxytostring
 				cache.__narrow = proxynarrow
-				cache.__exceptions = handler
+				cache.__setexcatch = proxysetexcatch
+				cache.__settimeout = proxysettimeout
+				cache[ExHandlerKey] = handler or self[ExHandlerKey]
+				cache[TimeoutKey] = timeout or self[TimeoutKey]
 			end
 			updater:notify()
 			if type.observer then
@@ -82,14 +107,32 @@ function Proxies:newproxy(proxy)                                                
 	return result, except
 end
 
-function Proxies:excepthandler(handler, type)                                   --[[VERBOSE]] verbose:proxies("setting exception handler for proxies of ",type)
-	local result, except = self.types:resolve(type)
-	if result then
-		local class = self.class[result]
-		class.__exceptions = handler
-		result, except = true, nil
+function Proxies:setexcatch(handler, type)                                    --[[VERBOSE]] verbose:proxies("setting exception handler for all proxies of type ",type)
+	local scope = self.global
+	if type ~= nil then
+		local result, except = self.types:resolve(type)
+		if result == nil then
+			return nil, except
+		end
+		scope = self.class[result]
 	end
-	return result, except
+	local old = rawget(scope, ExHandlerKey)
+	scope[ExHandlerKey] = handler
+	return true, old
+end
+
+function Proxies:settimeout(timeout, type)                                      --[[VERBOSE]] verbose:proxies("setting timeout ",timeout," for all proxies of type ",type)
+	local scope = self.global
+	if type ~= nil then
+		local result, except = self.types:resolve(type)
+		if result == nil then
+			return nil, except
+		end
+		scope = self.class[result]
+	end
+	local old = rawget(scope, TimeoutKey)
+	scope[TimeoutKey] = timeout
+	return true, old
 end
 
 

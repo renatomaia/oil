@@ -23,12 +23,15 @@ local oo = require "oil.oo"
 local class = oo.class
 
 do -- add new operation 'settimelimit' on sockets
+	local timeoutOf = setmetatable({}, {__mode="k"})
+	local function settimeout_results(old, ...)
+		if (...) and old ~= nil then
+			return ..., old.value, old.kind
+		end
+		return ...
+	end
 	local debug = require "debug"
 	local registry = debug.getregistry()
-	local function settimelimit(self, timeout)
-		if timeout and timeout >= 0 then timeout = max(0, timeout-gettime()) end
-		return self:settimeout(timeout)
-	end
 	local socketclasses = {
 		"tcp{client}",
 		"tcp{server}",
@@ -38,7 +41,15 @@ do -- add new operation 'settimelimit' on sockets
 	}
 	for _, socketclass in ipairs(socketclasses) do
 		local methods = registry[socketclass].__index
-		methods.settimelimit = settimelimit
+		local socket_settimeout = methods.settimeout
+		function methods:settimeout(timeout, stamp)
+			local old = timeoutOf[self]
+			timeoutOf[self] = {value=timeout, kind=stamp}
+			if timeout and timeout >= 0 and stamp then
+				timeout = max(0, timeout-gettime())
+			end
+			return settimeout_results(old, socket_settimeout(self, timeout))
+		end
 	end
 end
 
@@ -104,7 +115,13 @@ local Sockets = class()
 function Sockets:setoptions(options, socket, ...)
 	if options and socket then
 		for name, value in pairs(options) do
-			socket:setoption(name, value)
+			if name == "timeout" then
+				if value >= 0 then
+					socket:settimeout(value)
+				end
+			else
+				socket:setoption(name, value)
+			end
 		end
 	end
 	return socket, ...
