@@ -15,4 +15,5 @@ return function()
 		local inherited = orb.types:lookup("C")
 		assert(inherited:is_a("IDL:A:1.0"))
 	end
+	orb:shutdown()
 end
