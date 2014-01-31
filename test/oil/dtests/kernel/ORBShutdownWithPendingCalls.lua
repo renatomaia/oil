@@ -31,23 +31,34 @@ cothread = require "cothread"
 
 orb = oil.dtests.init()
 Service = oil.dtests.resolve("Server", 2809, "object")
-thread = cothread.running()
 Callback = {
 	notify = function()
 		notified = true
-		cothread.schedule(thread)
+		if thread then
+			cothread.schedule(thread)
+			thread = nil
+		end
 		Service:sleep(.1)
 		completed = true
-		cothread.schedule(thread)
+		if thread then
+			cothread.schedule(thread)
+			thread = nil
+		end
 	end,
 }
 if oil.dtests.flavor.ludo then
 	Callback = orb:newproxy(tostring(orb:newservant(Callback)))
 end
 Service:signal(Callback)
-if not notified then oil.sleep(3) end
+if not notified then
+	thread = cothread.running()
+	oil.sleep(3)
+end
 orb:shutdown()
-if not completed then oil.sleep(3) end
+if not completed then
+	thread = cothread.running()
+	oil.sleep(3)
+end
 
 assert(notified and completed)
 --[Client]=====================================================================]
