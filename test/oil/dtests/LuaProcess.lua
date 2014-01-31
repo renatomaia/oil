@@ -1,10 +1,3 @@
-if _VERSION == "Lua 5.1" then
-	require "coroutine.pcall"
-	require "coroutine.debug51"
-else
-	--require "coroutine.debug"
-end
-
 local socket = require "socket"
 local Runner = require "loop.test.Results"
 local Message = "%s\n%d\n%s\n"

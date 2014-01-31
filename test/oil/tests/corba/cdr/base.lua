@@ -4,6 +4,7 @@ local streampath = (os.getenv("OIL_HOME") or "..")..
 local struct = require "struct"
 local oo = require "loop.base"
 local Suite = require "loop.test.Suite"
+local checks = require "loop.test.checks"
 local idl = require "oil.corba.idl"
 local Codec = require "oil.corba.giop.Codec"
 local CodecGen = require "oil.corba.giop.CodecGen"
@@ -11,7 +12,7 @@ local CodecGen = require "oil.corba.giop.CodecGen"
 local SequenceTestKey = {}
 
 local function hexdump(stream, expected)
-	local lines = string.format("%%0%dx:", math.ceil(math.log10(math.ceil(#stream/16))+1))
+	local lines = string.format("%%0%dx:", math.ceil(math.log(math.ceil(#stream/16), 10)+1))
 	local count = 0
 	local pos = cursor
 	local dump = {}
@@ -75,7 +76,7 @@ local function invpack(format, ...)
 end
 local function newcase(suite, testID, codec, byteorder, shift, idltype, value, expected)
 	local fileID = string.gsub(suite.ID..testID..byteorder..shift, "%W", "_")
-	return function(checks)
+	return function()
 		if type(idltype) == "function" then
 			idltype = {idltype(codec)}
 			value = {value(codec)}

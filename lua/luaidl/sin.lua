@@ -2205,7 +2205,7 @@ rules.case = function ()
         table.insert(currentScope, {name = name, type = tab_type_spec, label = case})
       end
       if case == 'none' then
-        currentScope.default = table.getn(currentScope)
+        currentScope.default = #currentScope
       end
     end
     recognize(";")

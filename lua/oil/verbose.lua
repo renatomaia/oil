@@ -10,7 +10,7 @@ local type = _G.type
 
 local math = require "math"
 local ceil = math.ceil
-local log10 = math.log10
+local log = math.log
 
 local string = require "string"
 local format = string.format
@@ -70,7 +70,7 @@ function verbose:hexastream(codec, cursor, prefix)
 				end
 				local base = codec.previousend
 				local output = self.viewer.output
-				local lines = string.format("\n%%0%dx:", math.ceil(math.log10((base+last)/16))+1)
+				local lines = string.format("\n%%0%dx:", math.ceil(math.log((base+last)/16, 10))+1)
 				local text = {}
 				local opnened
 				for count = count-(count-1)%16, last do
