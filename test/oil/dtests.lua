@@ -21,7 +21,8 @@ oil.dtests = {
 	init = function (config)
 		config = config or {}
 		config.flavor = flavor
-		config.tcpoptions = {reuseaddr=true}
+		config.tcpoptions = config.tcpoptions or {}
+		config.tcpoptions.reuseaddr = true
 		oil.dtests.orb = oil.init(config)
 		return oil.dtests.orb
 	end,
