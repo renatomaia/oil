@@ -243,6 +243,13 @@ return refman{
 			This object also provides the additional fields described below.
 		]],
 		fields = {
+			__reference = {
+				type = "table",
+				summary = "Data structure containing access information of the referenced remote object",
+				description = [[
+					contains complete IOR structure (see CORBA::IOP::IOR in CORBA specs.) in case of CORBA ORB, or another data structure in case of other protocols.
+				]],
+			},
 			__setexcatch = {
 				type = "method",
 				summary = "Defines a exception handling function for the proxy",
@@ -597,7 +604,7 @@ return refman{
 			},
 			getinterceptor = {
 				type = "method",
-				summary = "Defines an interceptor for invocations",
+				summary = "Returns the current interceptor for invocations",
 				description = [[
 					returns the intereceptor registered to intercept invocation requests made through this ORB.
 				]],
@@ -670,6 +677,7 @@ return refman{
 			},
 			getLIR = {
 				type = "method",
+				summary = "Returns the local Interface Repository with all known interface information",
 				description = [[
 					returns the internal CORBA Interface Repository used by the ORB.
 					This method should not be invoked on ORBs that do not support CORBA.
@@ -687,6 +695,7 @@ return refman{
 			},
 			getIR = {
 				type = "method",
+				summary = "Returns the remote Interface Repository used to discover interfaces",
 				description = [[
 					returns the CORBA Interface Repository (IR) used by the ORB to retrieve unknown typing information.
 					Usually this IR is a proxy to a remote object that provides additional typing information that the ORB must retrieve on demmand.
@@ -705,6 +714,7 @@ return refman{
 			},
 			setIR = {
 				type = "method",
+				summary = "Defines the remote Interface Repository used to discover interfaces",
 				description = [[
 					sets the CORBA Interface Repository (IR) used by the ORB to retrieve unknown typing information.
 					Usually this IR is a proxy to a remote object that provides additional typing information that the ORB must retrieve on demmand.
@@ -877,6 +887,7 @@ return refman{
 			},
 			newdecoder = {
 				type = "method",
+				summary = "Creates a new value decoder that unmarshal values from strings",
 				description = [[
 					creates a new value decoder that unmarshal values from an encoded stream.
 					For CORBA ORBs, the decoder reads CORBA's CDR encapsulated streams, <i>i.e.</i> includes an indication of the endianess used in value codification.
@@ -903,6 +914,10 @@ return refman{
 			newencoder = {
 				type = "method",
 				summary = "Creates a new value encoder that marshal values into strings",
+				description = [[
+					creates a new value encoder that marshal values into an encoded stream.
+					For CORBA ORBs, the encoder writes CORBA's CDR encapsulated streams, <i>i.e.</i> includes an indication of the endianess used in value codification.
+				]],
 				results = {
 					{
 						name = "encoder",
@@ -1041,6 +1056,7 @@ return refman{
 		fields = {
 			sendrequest = {
 				type = "method",
+				summary = "Client-side invocation request interception point",
 				description = [[
 					is invoked whenever the ORB send an invocation request.
 				]],
@@ -1056,6 +1072,7 @@ return refman{
 			},
 			receivereply = {
 				type = "method",
+				summary = "Client-side invocation reply interception point",
 				description = [[
 					is invoked whenever the ORB receives the reply of an invocation request sent previously.
 				]],
@@ -1072,6 +1089,7 @@ return refman{
 			},
 			receiverequest = {
 				type = "method",
+				summary = "Server-side invocation request interception point",
 				description = [[
 					is invoked whenever the ORB receives an invocation request.
 				]],
@@ -1087,6 +1105,7 @@ return refman{
 			},
 			sendreply = {
 				type = "method",
+				summary = "Server-side invocation reply interception point",
 				description = [[
 					is invoked whenever the ORB sends a reply of an invocation request received previously.
 				]],

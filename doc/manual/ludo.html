@@ -49,7 +49,7 @@ Such situation is illustrated in the code below.</p>
 require "oil"
 
 oil.main(function()
-	local orb = oil.init{flavor="ludo;cooperative;base"}
+	local orb = oil.init{flavor="ludo;cooperative"}
 	
 	local Invoker = {}
 	function Invoker:invoke(object, method, ...)
@@ -58,8 +58,6 @@ oil.main(function()
 	
 	oil.writeto("invoker.ref",
 		orb:newservant(Invoker))
-	
-	orb:run()
 end)
 </pre>
 
@@ -70,8 +68,7 @@ end)
 require "oil"
 
 oil.main(function()
-	local orb = oil.init{flavor="ludo;cooperative;base"}
-	oil.newthread(orb.run, orb)
+	local orb = oil.init{flavor="ludo;cooperative"}
 	
 	local Hello = {}
 	function Hello:say(who)

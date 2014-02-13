@@ -95,8 +95,11 @@ function newtest(self, infos)
 				local command = Command(infos[name])
 				command.id = name
 				command.command = "lua"
-				command.arguments = { "-eHOST=[["..hostname.."]]PORT="..portno,
-				                      "-loil.dtests.LuaProcess" }
+				command.arguments = {
+					"-lcompat52",
+					"-eHOST=[["..hostname.."]]PORT="..portno,
+					"-loil.dtests.LuaProcess",
+				}
 				command.environment = {
 					{name="PATH"     , value=os.getenv("PATH")     },
 					{name="LUA_PATH" , value=os.getenv("LUA_PATH") },
