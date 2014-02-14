@@ -10,9 +10,6 @@ local package = require "package"
 local io = package.loaded.io
 local stderr = io and io.stderr -- only if available
 
-local vararg = require "vararg"
-local pack = vararg.pack
-
 local oo = require "oil.oo"
 local class = oo.class
 

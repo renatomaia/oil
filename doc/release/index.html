@@ -1,39 +1,52 @@
 <a name="rock"><h2>Rock</h2></a>
 
-<p>You can install OiL through <a href="http://www.luarocks.org/">LuaRocks</a> using the following command.</p>
+<p>You can install OiL through <%=link("LuaRocks")%> using the following command.</p>
 
 <pre>   luarocks install oil</pre>
 
 <a name="source"><h2>Source</h2></a>
 
-<p>OiL is provided as free software under the terms of the <a href="http://www.opensource.org/licenses/mit-license.html">MIT license</a>, which are the same terms of the <a href="http://www.lua.org/license.html">Lua's license</a>.
+<p>OiL is provided as free software under the terms of the <%=link("MitLicense")%>, which are the same terms of the <%=link("LuaLicense")%>.
 You can download the OiL package from the following link.
-The package below also contains the source code of <a href="http://loop.luaforge.net/">LOOP</a> and <a href="http://www.tecgraf.puc-rio.br/~diego/professional/luasocket/">LuaSocket</a> libraries.</p>
+See below for installation instructions.</p>
 <ul>
 	<li>
 	OiL 0.6
-	[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.6.tar.gz">tar.gz</a>]
-	[<a href="http://www.tecgraf.puc-rio.br/~maia/oil/oil-0.6.zip">zip</a>]
+	[<%=link("OiL.v06.tgz", "tar.gz")%>]
+	[<%=link("OiL.v06.zip", "zip")%>]
 	</li>
 </ul>
 
 <strong>See also:</strong>
 <ul>
 	<li><%=link"Changes"%></li>
-	<li><%=link"History"%></li>
+	<li><%=link"Previous"%></li>
 </ul>
 
-<p>To make the OiL packages available for any Lua application you may simply execute the application in the folder you unpacked OiL.
-Therefore, to give it a try, just execute the Lua stand-alone interpreter in the directory you unpacked OiL.
-However, to properly install OiL in your environment you must unpack it in the Lua package directory, which is defined by the <code>luaconf.h</code> file during the compilation of Lua. The default values for this directory are listed below:</p>
+<p>To make the OiL packages available for any Lua application you may simply execute the application in the <code>lua</code> directory of the OiL package.
+Therefore, to give it a try, just execute the Lua stand-alone interpreter in the <code>lua</code> directory located in the place where you unpacked OiL.
+However, to properly install OiL in your environment you must copy the contents of this <code>lua</code> directory to the Lua package directory, which is defined by the <code>luaconf.h</code> file during the compilation of Lua. The default values for this directory are listed below:</p>
 
 <dl>
 	<dt>Unix</dt>
 	<dd>Lua 5.1: <code>/usr/local/share/lua/5.1/</code>
 	<br>Lua 5.2: <code>/usr/local/share/lua/5.2/</code></dd>
 	<dt>Windows</dt>
-	<dd>Directory where the application (<i>e.g.</i> stand-alone interpreter) is installed.
-	Therefore, to use OiL in Windows you may simply unpack the <code>loop</code> package in the same folder the Lua stand-alone interpreter (or other Lua application) is installed.</dd>
+	<dd>Directory where the application (<i>e.g.</i> stand-alone interpreter) is installed.</dd>
 </dl>
 
 <p>You can also define the directories Lua searches for packages by setting the <%=link("LuaManual.LuaPath", "<code>LUA_PATH</code>")%>.</p>
+
+<a name="dependencies"><h2>Dependencies</h2></a>
+
+<p>OiL requires that the following packages be installed in the environment:</p>
+
+<ul>
+	<li><%=link("LuaStruct")%> 1.2</li>
+	<li><%=link("LuaSocket")%> 2.0</li>
+	<li><%=link("LuaTuple")%> 1.0 beta</li>
+	<li><%=link("LOOP")%> 3.0</li>
+	<li><%=link("LOOP.ClassLib")%> 2.0 beta</li>
+	<li><%=link("LOOP.Component")%> 1.0 beta</li>
+	<li><%=link("CoThread")%> 0.1</li>
+</ul>
