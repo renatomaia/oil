@@ -1235,6 +1235,14 @@ return refman{
 					If the ORB cannot find a suitable target servant then this field is <code>nil</code>.
 				]],
 			},
+			channel_address = {
+				type = "table",
+				description = [[
+					contains information about the remote address of the channel that received the request.
+					Note that this address information is about the last hop that delivered the message, and might not necessarly reflect the address that originally requested the invocation.
+					For requests receives using IIOP (default and only GIOP supported by standard OiL) this table contains fields <code>host</code> and <code>port</code> containing respectively a string and a number indicating the IP address and port of the remote end of the channel.
+				]],
+			},
 		},
 	},
 	reqcli = {

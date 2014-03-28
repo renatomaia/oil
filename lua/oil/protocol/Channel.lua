@@ -45,6 +45,13 @@ function Channel:freelock(operation)
 	return self[operation]:free()
 end
 
+function Channel:getpeeraddress()
+	local host, port = self.socket:getpeername()
+	if host ~= nil then
+		return {host=host, port=port}
+	end
+end
+
 function Channel:send(...)
 	local socket = self.socket
 	local result, except = socket:send(...)

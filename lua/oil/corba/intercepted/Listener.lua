@@ -40,6 +40,7 @@ function ServerRequest:preinvoke(entry, member)
 			interface         = member and member.defined_in,
 			parameters        = member and {n=self.n,self:getvalues()} or nil,
 			method            = method,
+			channel_address   = self.channel and self.channel:getpeeraddress(),
 		}
 		self.intercepted = intercepted
 		local receiverequest = interceptor.receiverequest
