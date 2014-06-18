@@ -24,6 +24,7 @@ function CoConnector:__init()
 end
 
 function CoConnector:connectto(connid, ...)
+	if connid == nil then return nil, (...) end
 	local pending = self.pending
 	local threads = pending[connid]
 	if threads ~= nil then                                                        --[[VERBOSE]] verbose:channels("connection to channel in progress, wait completion")

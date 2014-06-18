@@ -27,6 +27,7 @@ local OiLEx2SysEx = {
 	badobjop      = { SystemExceptionIDs.BAD_OPERATION   ,nil},
 	badobjkey     = { SystemExceptionIDs.OBJECT_NOT_EXIST,nil},
 	badtype       = { SystemExceptionIDs.BAD_PARAM       ,nil},
+	badsecurity   = { SystemExceptionIDs.NO_PERMISSION   ,nil},
 	terminated    = { SystemExceptionIDs.COMM_FAILURE    ,nil},
 	timeout       = { SystemExceptionIDs.TIMEOUT         ,nil},
 }

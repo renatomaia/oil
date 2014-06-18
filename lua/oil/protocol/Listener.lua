@@ -32,7 +32,7 @@ function Listener:__init()
 			socket = socket,
 			context = self,
 			access = self.access,
-			server = true,
+			listener = self,
 		}
 	end)
 end

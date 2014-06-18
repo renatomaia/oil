@@ -46,7 +46,7 @@ function IceptedRequester:dorequest(request)                                    
 		local operation = request.operation_desc or request.operation
 		local interface = operation.defined_in
 		local reference = request.reference
-		local channel = self:getchannel(reference) -- ignore eventual errors
+		local channel = self:getchannel(reference, request) -- ignore eventual errors
 		if channel ~= nil then
 			channel:register(request, "outgoing")
 		end

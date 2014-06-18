@@ -11,14 +11,25 @@ local setmetatable = _G.setmetatable
 local type = _G.type
 
 local table = require "loop.table"
+local copy = table.copy
 local memoize = table.memoize
 
 local oo = require "oil.oo"
 local class = oo.class
 
 local utils = require "oil.kernel.base.Proxies.utils"
-local ExHandlerKey = utils.ExHandlerKey
-local TimeoutKey = utils.TimeoutKey
+local keys = utils.keys
+local SecurityKey = keys.security
+local SSLKey = keys.ssl
+
+local PredefinedMethods = {}
+for name, key in pairs(keys) do
+	PredefinedMethods["__set"..name] = function (self, value)                     --[[VERBOSE]] verbose:proxies("setting ",name," ",value," for proxy ",self)
+		local old = rawget(self, key)
+		self[key] = value
+		return old
+	end
+end
 
 local Proxies = class()
 
@@ -29,6 +40,8 @@ function Proxies:__init()
 			if type(operation) == "string" then                                       --[[VERBOSE]] verbose:proxies("create proxy operation '",operation,"'")
 				local function invoker(proxy, ...)                                      --[[VERBOSE]] verbose:proxies("call to ",operation)
 					return self.requester:newrequest{
+						security = proxy[SecurityKey],
+						ssl = proxy[SSLKey],
 						reference = proxy.__reference,
 						operation = operation,
 						n = select("#", ...), ...,
@@ -39,16 +52,7 @@ function Proxies:__init()
 		end, "v") -- TODO:[maia] can method creation/collection be worse than
 		          --             memory leak due to invocation of constantly
 		          --             changing methods ?
-		function methods:__setexcatch(handler)                                      --[[VERBOSE]] verbose:proxies("setting exception handler ",handler," for proxy ",self)
-			local old = rawget(self, ExHandlerKey)
-			self[ExHandlerKey] = handler
-			return old
-		end
-		function methods:__settimeout(timeout)                                      --[[VERBOSE]] verbose:proxies("setting timeout ",timeout," for proxy ",self)
-			local old = rawget(self, TimeoutKey)
-			self[TimeoutKey] = timeout
-			return old
-		end
+		copy(PredefinedMethods, methods)
 		self.class = {
 			__index = methods,
 			__tostring = function(proxy)
@@ -62,18 +66,13 @@ function Proxies:newproxy(proxy)                                                
 	return setmetatable(proxy, self.class)
 end
 
-function Proxies:setexcatch(handler)                                            --[[VERBOSE]] verbose:proxies("setting exception handler ",handler," for all proxies")
-	local class = self.class.__index
-	local old = rawget(class, ExHandlerKey)
-	class[ExHandlerKey] = handler
-	return true, old
-end
-
-function Proxies:settimeout(timeout)                                            --[[VERBOSE]] verbose:proxies("setting timeout ",timeout," for all proxies")
-	local class = self.class.__index
-	local old = rawget(class, TimeoutKey)
-	class[TimeoutKey] = timeout
-	return true, old
+for name, key in pairs(keys) do
+	Proxies["set"..name] = function (self, value)                                 --[[VERBOSE]] verbose:proxies("setting ",name," ",value," for all proxies")
+		local class = self.class.__index
+		local old = rawget(class, key)
+		class[key] = value
+		return true, old
+	end
 end
 
 return Proxies

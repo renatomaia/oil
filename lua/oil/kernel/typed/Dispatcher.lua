@@ -18,6 +18,15 @@ function Dispatcher:dispatch(request)
 	local entry = context.servants:retrieve(key)
 	local operation -- defined later if servant exists
 	if entry ~= nil then
+		if entry.__security and not request.secured then
+			return request:setreply(false, Exception{
+				"servant $key requires sercure invocation",
+				error = "badsecurity",
+				operation = request.operation,
+				object = entry.__servant,
+				key = key,
+			})
+		end
 		operation = context.indexer:valueof(entry.__type, request.operation)
 	end
 	local object, method = request:preinvoke(entry, operation)

@@ -108,6 +108,9 @@ function Servants:makeentry(entry)
 	if entry.__proxies == nil then
 		entry.__proxies = getfield(servant, "__proxies")
 	end
+	if entry.__security == nil then
+		entry.__security = getfield(servant, "__security") or self.secured
+	end
 	return entry
 end
 

@@ -69,7 +69,7 @@ end
 
 
 local function reissue(self, request, reference, addressing)                    --[[VERBOSE]] verbose:invoke(true, "reissue request to ",request.object_key,":",request.operation)
-	local channel, except = self:getchannel(reference)
+	local channel, except = self:getchannel(reference, request)
 	if channel then
 		request.reference = reference
 		if addressing == nil or addressing == 0 then                                --[[VERBOSE]] verbose:invoke("using object key as addressing mode")
@@ -115,11 +115,11 @@ function GIOPRequester:removechannel(channel)                                   
 	self.channels:unregister(socket)
 end
 
-function GIOPRequester:getchannel(reference)
+function GIOPRequester:getchannel(reference, configs)
 	local result, except = reference.ior_profile_data
 	if result ~= nil then                                                         --[[VERBOSE]] verbose:invoke("reusing previous profile with tag ",reference.ior_profile_tag)
 		local giop_minor = result.giop_minor
-		result, except = Requester.getchannel(self, result)
+		result, except = Requester.getchannel(self, result, configs)
 		if result then
 			result:upgradeto(giop_minor)
 			return result
@@ -132,7 +132,7 @@ function GIOPRequester:getchannel(reference)
 			reference.object_key = decoded.object_key
 			reference.ior_profile = profile
 			reference.ior_profile_decoded = decoded
-			result, except = Requester.getchannel(self, decoded)
+			result, except = Requester.getchannel(self, decoded, configs)
 			if result then
 				result:upgradeto(decoded.giop_minor)
 				return result
@@ -174,7 +174,7 @@ function GIOPRequester:dorequest(request)
 		request.sync_scope = operation.oneway and "channel" or "servant"
 	end
 	local reference = request.reference
-	local channel, except = self:getchannel(reference)                            --[[VERBOSE]] verbose:invoke("new request to ",reference.object_key,":",request.operation)
+	local channel, except = self:getchannel(reference, request)                   --[[VERBOSE]] verbose:invoke("new request to ",reference.object_key,":",request.operation)
 	if channel then
 		request.object_key = reference.object_key
 		local success

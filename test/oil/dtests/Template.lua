@@ -66,6 +66,13 @@ function __init(self, object)
 	return self
 end
 
+local EnvironmentVariables = {
+	"PATH",
+	"LUA_PATH",
+	"LUA_CPATH",
+	"LD_LIBRARY_PATH",
+	"DYLD_LIBRARY_PATH",
+}
 local Empty = {}
 function newtest(self, infos)
 	if not infos then infos = Empty end
@@ -90,22 +97,27 @@ function newtest(self, infos)
 		local Master
 		local Processes = {}
 		local HostTable = {}
+		local Environment = {}
+		for index, name in ipairs(EnvironmentVariables) do
+			local value = os.getenv(name)
+			if value ~= nil then
+				Environment[#Environment+1] = {
+					name = name,
+					value = value,
+				}
+			end
+		end
 		for name, code in pairs(self) do
 			if type(name) == "string" then
 				local command = Command(infos[name])
 				command.id = name
 				command.command = "lua"
 				command.arguments = {
-					"-lcompat52",
+					--"-lcompat52",
 					"-eHOST=[["..hostname.."]]PORT="..portno,
 					"-loil.dtests.LuaProcess",
 				}
-				command.environment = {
-					{name="PATH"     , value=os.getenv("PATH")     },
-					{name="LUA_PATH" , value=os.getenv("LUA_PATH") },
-					{name="LUA_CPATH", value=os.getenv("LUA_CPATH")},
-					{name="OIL_HOME" , value=os.getenv("OIL_HOME") },
-				}
+				command.environment = Environment
 				local process = helper:start(command)
 				HostTable[#HostTable+1] = TableEntry:format(name, process:_get_host())
 				Processes[name] = {
@@ -252,6 +264,7 @@ local Names = {
 	gencode = "Gen",
 	cooperative = "Co",
 	["corba.intercepted"] = "IceptGIOP",
+	["corba.ssl"] = "SSL",
 	corba = "CORBA",
 	ludo = "LuDO",
 }
@@ -259,6 +272,7 @@ local Tags = {
 	"gencode",
 	"cooperative",
 	"corba.intercepted",
+	"corba.ssl",
 	"corba",
 	"ludo",
 }
@@ -294,13 +308,14 @@ function newsuite(self, required)
 	local corba = seq{
 		""; --alt{"corba.gencode", ""};
 		alt{"corba.intercepted", "corba"};
+		alt{"corba.ssl", ""};
 	}
 	local flavors = seq{
 		"";
 		alt{"cooperative", ""};
 	};
 	local protocols = {
-		[ludo]    = true,
+		[ludo] = true,
 		[corba] = true,
 	}
 	if required.gencode          then corba[1][2]      = nil end
@@ -318,16 +333,20 @@ function newsuite(self, required)
 			for server in flavors:combinations() do
 				client = tostring(client)
 				server = tostring(server)
-				local config = {
-					Client = { flavor = client },
-					Server = { flavor = server },
-				}
-				for name in pairs(self) do
-					if config[name] == nil then
-						config[name] = config.Server
+				if (client:find("cooperative", 1, true) or not client:find("corba.ssl", 1, true))
+				and (server:find("cooperative", 1, true) or not server:find("corba.ssl", 1, true))
+				then
+					local config = {
+						Client = { flavor = client },
+						Server = { flavor = server },
+					}
+					for name in pairs(self) do
+						if config[name] == nil then
+							config[name] = config.Server
+						end
 					end
+					suite[getname(client, server)] = self:newtest(config)
 				end
-				suite[getname(client, server)] = self:newtest(config)
 			end
 		end
 	end

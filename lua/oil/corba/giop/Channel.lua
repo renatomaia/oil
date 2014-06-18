@@ -45,7 +45,6 @@ local LocateReplyID = giop.LocateReplyID
 local CloseConnectionID = giop.CloseConnectionID
 local MessageErrorID = giop.MessageErrorID
 local FragmentID = giop.FragmentID
-local SystemExceptionIDs = giop.SystemExceptionIDs
 local SystemExceptionIDL = giop.SystemExceptionIDL
 
 local Channel = require "oil.protocol.Channel"
@@ -382,7 +381,6 @@ local function failedGIOP(self, errmsg)
 end
 
 
-
 local GIOPChannel = class({
 	magictag = MagicTag,
 	headersize = HeaderSize,
@@ -463,6 +461,7 @@ local MessageHandlers = {
 				local reply = {
 					request_id = requestid,
 					reply_status = "NEEDS_ADDRESSING_MODE",
+					service_context = Empty,
 				}
 				return sendmsg(channel, ReplyID, reply, AddressingType, KeyAddrValue)
 			end                                                                     --[[VERBOSE]] verbose:listen("ignoring request because no reply is expected, so it is not possible to request different addressing information")
@@ -472,6 +471,7 @@ local MessageHandlers = {
 			channel:register(header, "incoming")                                    --[[VERBOSE]] else verbose:listen("no reply is expected")
 		end
 		header.decoder = decoder
+		header.secured = (channel.socket.getpeercertificate ~= nil)
 		local unprocessed = channel.unprocessed
 		unprocessed:enqueue(header)
 		channel:signal("read", unprocessed)
@@ -666,7 +666,7 @@ function GIOPChannel:sendreply(request)
 					except.completed = "COMPLETED_YES"
 				end
 				SysExBody[1], SysExBody[2] = except._repid, except
-				success, except = sendmsg(self,ReplyID,request,SysExTypes,SysExBody)
+				success, except = sendmsg(self, ReplyID, request, SysExTypes, SysExBody)
 				if not success then                                                   --[[VERBOSE]] verbose:listen("unable to send exception on reply: ",except)
 					if except.error == "terminated" then                                --[[VERBOSE]] verbose:listen("connection terminated")
 						success, except = true                                            --[[VERBOSE]] else verbose:listen(false, "unable to send the error on reply as well")
@@ -691,7 +691,7 @@ function GIOPChannel:close()
 		listener:removechannel(self)
 	end
 	if next(self.incoming) == nil then
-		if not self.closenotified and (self.server or self.version >= 2) then       --[[VERBOSE]] verbose:listen("sending channel closing notification")
+		if not self.closenotified and (listener ~= nil or self.version >= 2) then   --[[VERBOSE]] verbose:listen("sending channel closing notification")
 			result, except = sendmsg(self, CloseConnectionID)
 			self.closenotified = result
 		end

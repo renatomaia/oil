@@ -50,7 +50,7 @@ ProfileBody_v1_[2] = ProfileBody_v1_[1] -- same as IIOP 1.1
 ProfileBody_v1_[3] = ProfileBody_v1_[1] -- same as IIOP 1.1
 
 
-local IIOPProfiler = class{ minor = 2 }
+local IIOPProfiler = class{ tag = Tag, minor = 2 }
 
 local VersionData = {major=1, minor=nil}
 local function encodeIIOPProfile(self, profile, minor)
@@ -72,14 +72,21 @@ local function encodeIIOPProfile(self, profile, minor)
 	encoder:struct(profile, profileidl)
 	return encoder:getdata()
 end
-function IIOPProfiler:encode(profiles, object_key, config, minor)               --[[VERBOSE]] verbose:references(true, "encoding IIOP profile")
+function IIOPProfiler:encode(profiles, entry, config, minor)               --[[VERBOSE]] verbose:references(true, "encoding IIOP profile")
 	local port = config.port
+	local components = {}
+	for tag, compcodec in self.components:__all() do
+		local success, errmsg = compcodec:encode(components, entry, config, minor)
+		if not success then
+			return nil, errmsg
+		end
+	end
 	for _, addr in ipairs(config.addresses) do
 		local profile = {
-			components = Empty,
+			components = components,
 			host = addr,
 			port = port,
-			object_key = object_key
+			object_key = entry.__objkey,
 		}
 		local ok, encoded = pcall(encodeIIOPProfile, self, profile, minor)
 		if not ok then                                                              --[[VERBOSE]] verbose:references(false, "error in encoding of IIOP profile")
@@ -108,6 +115,16 @@ local function decodeIIOPProfile(self, profile)
 	profile = decoder:struct(profileidl)
 	profile.iiop_version = version -- add read version directly
 	profile.giop_minor = minor
+	local components = profile.components
+	if components ~= nil then
+		for _, component in ipairs(components) do
+			local compcodec = self.components[component.tag]
+			if compcodec ~= nil then
+				component.decoded, component.except =
+					compcodec:decode(component.component_data, profile)
+			end
+		end
+	end
 	return profile
 end
 function IIOPProfiler:decode(profile)                                           --[[VERBOSE]] verbose:references(true, "decoding IIOP profile")

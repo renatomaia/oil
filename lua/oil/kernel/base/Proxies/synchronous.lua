@@ -3,7 +3,7 @@ local rawget = _G.rawget
 
 local utils = require "oil.kernel.base.Proxies.utils"
 local assert = utils.assertresults
-local TimeoutKey = utils.TimeoutKey
+local TimeoutKey = utils.keys.timeout
 
 return function(invoker, operation)
 	return function(self, ...)

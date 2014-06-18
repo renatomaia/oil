@@ -72,13 +72,27 @@ function ORB:__new(config)
 		self.types = self.TypeRepository.types
 		self.TypeRepository.compiler.defaults.incpath = config.idlpaths
 	end
-	local tcpoptions = config.tcpoptions
-	if tcpoptions ~= nil then
-		if self.ClientChannels ~= nil then
-			self.ClientChannels.options = tcpoptions
+	local options = config.options
+	if options ~= nil then
+		local cltopt = (options.client==nil and options or options.client or nil)
+		if cltopt ~= nil then
+			if cltopt.security ~= nil then
+				self:setsecurity(cltopt.security)
+			end
+			if self.ClientChannels ~= nil then
+				self.ClientChannels.options = cltopt.tcp
+				self.ClientChannels.sslcfg = cltopt.ssl
+			end
 		end
-		if self.ServerChannels ~= nil then
-			self.ServerChannels.options = tcpoptions
+		local srvopt = (options.server==nil and options or options.server or nil)
+		if srvopt ~= nil then
+			if self.ServantManager ~= nil then
+				self.ServantManager.secured = (srvopt.security == "required")
+			end
+			if self.ServerChannels ~= nil then
+				self.ServerChannels.options = srvopt.tcp
+				self.ServerChannels.sslcfg = srvopt.ssl
+			end
 		end
 	end
 	if self.ServantManager ~= nil then
@@ -226,23 +240,22 @@ function ORB:setexhandler(handler)
 	return old
 end
 
-function ORB:setexcatch(handler, type)
-	local managers = {}
-	for _, name in ipairs(self.proxykind) do
-		managers[#managers+1] = self.proxykind[name]
-	end
-	for _, manager in pairs(managers) do
-		assert(manager.proxies:setexcatch(handler, type))
-	end
-end
+do
+	local utils = require "oil.kernel.base.Proxies.utils"
+	local keys = utils.keys
 
-function ORB:settimeout(timeout, type)
-	local managers = {}
-	for _, name in ipairs(self.proxykind) do
-		managers[#managers+1] = self.proxykind[name]
-	end
-	for _, manager in pairs(managers) do
-		assert(manager.proxies:settimeout(timeout, type))
+	for name in pairs(keys) do
+		local opname = "set"..name
+		ORB[opname] = function (self, ...)
+			local managers = {}
+			for _, name in ipairs(self.proxykind) do
+				managers[#managers+1] = self.proxykind[name]
+			end
+			for _, manager in pairs(managers) do
+				local proxies = manager.proxies
+				assert(proxies[opname](proxies, ...))
+			end
+		end
 	end
 end
 

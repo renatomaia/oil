@@ -55,13 +55,68 @@ function Connector:__init()
 	end, "v")
 end
 
-function Connector:resolveprofile(profile)
+local nossl = {}
+function Connector:resolveprofile(profile, configs)
+	local connid, sslcontext
 	local host = self.resolvedhosts[profile.host].host
-	local port = profile.port                                                     --[[VERBOSE]] if profile.host ~= host then verbose:channels("getting channel to ",host,":",port," instead") end
-	return tuple[host][port], host, port
+	local port = profile.port
+	local required = (configs ~= nil) and (configs.security == "required")
+	local ssllocal = (configs ~= nil) and configs.ssl or self.sslcfg
+	local sslremote = profile.ssl
+	local targettrust, clienttrust = false, false
+	if ssllocal ~= nil and sslremote ~= nil then                                  --[[VERBOSE]] verbose:channels("target provides secure connection support")
+		required = required or sslremote.required
+		targettrust = ssllocal.cafile == nil or sslremote.targettrust
+		clienttrust = not sslremote.clienttrust or ssllocal.certificate ~= nil
+	end
+	if targettrust and clienttrust then                                           --[[VERBOSE]] verbose:channels("secure connection support matches requirements")
+		if required or (configs ~= nil and configs.security == "preferred") then
+			port = sslremote.port
+			sslcontext = ssllocal.context
+			if sslcontext == nil then
+				local errmsg
+				sslcontext, errmsg = self.sockets:sslcontext{
+					mode = "client",
+					protocol = "sslv3",
+					options = DefaultOptions,
+					verify = ssllocal.cafile ~= nil and TargetVerify or nil,
+					key = ssllocal.key,
+					certificate = ssllocal.certificate,
+					cafile = ssllocal.cafile,
+				}
+				if not sslcontext then
+					return nil, Exception{
+						"unable to create SSL context for invocation ($errmsg)",
+						error = "badinitialize",
+						errmsg = errmsg,
+					}
+				end                                                                     --[[VERBOSE]] verbose:channels("establish secure connection to ",host,":",port)
+				ssllocal.context = sslcontext
+			end
+			connid = tuple[host][port][ssllocal]
+		else                                                                        --[[VERBOSE]] verbose:channels("avoiding use secure connection")
+			connid = tuple[host][port]
+		end
+	elseif required then
+		port = sslremote ~= nil and sslremote.port or port                          --[[VERBOSE]] verbose:channels("unable to establish secure connection to ",host,":",port)
+		return nil, Exception{
+			"unable to connect securely to $host:$port ($errmsg)",
+			error = "badsecurity",
+			errmsg = targettrust and "target requires authentication"
+			                      or "target cannot be trusted",
+			host = host,
+			port = port,
+		}
+	else                                                                          --[[VERBOSE]] verbose:channels("use insecure connection")
+		connid = tuple[host][port]
+	end
+	return connid, host, port, sslcontext
 end
 
-function Connector:connectto(connid, host, port)
+local DefaultOptions = {"all", "no_sslv2"}
+local TargetVerify = {"peer", "fail_if_no_peer_cert"}
+function Connector:connectto(connid, host, port, sslctx)
+	if connid == nil then return nil, host end
 	local cache = self.cache
 	local socket, except = cache[connid]
 	if socket ~= nil then
@@ -80,8 +135,13 @@ function Connector:connectto(connid, host, port)
 			local success
 			success, except = socket:connect(host, port)
 			if success then
-				cache[connid] = socket
-				addto(self.keyindex, connid, socket)
+				if sslctx ~= nil then
+					socket, except = sockets:ssl(socket, sslctx)
+				end
+				if socket then
+					cache[connid] = socket
+					addto(self.keyindex, connid, socket)
+				end
 			else                                                                      --[[VERBOSE]] verbose:channels("unable to connect to ",host,":",port," (",except,")")
 				socket, except = nil, Exception{
 					"unable to connect to $host:$port ($errmsg)",
@@ -102,8 +162,8 @@ function Connector:connectto(connid, host, port)
 	return socket, except
 end
 
-function Connector:register(socket, profile)                                    --[[VERBOSE]] verbose:channels(true, "got bidirectional channel to ",profile.host,":",profile.port)
-	local connid, host, port = self:resolveprofile(profile)                       --[[VERBOSE]] if host ~= profile.host then verbose:channels("channel registered as ",host,":",profile.port) end
+function Connector:register(socket, profile, configs)                           --[[VERBOSE]] verbose:channels(true, "got bidirectional channel to ",profile.host,":",profile.port)
+	local connid, host, port = self:resolveprofile(profile, configs)              --[[VERBOSE]] if host ~= profile.host then verbose:channels("channel registered as ",host,":",profile.port) end
 	self.cache[connid] = socket
 	addto(self.keyindex, connid, socket)                                          --[[VERBOSE]] verbose:channels(false)
 end
@@ -122,10 +182,8 @@ function Connector:unregister(socket)
 	end
 end
 
-function Connector:retrieve(profile)                                            --[[VERBOSE]] verbose:channels(true, "get channel to ",profile.host,":",profile.port)
-	local host = self.resolvedhosts[profile.host].host
-	local port = profile.port
-	return self:connectto(self:resolveprofile(profile))
+function Connector:retrieve(profile, configs)                                   --[[VERBOSE]] verbose:channels(true, "get channel to ",profile.host,":",profile.port)
+	return self:connectto(self:resolveprofile(profile, configs))
 end
 
 return Connector

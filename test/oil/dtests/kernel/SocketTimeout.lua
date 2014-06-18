@@ -30,7 +30,7 @@ orb:run()
 Client = [=====================================================================[
 checks = oil.dtests.checks
 
-orb = oil.dtests.init{ tcpoptions = {timeout=.1} }
+orb = oil.dtests.init{ options = { tcp = {timeout=.1} } }
 obj = oil.dtests.resolve("Server", 2809, "object")
 
 host = oil.dtests.hosts.Server

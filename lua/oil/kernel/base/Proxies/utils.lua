@@ -5,7 +5,6 @@ local rawget = _G.rawget
 
 
 local ExHandlerKey = {"Exception Handler Key"}
-local TimeoutKey = {"Invocation Timeout Key"}
 
 local function callhandler(self, ...)
 	local handler = self[ExHandlerKey]
@@ -14,8 +13,12 @@ local function callhandler(self, ...)
 end
 
 return {
-	ExHandlerKey = ExHandlerKey,
-	TimeoutKey = TimeoutKey,
+	keys = {
+		excatch = ExHandlerKey,
+		timeout = {"Invocation Timeout Key"},
+		security = {"Security Requirement Key"},
+		ssl = {"SSL Options Key"},
+	},
 	assertresults = function (self, operation, success, ...)
 		if not success then
 			return callhandler(self, ..., operation)

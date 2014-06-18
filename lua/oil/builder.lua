@@ -55,10 +55,6 @@ local function newlayer(info)
 		end
 		info.bases = bases
 	end
-	local define = info.define
-	if define ~= nil then
-		callwithenv(define, info)
-	end
 	Flavors[name] = info
 end
 
@@ -184,6 +180,17 @@ newlayer{
 }
 
 newlayer{
+	name = "kernel.ssl",
+	extends = { "cooperative.base" },
+	define = function (_ENV)
+		factory.BasicSystem = template.BasicSystem{
+			sockets = require "oil.kernel.cooperative.SecureSockets",
+			dns = require "oil.kernel.base.DNS",
+		}
+	end,
+}
+
+newlayer{
 	name = "cooperative.client",
 	extends = { "cooperative.base", "kernel.client" },
 	define = function (_ENV)
@@ -279,6 +286,11 @@ newlayer{
 		template.IORProfiler = component.Template{
 			profiler = port.Facet,
 			codec = port.Receptacle,
+			components = port.HashReceptacle,
+		}
+		template.IIOPProfileComponentCodec = component.Template{
+			compcodec = port.Facet,
+			codec = port.Receptacle,
 		}
 		template.ObjectReferrer = component.Template{
 			references = port.Facet,
@@ -320,9 +332,9 @@ newlayer{
 			ValueEncoder.servants = ServantManager.servants
 			
 			IIOPProfiler.codec = ValueEncoder.codec
-			
+
 			ObjectReferrer.codec = ValueEncoder.codec
-			ObjectReferrer.profiler[0] = IIOPProfiler.profiler
+			ObjectReferrer.profiler[IIOPProfiler.tag] = IIOPProfiler.profiler
 			ObjectReferrer.profiler.iiop = IIOPProfiler.profiler
 			-- this optional depedency is to allow 'ObjectReferrer' to invoke
 			-- 'get_interface' on references to find out their actual interface
@@ -331,6 +343,22 @@ newlayer{
 			-- the ORB is listening and identify local references (islocal) and create
 			-- references to local servants (newreference).
 			ObjectReferrer.listener = RequestListener.requests
+		end
+	end,
+}
+
+newlayer{
+	name = "corba.ssl",
+	extends = { "corba.base", "kernel.ssl" },
+	define = function (_ENV)
+		factory.SSLIOPComponentCodec = template.IIOPProfileComponentCodec{
+			require "oil.corba.iiop.ssl.ComponentCodec",
+		}
+
+		function assemble(_ENV)
+			SSLIOPComponentCodec.codec = ValueEncoder.codec
+
+			IIOPProfiler.components[SSLIOPComponentCodec.tag] = SSLIOPComponentCodec.compcodec
 		end
 	end,
 }
@@ -560,6 +588,10 @@ local function addflavor(set, info)
 				addflavor(set, base)
 			end
 		end
+	end
+	local define = info.define
+	if define ~= nil and info[DefinedFields[1]] ~= nil then
+		callwithenv(define, info)
 	end
 	add(set, info)
 end

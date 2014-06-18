@@ -50,9 +50,9 @@ function Requester:__init()
 	end)
 end
 
-function Requester:getchannel(reference)
+function Requester:getchannel(reference, configs)
 	local channels = self.channels
-	local result, except = channels:retrieve(reference)
+	local result, except = channels:retrieve(reference, configs)
 	if result then
 		local sock2channel = self.sock2channel
 		result = sock2channel[result]
@@ -61,9 +61,9 @@ function Requester:getchannel(reference)
 			repeat ok, except = result:processmessage(0) until not ok
 			if except.error == "timeout" then                                         --[[VERBOSE]] verbose:invoke(false, "channel seems OK")
 				except = nil
-			else                                                                      --[[VERBOSE]] verbose:invoke(false, "channel seems to be broken")
+			else                                                                      --[[VERBOSE]] verbose:invoke(false, "channel seems to be broken:", except)
 				result:close()                                                          --[[VERBOSE]] verbose:invoke("get a new channel")
-				result, except = channels:retrieve(reference)
+				result, except = channels:retrieve(reference, configs)
 				if result then result = sock2channel[result] end
 			end
 		end

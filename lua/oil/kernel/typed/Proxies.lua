@@ -22,18 +22,17 @@ local oo = require "oil.oo"
 local class = oo.class
 
 local utils = require "oil.kernel.base.Proxies.utils"
-local ExHandlerKey = utils.ExHandlerKey
-local TimeoutKey = utils.TimeoutKey
+local keys = utils.keys
+local SecurityKey = keys.security
+local SSLKey = keys.ssl
 
-local function proxysetexcatch(self, handler)                                   --[[VERBOSE]] verbose:proxies("setting exception handler for proxy ",self)
-	local old = rawget(self, ExHandlerKey)
-	self[ExHandlerKey] = handler
-	return true, old
-end
-local function proxysettimeout(self, timeout)                                   --[[VERBOSE]] verbose:proxies("setting timeout ",timeout," for proxy ",self)
-	local old = rawget(self, TimeoutKey)
-	self[TimeoutKey] = timeout
-	return true, old
+local ProxyMethods = {}
+for name, key in pairs(keys) do
+	ProxyMethods["__set"..name] = function (self, value)                          --[[VERBOSE]] verbose:proxies("setting ",name," for proxy ",self)
+		local old = rawget(self, key)
+		self[key] = value
+		return true, old
+	end
 end
 
 
@@ -50,6 +49,8 @@ function Proxies:__init()
 					if operation then                                                     --[[VERBOSE]] verbose:proxies("create proxy operation '",field,"'")
 						local function invoker(proxy, ...)                                  --[[VERBOSE]] verbose:proxies("call to ",operation, ...)
 							return self.requester:newrequest{
+								security = proxy[SecurityKey],
+								ssl = proxy[SSLKey],
 								reference = proxy.__reference,
 								operation = operation,
 								n = select("#", ...), ...,
@@ -77,17 +78,21 @@ function Proxies:__init()
 			local cache = setmetatable({}, OpCache)
 			local updater = {}
 			function updater:notify()
-				local handler = rawget(cache, ExHandlerKey)
-				local timeout = rawget(cache, TimeoutKey)
+				local backup = {}
+				for name, key in pairs(keys) do
+					backup[key] = rawget(cache, key)
+				end
 				clear(cache)
 				cache.__index = cache
 				cache.__type = type
 				cache.__tostring = proxytostring
 				cache.__narrow = proxynarrow
-				cache.__setexcatch = proxysetexcatch
-				cache.__settimeout = proxysettimeout
-				cache[ExHandlerKey] = handler or self[ExHandlerKey]
-				cache[TimeoutKey] = timeout or self[TimeoutKey]
+				for name, method in pairs(ProxyMethods) do
+					cache[name] = method
+				end
+				for name, key in pairs(keys) do
+					cache[key] = backup[key] --or self[key]
+				end
 			end
 			updater:notify()
 			if type.observer then
@@ -107,32 +112,20 @@ function Proxies:newproxy(proxy)                                                
 	return result, except
 end
 
-function Proxies:setexcatch(handler, type)                                    --[[VERBOSE]] verbose:proxies("setting exception handler for all proxies of type ",type)
-	local scope = self.global
-	if type ~= nil then
-		local result, except = self.types:resolve(type)
-		if result == nil then
-			return nil, except
+for name, key in pairs(keys) do
+	Proxies["set"..name] = function (self, value, type)                           --[[VERBOSE]] verbose:proxies("setting ",name," ",value," for all proxies")
+		local scope = self.global
+		if type ~= nil then
+			local result, except = self.types:resolve(type)
+			if result == nil then
+				return nil, except
+			end
+			scope = self.class[result]
 		end
-		scope = self.class[result]
+		local old = rawget(scope, key)
+		scope[key] = value
+		return true, old
 	end
-	local old = rawget(scope, ExHandlerKey)
-	scope[ExHandlerKey] = handler
-	return true, old
-end
-
-function Proxies:settimeout(timeout, type)                                      --[[VERBOSE]] verbose:proxies("setting timeout ",timeout," for all proxies of type ",type)
-	local scope = self.global
-	if type ~= nil then
-		local result, except = self.types:resolve(type)
-		if result == nil then
-			return nil, except
-		end
-		scope = self.class[result]
-	end
-	local old = rawget(scope, TimeoutKey)
-	scope[TimeoutKey] = timeout
-	return true, old
 end
 
 

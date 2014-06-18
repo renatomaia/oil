@@ -213,13 +213,13 @@ function Referrer:decodeprofile(encoded)
 	return profiler:decode(encoded.profile_data)
 end
 
-function Referrer:newreference(servant, access)                                 --[[VERBOSE]] verbose:references(true, "create reference for local servant")
+function Referrer:newreference(entry, access)                                   --[[VERBOSE]] verbose:references(true, "create reference for local servant")
 	local profiles = {}
-	local ok, except = self.profiler[0]:encode(profiles, servant.__objkey, access)--[[VERBOSE]] verbose:references(false)
+	local ok, except = self.profiler[0]:encode(profiles, entry, access)--[[VERBOSE]] verbose:references(false)
 	if ok == nil then return nil, except end
 	return IOR{
 		referrer = self,
-		type_id = servant.__type.repID,
+		type_id = entry.__type.repID,
 		profiles = profiles,
 	}
 end
