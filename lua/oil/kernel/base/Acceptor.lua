@@ -154,7 +154,7 @@ local function newport(sockets, options, host, port)
 	success, except = socket:listen(options and options.backlog)
 	if not success then                                                           --[[VERBOSE]] verbose:channels("unable to listen to ",host,":",port," (",except,")")
 		socket:close()
-		return nil, Exception{ "unable to listen to $host:$port ($error)",
+		return nil, Exception{ "unable to listen to $host:$port ($errmsg)",
 			error = "badinitialize",
 			errmsg = except,
 			host = host,
@@ -174,16 +174,23 @@ function Acceptor:newaccess(configs)
 	local sockets = self.sockets
 	local host = configs.host or "*"
 	local port = configs.port or 0
-	local socket = newport(sockets, options, host, port)
+	local socket, errmsg = newport(sockets, options, host, port)
+	if socket == nil then return nil, errmsg end
 	local poll = sockets:newpoll()
 	poll:add(socket)
 	if host == "*" or port == 0 then
-		local sckhost, sckport = assert(socket:getsockname())
+		local sckhost, sckport = socket:getsockname()
+		if sckhost == nil then                                                      --[[VERBOSE]] verbose:channels("unable to obtain the actual port orb was binded to (",sckport,")")
+			return nil, Exception{ "unable to obtain the actual binded address ($errmsg)",
+				error = "badinitialize",
+				errmsg = sckport,
+			}
+		end
 		if host == "*" then                                                         --[[VERBOSE]] verbose:channels("orb port binded to host ",sckhost)
-			configs.host = sckhost
+			host, configs.host = sckhost, sckhost
 		end
 		if port == 0 then                                                           --[[VERBOSE]] verbose:channels("orb port binded to port ",sckport)
-			configs.port = sckport
+			port, configs.port = sckport, sckport
 		end
 	end
 	local ports = {[socket] = "tcp"}
@@ -203,7 +210,15 @@ function Acceptor:newaccess(configs)
 		poll:add(sslsck)
 		ports[sslsck] = "ssl"
 		if port == 0 then
-			_, sslcfg.port = assert(sslsck:getsockname())                             --[[VERBOSE]] verbose:channels("orb secure port binded to host ",sslcfg.port)
+			local sckhost, sckport = sslsck:getsockname()
+			if sckhost == nil then                                                    --[[VERBOSE]] verbose:channels("unable to obtain the actual secure port orb was binded to: ",sckport)
+				return nil, Exception{ "unable to obtain the actual binded secure port at host '$host' ($errmsg)",
+					error = "badinitialize",
+					errmsg = sckport,
+					host = host,
+				}
+			end
+			sslcfg.port = sckport                                                     --[[VERBOSE]] verbose:channels("orb secure port binded to host ",sslcfg.port)
 		end
 	end
 	return AccessPoint{
