@@ -47,5 +47,4 @@ oil.main(function()
 	oil.writeto("observer.ior",
 		tostring(
 			orb:newservant(ObserverHome, nil, "ObserverHome")))
-	orb:run()
 end)

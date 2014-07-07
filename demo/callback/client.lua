@@ -14,5 +14,5 @@ oil.main(function()
 		if i == 1 then i = "\n"..i end
 		timer:enable()
 	end
-	orb:run()
+	orb:shutdown()
 end)

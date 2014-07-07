@@ -24,5 +24,4 @@ oil.main(function()
 	if not oil.writeto("ref.ior", ref) then
 		print(ref)
 	end
-	orb:run()
 end)

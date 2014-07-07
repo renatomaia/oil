@@ -1,9 +1,11 @@
 <p>OiL is an extensible component-based architecture for object request brokers (ORB).
 An ORB provides an infrastructure to perform remote method invocations (RMI) on objects residing in separated processes, possibly through a network.
 The use of an ORB is one of the most common ways to develop distributed object-oriented applications.
-OiL is available though the <%=link"Module"%>.</p>
+OiL is provided as a <%=link("LuaManual.Modules", "Lua module")%> that can be required by the following command:</p>
 
-<p>OiL is a very flexible ORB and almost every one of its aspects can be changed by replacement of its components (see the <%=link"Arch"%>).
+<pre>require "oil"</pre>
+
+<p>OiL provides a very flexible ORB implementation and almost every one of its aspects can be changed by replacement of its components (see the <%=link"Architecture"%>).
 Nevertheless, OiL relies on three fundamental concepts that define the programming model supported:</p>
 
 <dl>
@@ -15,13 +17,13 @@ Nevertheless, OiL relies on three fundamental concepts that define the programmi
 	</dd>
 	<dt><%=link("Servants", "Servant")%></dt>
 	<dd>
-		is an object registered in a broker to receive remote invocations.
-		The services provided by a servant can be accessed by remote clients.
+		is an object registered in a broker that can be invoked through a network.
+		The servant is exposed as a distributed object accessible by remote clients.
 	</dd>
 	<dt><%=link("Proxies", "Proxy")%></dt>
 	<dd>
-		is a local object that represents a remote servant.
-		All method invocations on a proxy result in a similar invocation on the remote servant it represents.
+		is a local object that represents a distributed object.
+		All method invocations on a proxy result in a similar invocation on the servant implementing the distributed object it represents.
 	</dd>
 </dl>
 
@@ -29,5 +31,5 @@ Nevertheless, OiL relies on three fundamental concepts that define the programmi
 
 <p>An essential feature common in almost every ORB is the support for multithreading.
 OiL supports a cooperative multithreading model which is implemented over the coroutines provided by Lua.
-This model of multithreading is considerably different from preemptive multithreading, which is supported by most modern platforms.
+This model of multithreading is fundamentally different from preemptive multithreading, which is supported by most modern platforms.
 For a complete discussion about the multithreading model supported by standard OiL see section <%=link"Threads"%>.</p>

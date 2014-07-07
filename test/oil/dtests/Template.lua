@@ -4,6 +4,7 @@ local error    = _G.error
 local ipairs   = _G.ipairs
 local pairs    = _G.pairs
 local rawget   = _G.rawget
+local setfenv  = _G.setfenv
 local tonumber = _G.tonumber
 local tostring = _G.tostring
 local type     = _G.type
@@ -20,7 +21,7 @@ local utils = require "dtest.run.utils"
 
 local Suite = require "loop.test.Suite"
 
-local Template = oo.class()
+module("oil.dtests.Template", oo.class)
 
 local sockets = oil.BasicSystem.sockets
 local helper = utils.helper
@@ -59,13 +60,14 @@ local function getpackage(flavor)
 	error("no oil.dtests package available for flavor "..flavor)
 end
 
-function Template.__init(self, object)
+function __init(self, object)
 	self = oo.rawnew(self, object)
+	setfenv(3, self)
 	return self
 end
 
 local Empty = {}
-function Template.newtest(self, infos)
+function newtest(self, infos)
 	if not infos then infos = Empty end
 	return function(checks)
 		-- find a free port
@@ -93,8 +95,11 @@ function Template.newtest(self, infos)
 				local command = Command(infos[name])
 				command.id = name
 				command.command = "lua"
-				command.arguments = { "-eHOST=[["..hostname.."]]PORT="..portno,
-				                      "-loil.dtests.LuaProcess" }
+				command.arguments = {
+					"-lcompat52",
+					"-eHOST=[["..hostname.."]]PORT="..portno,
+					"-loil.dtests.LuaProcess",
+				}
 				command.environment = {
 					{name="PATH"     , value=os.getenv("PATH")     },
 					{name="LUA_PATH" , value=os.getenv("LUA_PATH") },
@@ -283,11 +288,11 @@ local function getname(cltflavor, srvflavor)
 	       table.concat(common)
 end
 
-function Template.newsuite(self, required)
+function newsuite(self, required)
 	required = required or {}
 	local ludo = "ludo"
 	local corba = seq{
-		alt{"gencode"          , ""};
+		""; --alt{"corba.gencode", ""};
 		alt{"corba.intercepted", "corba"};
 	}
 	local flavors = seq{
@@ -295,7 +300,7 @@ function Template.newsuite(self, required)
 		alt{"cooperative", ""};
 	};
 	local protocols = {
-		--ludo    = true,
+		[ludo]    = true,
 		[corba] = true,
 	}
 	if required.gencode          then corba[1][2]      = nil end
@@ -344,5 +349,3 @@ function Template.newsuite(self, required)
 	
 	return suite
 end
-
-return Template

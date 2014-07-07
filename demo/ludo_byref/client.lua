@@ -1,4 +1,4 @@
-oil = {cothread = false} -- disable multithreading support
+package.loaded.cothread = false -- disable multithreading support
 
 local oil = require "oil"
 
@@ -22,6 +22,7 @@ oil.main(function()
 	
 	print("Object already said hello "..hello.count.." times till now.")
 	
-	orb:shutdown()
 	--]]
+	
+	orb:shutdown()
 end)

@@ -1,13 +1,68 @@
-<a href="/release/v0.4/">
-	<h2>Version 0.4</h2>
-</a>
+<h2><%=link("OiL.v05")%></h2>
+
+<h2>What's new?</h2>
+<ul>
+	<li>Object map is an usual Lua table that can manipulated by the application to implement different servant management policies [demo objectmap].</li>
+	<li>CORBA interceptors can forward the invocation to an alternative reference, both in the client or server side.</li>
+	<li>Support to define file paths for search of IDL files defined used <code>#include</code>.</li>
+	<li>LuDO support for parameter passing by reference.</li>
+	<li>New flavor <code>lua</code> that enables special proxies that delegate their meta-method to their servants (for LuDO by reference only).</li>
+	<li>General interception mechanism (works for CORBA, LuDO or any other protocol).</li>
+</ul>
+
+<h2>What changed?</h2>
+<dl>
+	<dt>Improved Features</dt>
+	<dd>
+		<ul>
+			<li>New API:</li>
+				<ul>
+					<li><code>orb:newproxy(ref, ['synchronous','asynchronous','protected'], type)</code></li>
+					<li><code>orb:setinterceptor(iceptor, 'corba')</code></li>
+				</ul>
+			<li>New interceptor implementation with more information and more about the call.</li>
+			<li>New ORB assembler and builder scripts and simplification of field <code>flavor</code>.</li>
+			<li>Interface parameter (3rd) of <code>newservant</code> now overwrites field <code>__type</code> of the servant's implementation.</li>
+		</ul>
+	</dd>
+	<dt>Removed/Deprecated Features</dt>
+	<dd>
+		<ul>
+			<li>Module <code>oil.compat</code> is no more available.</li>
+			<li>Alternative proxies (<code>__deferred</code> and <code>__try</code>) are not created automatically.
+				Instead, use the following commands to explicitly create such proxies whenever necessary.
+				<ul>
+					<li><code>deferred = orb:newproxy(proxy, "asynchronous")</code></li>
+					<li><code>try = orb:newproxy(proxy, "protected")</code></li>
+				</ul>
+			</li>
+			<li>Pseudo-method <code>proxy:_narrow()</code> is deprecated in favor of <code>orb:narrow(proxy)</code>.</li>
+			<li>Operation <code>orb:setclientinterceptor(iceptor)</code> is deprecated in favor of <code>orb:setinterceptor(iceptor, "corba.client")</code>.</li>
+			<li>Operation <code>orb:setserverinterceptor(iceptor)</code> is deprecated in favor of <code>orb:setinterceptor(iceptor, "corba.server")</code>.</li>
+		</ul>
+	</dd>
+	<dt>Bug Fixes</dt>
+	<dd>
+		<ul>
+			<li>Bugfix in processing of forward declarations in IDLs.</li>
+			<li>Bugfix to invoke interceptors when exceptions are raised.</li>
+			<li>Bugfix to prevent <code>_non_existent</code> to raise exceptions like <code>COMM_FAILURE</code>.</li>
+			<li>Bugfix to prevent that marshal errors stops the <code>orb:run()</code> method.</li>
+			<li>Bugfix when unknown repIDs are imported from a remote IR.</li>
+			<li>Bugfix to make <code>idl2lua.lua</code> script raise errors when there are problems with the contents of the IDL file.</li>
+		</ul>
+	</dd>
+</dl>
+
+<hr>
+<h2><%=link("OiL.v04")%></h2>
 <h3>What's new?</h3>
 <ul>
 	<li>Deferred calls, a.k.a. "futures" (see demo deferred);</li>
 	<li>ORB shutdown operation (see demo selfcall);</li>
 	<li>CORBA request interception (see demo interceptors);</li>
 	<li>CORBA's <code>_is_equivalent</code> operation;</li>
-	<li>Customizable component-based architecture (see section <%=link"Arch"%> from the <%=link"Manual"%>);</li>
+	<li>Customizable component-based architecture;</li>
 	<li>IDL large numbers: long long, unsigned long long, long double (see file <code>config</code>);<br>
 		<strong>NOTE:</strong> Lua must be changed so lua_Number is <code>long double</code>.
 	</li>
@@ -125,9 +180,7 @@
 </dl>
 
 <hr>
-<a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua51">
-	<h2>Version 0.3.4</h2>
-</a>
+<h2><%=link("OiL.v034")%></h2>
 
 <h3>What's new?</h3>
 <dl>
@@ -141,9 +194,7 @@
 </dl>
 
 <hr>
-<a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua51">
-	<h2>Version 0.3.3</h2>
-</a>
+<h2><%=link("OiL.v033")%></h2>
 
 <h3>What changed?</h3>
 <dl>
@@ -152,9 +203,7 @@
 </dl>
 
 <hr>
-<a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua51a">
-	<h2>Version 0.3.2</h2>
-</a>
+<h2><%=link("OiL.v032")%></h2>
 
 <h3>What changed?</h3>
 <dl>
@@ -163,9 +212,7 @@
 </dl>
 
 <hr>
-<a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua51a">
-	<h2>Version 0.3.1</h2>
-</a>
+<h2><%=link("OiL.v031")%></h2>
 
 <h3>What's new?</h3>
 <dl>
@@ -182,9 +229,7 @@
 </dl>
 
 <hr>
-<a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua51a">
-	<h2>Version 0.3</h2>
-</a>
+<h2><%=link("OiL.v03")%></h2>
 
 <h3>What's new?</h3>
 <dl>
@@ -221,9 +266,7 @@
 </dl>
 
 <hr>
-<a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua5x">
-	<h2>Version 0.2</h2>
-</a>
+<h2><%=link("OiL.v032")%></h2>
 
 <h3>What's new?</h3>
 <dl>
@@ -251,9 +294,7 @@
 </dl>
 
 <hr>
-<a href="http://www.tecgraf.puc-rio.br/~maia/oil/packs/lua-5.0.2">
-	<h2>Version 0.1</h2>
-</a>
+<h2><%=link("OiL.v01")%></h2>
 
 <h3>What's new?</h3>
 <dl>

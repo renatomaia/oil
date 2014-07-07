@@ -5,9 +5,13 @@
 -- Notes  :
 --   See in section 15.4 of CORBA 3.0 specification.
 
+local setfenv = _VERSION=="Lua 5.1" and setfenv -- Lua 5.1 compatibility
+
 local idl = require "oil.corba.idl"
 
-local _ENV = {}; if _VERSION == "Lua 5.1" then setfenv(1, _ENV) end
+local _ENV = {}
+
+if setfenv then setfenv(1,_ENV) end -- Lua 5.1 compatibility
 
 --------------------------------------------------------------------------------
 -- Interoperable Object Reference ----------------------------------------------

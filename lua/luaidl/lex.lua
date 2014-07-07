@@ -3,17 +3,19 @@
 -- Author:   Ricardo Cosme <rcosme@tecgraf.puc-rio.br>
 -- Filename: lex.lua
 --
-local _G       = require "_G"
+
+local _G = require "_G"
 local type     = _G.type
 local pairs    = _G.pairs
 local tonumber = _G.tonumber
 local error    = _G.error
 local ipairs   = _G.ipairs
-
-local table    = require "table"
+local table    = _G.table
 local string   = require "string"
 
-local _ENV = { PRAGMA_VERSION = '1.0' }; if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end
+local _ENV = {}
+if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
+
 
 tab_tokens = {
   TK_ID = 257, TK_ABSTRACT = 258, TK_ANY = 259, TK_ATTRIBUTE = 260,
@@ -107,6 +109,8 @@ local tab_keywords = {
 }
 
 local tab_symbols
+
+PRAGMA_VERSION          = '1.0'
 local ERROR_MSG_TYPE    = '[lexical error]:_LINE:_ERRORMSG.'
 
 local token

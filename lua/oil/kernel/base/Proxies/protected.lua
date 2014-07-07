@@ -1,8 +1,11 @@
 local _G = require "_G"
 local rawget = _G.rawget
 
+local utils = require "oil.kernel.base.Proxies.utils"
+local TimeoutKey = utils.TimeoutKey
+
 return function(invoker)
 	return function(self, ...)
-		return invoker(self, ...):getreply(rawget(self, "__timeout"))
+		return invoker(self, ...):getreply(self[TimeoutKey])
 	end
 end

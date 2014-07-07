@@ -6,7 +6,7 @@
 
 local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
 local ipairs = _G.ipairs
-local loadstring = _G.loadstring or _G.load
+local load = _G.load
 local select = _G.select
 
 local string = require "string"
@@ -14,7 +14,7 @@ local strformat = string.format
 
 local array = require "table"
 local concat = array.concat
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -111,7 +111,7 @@ return function(%s) %s end
 	local codename = strformat("(un)marshaller for %s %s",
 		idltype._type,
 		idltype.repID or idltype.name or "anonymous")
-	return assertresults(loadstring(source, codename))(
+	return assertresults(load(source, codename))(
 		unpack(upvalues, 1, upvalues.n))
 end
 
@@ -381,7 +381,7 @@ local function numbermarshaller(format, size, align)
 	end
 end
 EncoderGenerator.null       = function() end
-EncoderGenerator.void       = DecoderGenerator.null
+EncoderGenerator.void       = EncoderGenerator.null
 EncoderGenerator.short      = numbermarshaller("i2", PrimitiveSizes.short     )
 EncoderGenerator.long       = numbermarshaller("i4", PrimitiveSizes.long      )
 EncoderGenerator.longlong   = numbermarshaller("i8", PrimitiveSizes.longlong  )

@@ -9,7 +9,7 @@ local select  = _G.select
 local tonumber = _G.tonumber
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local table = require "loop.table"
 local memoize = table.memoize
@@ -23,7 +23,7 @@ local Request = require "oil.protocol.Request"
 
 local ClientRequest = class({}, Request)
 
-function ClientRequest:getreply(timeout)                                        --[[VERBOSE]] verbose:invoke(true, "get reply for request ",self.request_id," to ",self.object_key,":",self.operation)
+function ClientRequest:getreply(timeout)                                        --[[VERBOSE]] verbose:invoke(true, "get reply for request ",self.request_id," to ",self.reference.object_key,":",self.operation)
 	local requester = self.requester
 	while self.success == nil do                                                  --[[VERBOSE]] verbose:invoke("reply results are not available yet")
 		local ok, except = requester:getreply(self, timeout)

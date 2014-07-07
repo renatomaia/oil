@@ -33,5 +33,3 @@ if file then
 else
 	print(oil.getreference(hello))          -- Show object ref. on screen
 end
-
-print(oil.run())                          -- Start ORB main loop

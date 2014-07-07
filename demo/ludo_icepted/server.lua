@@ -29,7 +29,4 @@ oil.main(function()
 	end
 	local servant = orb:newservant(impl)
 	assert(oil.writeto("server.ref", servant))
-	
-	-- start processing requests
-	orb:run()
 end)

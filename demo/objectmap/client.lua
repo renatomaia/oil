@@ -12,4 +12,6 @@ oil.main(function()
 	print(helloJohnDoe:say())
 	print(helloWorld:say())
 	print(helloJohnDoe:say())
+	
+	orb:shutdown()
 end)

@@ -1,10 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local T = Template{"Client"} -- master process name
+local template = Template{"Client"} -- master process name
 
-T.Server = [===================================================================[
-checks = oil.dtests.checks
-
+Server = [=====================================================================[
 Interceptor = {}
 function Interceptor:receiverequest(request)
 	if request.object_key == "object"
@@ -18,8 +16,8 @@ function Interceptor:sendreply(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		checks:assert(request.success, checks.is(true))
-		checks:assert(request.results[1], checks.is("first second"))
+		assert(request.success == true)
+		assert(request.results[1] == "first second")
 		request.results[1] = "first&second"
 	end
 end
@@ -33,11 +31,9 @@ orb:loadidl[[
 ]]
 orb:newservant({}, "object", "::MyInterface")
 orb:run()
-----[Server]===================================================================]
+--[Server]=====================================================================]
 
-T.Client = [===================================================================[
-checks = oil.dtests.checks
-
+Client = [=====================================================================[
 orb = oil.dtests.init()
 sync = oil.dtests.resolve("Server", 2809, "object")
 orb:loadidl[[
@@ -49,11 +45,13 @@ sync = orb:narrow(sync, "MyInterface")
 async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
-checks:assert(sync:concat("first", "second"), checks.is("first&second"))
-checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&second"))
+assert(sync:concat("first", "second") == "first&second")
+assert(async:concat("first", "second"):evaluate() == "first&second")
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(true))
-checks:assert(res, checks.is("first&second"))
-----[Client]===================================================================]
+assert(ok == true)
+assert(res == "first&second")
 
-return T:newsuite{ corba = true, interceptedcorba = true }
+orb:shutdown()
+--[Client]=====================================================================]
+
+return template:newsuite{ corba = true, interceptedcorba = true }

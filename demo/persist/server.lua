@@ -13,6 +13,4 @@ oil.main(function()
 	end
 	
 	hello = orb:newservant(hello, "MyHello", "Hello")
-	
-	orb:run()
 end)

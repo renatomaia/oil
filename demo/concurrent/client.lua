@@ -18,4 +18,5 @@ oil.main(function()
 	for id, time in ipairs(arg) do
 		oil.newthread(showprogress, id, tonumber(time))
 	end
+	orb:shutdown()
 end)

@@ -1,10 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local T = Template{"Client"} -- master process name
+local template = Template{"Client"} -- master process name
 
-T.Server = [===================================================================[
-checks = oil.dtests.checks
-
+Server = [=====================================================================[
 Object = {}
 function Object:concat(str1, str2)
 	return str1.."&"..str2
@@ -28,9 +26,9 @@ orb:loadidl[[
 ]]
 orb:newservant(Object, "object", "::MyInterface")
 orb:run()
-----[Server]===================================================================]
+--[Server]=====================================================================]
 
-T.Client = [===================================================================[
+Client = [=====================================================================[
 checks = oil.dtests.checks
 
 Interceptor = {}
@@ -38,8 +36,8 @@ function Interceptor:receivereply(reply)
 	if reply.object_key == "object"
 	and reply.operation_name == "concat"
 	then
-		checks:assert(reply.reply_service_context, checks.typeis("table"))
-		checks:assert(reply.reply_service_context, checks.similar({[1234]="1234"}, nil, {isomorphic=true}))
+		assert(type(reply.reply_service_context) == "table")
+		checks.assert(reply.reply_service_context, checks.like({[1234]="1234"}, nil, {isomorphic=true}))
 		self.success = true
 	end
 end
@@ -51,18 +49,20 @@ async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
 Interceptor.success = nil
-checks:assert(sync:concat("first", "second"), checks.is("first&second"))
-checks:assert(Interceptor.success, checks.is(true))
+assert(sync:concat("first", "second") == "first&second")
+assert(Interceptor.success == true)
 
 Interceptor.success = nil
-checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&second"))
-checks:assert(Interceptor.success, checks.is(true))
+assert(async:concat("first", "second"):evaluate() == "first&second")
+assert(Interceptor.success == true)
 
 Interceptor.success = nil
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(true))
-checks:assert(res, checks.is("first&second"))
-checks:assert(Interceptor.success, checks.is(true))
-----[Client]===================================================================]
+assert(ok == true)
+assert(res == "first&second")
+assert(Interceptor.success == true)
 
-return T:newsuite{ corba = true, interceptedcorba = true }
+orb:shutdown()
+--[Client]=====================================================================]
+
+return template:newsuite{ corba = true, interceptedcorba = true }

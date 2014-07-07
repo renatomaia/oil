@@ -30,5 +30,4 @@ oil.main(function()
 	oil.writeto("ref.ior",
 		tostring(
 			orb:newservant(Server, nil, "Control::Server")))
-	orb:run()
 end)

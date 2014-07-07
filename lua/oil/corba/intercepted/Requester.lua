@@ -2,7 +2,7 @@ local _G = require "_G"                                                         
 local pcall = _G.pcall
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -74,6 +74,7 @@ function IceptedRequester:dorequest(request)                                    
 			if success then
 				success = intercepted.success
 				if success ~= nil then                                                  --[[VERBOSE]] verbose:interceptors("intercepted request was canceled")
+					if channel ~= nil then channel:unregister(request.id, "outgoing") end
 					-- update returned values
 					local results = intercepted.results or {}
 					if success then
@@ -89,13 +90,12 @@ function IceptedRequester:dorequest(request)                                    
 				else
 					updaterequest(request, intercepted)
 					if request.reference ~= reference then
-						if channel ~= nil then
-							channel:unregister(request.id, "outgoing")
-						end
+						if channel ~= nil then channel:unregister(request.id,"outgoing") end
 						return self:dorequest(request)
 					end
 				end
 			else                                                                      --[[VERBOSE]] verbose:interceptors("error on interception: ",except)
+				if channel ~= nil then channel:unregister(request.id, "outgoing") end
 				self:endrequest(request, false, except)
 				return self.Request(request)
 			end

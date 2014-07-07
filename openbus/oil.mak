@@ -5,43 +5,7 @@ SRC= $(PRELOAD_DIR)/$(LIBNAME).c
 
 LUADIR= ../lua
 LUASRC= \
-	$(LUADIR)/oil/arch/basic/client.lua \
-	$(LUADIR)/oil/arch/basic/common.lua \
-	$(LUADIR)/oil/arch/basic/server.lua \
-	$(LUADIR)/oil/arch/cooperative/common.lua \
-	$(LUADIR)/oil/arch/cooperative/server.lua \
-	$(LUADIR)/oil/arch/corba/client.lua \
-	$(LUADIR)/oil/arch/corba/common.lua \
-	$(LUADIR)/oil/arch/corba/intercepted/client.lua \
-	$(LUADIR)/oil/arch/corba/intercepted/server.lua \
-	$(LUADIR)/oil/arch/corba/server.lua \
-	$(LUADIR)/oil/arch/ludo/byref.lua \
-	$(LUADIR)/oil/arch/ludo/client.lua \
-	$(LUADIR)/oil/arch/ludo/common.lua \
-	$(LUADIR)/oil/arch/ludo/server.lua \
-	$(LUADIR)/oil/arch/typed/client.lua \
-	$(LUADIR)/oil/arch/typed/common.lua \
-	$(LUADIR)/oil/arch/typed/server.lua \
 	$(LUADIR)/oil/assert.lua \
-	$(LUADIR)/oil/builder/basic/client.lua \
-	$(LUADIR)/oil/builder/basic/common.lua \
-	$(LUADIR)/oil/builder/basic/server.lua \
-	$(LUADIR)/oil/builder/cooperative/common.lua \
-	$(LUADIR)/oil/builder/cooperative/server.lua \
-	$(LUADIR)/oil/builder/corba/client.lua \
-	$(LUADIR)/oil/builder/corba/common.lua \
-	$(LUADIR)/oil/builder/corba/gencode.lua \
-	$(LUADIR)/oil/builder/corba/intercepted/client.lua \
-	$(LUADIR)/oil/builder/corba/intercepted/server.lua \
-	$(LUADIR)/oil/builder/corba/server.lua \
-	$(LUADIR)/oil/builder/lua/client.lua \
-	$(LUADIR)/oil/builder/lua/server.lua \
-	$(LUADIR)/oil/builder/ludo/byref.lua \
-	$(LUADIR)/oil/builder/ludo/client.lua \
-	$(LUADIR)/oil/builder/ludo/common.lua \
-	$(LUADIR)/oil/builder/ludo/server.lua \
-	$(LUADIR)/oil/builder/typed/client.lua \
-	$(LUADIR)/oil/builder/typed/server.lua \
 	$(LUADIR)/oil/builder.lua \
 	$(LUADIR)/oil/component.lua \
 	$(LUADIR)/oil/corba/giop/Channel.lua \
@@ -88,6 +52,7 @@ LUASRC= \
 	$(LUADIR)/oil/kernel/base/Receiver.lua \
 	$(LUADIR)/oil/kernel/base/Servants.lua \
 	$(LUADIR)/oil/kernel/base/Sockets.lua \
+	$(LUADIR)/oil/kernel/cooperative/Connector.lua \
 	$(LUADIR)/oil/kernel/cooperative/Receiver.lua \
 	$(LUADIR)/oil/kernel/cooperative/Sockets.lua \
 	$(LUADIR)/oil/kernel/cooperative/Tasks.lua \

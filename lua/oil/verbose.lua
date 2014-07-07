@@ -10,16 +10,16 @@ local type = _G.type
 
 local math = require "math"
 local ceil = math.ceil
-local log10 = math.log10 or function(n) return math.log(n, 10) end
+local log = math.log
 
 local string = require "string"
 local format = string.format
 local byte = string.byte  
 local strrep = string.rep
 
-local table = require "table"
-local concat = table.concat
-local unpack = table.unpack or _G.unpack
+local array = require "table"
+local concat = array.concat
+local unpack = array.unpack
 
 local coroutine = require "coroutine"
 local running = coroutine.running
@@ -46,6 +46,7 @@ function verbose:output(output)
 end
 
 verbose:newlevel{ "broker" }
+verbose:newlevel{ "interceptors" }
 verbose:newlevel{ "invoke", "listen" }
 verbose:newlevel{ "channels" }
 verbose:newlevel{ "message" }
@@ -69,7 +70,7 @@ function verbose:hexastream(codec, cursor, prefix)
 				end
 				local base = codec.previousend
 				local output = self.viewer.output
-				local lines = string.format("\n%%0%dx:", math.ceil(log10((base+last)/16))+1)
+				local lines = string.format("\n%%0%dx:", math.ceil(math.log((base+last)/16, 10))+1)
 				local text = {}
 				local opnened
 				for count = count-(count-1)%16, last do
@@ -112,7 +113,7 @@ function verbose:hexastream(codec, cursor, prefix)
 					end
 					-- write ASCII text if last column, or a blank space if middle column
 					if column == 15 then
-						output:write("  |"..table.concat(text).."|")
+						output:write("  |"..concat(text).."|")
 						text = {}
 					elseif column == 7 then
 						output:write("  ")
@@ -127,19 +128,19 @@ end
 
 --------------------------------------------------------------------------------
 
---[[DEBUG]] local inspector = _G.require("inspector")
---[[DEBUG]] local inspect = inspector.activate
---[[DEBUG]] 
---[[DEBUG]] verbose:flag("debug", true)
+-- [[DEBUG]] local inspector = _G.require("inspector")
+-- [[DEBUG]] local inspect = inspector.activate
+-- [[DEBUG]] 
+-- [[DEBUG]] verbose:flag("debug", true)
 --[[DEBUG]] verbose:flag("print", true)
---[[DEBUG]] 
---[[DEBUG]] inspector.showsource = true
---[[DEBUG]] function verbose.pause:debug()
---[[DEBUG]] 	if running() then
---[[DEBUG]] 		yield("inspect")
---[[DEBUG]] 	else
---[[DEBUG]] 		inspect(4)
---[[DEBUG]] 	end
---[[DEBUG]] end
+-- [[DEBUG]] 
+-- [[DEBUG]] inspector.showsource = true
+-- [[DEBUG]] function verbose.pause:debug()
+-- [[DEBUG]] 	if running() then
+-- [[DEBUG]] 		yield("inspect")
+-- [[DEBUG]] 	else
+-- [[DEBUG]] 		inspect(4)
+-- [[DEBUG]] 	end
+-- [[DEBUG]] end
 
 return verbose

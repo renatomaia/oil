@@ -30,32 +30,6 @@ local function decodemsg(self, bytes)
 	return self.context.codec:decoder(bytes):get()
 end
 
-local function receivevalues(self, timeout)
-	local size = self.pendingsize
-	if size then                                                                  --[[VERBOSE]] verbose:message("reading a previous incomplete message (got only its size)")
-		self.pendingsize = nil
-	else
-		local bytes, except = self:receive(nil, timeout)
-		if bytes then
-			size = tonumber(bytes)
-			if size == nil then                                                       --[[VERBOSE]] verbose:message("LuDO failure: illegal message size")
-				return nil, Exception{
-					"invalid LuDO message size (got $size)",
-					error = "badmessage",
-					size = bytes,
-				}
-			end
-		end
-	end
-	local bytes, except = self:receive(size, timeout)
-	if bytes ~= nil then
-		return self.context.codec:decoder(bytes):get()
-	elseif except.error == "timeout" then                                         --[[VERBOSE]] verbose:message("message was not available before timeout")
-		self.pendingsize = size
-	end
-	return error(except)
-end
-
 local function doreply(self, ok, requestid, success, ...)
 	if not ok then return nil, requestid end
 	local request, except = self[requestid]
@@ -76,19 +50,12 @@ end
 
 
 
-function LuDOChannel:sendvalues(request_id, ...)                                            --[[VERBOSE]] verbose:message("sending values ",verbose.viewer:tostring(...))
+function LuDOChannel:sendvalues(request_id, ...)
 	local ok, result = pcall(encodemsg, self, request_id, ...)
 	if ok then
 		self:trylock("write")
 		ok, result = self:send(result)
-		self:freelock("write")
-	else                                                                          --[[VERBOSE]] verbose:message("message encoding failed")
-		local ok, result = pcall(encodemsg, self, request_id, false, result)
-		if ok then
-			self:trylock("write")
-			self:send(result)
-			self:freelock("write")
-		end
+		self:freelock("write")                                                      --[[VERBOSE]] else verbose:message("message encoding failed")
 	end
 	return ok, result
 end
@@ -99,7 +66,7 @@ function LuDOChannel:receivevalues(timeout)
 		self.pendingsize = nil
 	else
 		local bytes, except = self:receive(nil, timeout)
-		if bytes then
+		if bytes ~= nil then
 			size = tonumber(bytes)
 			if size == nil then                                                       --[[VERBOSE]] verbose:message("LuDO failure: illegal message size")
 				return nil, Exception{
@@ -108,10 +75,12 @@ function LuDOChannel:receivevalues(timeout)
 					size = bytes,
 				}
 			end
+		else
+			return nil, except
 		end
 	end
 	local bytes, except = self:receive(size, timeout)
-	if bytes ~= nil then
+	if bytes ~= nil then                                                          --[[VERBOSE]] verbose:message("got message ",bytes)
 		return pcall(decodemsg, self, bytes)
 	elseif except.error == "timeout" then                                         --[[VERBOSE]] verbose:message("message was not available before timeout")
 		self.pendingsize = size

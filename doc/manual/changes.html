@@ -1,0 +1,77 @@
+<h2>What's new?</h2>
+<ul>
+	<li>Support for Lua 5.2, while being able to execute in Lua 5.1 with module <%=link"LuaCompat52"%>.</li>
+	<li>Support for constants (ConstantDef) in the OiL internal interface repository.</li>
+	<li>Support for GIOP 1.2 and Bi-Directional GIOP.</li>
+	<li>Support for timeout on method invocation (see <%=link("Reference.orb:settimeout")%> and <%=link("Reference.proxy:__settimeout")%>) and in processing invocations (see <%=link("Reference.orb:step")%>).</li>
+	<li>Support for an error handling function for servant dispatch errors (see <%=link("Reference.orb:setexhandler")%>).</li>
+	<li>Support for a notification function of uncaught ORB error (see <%=link("Reference.orb:setonerror")%>).</li>
+	<li>Support for definition of timeout of TCP sockets used by the ORB (see <%=link("Reference.tcpopt.timeout")%>).</li>
+	<li>New operation to recover ORB's interceptors (see <%=link("Reference.orb:getinterceptor")%>).</li>
+	<li>New ORB initialization option to recover control local reference resolution (see <%=link("Reference.orbcfg.localrefs")%>).</li>
+	<li>New version of LuDO (incompatible with the previous one)</li>
+</ul>
+
+<h2>What changed?</h2>
+<dl>
+	<dt>Improved Features</dt>
+	<dd>
+		<ul>
+			<li>Adjustment to show expections correctly when using function <%=link("Reference.oil.main")%>.</li>
+			<li>New field <%=link("Reference.reqcli.profile_data")%> in intercepted client request that contains provides the encoded profile used for connection.
+			Old field <code>profile_data</code> with the decoded profile information was renamed to <%=link("Reference.reqcli.profile")%>.</li>
+			<li>Adjustments in the way CORBA interceptor methods are invoked in case the request is forwarded.
+			Now, every time an interceptor forwards a request, the interceptor methods are invoked again for the forwarded request.</li>
+			<li>Field <%=link("Reference.request.service_context")%> of CORBA intercepted requests becomes a map instead of an array to adhere better to the limitations imposed by the CORBA Portable Interceptors.
+			In particular, to avoid the application to send more than one service context with the same ID (tag).</li>
+			<li>Add support for binary files in functions <%=link("Reference.oil.readfrom")%> and <%=link("Reference.oil.writeto")%>.</li>
+			<li>New parameter to define IDL include paths in IDL parsing functions (see <%=link("Reference.orb:loadidl")%> and  <%=link("Reference.orb:loadidlfile")%>)</li>
+			<li>It is not necessary to invoke <%=link"Reference.orb:run"%> to start processing incoming requests with brokers with multithreding support (<i>i.e.</i> flavor contains word <code>cooperative</code>).</li>
+			<li>Operation <%=link"Reference.orb:shutdown"%> must be called before the application ends.
+			Otherwise an internal thread that process incoming requests will keep executing and the application will not terminate even if all other application threads terminate.</li>
+		</ul>
+	</dd>
+	<dt>Removed/Deprecated Features</dt>
+	<dd>
+		<ul>
+			<li>Field <code>oil.tasks</code> was replaced by module <code>cothread</code>.</li>
+			<li>Function <code>oil.pcall</code> was replaced by standard <%=link("LuaManual.pcall")%> function.</li>
+			<li>Method <code>orb:tostring</code> was replaced by standard <%=link("LuaManual.tostring")%> function.</li>
+			<li>CORBA configuration options were removed:
+				<ul>
+					<li><code>tag</code></li>
+					<li><code>refhost</code></li>
+					<li><code>refport</code></li>
+				</ul>
+			</li>
+		</ul>
+	</dd>
+	<dt>Bug Fixes</dt>
+	<dd>
+		<ul>
+			<li>Bugfix to avoid parsing alphanumeric constant on IDL as numeric.</li>
+			<li>Bugfix to avoid that <%link("Reference.orb:run")%> fails due to error on establishing incomming connection from bogus remote clients.</li>
+			<li>Bugfix in parsing of IDL constants.</li>
+			<li>Bugfix to allow <code>typedef</code> definitions of ValueTypes in IDL.</li>
+			<li>Bugfix to avoid creation of servants with interface <code>CORBA::Object</code>.</li>
+			<li>Bugfix to avoid creation of servants with abstract interfaces.</li>
+			<li>Bugfix to avoid sending values marshaled as abstract valuetypes.</li>
+			<li>Bugfix to catch LuDO mashaling errors.</li>
+			<li>Bugfix to allow client interceptors to forward invocations in the 'receivereply' operation.</li>
+			<li>Bugfix to capture errors raised in the CORBA interceptor methods and forward them to the application as servant errors.</li>
+			<li>Bugfix to allow that operation descriptors of attribute functions (<code>_get_*</code> and <code>_set_*</code>) have a field <code>defined_in</code> with the interface the attribute is defined.
+			This is used in the CORBA interception mechanism to provide the interface where the attribute is defined.</li>
+			<li>Bugfix to allow a CORBA server interceptor to send a service context to the client in a cancelled request.</li>
+			<li>Bugfix to avoid index operations with the name of IDL attributes in proxies.</li>
+			<li>Bugfix to avoid stop processing channels that receive message of a unsupported GIOP version.</li>
+			<li>Bugfix to sinalize error on corbaloc parsing.</li>
+			<li>Bugfix to avoid unecessary DNS lookups on IP addresses, because LuaSocket's 'socket.dns.toip' causes DNS lookups to obtain information not used by OiL when resolving connections.</li>
+			<li>Bugfix to avoid that bogus RMI (GIOP) messages halt the processing of incomming requests.</li>
+			<li>Bugfix in LuaIDL to output the proper type information of multiple attributes declared in one single line declaration.</li>
+			<li>Bugfix to provide the proper minor code when an expected exception is caught by the ORB during a request dispatch.</li>
+			<li>Bugfix to allow marshalling of numbers as enumerations.</li>
+			<li>Bugfix to avoid that multiple connections to a same destination when there are simultaneous threads performing invocations to the same destination.</li>
+			<li>Bugfix to avoid get a erro due to missing packages when 'package.path' contains a pattern without a '?'.</li>
+		</ul>
+	</dd>
+</dl>

@@ -15,7 +15,7 @@ oil.main(function()
 		request.start_time = socket.gettime()
 		local params = request.parameters
 		print("intercepting request to "..request.operation_name..
-		      "("..viewer:tostring(unpack(params, 1, params.n))..")")
+		      "("..viewer:tostring(table.unpack(params, 1, params.n))..")")
 		local data = request.service_context[1234]
 		if data ~= nil then
 			local decoder = orb:newdecoder(data)
@@ -33,7 +33,7 @@ oil.main(function()
 		print("intercepting reply of opreation "..reply.operation_name)
 		print("\tsuccess:", reply.success)
 		local results = reply.results
-		print("\tresults:", unpack(results, 1, results.n))
+		print("\tresults:", table.unpack(results, 1, results.n))
 		local encoder = orb:newencoder()
 		encoder:put({
 			start = reply.start_time,
@@ -51,7 +51,4 @@ oil.main(function()
 	end
 	local servant = orb:newservant(impl)
 	assert(oil.writeto("server.ior", servant))
-	
-	-- start processing requests
-	orb:run()
 end)

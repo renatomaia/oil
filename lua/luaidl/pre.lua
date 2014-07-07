@@ -4,7 +4,7 @@
 -- Filename: pre.lua
 --
 
-local _G     = require "_G"
+local _G = require "_G"
 local error  = _G.error
 local ipairs = _G.ipairs
 local pairs  = _G.pairs
@@ -15,7 +15,8 @@ local os     = require "os"
 local string = require "string"
 local table  = require "table"
 
-local _ENV = {}; if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end
+local _ENV = {}
+if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
 
 local tab_macros
 local currNumLine
@@ -56,16 +57,18 @@ local function processDirective(...)
       tab_macros[macro] = value
     elseif (directive == "include") then
       local incFilename = string.sub(macro, 2, -2)
-      local path = homedir..incFilename
-      local fh, msg = io.open(path)
-      if not fh then
-        for _, v in ipairs(incpath) do
-          path = v..'/'..incFilename
-          fh, msg = io.open(path)
-          if fh then
-            break
-          end
+      local path
+      local fh, msg
+      for _, v in ipairs(incpath) do
+        path = v..'/'..incFilename
+        fh, msg = io.open(path)
+        if fh then
+          break
         end
+      end
+      if not fh then
+        path = homedir..incFilename
+        fh, msg = io.open(path)
       end
       if not fh then
         error(msg, 2)

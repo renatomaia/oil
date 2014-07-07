@@ -51,5 +51,4 @@ oil.main(function()
 	for _, file in _G.ipairs(files) do
 		orb:loadidlfile(file)
 	end
-	orb:run()
 end)

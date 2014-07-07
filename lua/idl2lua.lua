@@ -36,7 +36,7 @@ local _ENV = Arguments{
 	output  = "idl.lua",
 	include = {},
 }
-if _G._VERSION == "Lua 5.1" then _G.setfenv(1, _ENV) end
+if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
 
 local alias = { I = "include" }
 for name in pairs(_ENV) do
@@ -118,7 +118,7 @@ local _ENV = {
 	idl = require "oil.corba.idl",
 	setmetatable = _G.setmetatable,
 }
-if _G._VERSION == "Lua 5.1" then _G.setfenv(1, _ENV) end
+if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
 ]])
 for i, value in ipairs(values) do
 	values[i] = stream:serialize(value)

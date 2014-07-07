@@ -50,8 +50,13 @@ function LuaSocketOps:probe(count, timeout)
 		self.bytes = bytes:sub(count+1)
 		return bytes:sub(1, count)
 	end
-	self:settimeout(timeout, "timestamp")
+	if timeout ~= nil then
+		tmchanged, tmbak, tmkind = self:settimeout(timeout, "isTimeStamp")
+	end
 	local result, except, partial = self:receive(count-#bytes)
+	if tmchanged then
+		self:settimeout(tmbak, tmkind)
+	end
 	if result then
 		self.bytes = ""
 		return bytes..result

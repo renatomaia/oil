@@ -1,5 +1,5 @@
 local array = require "table"                                                   --[[VERBOSE]] local verbose = require "oil.verbose"
-local unpack = array.unpack or require("_G").unpack
+local unpack = array.unpack
 
 local Wrapper = require "loop.object.Wrapper"
 

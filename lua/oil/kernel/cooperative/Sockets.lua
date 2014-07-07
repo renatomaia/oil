@@ -35,23 +35,6 @@ local rawnew = oo.rawnew
 local Sockets = require "oil.kernel.base.Sockets"
 
 
-
-local function findupvalue(func, name)
-	local debug = require "debug"
-	local math = require "math"
-	for i = 1, math.huge do
-		local upname, value = debug.getupvalue(func, i)
-		if upname == nil then break end
-		if upname == name then return value end
-	end
-	error("upvalue "..name.." not found!")
-end
-local CoSocket = findupvalue(socket.cosocket, "CoSocket")
-function CoSocket:settimelimit(timestamp)
-	self:settimeout(timestamp, "isTimestamp")
-end
-
-
 local Poll = class()
 
 function Poll:__init()
@@ -64,9 +47,9 @@ function Poll:add(wrapper, ready)
 	self.wrapperOf[socket] = wrapper
 	local poll = self.poll
 	poll:add(socket, "r")
-	if ready then
-		yield("next", poll.thread, socket, "r") -- simulate that socket is ready
-	end
+	--if ready then
+	--	yield("next", poll.thread, socket, "r") -- simulate that socket is ready
+	--end
 end
 
 function Poll:remove(wrapper)
@@ -77,7 +60,7 @@ end
 
 function Poll:clear()
 	local wrapperOf = self.wrapperOf
-	local sockets = self.poll:clear().r
+	local sockets = self.poll:clear()
 	local results = {}
 	for socket in pairs(sockets) do
 		results[wrapperOf[socket]] = true
@@ -87,7 +70,7 @@ function Poll:clear()
 end
 
 function Poll:getready(timeout)
-	local socket, errmsg = self.poll:getready()
+	local socket, errmsg = self.poll:getready(timeout)
 	if socket == nil then return nil, errmsg end
 	return self.wrapperOf[socket]
 end

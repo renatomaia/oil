@@ -350,7 +350,7 @@
 --(378)                         |     empty
 --(379) <context>               :=    TK_STRING_LITERAL
 
-local _G       = require "_G"
+local _G = require "_G"
 local type     = _G.type
 local pairs    = _G.pairs
 local tonumber = _G.tonumber
@@ -362,8 +362,10 @@ local math     = require "math"
 local string   = require "string"
 local table    = require "table"
 
+local _ENV = {}
+if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
+
 local lex = require 'luaidl.lex'
-local _ENV = {}; if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end
 
 local tab_firsts = {}
 local tab_follow = {}
@@ -1904,7 +1906,7 @@ rules.mult_expr_l = function (lExpression, type, numrule)
     if not (tonumber(lExpression) and tonumber(rExpression)) then
       semanticError(tab_ERRORMSG[25])
     end
-    local expression = math.fmod(lExpression, rExpression)
+    local expression = math.mod(lExpression, rExpression)
     return rules.mult_expr_l(expression, type, numrule)
   elseif (
           tab_follow.rule_111[token] or
@@ -2977,7 +2979,7 @@ rules.readonly_attr_spec_dec_tail = function (attribute)
   if (tab_firsts.rule_227[token]) then
     rules.raises_expr(attribute)
   elseif (tab_firsts.rule_228[token]) then
-    rules.simple_dcl_l(type, true)
+    rules.simple_dcl_l(attribute.type, true)
   elseif (token == ';') then
     -- empty
   else

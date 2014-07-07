@@ -60,4 +60,5 @@ oil.main(function()
 		oil.newthread(showprogress, id, tonumber(time))
 	end
 	------------------------------------------------------------------------------
+	orb:shutdown()
 end)

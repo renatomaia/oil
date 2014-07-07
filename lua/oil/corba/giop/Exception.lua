@@ -8,6 +8,8 @@ local giop = require "oil.corba.giop"                                           
 local SystemExceptionIDs = giop.SystemExceptionIDs
 
 local OiLEx2SysEx = {
+	badsetup      = { SystemExceptionIDs.BAD_INV_ORDER   ,nil},
+	badshutdown   = { SystemExceptionIDs.INTERNAL        ,nil},
 	badinitialize = { SystemExceptionIDs.INITIALIZE      ,nil},
 	badsocket     = { SystemExceptionIDs.NO_RESOURCES    ,nil},
 	badaddress    = { SystemExceptionIDs.NO_RESOURCES    ,nil},
@@ -15,7 +17,7 @@ local OiLEx2SysEx = {
 	badchannel    = { SystemExceptionIDs.COMM_FAILURE    ,nil},
 	badvalue      = { SystemExceptionIDs.MARSHAL         ,nil},
 	badstream     = { SystemExceptionIDs.MARSHAL         ,nil},
-	badexception  = { SystemExceptionIDs.UNKNOWN         ,nil},
+	badexception  = { SystemExceptionIDs.UNKNOWN         , 1 },
 	badmessage    = { SystemExceptionIDs.INTERNAL        ,nil},
 	badversion    = { SystemExceptionIDs.IMP_LIMIT       ,nil},
 	badgiopimpl   = { SystemExceptionIDs.IMP_LIMIT       ,nil},

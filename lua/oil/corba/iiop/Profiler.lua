@@ -73,7 +73,7 @@ local function encodeIIOPProfile(self, profile, minor)
 	return encoder:getdata()
 end
 function IIOPProfiler:encode(profiles, object_key, config, minor)               --[[VERBOSE]] verbose:references(true, "encoding IIOP profile")
-	local port = config.refport or config.port
+	local port = config.port
 	for _, addr in ipairs(config.addresses) do
 		local profile = {
 			components = Empty,

@@ -25,4 +25,6 @@ oil.main(function()
 	hello:_set_quiet(false)
 	for i = 1, 3 do print(hello:say_hello_to("world")) end
 	print("Object already said hello "..hello:_get_count().." times till now.")
+	
+	orb:shutdown()
 end)

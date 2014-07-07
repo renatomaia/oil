@@ -27,6 +27,4 @@ oil.main(function()
 	------------------------------------------------------------------------------
 	oil.writeto("server.ior", tostring(server))
 	oil.writeto("serveradaptor.ior", tostring(adaptor))
-	------------------------------------------------------------------------------
-	orb:run()
 end)

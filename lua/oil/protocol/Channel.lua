@@ -45,6 +45,13 @@ function Channel:freelock(operation)
 	return self[operation]:free()
 end
 
+function Channel:getpeeraddress()
+	local host, port = self.socket:getpeername()
+	if host ~= nil then
+		return {host=host, port=port}
+	end
+end
+
 function Channel:send(...)
 	local socket = self.socket
 	local result, except = socket:send(...)
@@ -82,8 +89,14 @@ function Channel:receive(count, timeout)
 		end
 	end
 	local socket = self.socket
-	socket:settimelimit(timeout)
+	local tmchanged, tmbak, tmkind
+	if timeout ~= nil then
+		tmchanged, tmbak, tmkind = socket:settimeout(timeout, "isTimeStamp")
+	end
 	local result, except, partial = socket:receive(missing)
+	if tmchanged then
+		socket:settimeout(tmbak, tmkind)
+	end
 	if result then
 		self.bytes = ""
 		return bytes..result
@@ -114,11 +127,11 @@ function Channel:close()
 end
 
 function Channel:acquire()
-	self.context.access:remove(self.socket)
+	self.access:remove(self.socket)
 end
 
 function Channel:release()
-	self.context.access:add(self.socket)
+	self.access:add(self.socket)
 end
 
 return Channel

@@ -1,10 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local T = Template{"Client"} -- master process name
+local template = Template{"Client"} -- master process name
 
-T.Server = [===================================================================[
-checks = oil.dtests.checks
-
+Server = [=====================================================================[
 Object = {}
 function Object:concat(str1, str2)
 	return str1.."&"..str2
@@ -18,11 +16,9 @@ orb:loadidl[[
 ]]
 orb:newservant(Object, "object", "::MyInterface")
 orb:run()
-----[Server]===================================================================]
+--[Server]=====================================================================]
 
-T.Client = [===================================================================[
-checks = oil.dtests.checks
-
+Client = [=====================================================================[
 Interceptor = {}
 function Interceptor:sendrequest(request)
 	if request.object_key == "object"
@@ -39,7 +35,7 @@ function Interceptor:receivereply(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		checks:assert(request.request_id, checks.is(FinalRequestId))
+		assert(request.request_id == FinalRequestId)
 		FinalRequestId = true
 	end
 end
@@ -53,18 +49,20 @@ async = orb:newproxy(sync, "asynchronous")
 prot = orb:newproxy(sync, "protected")
 
 FinalRequestId = nil
-checks:assert(sync:concat("first", "second"), checks.is("first&second"))
-checks:assert(FinalRequestId, checks.is(true))
+assert(sync:concat("first", "second") == "first&second")
+assert(FinalRequestId == true)
 
 FinalRequestId = nil
-checks:assert(async:concat("first", "second"):evaluate(), checks.is("first&second"))
-checks:assert(FinalRequestId, checks.is(true))
+assert(async:concat("first", "second"):evaluate() == "first&second")
+assert(FinalRequestId == true)
 
 FinalRequestId = nil
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(true))
-checks:assert(res, checks.is("first&second"))
-checks:assert(FinalRequestId, checks.is(true))
-----[Client]===================================================================]
+assert(ok == true)
+assert(res == "first&second")
+assert(FinalRequestId == true)
 
-return T:newsuite{ corba = true, interceptedcorba = true }
+orb:shutdown()
+--[Client]=====================================================================]
+
+return template:newsuite{ corba = true, interceptedcorba = true }

@@ -1,3 +1,5 @@
+local setfenv = _VERSION=="Lua 5.1" and setfenv -- Lua 5.1 compatibility
+
 local idl = require "oil.corba.idl"                                             --[[VERBOSE]] local verbose = require "oil.verbose"
 local short = idl.short
 local ushort = idl.ushort
@@ -24,7 +26,9 @@ local CORBA = module{
 	repID = "IDL:omg.org/CORBA:1.0",
 }
 
-local _ENV = CORBA.definitions; if _VERSION=="Lua 5.1" then setfenv(1,_ENV) end
+local _ENV = CORBA.definitions
+
+if setfenv then setfenv(1,_ENV) end -- Lua 5.1 compatibility
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------

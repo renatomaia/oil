@@ -11,6 +11,7 @@ oil.dtests.querytime = .5
 
 oil.dtests.Reference = "return %q,%q,%d\0"
 function oil.dtests.resolve(proc, port, objkey, kind, nowait)
+	local orb = oil.dtests.orb
 	assert(orb ~= nil, "DTest not initialized")
 	local proxy = orb:newproxy(
 		oil.dtests.Reference:format(objkey,

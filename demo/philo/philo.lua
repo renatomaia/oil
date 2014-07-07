@@ -1,4 +1,5 @@
-local oo     = require "loop.simple"
+local oo = require "loop.simple"
+local oil = require "oil"
 
 math.randomseed(os.time() * 1000)
 
@@ -122,12 +123,10 @@ end
 -- Exporting
 --------------------------------------------------------------------------------
 
-local oil = require "oil"
 oil.main(function()
 	local orb = oil.init()
 	orb:loadidlfile("philo.idl")
 	oil.writeto("philo.ior",
 		tostring(
 			orb:newservant(PhilosopherHome, nil, "PhilosopherHome")))
-	orb:run()
 end)

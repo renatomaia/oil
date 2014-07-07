@@ -29,6 +29,4 @@ oil.main(function()
 		end
 	})
 	
-	orb:run()
-	
 end)

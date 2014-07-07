@@ -10,7 +10,7 @@ local pairs = _G.pairs
 local select = _G.select
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local table  = require "loop.table"
 local copy = table.copy

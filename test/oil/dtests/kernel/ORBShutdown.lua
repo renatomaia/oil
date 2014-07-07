@@ -1,7 +1,7 @@
 local Template = require "oil.dtests.Template"
-local T = Template{"Client"} -- master process name
+local template = Template{"Client"} -- master process name
 
-T.Server = [===================================================================[
+Server = [=====================================================================[
 orb = oil.dtests.init{ port = 2809 }
 if oil.dtests.flavor.corba then
 	iface = orb:loadidl "interface Terminator { void shutdown(); void idle(); };"
@@ -12,16 +12,15 @@ orb:newservant{
 	idle = function() oil.sleep(1) end,
 	shutdown = function() orb:shutdown() end,
 }
-orb:run()
-----[Server]===================================================================]
+--[Server]=====================================================================]
 
-T.Caller = [===================================================================[
+Caller = [=====================================================================[
 orb = oil.dtests.init()
 obj = oil.dtests.resolve("Server", 2809, "object")
 obj:idle()
-----[Caller]===================================================================]
+--[Caller]=====================================================================]
 
-T.Client = [===================================================================[
+Client = [=====================================================================[
 checks = oil.dtests.checks
 
 oil.sleep(3)
@@ -37,12 +36,12 @@ else
 	corba = oil.init()
 end
 server = corba:newproxy(os.getenv("DTEST_HELPER")):getprocess("Server")
-checks:assert(server, checks.is(nil))
+assert(server == nil)
 
 if oil.dtests.flavor.corba then
 	ok, ex = pcall(obj._non_existent, obj)
-	checks:assert(ok, checks.is(false))
-	checks:assert(ex, checks.similar{
+	assert(ok == false)
+	checks.assert(ex, checks.like{
 		_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
 		completed = "COMPLETED_NO",
 		minor = 2,
@@ -50,13 +49,16 @@ if oil.dtests.flavor.corba then
 		errmsg = "connection refused",
 	})
 else
+	corba:shutdown()
 	ok, ex = pcall(obj.idle, obj)
-	checks:assert(ok, checks.is(false))
-	checks:assert(ex, checks.similar{
+	assert(ok == false)
+	checks.assert(ex, checks.like{
 		errmsg = "connection refused",
 		error = "badconnect",
 	})
 end
-----[Client]===================================================================]
 
-return T:newsuite{ cooperative = true }
+orb:shutdown()
+--[Client]=====================================================================]
+
+return template:newsuite{ cooperative = true }

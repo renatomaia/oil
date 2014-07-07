@@ -9,7 +9,7 @@ local select  = _G.select
 local tonumber = _G.tonumber
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -27,7 +27,7 @@ function LuDORequester:newrequest(request)
 	if channel then
 		request.requester = self
 		request.channel = channel
-		local requestid = #channel+1                                                --[[VERBOSE]] request.request_id = requestid request.object_key = reference.object
+		local requestid = #channel+1                                                --[[VERBOSE]] request.request_id = requestid reference.object_key = reference.object
 		channel:trylock("write")
 		local success
 		success, except = channel:sendvalues(requestid,

@@ -1,14 +1,15 @@
 local database = (os.getenv("OIL_HOME") or "..").."/test/luaidl/tests/db/"
 
-local luaidl     = require "luaidl"
+local luaidl = require "luaidl"
 local FileStream = require "loop.serial.FileStream"
-local Suite      = require "loop.test.Suite"
+local Suite = require "loop.test.Suite"
+local checks = require "loop.test.checks"
 
 local files = {
-  "valuetype",
-  "const",
-  "core",
-  "data_service",
+	"valuetype",
+	"const",
+	"core",
+	"data_service",
 	"enum",
 	"enum_cases",
 	"exception",
@@ -30,15 +31,15 @@ local files = {
 	"pragmaprefix_5",
 	"pragmaprefix_6",
 	"pragmaprefix_7",
-  "project_service",
+	"project_service",
 	"adaptor",
 	"ApplicationRepository",
 	"BspLib",
 	"CosNaming",
-  "registry_service",
+	"registry_service",
 	"ResourceManagement",
 	"security",
-  "session_service",
+	"session_service",
 	"sga-daemon",
 	"sga-manager",
 	"sga",
@@ -49,20 +50,20 @@ local files = {
 	"struct",
 	"perf",
 	"pragmaid2",
---	"comp",
---	"attributes",
+	"comp",
+	"attributes",
 	"distdebug",
-	--"facets",
-	--"receptacles",
-	--"inheritance",
-	--"supports",
-	--"mpacomponents",
-	--"home",
-  "value",
-  "TestOBV", -- from Orbacus tests
-	--"event",
-	--"CCM",
-	--"interfaces",
+	"facets",
+	"receptacles",
+	"inheritance",
+	"supports",
+	"mpacomponents",
+	"home",
+	"value",
+	"TestOBV", -- from Orbacus tests
+	"event",
+	"CCM",
+	"interfaces",
 	"module2",
 	"module3",
 	"access_control_service",
@@ -73,7 +74,7 @@ local files = {
 	"structs",
 	"typedefs",
 	"unions",
-  "scs",
+	"scs",
 	"server",
 	"echo",
 	"UndeclaredException",
@@ -85,14 +86,14 @@ for _, name in ipairs(files) do
 	local path = database..name
 	local idlfile = path..".idl"
 	local luafile = path..".lua"
-	Suite[name] = function(checks)
+	Suite[name] = function()
 		checks.viewer.maxdepth = -1
 		local new = {luaidl.parsefile(idlfile)}
 		local file = io.open(luafile)
 		if file then
 			local old = FileStream{file=file}:get()
 			file:close()
-			checks:assert(new, checks.similar(old, "output changed"))
+			checks.assert(new, checks.like(old, "output changed"))
 		else
 			file = assert(io.open(luafile, "w"))
 			FileStream{file=file}:put(new)

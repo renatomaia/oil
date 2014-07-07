@@ -14,7 +14,7 @@ local setmetatable = _G.setmetatable
 local type = _G.type
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local table = require "loop.table"
 local copy = table.copy
@@ -107,6 +107,12 @@ function GIOPRequester:addbidirchannel(channel, addresses)                      
 	for _, address in ipairs(addresses) do
 		channels:register(socket, address)
 	end
+end
+
+function GIOPRequester:removechannel(channel)                                   --[[VERBOSE]] verbose:invoke("discard channel as outgoing request channel")
+	local socket = channel.socket
+	self.sock2channel[socket] = nil
+	self.channels:unregister(socket)
 end
 
 function GIOPRequester:getchannel(reference)

@@ -1,0 +1,18 @@
+// extracted from book "Pure CORBA" by Filtan Bolton
+
+abstract interface IAccount {
+	// operations
+	boolean withdraw(in long amount);
+	void    pay_in(in long amount);
+};
+
+valuetype AccountVal supports IAccount {
+	// state members
+	public  long   m_account_id;
+	public  string m_owner;
+	private long   m_balance;
+};
+
+interface PassByValue {
+	void pass_account_val(in IAccount val);
+};

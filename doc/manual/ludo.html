@@ -3,31 +3,16 @@ It is an RMI technology specifically designed for use within the Lua language.
 Moreover, it is intended to be as simple as possible so its implementation can be easily comprehended by developers interested in development of support for other RMI technologies in OiL.
 Below, we describe the main characteristics of LuDO.</p>
 
-<h2>Configuration Options</h2>
+<h2>Flavors</h2>
 
-<p>LuDO brokers are typically created using one of the following flavors (for more information about flavors, see section <%=link"Flavors"%>):</p>
+<p>LuDO brokers are typically created using one of the following flavors:</p>
 
-<pre>
-ludo;base
-ludo;cooperative;base
-</pre>
-
-<p>LuDO accepts only two configuration options that defines the host and port where invocations must be send to, as described below.</p>
-
-<table>
-	<tr>
-		<td valign="top"><code>host</code></td>
-		<td valign="top"><b>string</b></td>
-		<td valign="top">[optional]</td>
-		<td>Host name or IP address. If none is provided the ORB binds to all current net interfaces.</td>
-	</tr>
-	<tr>
-		<td valign="top"><code>port</code></td>
-		<td valign="top"><b>number</b></td>
-		<td valign="top">[optional]</td>
-		<td>Host port the ORB must listen. If none is provided, the ORB tries to bind to a port in the range [2809; 9999].</td>
-	</tr>
-</table>
+<dl>
+	<dt><code>ludo</code></dt>
+	<dd>LuDO support without multithreading.</dd>
+	<dt><code>cooperative;ludo</code></dt>
+	<dd>LuDO support with multithreading.</dd>
+</dl>
 
 <p>Below is an example that illustrates how to initiate a LuDO broker:</p>
 
@@ -35,15 +20,15 @@ ludo;cooperative;base
 require "oil"
 
 oil.main(function()
-	local broker = oil.init{
-		flavor = "ludo;cooperative;base",
+	local orb = oil.init{
+		flavor = "cooperative;ludo",
 		host = "myhostname",
 		port = "8080",
 	}
 	
 	...
 	
-	broker:run()
+	orb:run()
 end)
 </pre>
 
@@ -64,7 +49,7 @@ Such situation is illustrated in the code below.</p>
 require "oil"
 
 oil.main(function()
-	local broker = oil.init{flavor="ludo;cooperative;base"}
+	local orb = oil.init{flavor="ludo;cooperative"}
 	
 	local Invoker = {}
 	function Invoker:invoke(object, method, ...)
@@ -72,10 +57,7 @@ oil.main(function()
 	end
 	
 	oil.writeto("invoker.ref",
-		broker:tostring(
-			broker:newservant(Invoker)))
-	
-	broker:run()
+		orb:newservant(Invoker))
 end)
 </pre>
 
@@ -86,15 +68,14 @@ end)
 require "oil"
 
 oil.main(function()
-	local broker = oil.init{flavor="ludo;cooperative;base"}
-	oil.newthread(broker.run, broker)
+	local orb = oil.init{flavor="ludo;cooperative"}
 	
 	local Hello = {}
 	function Hello:say(who)
 		print(string.format("Hello, %s!", tostring(who)))
 	end
 	
-	local Invoker = broker:newproxy(oil.readfrom("invoker.ref"))
+	local Invoker = orb:newproxy(oil.readfrom("invoker.ref"))
 	
 	-- object 'Hello' is copied to the remote context
 	-- thus the message is printed on the remote host
@@ -102,14 +83,14 @@ oil.main(function()
 	
 	-- create a proxy for a servant from object 'Hello'
 	local proxy = 
-		broker:newproxy(
-			broker:tostring(
-				broker:newservant(Hello)))
+		orb:newproxy(
+			orb:tostring(
+				orb:newservant(Hello)))
 	
 	-- proxy to 'Hello' is copied to the remote context
 	-- thus the message is printed locally
 	Invoker:invoke(proxy, "say", "World")
 	
-	broker:shutdown()
+	orb:shutdown()
 end)
 </pre>

@@ -36,4 +36,6 @@ oil.main(function()
 	Philo[1]:start()
 	Philo[2]:start()
 	Philo[3]:start()
+	
+	orb:shutdown()
 end)

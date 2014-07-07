@@ -74,6 +74,4 @@ oil.main(function()
 			ns:rebind({{id=args.name,kind="EventChannel"}}, channel)
 		end
 	end
-	
-	orb:run()
 end)

@@ -5,6 +5,8 @@ oil.main(function()
 	local Adaptor = orb:newproxy(oil.readfrom("philo.ior"))
 
 	print(Adaptor:execute("\n\n\n\n\n\n\n"..[[
+		local oil = require "oil"
+		
 		function Philosopher:avoid_deadlock()
 			if
 				((self.has_left_fork and not self.has_right_fork) or
@@ -42,4 +44,6 @@ oil.main(function()
 			oil.sleep(math.random(1.5, 5.1))
 		end
 	]]))
+
+	orb:shutdown()
 end)

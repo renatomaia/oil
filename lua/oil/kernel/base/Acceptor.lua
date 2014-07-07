@@ -3,7 +3,7 @@
 -- Title  : Factory of incomming (server-side) channels
 -- Authors: Renato Maia <maia@inf.puc-rio.br>
 
-local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"
+local _G = require "_G"                                                         --[[VERBOSE]] local verbose = require "oil.verbose"; local tostring = _G.tostring
 local ipairs = _G.ipairs
 local select = _G.select
 
@@ -36,13 +36,12 @@ function AccessPoint:accept(timeout)
 					}
 				end
 			else
-				socket:settimeout(0)
+				local _, timeout, tmkind = socket:settimeout(0)
 				local success, errmsg = socket:receive(0)
+				socket:settimeout(timeout, tmkind)
 				if not success and errmsg == "closed" then                              --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("connection from ",host,":",port," was closed")
 					poll:remove(socket)
-					socket = nil
-				else                                                                    --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("connection from ",host,":",port," is ready to be read",success and "" or " (got error '"..errmsg.."')")
-					socket:settimeout(nil)
+					socket = nil                                                          --[[VERBOSE]] else local host,port = socket:getpeername(); verbose:channels("connection from ",host,":",port," is ready to be read",success and "" or " (got error '"..tostring(errmsg).."')")
 				end
 			end
 		elseif except == "timeout" then                                             --[[VERBOSE]] verbose:channels("timeout when accepting connection")
@@ -65,7 +64,7 @@ end
 function AccessPoint:close()
 	local poll = self.poll
 	local socket = self.socket
-	if socket then
+	if socket ~= nil then
 		poll:remove(socket)
 		socket:close()
 		self.socket = nil
@@ -149,7 +148,7 @@ function Acceptor:newaccess(configs)
 			port = port,
 		}
 	end                                                                           --[[VERBOSE]] verbose:channels("new port binded to ",host,":",port)
-	local poll = sockets.newpoll()
+	local poll = sockets:newpoll()
 	poll:add(socket)
 	return AccessPoint{
 		options = options,

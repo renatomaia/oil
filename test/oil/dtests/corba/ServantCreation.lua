@@ -1,8 +1,8 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local T = Template{"Client"} -- master process name
+local template = Template{"Client"} -- master process name
 
-T.Server = [===================================================================[
+Server = [=====================================================================[
 orb = oil.dtests.init{ port = 2809 }
 if oil.dtests.flavor.ludo then
 	function isa(self, iface)
@@ -20,16 +20,17 @@ orb:newservant(
 	"::CORBA::InterfaceDef"
 )
 orb:run()
-----[Server]===================================================================]
+--[Server]=====================================================================]
 
-T.Client = [===================================================================[
-oil.dtests.init()
-checks = oil.dtests.checks
+Client = [=====================================================================[
+orb = oil.dtests.init()
 object1 = oil.dtests.resolve("Server", 2809, "object1")
 object2 = oil.dtests.resolve("Server", 2809, "object2")
 
-checks:assert(object1:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0"), checks.is(true))
-checks:assert(object2:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0"), checks.is(true))
-----[Client]===================================================================]
+assert(object1:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0") == true)
+assert(object2:_is_a("IDL:omg.org/CORBA/InterfaceDef:1.0") == true)
 
-return T:newsuite()
+orb:shutdown()
+--[Client]=====================================================================]
+
+return template:newsuite()

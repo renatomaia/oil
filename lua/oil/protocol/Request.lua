@@ -8,7 +8,7 @@ local _G = require "_G"
 local select = _G.select
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local oo = require "oil.oo"
 local class = oo.class

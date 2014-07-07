@@ -3,7 +3,7 @@ local error = _G.error
 local pcall = _G.pcall
 
 local array = require "table"
-local unpack = array.unpack or _G.unpack
+local unpack = array.unpack
 
 local oo = require "oil.oo"                                                     --[[VERBOSE]] local verbose = require "oil.verbose"
 local class = oo.class
@@ -40,6 +40,7 @@ function ServerRequest:preinvoke(entry, member)
 			interface         = member and member.defined_in,
 			parameters        = member and {n=self.n,self:getvalues()} or nil,
 			method            = method,
+			channel_address   = self.channel and self.channel:getpeeraddress(),
 		}
 		self.intercepted = intercepted
 		local receiverequest = interceptor.receiverequest

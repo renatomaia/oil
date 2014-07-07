@@ -4,7 +4,7 @@ Adaptor = oo.class()
 
 local errmsg
 function Adaptor:execute(code)
-	code, errmsg = loadstring(code)
+	code, errmsg = load(code)
 	if code then code, errmsg = pcall(code) end
 	return code and "OK" or error
 end

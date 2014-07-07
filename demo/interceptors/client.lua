@@ -18,7 +18,7 @@ oil.main(function()
 	function profiler:sendrequest(request)
 		local params = request.parameters
 		print("intercepting request to "..request.operation_name..
-		      "("..viewer:tostring(unpack(params, 1, params.n))..")")
+		      "("..viewer:tostring(table.unpack(params, 1, params.n))..")")
 		local encoder = orb:newencoder()
 		encoder:put({
 			memory = collectgarbage("count"),
@@ -29,7 +29,7 @@ oil.main(function()
 		print("intercepting reply of opreation "..request.operation_name)
 		print("\tsuccess:", request.success)
 		local results = request.results
-		print("\tresults:", unpack(results, 1, results.n))
+		print("\tresults:", table.unpack(results, 1, results.n))
 		local data = request.reply_service_context[4321]
 		if data ~= nil then
 			local decoder = orb:newdecoder(data)
@@ -58,4 +58,6 @@ oil.main(function()
 	for id, time in ipairs(arg) do
 		oil.newthread(showprogress, id, tonumber(time))
 	end
+
+	orb:shutdown()
 end)

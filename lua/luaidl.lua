@@ -13,14 +13,18 @@ local type    = _G.type
 local io      = require "io"
 local os      = require "os"
 local string  = require "string"
+
 local array   = require "table"
+local unpack  = array.unpack
 
-local unpack  = array.unpack or _G.unpack
+local _ENV = {}
+if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
 
-local _ENV = { VERSION = '1.0.5' }; if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end
 
 local preprocessor  = require 'luaidl.pre'
 local parser        = require 'luaidl.sin'
+
+VERSION = '1.0.5'
 
 ---
 -- Auxiliar functions

@@ -1,7 +1,7 @@
 local Template = require "oil.dtests.Template"
-local T = Template{"Client"} -- master process name
+local template = Template{"Client"} -- master process name
 
-T.Server = [===================================================================[
+Server = [=====================================================================[
 Raiser = {}
 function Raiser:raisenow()
 	error{ _repid = "IDL:ExceptionRaiser/RaisedException:1.0",
@@ -24,9 +24,9 @@ end
 orb:newservant(Raiser, "raiser")
 
 orb:run()
-----[Server]===================================================================]
+--[Server]=====================================================================]
 
-T.Client = [===================================================================[
+Client = [=====================================================================[
 orb = oil.dtests.init()
 checks = oil.dtests.checks
 
@@ -39,18 +39,18 @@ end
 
 raisers = {
 	[raiser] = function(exception)
-		checks:assert(exception._repid, checks.equals("IDL:ExceptionRaiser/RaisedException:1.0", "wrong exception."))
-		checks:assert(exception.reason, checks.equals("exception", "wrong exception field."))
+		assert(exception._repid == "IDL:ExceptionRaiser/RaisedException:1.0", "wrong exception.")
+		assert(exception.reason == "exception", "wrong exception field.")
 	end,
 	[badobj] = function(exception)
 		if oil.dtests.flavor.corba then
-			checks:assert(exception, checks.similar{
+			checks.assert(exception, checks.like{
 				_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
 				completed = "COMPLETED_NO",
 				profile = {tag=0},
 			})
 		end
-		checks:assert(exception, checks.similar{
+		checks.assert(exception, checks.like{
 			host = "_",
 			port = 0,
 			errmsg = "host not found",
@@ -68,16 +68,16 @@ for raiser, exchecker in pairs(raisers) do
 	--
 	-- synchronous call
 	ok, exception = pcall(raiser.raisenow, raiser)
-	checks:assert(not ok, "exception was not raised.")
+	assert(not ok, "exception was not raised.")
 	exchecker(exception)
 	-- asynchronous call
 	future = async:raisenow()
 	oil.sleep(.1); assert(future:ready())
 	ok, exception = future:results()
-	checks:assert(not ok, "exception was not raised.")
+	assert(not ok, "exception was not raised.")
 	exchecker(exception)
 	ok, exception = pcall(future.evaluate, future)
-	checks:assert(not ok, "exception was not raised.")
+	assert(not ok, "exception was not raised.")
 	exchecker(exception)
 
 	--
@@ -87,39 +87,43 @@ for raiser, exchecker in pairs(raisers) do
 		exchecker(exception)
 		if oil.dtests.flavor.corba then
 			operation = operation.name
-			checks:assert(operation, checks.equals("raisenow", "wrong operation that raised exception."))
+			assert(operation == "raisenow", "wrong operation that raised exception.")
 		end
 		excount = excount + 1
 		return excount
 	end
-	for case = 1, 2 do
+	for case = 1, 3 do
 		if case == 1 then
-			raiser.__exceptions = handler
-			async.__exceptions = handler
+			raiser:__setexcatch(handler)
+			async:__setexcatch(handler)
 		elseif case == 2 then
 			orb:setexcatch(handler, "ExceptionRaiser")
+		elseif case == 3 then
+			orb:setexcatch(handler)
 		end
 		
 		excount = 0
 		-- synchronous call
 		result = raiser:raisenow()
-		checks:assert(excount, checks.is(1, "wrong number of raised exceptions."))
-		checks:assert(result, checks.is(excount, "wrong operation result after exception catch."))
+		assert(excount == 1, "wrong number of raised exceptions.")
+		assert(result == excount, "wrong operation result after exception catch.")
 		-- asynchronous call
 		future = async:raisenow()
 		oil.sleep(.1); assert(future:ready())
 		ok, exception = future:results()
-		checks:assert(not ok, "exception was not raised.")
+		assert(not ok, "exception was not raised.")
 		exchecker(exception)
 		result = future:evaluate()
-		checks:assert(excount, checks.is(2, "wrong number of raised exceptions."))
-		checks:assert(result, checks.is(excount, "wrong operation result after exception catch."))
+		assert(excount == 2, "wrong number of raised exceptions.")
+		assert(result == excount, "wrong operation result after exception catch.")
 		
 		if case == 1 then
-			raiser.__exceptions = nil
-			async.__exceptions = nil
+			raiser:__setexcatch(nil)
+			async:__setexcatch(nil)
 		elseif case == 2 then
 			orb:setexcatch(nil, "ExceptionRaiser")
+		elseif case == 3 then
+			orb:setexcatch(nil)
 		end
 	end
 	
@@ -127,9 +131,11 @@ for raiser, exchecker in pairs(raisers) do
 	-- protected proxy
 	--
 	ok, exception = prote:raisenow()
-	checks:assert(not ok, "exception was not raised.")
+	assert(not ok, "exception was not raised.")
 	exchecker(exception)
 end
-----[Client]===================================================================]
 
-return T:newsuite()
+orb:shutdown()
+--[Client]=====================================================================]
+
+return template:newsuite()

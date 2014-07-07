@@ -1,13 +1,13 @@
 local Suite = require "loop.test.Suite"
 local Template = require "oil.dtests.Template"
-local T = Template{"Client"} -- master process name
+local template = Template{"Client"} -- master process name
 
-T.Server = [===================================================================[
+Server = [=====================================================================[
 checks = oil.dtests.checks
 
 Object = {}
 function Object:concat(str1, str2)
-	checks:assert(Interceptor.lastConcatRequest, checks.isnot(nil))
+	assert(Interceptor.lastConcatRequest ~= nil)
 	error("Oops!")
 end
 
@@ -16,17 +16,17 @@ function Interceptor:receiverequest(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		checks:assert(request.request_id,            checks.typeis("number"))
-		checks:assert(request.response_expected,     checks.is(true))
-		checks:assert(request.servant,               checks.is(Object))
-		checks:assert(request.interface,             checks.is(MyInterface))
-		checks:assert(request.operation,             checks.is(MyInterface.definitions.concat))
-		checks:assert(request.parameters,            checks.similar{"first", "second", n=2})
-		checks:assert(#request.parameters,           checks.is(2))
-		checks:assert(request.service_context,       checks.similar({}, nil, {isomorphic=true}))
-		checks:assert(request.success,               checks.is(nil))
-		checks:assert(request.results,               checks.is(nil))
-		checks:assert(request.reply_service_context, checks.is(nil))
+		assert(type(request.request_id) == "number")
+		assert(request.response_expected == true)
+		assert(request.servant == Object)
+		assert(request.interface == MyInterface)
+		assert(request.operation == MyInterface.definitions.concat)
+		checks.assert(request.parameters, checks.like{"first", "second", n=2})
+		assert(#request.parameters == 2)
+		checks.assert(request.service_context, checks.like({}, nil, {isomorphic=true}))
+		assert(request.success == nil)
+		assert(request.results == nil)
+		assert(request.reply_service_context == nil)
 		self.lastConcatRequest = {
 			request = request,
 			request_id = request.request_id,
@@ -38,31 +38,31 @@ end
 function Interceptor:sendreply(reply)
 	local info = self.lastConcatRequest
 	if info then
-		checks:assert(reply,                       checks.is(info.request))
-		checks:assert(reply.request_id,            checks.is(info.request_id))
-		checks:assert(reply.response_expected,     checks.is(true))
-		checks:assert(reply.object_key,            checks.is("object"))
-		checks:assert(reply.servant,               checks.is(Object))
-		checks:assert(reply.interface,             checks.is(MyInterface))
-		checks:assert(reply.operation_name,        checks.is("concat"))
-		checks:assert(reply.operation,             checks.is(MyInterface.definitions.concat))
-		checks:assert(reply.parameters,            checks.is(info.parameters))
-		checks:assert(reply.parameters,            checks.similar{"first", "second", n=2})
-		checks:assert(#reply.parameters,           checks.is(2))
-		checks:assert(reply.service_context,       checks.is(info.service_context))
-		checks:assert(reply.service_context,       checks.similar({}, nil, {isomorphic=true}))
-		checks:assert(reply.success,               checks.is(false))
-		checks:assert(reply.results,               checks.similar{
-		                                           	{
-		                                           		_repid = "IDL:omg.org/CORBA/UNKNOWN:1.0",
-		                                           		completed = "COMPLETED_MAYBE",
-		                                           		minor = 0,
-		                                           		error = '[string "Server"]:6: Oops!',
-		                                           	},
-		                                           	n = 1,
-		                                           })
-		checks:assert(reply.reply_status,          checks.is("SYSTEM_EXCEPTION"))
-		checks:assert(reply.reply_service_context, checks.is(nil))
+		assert(reply == info.request)
+		assert(reply.request_id == info.request_id)
+		assert(reply.response_expected == true)
+		assert(reply.object_key == "object")
+		assert(reply.servant == Object)
+		assert(reply.interface == MyInterface)
+		assert(reply.operation_name == "concat")
+		assert(reply.operation == MyInterface.definitions.concat)
+		assert(reply.parameters == info.parameters)
+		checks.assert(reply.parameters, checks.like{"first", "second", n=2})
+		assert(#reply.parameters == 2)
+		assert(reply.service_context == info.service_context)
+		checks.assert(reply.service_context, checks.like({}, nil, {isomorphic=true}))
+		assert(reply.success == false)
+		checks.assert(reply.results, checks.like{
+		                             	{
+		                             		_repid = "IDL:omg.org/CORBA/UNKNOWN:1.0",
+		                             		completed = "COMPLETED_MAYBE",
+		                             		minor = 0,
+		                             		error = '[string "Server"]:6: Oops!',
+		                             	},
+		                             	n = 1,
+		                             })
+		assert(reply.reply_status == "SYSTEM_EXCEPTION")
+		assert(reply.reply_service_context == nil)
 		self.lastConcatRequest = nil
 	end
 end
@@ -76,9 +76,9 @@ MyInterface = orb:loadidl[[
 ]]
 orb:newservant(Object, "object", "::MyInterface")
 orb:run()
-----[Server]===================================================================]
+--[Server]=====================================================================]
 
-T.Client = [===================================================================[
+Client = [=====================================================================[
 checks = oil.dtests.checks
 
 Interceptor = {}
@@ -86,28 +86,28 @@ function Interceptor:sendrequest(request)
 	if request.object_key == "object"
 	and request.operation_name == "concat"
 	then
-		checks:assert(request.request_id,            checks.typeis("number"))
-		checks:assert(request.response_expected,     checks.is(true))
-		checks:assert(request.reference,             checks.is(sync.__reference))
-		checks:assert(request.profile_tag,           checks.is(0))
-		checks:assert(request.profile_data,          checks.typeis("string"))
-		checks:assert(request.profile,               checks.similar{
-		                                             	host = oil.dtests.hosts.Server,
-		                                             	port = 2809,
-		                                             	object_key = "object",
-		                                             	iiop_version = {
-		                                             		major = 1,
-		                                             		minor = 0,
-		                                             	}
-		                                             })
-		checks:assert(request.interface,             checks.is(MyInterface))
-		checks:assert(request.operation,             checks.is(MyInterface.definitions.concat))
-		checks:assert(request.parameters,            checks.similar{"first", "second", n=2})
-		checks:assert(#request.parameters,           checks.is(2))
-		checks:assert(request.service_context,       checks.is(nil))
-		checks:assert(request.success,               checks.is(nil))
-		checks:assert(request.results,               checks.is(nil))
-		checks:assert(request.reply_service_context, checks.is(nil))
+		assert(type(request.request_id) == "number")
+		assert(request.response_expected == true)
+		assert(request.reference == sync.__reference)
+		assert(request.profile_tag == 0)
+		assert(type(request.profile_data) == "string")
+		checks.assert(request.profile, checks.like{
+		                               	host = oil.dtests.hosts.Server,
+		                               	port = 2809,
+		                               	object_key = "object",
+		                               	iiop_version = {
+		                               		major = 1,
+		                               		minor = 0,
+		                               	}
+		                               })
+		assert(request.interface == MyInterface)
+		assert(request.operation == MyInterface.definitions.concat)
+		checks.assert(request.parameters, checks.like{"first", "second", n=2})
+		assert(#request.parameters == 2)
+		assert(request.service_context == nil)
+		assert(request.success == nil)
+		assert(request.results == nil)
+		assert(request.reply_service_context == nil)
 		self.lastConcatRequest = {
 			request = request,
 			request_id = request.request_id,
@@ -121,42 +121,42 @@ end
 function Interceptor:receivereply(reply)
 	local info = self.lastConcatRequest
 	if info then
-		checks:assert(reply,                        checks.is(info.request))
-		checks:assert(reply.request_id,             checks.is(info.request_id))
-		checks:assert(reply.response_expected,      checks.is(true))
-		checks:assert(reply.object_key,             checks.is("object"))
-		checks:assert(reply.reference,              checks.is(info.reference))
-		checks:assert(reply.profile_tag,            checks.is(0))
-		checks:assert(reply.profile_data,           checks.is(info.profile_data))
-		checks:assert(reply.profile,                checks.similar{
-		                                            	host = oil.dtests.hosts.Server,
-		                                            	port = 2809,
-		                                            	object_key = "object",
-		                                            	iiop_version = {
-		                                            		major = 1,
-		                                            		minor = 0,
-		                                            	}
-		                                            })
-		checks:assert(reply.interface,              checks.is(MyInterface))
-		checks:assert(reply.operation_name,         checks.is("concat"))
-		checks:assert(reply.operation,              checks.is(MyInterface.definitions.concat))
-		checks:assert(reply.parameters,             checks.is(info.parameters))
-		checks:assert(reply.parameters,             checks.similar{"first", "second", n=2})
-		checks:assert(#reply.parameters,            checks.is(2))
-		checks:assert(reply.service_context,        checks.is(nil))
-		checks:assert(reply.success,                checks.is(false))
-		checks:assert(reply.results,                checks.similar{
-		                                            	{
-		                                            		_repid = "IDL:omg.org/CORBA/UNKNOWN:1.0",
-		                                            		completed = "COMPLETED_MAYBE",
-		                                            		minor = 0,
-		                                            	},
-		                                            	n = 1,
-		                                            })
-		checks:assert(#reply.results,               checks.is(1))
-		checks:assert(reply.reply_status,           checks.is("SYSTEM_EXCEPTION"))
-		checks:assert(reply.reply_service_context,  checks.isnot(info.service_context))
-		checks:assert(reply.reply_service_context,  checks.similar({}, nil, {isomorphic=true}))
+		assert(reply == info.request)
+		assert(reply.request_id == info.request_id)
+		assert(reply.response_expected == true)
+		assert(reply.object_key == "object")
+		assert(reply.reference == info.reference)
+		assert(reply.profile_tag == 0)
+		assert(reply.profile_data == info.profile_data)
+		checks.assert(reply.profile, checks.like{
+		                             	host = oil.dtests.hosts.Server,
+		                             	port = 2809,
+		                             	object_key = "object",
+		                             	iiop_version = {
+		                             		major = 1,
+		                             		minor = 0,
+		                             	}
+		                             })
+		assert(reply.interface == MyInterface)
+		assert(reply.operation_name == "concat")
+		assert(reply.operation == MyInterface.definitions.concat)
+		assert(reply.parameters == info.parameters)
+		checks.assert(reply.parameters, checks.like{"first", "second", n=2})
+		assert(#reply.parameters == 2)
+		assert(reply.service_context == nil)
+		assert(reply.success == false)
+		checks.assert(reply.results, checks.like{
+		                             	{
+		                             		_repid = "IDL:omg.org/CORBA/UNKNOWN:1.0",
+		                             		completed = "COMPLETED_MAYBE",
+		                             		minor = 0,
+		                             	},
+		                             	n = 1,
+		                             })
+		assert(#reply.results == 1)
+		assert(reply.reply_status == "SYSTEM_EXCEPTION")
+		assert(reply.reply_service_context ~= info.service_context)
+		checks.assert(reply.reply_service_context, checks.like({}, nil, {isomorphic=true}))
 		self.lastConcatRequest = false
 	end
 end
@@ -170,34 +170,35 @@ MyInterface = orb.types:resolve("MyInterface")
 
 Interceptor.lastConcatRequest = nil
 ok, res = pcall(sync.concat, sync, "first", "second")
-checks:assert(ok, checks.is(false))
-checks:assert(res, checks.similar{
+assert(ok == false)
+checks.assert(res, checks.like{
                    	_repid = "IDL:omg.org/CORBA/UNKNOWN:1.0",
                    	completed = "COMPLETED_MAYBE",
                    	minor = 0,
                    })
-checks:assert(Interceptor.lastConcatRequest, checks.is(false))
+assert(Interceptor.lastConcatRequest == false)
 
 Interceptor.lastConcatRequest = nil
 ok, res = async:concat("first", "second"):results()
-checks:assert(ok, checks.is(false))
-checks:assert(res, checks.similar{
+assert(ok == false)
+checks.assert(res, checks.like{
                    	_repid = "IDL:omg.org/CORBA/UNKNOWN:1.0",
                    	completed = "COMPLETED_MAYBE",
                    	minor = 0,
                    })
-checks:assert(Interceptor.lastConcatRequest, checks.is(false))
+assert(Interceptor.lastConcatRequest == false)
 
 Interceptor.lastConcatRequest = nil
 ok, res = prot:concat("first", "second")
-checks:assert(ok, checks.is(false))
-checks:assert(res, checks.similar{
+assert(ok == false)
+checks.assert(res, checks.like{
                    	_repid = "IDL:omg.org/CORBA/UNKNOWN:1.0",
                    	completed = "COMPLETED_MAYBE",
                    	minor = 0,
                    })
-checks:assert(Interceptor.lastConcatRequest, checks.is(false))
+assert(Interceptor.lastConcatRequest == false)
 
-----[Client]===================================================================]
+orb:shutdown()
+--[Client]=====================================================================]
 
-return T:newsuite{ corba = true, interceptedcorba = true }
+return template:newsuite{ corba = true, interceptedcorba = true }
