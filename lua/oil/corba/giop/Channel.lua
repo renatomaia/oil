@@ -695,12 +695,9 @@ function GIOPChannel:close()
 			result, except = sendmsg(self, CloseConnectionID)
 			self.closenotified = result
 		end
-		if result then
+		if result or except.error == "terminated" then
 			if next(self.outgoing) == nil then
-				local closed, closeexcept = Channel.close(self)                         --[[VERBOSE]] verbose:invoke("channel closed")
-				if result or except.error == "terminated" then
-					result, except = closed, closeexcept
-				end
+				result, except = Channel.close(self)                                    --[[VERBOSE]] verbose:invoke("channel closed")
 			else
 				self.closing = true                                                     --[[VERBOSE]] verbose:invoke("channel marked for closing after pending outgoing requests are replied")
 			end
