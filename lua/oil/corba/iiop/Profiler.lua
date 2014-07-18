@@ -10,6 +10,9 @@ local ipairs = _G.ipairs
 local pcall = _G.pcall
 local tonumber = _G.tonumber
 
+local string = require "string"
+local char = string.char
+
 local math = require "math"
 local min = math.min
 
@@ -135,11 +138,16 @@ function IIOPProfiler:decode(profile)                                           
 	return profile
 end
 
+local function hextochar(hex)
+		return char(tonumber(hex, 16))
+end
 function IIOPProfiler:decodeurl(data)
 	local temp, objectkey = data:match("^([^/]*)/(.*)$")
-	if temp
-		then data = temp
-		else objectkey = "" -- TODO:[maia] is this correct?
+	if temp then
+		data = temp
+		objectkey = objectkey:gsub("%%(%x%x)", hextochar)
+	else
+		objectkey = "" -- TODO:[maia] is this correct?
 	end
 	local major, minor
 	major, minor, temp = data:match("^(%d+).(%d+)@(.+)$")
