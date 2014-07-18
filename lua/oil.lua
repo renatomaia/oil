@@ -110,7 +110,9 @@ function ORB:__new(config)
 			self.ValueEncoder.localrefs = config.localrefs
 		end
 	end
-	assert(self.RequestReceiver.acceptor:setup(self))
+	if self.RequestReceiver ~= nil then
+		assert(self.RequestReceiver.acceptor:setup(self))
+	end
 	
 	return self
 end

@@ -349,7 +349,7 @@ newlayer{
 
 newlayer{
 	name = "corba.ssl",
-	extends = { "corba.base", "kernel.ssl" },
+	extends = { "corba.base" },
 	define = function (_ENV)
 		factory.SSLIOPComponentCodec = template.IIOPProfileComponentCodec{
 			require "oil.corba.iiop.ssl.ComponentCodec",

@@ -97,12 +97,10 @@ function SSLIOPComponent:decode(data, profile)                                  
 	end                                                                           --[[VERBOSE]] verbose:references(false)
 	local supported = component.target_supports
 	local required = component.target_requires
-	profile.ssl = {
-		port = component.port,
-		required = band(supported, NoProtection) == 0,
-		targettrust = band(supported, EstablishTrustInTarget) ~= 0,
-		clienttrust = band(required, EstablishTrustInClient) ~= 0,
-	}
+	component.required = band(supported, NoProtection) == 0
+	component.targettrust = band(supported, EstablishTrustInTarget) ~= 0
+	component.clienttrust = band(required, EstablishTrustInClient) ~= 0
+	profile.ssl = component
 	return component
 end
 
