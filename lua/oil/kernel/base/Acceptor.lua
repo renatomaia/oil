@@ -198,7 +198,7 @@ function Acceptor:newaccess(configs)
 	if sslcfg ~= nil then
 		sslctx = sockets:sslcontext{
 			mode = "server",
-			protocol = "sslv3",
+			protocol = "sslv23",
 			options = DefaultOptions,
 			verify = sslcfg.cafile ~= nil and TargetVerify,
 			key = sslcfg.key,

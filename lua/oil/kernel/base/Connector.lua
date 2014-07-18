@@ -55,7 +55,8 @@ function Connector:__init()
 	end, "v")
 end
 
-local nossl = {}
+local DefaultOptions = {"all", "no_sslv2"}
+local TargetVerify = {"peer", "fail_if_no_peer_cert"}
 function Connector:resolveprofile(profile, configs)
 	local connid, sslcontext
 	local host = self.resolvedhosts[profile.host].host
@@ -77,7 +78,7 @@ function Connector:resolveprofile(profile, configs)
 				local errmsg
 				sslcontext, errmsg = self.sockets:sslcontext{
 					mode = "client",
-					protocol = "sslv3",
+					protocol = "sslv23",
 					options = DefaultOptions,
 					verify = ssllocal.cafile ~= nil and TargetVerify or nil,
 					key = ssllocal.key,
@@ -113,8 +114,6 @@ function Connector:resolveprofile(profile, configs)
 	return connid, host, port, sslcontext
 end
 
-local DefaultOptions = {"all", "no_sslv2"}
-local TargetVerify = {"peer", "fail_if_no_peer_cert"}
 function Connector:connectto(connid, host, port, sslctx)
 	if connid == nil then return nil, host end
 	local cache = self.cache

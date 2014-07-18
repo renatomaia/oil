@@ -67,6 +67,11 @@ local OiLEx2SysEx = {
 		minor = 1,
 		completed = "COMPLETED_NO",
 	},
+	badsecurity = {
+		_repid = SystemExceptionIDs.NO_PERMISSION,
+		minor = 1,
+		completed = "COMPLETED_NO",
+	},
 }
 
 
@@ -151,8 +156,8 @@ function ServerRequest:getreplybody()
 			ExMsgBody[1] = repid
 			ExMsgBody[2] = except
 			return UserExTypes, ExMsgBody
-		elseif not SystemExceptions[repid] then                                   --[[VERBOSE]] verbose:listen("got unexpected exception ",except)
-			except = OiLEx2SysEx[except.error] or unknownex(self, except)           --[[VERBOSE]] else verbose:listen("got system exception ",except)
+		elseif not SystemExceptions[repid] then                                   --[[VERBOSE]] verbose:listen("got unexpected exception: ",except)
+			except = OiLEx2SysEx[except.error] or unknownex(self, except)           --[[VERBOSE]] else verbose:listen("got system exception: ",except)
 		end
 	else
 		except = unknownex(self, except)
