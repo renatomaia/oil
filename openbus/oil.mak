@@ -25,6 +25,7 @@ LUASRC= \
 	$(LUADIR)/oil/corba/idl/sysex.lua \
 	$(LUADIR)/oil/corba/idl.lua \
 	$(LUADIR)/oil/corba/iiop/Profiler.lua \
+	$(LUADIR)/oil/corba/iiop/ssl/ComponentCodec.lua \
 	$(LUADIR)/oil/corba/intercepted/Listener.lua \
 	$(LUADIR)/oil/corba/intercepted/Requester.lua \
 	$(LUADIR)/oil/corba/intercepted/servicecontext.lua \
@@ -54,6 +55,7 @@ LUASRC= \
 	$(LUADIR)/oil/kernel/base/Sockets.lua \
 	$(LUADIR)/oil/kernel/cooperative/Connector.lua \
 	$(LUADIR)/oil/kernel/cooperative/Receiver.lua \
+	$(LUADIR)/oil/kernel/cooperative/SecureSockets.lua \
 	$(LUADIR)/oil/kernel/cooperative/Sockets.lua \
 	$(LUADIR)/oil/kernel/cooperative/Tasks.lua \
 	$(LUADIR)/oil/kernel/intercepted/Listener.lua \
