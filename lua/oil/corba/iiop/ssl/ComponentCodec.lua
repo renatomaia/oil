@@ -68,6 +68,7 @@ function SSLIOPComponent:encode(components, entry, config)
 		if entry.__security then
 			required = supported
 		else
+			required = required + NoProtection
 			supported = supported + NoProtection
 		end
 		if sslcfg.certificate ~= nil then
