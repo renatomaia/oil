@@ -44,6 +44,7 @@ return Suite{
 			ErrorInReceiveReply = require "oil.dtests.corba.intercepted.ErrorInReceiveReply",
 			ErrorInReceiveRequest = require "oil.dtests.corba.intercepted.ErrorInReceiveRequest",
 			ErrorInSendReply = require "oil.dtests.corba.intercepted.ErrorInSendReply",
+			InternalOperation = require "oil.dtests.corba.intercepted.InternalOperation",
 		},
 	},
 }

@@ -96,7 +96,7 @@ function newtest(self, infos)
 				command.id = name
 				command.command = "lua"
 				command.arguments = {
-					"-lcompat52",
+					--"-lcompat52",
 					"-eHOST=[["..hostname.."]]PORT="..portno,
 					"-loil.dtests.LuaProcess",
 				}

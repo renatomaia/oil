@@ -536,7 +536,7 @@ function GIOPChannel:processmessage(timeout)
 		return nil, header
 	end
 	local handler = MessageHandlers[msgid]
-	if handler == nil then
+	if handler == nil then                                                        --[[VERBOSE]] verbose:message("message error: ",header)
 		return sendmsg(self, MessageErrorID)
 	end
 	return handler(self, header, decoder)
