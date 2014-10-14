@@ -130,7 +130,7 @@ function ServerRequest:preinvoke(entry, member)
 		local object = entry.__servant
 		local method = object[member.name]
 		if method == nil then
-			method = member.implementation
+			return entry, member.implementation, "internal"
 		end
 		return object, method
 	end

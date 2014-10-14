@@ -1,33 +1,41 @@
 oil = require "oil"                                     -- Load OiL package
 
+--oil.verbose:level(4)
+--require("cothread").verbose:flag("socket", true)
+--require("cothread").verbose:flag("ssl", true)
+
+iorfile = assert(..., "missing path to IOR file")
+
 oil.main(function()
 	orb = oil.init{
-		flavor = "cooperative;corba;corba.ssl",
+		flavor = "cooperative;corba;corba.ssl;kernel.ssl",
 		options = {
 			client = {
-				security = "preferred",
+				security = "required",
 				ssl = {
-					key = "../../certs/clientAkey.pem",
-					certificate = "../../certs/clientA.pem",
-					cafile = "../../certs/rootA.pem",
+					key = "certs/client.key",
+					certificate = "certs/client.crt",
+					cafile = "certs/myca.crt",
 				},
 			},
 		},
 	}
 
-	orb:loadidl [[                                 // Load the interface IDL
-		interface Hello {
-			attribute boolean quiet;
-			readonly attribute long count;
-			string say_hello_to(in string name);
+	orb:loadidl [[
+		module demo{
+			module ssl{
+				interface SSLDemo{
+					void printCert();
+				};
+			};
 		};
 	]]
 	
-	hello = orb:newproxy(assert(oil.readfrom("ref.ior")), nil, "Hello") -- Get proxy to object
+	object = orb:newproxy(assert(oil.readfrom(iorfile)), nil, "demo::ssl::SSLDemo")
 
-	hello:_set_quiet(false)                               -- Access the object
-	for i = 1, 3 do print(hello:say_hello_to("world")) end
-	print("Object already said hello "..hello:_get_count().." times till now.")
-	
+	print("[Client] about to invoke printCert()")
+	object:printCert()
+	print("[Client] Call to server succeeded")
+
 	orb:shutdown()
 end)

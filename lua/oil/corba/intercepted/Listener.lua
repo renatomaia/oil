@@ -25,9 +25,11 @@ local ServerRequest = class({}, ListenerRequest)
 
 local function donothing() end
 function ServerRequest:preinvoke(entry, member)
-	local object, method = ListenerRequest.preinvoke(self, entry, member)
+	local object, method, internal = ListenerRequest.preinvoke(self, entry, member)
 	local interceptor = self.interceptor
 	if interceptor ~= nil then
+		local servant
+		if not internal then servant = object end
 		local intercepted = {
 			service_context   = srvctxtseq2tab(self.service_context),
 			request_id        = self.request_id,
@@ -35,7 +37,7 @@ function ServerRequest:preinvoke(entry, member)
 			sync_scope        = self.sync_scope,
 			object_key        = self.object_key,
 			operation_name    = self.operation,
-			servant           = object,
+			servant           = servant,
 			operation         = member,
 			interface         = member and member.defined_in,
 			parameters        = member and {n=self.n,self:getvalues()} or nil,
@@ -64,13 +66,13 @@ function ServerRequest:preinvoke(entry, member)
 					method, object = donothing, true -- dispatch should do nothing
 				else                                                                    --[[VERBOSE]] if intercepted.method~=method then verbose:interceptors("interceptor changed the invoked operation implementation") end
 					method = intercepted.method
-					local servant = intercepted.servant
+					local newservant = intercepted.servant
 					local parameters = intercepted.parameters
 					-- uncancel if the interceptor provided target, method and parameters
 					-- or update invoked object if it was changed
-					if (object==nil and servant~=nil and method~=nil and parameters~=nil)
-					or (object~=nil and servant~=object) then                             --[[VERBOSE]] verbose:interceptors("interceptor changed the invoked servant")
-						object = servant
+					if (servant==nil and newservant~=nil and method~=nil and parameters~=nil)
+					or (servant~=nil and newservant~=servant) then                        --[[VERBOSE]] verbose:interceptors("interceptor changed the invoked servant")
+						object = newservant
 					end
 					-- update parameter values
 					if parameters then
@@ -88,7 +90,7 @@ function ServerRequest:preinvoke(entry, member)
 			end
 		end
 	end
-	return object, method
+	return object, method, internal
 end
 
 local LocationForwardTypes = { IOR }

@@ -56,7 +56,6 @@ end
 
 function CoReceiver:dochannel(channel)
 	local result, except
-	local listener = self.listener
 	repeat
 		result, except = channel:getrequest()
 		if result then

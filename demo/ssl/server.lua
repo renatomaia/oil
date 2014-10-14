@@ -1,40 +1,58 @@
-oil = require "oil"                              -- Load OiL package
+oil = require "oil"
+
+iorfile, killfile = ...
+
+--oil.verbose:level(5)
+--require("cothread").verbose:flag("socket", true)
+--require("cothread").verbose:flag("ssl", true)
 
 oil.main(function()
-	hello = { count = 0, quiet = true }            -- Get object implementation
-	function hello:say_hello_to(name)
-		self.count = self.count + 1
-		local msg = "Hello " .. name .. "! ("..self.count.." times)"
-		if not self.quiet then print(msg) end
-		return msg
-	end
-	
 	orb = oil.init{
-		flavor = "cooperative;corba;corba.ssl",
-		options = {
-			server = {
-				security = "required",
-				ssl = {
-					key = "../../certs/serverAkey.pem",
-					certificate = "../../certs/serverA.pem",
-					cafile = "../../certs/rootA.pem",
-				},
-			},
-		},
+		flavor = "cooperative;corba;corba.ssl;kernel.ssl",
+		--options = {
+		--	server = {
+		--		security = "required",
+		--		ssl = {
+		--			key = "certs/server.key",
+		--			certificate = "certs/server.crt",
+		--			cafile = "certs/myca.crt",
+		--		},
+		--	},
+		--},
 	}
 	
-	orb:loadidl [[                                 // Load the interface IDL
-		interface Hello {
-			attribute boolean quiet;
-			readonly attribute long count;
-			string say_hello_to(in string name);
+	orb:loadidl [[
+		module demo{
+			module ssl{
+				interface SSLDemo{
+					void printCert();
+				};
+			};
 		};
 	]]
 	
-	hello = orb:newservant(hello, nil, "Hello")    -- Create CORBA object
+	servant = { __type = "::demo::ssl::SSLDemo" }
+	function servant:printCert()
+		print("[Server] invoked printCert()")
+	end
 	
-	ref = tostring(hello)                          -- Get object's reference
-	if not oil.writeto("ref.ior", ref) then
+	object = orb:newservant(servant)
+	
+	ref = tostring(object)
+
+	if iorfile == nil or not oil.writeto(iorfile, ref) then
 		print(ref)
+	end
+
+	if killfile ~= nil then
+		repeat
+			local file = io.open(killfile)
+			if file ~= nil then
+				file:close()
+				break
+			end
+			oil.sleep(1)
+		until false
+		orb:shutdown()
 	end
 end)
