@@ -14,10 +14,15 @@ local Exception = require "oil.Exception"
 
 
 local function addaddr(collection, host, port)
-	if collection[host] == nil then
+	local ports = collection[host]
+	if ports == nil then
+		ports = {}
+		collection[host] = ports
+	end
+	if ports[port] == nil then
 		local index = #collection+1
 		collection[index] = {host=host, port=port}
-		collection[host] = index
+		ports[port] = index
 	end
 end
 
@@ -90,29 +95,28 @@ function AccessPoint:address()
 	local dns = self.dns
 	
 	-- find out local host name
-	local host, dnsinfo
+	local hostname, dnsinfo
 	if ip == "0.0.0.0" then
 		local errmsg
-		host, errmsg = dns:gethostname()
-		if not host then return nil, errmsg end
-		ip, dnsinfo = dns:toip(host)
-	else
-		host = ip
+		hostname, errmsg = dns:gethostname()
+		if not hostname then return nil, errmsg end
+		ip, dnsinfo = dns:toip(hostname)
 	end
+
 	-- collect addresses
 	local addresses = {}
-	if options.ipaddr ~= false then
+	local host
+	if options.ipaddress ~= false then
 		addaddr(addresses, ip, port)
+		host = ip
 	end
-	if options.usedns ~= false then
-		if host == ip then
-			host, dnsinfo = dns:toname(host)
-			if host == nil then
-				host, dnsinfo = ip
-			end
+	if options.hostname ~= false then
+		if hostname == nil and dnsinfo == nil then
+			hostname, dnsinfo = dns:toname(ip)
+			if hostname == nil then dnsinfo = nil end
 		end
 		if dnsinfo ~= nil then
-			if options.ipaddr ~= false then
+			if options.ipaddress ~= false then
 				for _, ip in ipairs(dnsinfo.ip) do
 					addaddr(addresses, ip, port)
 				end
@@ -123,11 +127,13 @@ function AccessPoint:address()
 				addaddr(addresses, aliases[i], port)
 			end
 		end
+		host = host or hostname
 	end
+	host = host or ip
 	local additional = options.additional
 	if additional ~= nil then
 		for _, address in ipairs(additional) do
-			addaddr(addresses, address.host, address.port)
+			addaddr(addresses, address.host or host, address.port or port)
 		end
 	end
 	if #addresses == 0 then

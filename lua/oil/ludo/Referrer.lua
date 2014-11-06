@@ -14,9 +14,8 @@ local class = oo.class
 local Reference = class()
 
 function Reference:islocal(access)
-	local addresses = access.addresses
-	local index = addresses[self.host]
-	if index ~= nil and addresses[index].port == access.port then
+	local ports = access.addresses[self.host]
+	if ports ~= nil and ports[self.port] ~= nil then
 		return self.object
 	end
 end

@@ -31,14 +31,14 @@ return refman{
 		type = "table",
 		summary = "Object Reference Address Options",
 		fields = {
-			ipaddr = {
+			ipaddress = {
 				type = "boolean",
 				default = true,
 				description = [[
 					when is <code>true</code> includes the host IP address information in object references.
 				]],
 			},
-			usedns = {
+			hostname = {
 				type = "boolean",
 				default = true,
 				description = [[
@@ -48,7 +48,7 @@ return refman{
 			additional = {
 				type = "table",
 				description = [[
-					that contains a list of IP addresses or host names to be included in object references.
+					that contains a list of tables in the form <code>{host=<string with IP address or host name>,port=<port number>}</code> to be included in object references.
 				]],
 				eventual = [[
 					no additional information if added to object references.

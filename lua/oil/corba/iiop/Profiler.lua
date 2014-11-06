@@ -168,9 +168,8 @@ function IIOPProfiler:decodeurl(data)
 end
 
 function IIOPProfiler:belongsto(profile, accessinfo)
-	local addresses = accessinfo.addresses
-	local index = addresses[profile.host]
-	if index ~= nil and profile.port == addresses[index].port then
+	local ports = accessinfo.addresses[profile.host]
+	if ports ~= nil and ports[profile.port] ~= nil then
 		return profile.object_key
 	end
 end
