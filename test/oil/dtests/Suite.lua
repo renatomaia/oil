@@ -11,6 +11,7 @@ return Suite{
 	ORBShutdown2 = require "oil.dtests.kernel.ORBShutdown2",
 	ORBShutdownWithoutRun = require "oil.dtests.kernel.ORBShutdownWithoutRun",
 	ORBShutdownWithPendingCalls = require "oil.dtests.kernel.ORBShutdownWithPendingCalls",
+	InvocationAfterRestart = require "oil.dtests.kernel.InvocationAfterRestart",
 	StepTimeout = require "oil.dtests.kernel.StepTimeout",
 	SocketTimeout = require "oil.dtests.kernel.SocketTimeout",
 	ServantLocator = require "oil.dtests.kernel.ServantLocator",
