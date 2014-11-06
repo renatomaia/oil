@@ -13,7 +13,16 @@ local class = oo.class
 local Exception = require "oil.Exception"
 
 
-local AccessPoint = class()
+local function addaddr(collection, host, port)
+	if collection[host] == nil then
+		local index = #collection+1
+		collection[index] = {host=host, port=port}
+		collection[host] = index
+	end
+end
+
+
+local AccessPoint = class{ addropts = {} }
 
 function AccessPoint:accept(timeout)
 	local poll = self.poll
@@ -73,42 +82,62 @@ function AccessPoint:close()
 end
 
 function AccessPoint:address()
+	local options = self.addropts
 	local socket = self.socket
-	local host, port = socket:getsockname()
-	if not host then return nil, port end
+	local ip, port = socket:getsockname()
+	if not ip then return nil, port end
 	
 	local dns = self.dns
 	
 	-- find out local host name
-	if host == "0.0.0.0" then
-		local error
-		host = dns:gethostname()
-		if not host then return nil, error end
-	end
-	
-	-- collect addresses
-	local addr
-	local ip, extra = dns:toip(host)
-	if ip then
-		host = ip
-		addr = extra.ip
-		addr[#addr+1] = extra.name
-		local aliases = extra.alias
-		for i = 1, #aliases do
-			addr[#addr+1] = aliases[i]
-		end
+	local host, dnsinfo
+	if ip == "0.0.0.0" then
+		local errmsg
+		host, errmsg = dns:gethostname()
+		if not host then return nil, errmsg end
+		ip, dnsinfo = dns:toip(host)
 	else
-		addr = {host}
+		host = ip
 	end
-	
-	for i = 1, #addr do
-		addr[ addr[i] ] = i
+	-- collect addresses
+	local addresses = {}
+	if options.ipaddr ~= false then
+		addaddr(addresses, ip, port)
 	end
-	
+	if options.usedns ~= false then
+		if host == ip then
+			host, dnsinfo = dns:toname(host)
+			if host == nil then
+				host, dnsinfo = ip
+			end
+		end
+		if dnsinfo ~= nil then
+			if options.ipaddr ~= false then
+				for _, ip in ipairs(dnsinfo.ip) do
+					addaddr(addresses, ip, port)
+				end
+			end
+			addaddr(addresses, dnsinfo.name, port)
+			local aliases = dnsinfo.alias
+			for i = 1, #aliases do
+				addaddr(addresses, aliases[i], port)
+			end
+		end
+	end
+	local additional = options.additional
+	if additional ~= nil then
+		for _, address in ipairs(additional) do
+			addaddr(addresses, address.host, address.port)
+		end
+	end
+	if #addresses == 0 then
+		addaddr(addresses, host, port)
+	end
+
 	return {
 		host = host,
 		port = port,
-		addresses = addr
+		addresses = addresses,
 	}
 end
 
@@ -152,6 +181,7 @@ function Acceptor:newaccess(configs)
 	poll:add(socket)
 	return AccessPoint{
 		options = options,
+		addropts = configs.objrefaddr,
 		socket = socket,
 		sockets = sockets,
 		dns = self.dns,

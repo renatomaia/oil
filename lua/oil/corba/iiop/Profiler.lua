@@ -77,8 +77,8 @@ function IIOPProfiler:encode(profiles, object_key, config, minor)               
 	for _, addr in ipairs(config.addresses) do
 		local profile = {
 			components = Empty,
-			host = addr,
-			port = port,
+			host = addr.host,
+			port = addr.port,
 			object_key = object_key
 		}
 		local ok, encoded = pcall(encodeIIOPProfile, self, profile, minor)
@@ -168,7 +168,9 @@ function IIOPProfiler:decodeurl(data)
 end
 
 function IIOPProfiler:belongsto(profile, accessinfo)
-	if accessinfo.addresses[profile.host] and profile.port == accessinfo.port then
+	local addresses = accessinfo.addresses
+	local index = addresses[profile.host]
+	if index ~= nil and profile.port == addresses[index].port then
 		return profile.object_key
 	end
 end
@@ -195,8 +197,8 @@ function IIOPProfiler:encodebidir(service_context, address)
 	local encoder = self.codec:encoder(true)
 	local port = address.port
 	local listen_points = {}
-	for index, host in ipairs(address.addresses) do
-		listen_points[index] = {host=host,port=port}
+	for index, address in ipairs(address.addresses) do
+		listen_points[index] = {host=address.host,port=address.port}
 	end
 	encoder:put({listen_points=listen_points}, BiDirIIOPServiceContext)
 	service_context[#service_context+1] = {

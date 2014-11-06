@@ -17,5 +17,6 @@ require("oil").main(function()
 	runner("OiL", Suite{
 		CDR = require "oil.tests.corba.cdr.Suite",
 		IDL = require "oil.tests.corba.idl.TypedefInheritance",
+		IOR = require "oil.tests.corba.ior.AddressInfo",
 	})
 end)

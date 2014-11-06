@@ -27,6 +27,35 @@ return refman{
 	--		},
 	--	},
 	--},
+	addropt = {
+		type = "table",
+		summary = "Object Reference Address Options",
+		fields = {
+			ipaddr = {
+				type = "boolean",
+				default = true,
+				description = [[
+					when is <code>true</code> includes the host IP address information in object references.
+				]],
+			},
+			usedns = {
+				type = "boolean",
+				default = true,
+				description = [[
+					when is <code>true</code> includes the host name (according to the DNS) in object references.
+				]],
+			},
+			additional = {
+				type = "table",
+				description = [[
+					that contains a list of IP addresses or host names to be included in object references.
+				]],
+				eventual = [[
+					no additional information if added to object references.
+				]],
+			},
+		},
+	},
 	tcpopt = {
 		type = "table",
 		summary = "TCP Options Table",
@@ -147,6 +176,14 @@ return refman{
 				description = [[
 					of a network port the ORB must listen when the ORB supports TCP connections.
 					The value <code>0</code> indicates the ORB should choose a free ephemeral port automatically.
+				]],
+			},
+			objrefaddr = {
+				type = "addropt",
+				default = {},
+				summary = "Configuration of object reference addresses",
+				description = [[
+					contains configuration options of the addressing information included in object references.
 				]],
 			},
 			tcpoptions = {
