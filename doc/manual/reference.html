@@ -1198,18 +1198,17 @@ return refman{
 					contains the complete description of the interface of the servant being invoked.
 				]],
 			},
-			operation = {
-				type = "table",
-				description = [[
-					is an object with the complete description of the operation being invoked.
-					To change the operation being invoked on the remote servant, the application must set a new operation description to this field, which can be obtained from the local Interface Repository (see method <#orb:getLIR>)
-				]],
-			},
 			operation_name = {
 				type = "string",
 				readonly = true,
 				description = [[
 					contains the name of the operation being invoked.
+				]],
+			},
+			operation = {
+				type = "table",
+				description = [[
+					is an object with the complete description of the operation being invoked.
 				]],
 			},
 			parameters = {
@@ -1266,9 +1265,23 @@ return refman{
 		]],
 		fields = {
 			servant = {
-				readonly = true,
 				description = [[
 					is the value registered as the servant of the invoked object.
+					If the ORB cannot find a suitable target servant then this field is <code>nil</code>.
+				]],
+			},
+			method = {
+				type = "function",
+				description = [[
+					is invoked during the dispatch of the requested operation and will receive the value of field <code>servant</code> as first parameter (<code>self</code>).
+					If the operation requested is not provided by the servant or if a suitable target servant is not found, this field is <code>nil</code>.
+					To change the function being invoked on the remote servant, the application must set a new function to this field.
+				]],
+			},
+			type = {
+				type = "table",
+				description = [[
+					describes the actual interface of the target servant.
 					If the ORB cannot find a suitable target servant then this field is <code>nil</code>.
 				]],
 			},
