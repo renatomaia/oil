@@ -308,7 +308,7 @@ function newsuite(self, required)
 	local corba = seq{
 		""; --alt{"corba.gencode", ""};
 		alt{"corba.intercepted", "corba"};
-		alt{"corba.ssl", ""};
+		alt{"kernel.ssl;corba.ssl", ""};
 	}
 	local flavors = seq{
 		"";
@@ -352,8 +352,8 @@ function newsuite(self, required)
 	end
 	
 	--[[]=]
-	local client = "cooperative;corba.intercepted"
-	local server = "cooperative;corba.intercepted"
+	local client = "cooperative;corba.intercepted;corba.ssl;kernel.ssl"
+	local server = "cooperative;corba.intercepted;corba.ssl;kernel.ssl"
 	local config = {
 		Client = { flavor = client },
 		Server = { flavor = server },

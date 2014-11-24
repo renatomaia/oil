@@ -28,8 +28,7 @@ function ServerRequest:preinvoke(entry, member)
 	local object, method, internal = ListenerRequest.preinvoke(self, entry, member)
 	local interceptor = self.interceptor
 	if interceptor ~= nil then
-		local servant
-		if not internal then servant = object end
+		local internal = (object==entry)
 		local intercepted = {
 			service_context   = srvctxtseq2tab(self.service_context),
 			request_id        = self.request_id,
@@ -37,12 +36,13 @@ function ServerRequest:preinvoke(entry, member)
 			sync_scope        = self.sync_scope,
 			object_key        = self.object_key,
 			operation_name    = self.operation,
-			servant           = servant,
+			channel_address   = self.channel and self.channel:getpeeraddress(),
+			servant           = entry and entry.__servant,
+			type              = entry and entry.__type,
 			operation         = member,
 			interface         = member and member.defined_in,
 			parameters        = member and {n=self.n,self:getvalues()} or nil,
-			method            = method,
-			channel_address   = self.channel and self.channel:getpeeraddress(),
+			method            = not internal and method or nil,
 		}
 		self.intercepted = intercepted
 		local receiverequest = interceptor.receiverequest
@@ -65,14 +65,16 @@ function ServerRequest:preinvoke(entry, member)
 					self.intercepted = nil -- this should cancel the reply interception
 					method, object = donothing, true -- dispatch should do nothing
 				else                                                                    --[[VERBOSE]] if intercepted.method~=method then verbose:interceptors("interceptor changed the invoked operation implementation") end
-					method = intercepted.method
-					local newservant = intercepted.servant
+					local newmethod = intercepted.method
+					local newobject = intercepted.servant
 					local parameters = intercepted.parameters
 					-- uncancel if the interceptor provided target, method and parameters
 					-- or update invoked object if it was changed
-					if (servant==nil and newservant~=nil and method~=nil and parameters~=nil)
-					or (servant~=nil and newservant~=servant) then                        --[[VERBOSE]] verbose:interceptors("interceptor changed the invoked servant")
-						object = newservant
+					if (entry==nil and newobject~=nil)
+					or (entry~=nil and (internal and newmethod~=nil
+					                              or newobject~=entry.__servant))
+					then                                                                  --[[VERBOSE]] verbose:interceptors("interceptor changed the invoked servant")
+						object, method = servant, newmethod
 					end
 					-- update parameter values
 					if parameters then
@@ -90,7 +92,7 @@ function ServerRequest:preinvoke(entry, member)
 			end
 		end
 	end
-	return object, method, internal
+	return object, method
 end
 
 local LocationForwardTypes = { IOR }

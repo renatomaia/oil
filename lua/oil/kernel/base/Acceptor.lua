@@ -14,7 +14,21 @@ local class = oo.class
 local Exception = require "oil.Exception"
 
 
-local AccessPoint = class()
+local function addaddr(collection, host, port)
+	local ports = collection[host]
+	if ports == nil then
+		ports = {}
+		collection[host] = ports
+	end
+	if ports[port] == nil then
+		local index = #collection+1
+		collection[index] = {host=host, port=port}
+		ports[port] = index
+	end
+end
+
+
+local AccessPoint = class{ addropts = {} }
 
 function AccessPoint:accept(timeout)
 	local poll = self.poll
@@ -87,11 +101,12 @@ function AccessPoint:close()
 end
 
 function AccessPoint:address()
-	local host, port, sslport
+	local options = self.addropts
+	local ip, port, sslport
 	for socket, kind in pairs(self.ports) do
 		if kind == "tcp" then
-			host, port = socket:getsockname()
-			if not host then return nil, port end
+			ip, port = socket:getsockname()
+			if not ip then return nil, port end
 		elseif kind == "ssl" then
 			_, sslport = socket:getsockname()
 		end
@@ -99,27 +114,50 @@ function AccessPoint:address()
 
 	local dns = self.dns
 	-- find out local host name
-	if host == "0.0.0.0" then
+	local hostname, dnsinfo
+	if ip == "0.0.0.0" then
 		local errmsg
-		host, errmsg = dns:gethostname()
-		if not host then return nil, errmsg end
+		hostname, errmsg = dns:gethostname()
+		if not hostname then return nil, errmsg end
+		ip, dnsinfo = dns:toip(hostname)
 	end
+
 	-- collect addresses
-	local addr
-	local ip, extra = dns:toip(host)
-	if ip then
+	local addresses = {}
+	local host
+	if options.ipaddress ~= false then
+		addaddr(addresses, ip, port)
 		host = ip
-		addr = extra.ip
-		addr[#addr+1] = extra.name
-		local aliases = extra.alias
-		for i = 1, #aliases do
-			addr[#addr+1] = aliases[i]
-		end
-	else
-		addr = {host}
 	end
-	for i = 1, #addr do
-		addr[ addr[i] ] = i
+	if options.hostname ~= false then
+		if hostname == nil and dnsinfo == nil then
+			hostname, dnsinfo = dns:toname(ip)
+			if hostname == nil then dnsinfo = nil end
+		end
+		if dnsinfo ~= nil then
+			if options.ipaddress ~= false then
+				for _, ip in ipairs(dnsinfo.ip) do
+					addaddr(addresses, ip, port)
+				end
+			end
+			addaddr(addresses, dnsinfo.name, port)
+			local aliases = dnsinfo.alias
+			for i = 1, #aliases do
+				addaddr(addresses, aliases[i], port)
+			end
+		end
+		host = host or hostname
+	end
+	host = host or ip
+	local additional = options.additional
+	if additional ~= nil then
+		for _, address in ipairs(additional) do
+			addaddr(addresses, address.host or host, address.port or port)
+		end
+	end
+
+	if #addresses == 0 then
+		addaddr(addresses, host, port)
 	end
 
 	return {
@@ -127,7 +165,7 @@ function AccessPoint:address()
 		port = port,
 		sslport = ssl,
 		sslcfg = self.sslcfg,
-		addresses = addr
+		addresses = addresses,
 	}
 end
 
@@ -223,6 +261,7 @@ function Acceptor:newaccess(configs)
 	end
 	return AccessPoint{
 		options = options,
+		addropts = configs.objrefaddr,
 		sslcfg = sslcfg,
 		sslctx = sslctx,
 		ports = ports,

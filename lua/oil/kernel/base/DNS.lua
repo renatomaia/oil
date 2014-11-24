@@ -7,6 +7,7 @@
 local socket = require "socket.core"
 local thishostname = socket.dns.gethostname
 local hostname2ip = socket.dns.toip
+local ip2hostname = socket.dns.tohostname
 
 local oo = require "oil.oo"
 local class = oo.class
@@ -18,8 +19,12 @@ function DNS:gethostname()
 	return thishostname()
 end
 
-function DNS:toip(hostname)
-	return hostname2ip(hostname)
+function DNS:toip(...)
+	return hostname2ip(...)
+end
+
+function DNS:toname(...)
+	return ip2hostname(...)
 end
 
 return DNS

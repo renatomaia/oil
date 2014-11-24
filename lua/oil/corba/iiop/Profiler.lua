@@ -75,20 +75,19 @@ local function encodeIIOPProfile(self, profile, minor)
 	encoder:struct(profile, profileidl)
 	return encoder:getdata()
 end
-function IIOPProfiler:encode(profiles, entry, config, minor)               --[[VERBOSE]] verbose:references(true, "encoding IIOP profile")
-	local port = config.port
-	local components = {}
-	for tag, compcodec in self.components:__all() do
-		local success, errmsg = compcodec:encode(components, entry, config, minor)
-		if not success then
-			return nil, errmsg
-		end
-	end
+function IIOPProfiler:encode(profiles, entry, config, minor)                    --[[VERBOSE]] verbose:references(true, "encoding IIOP profile")
 	for _, addr in ipairs(config.addresses) do
+		local components = {}
+		for tag, compcodec in self.components:__all() do
+			local ok, errmsg = compcodec:encode(components, entry, config, addr, minor)
+			if not ok then
+				return nil, errmsg
+			end
+		end
 		local profile = {
 			components = components,
-			host = addr,
-			port = port,
+			host = addr.host,
+			port = addr.port,
 			object_key = entry.__objkey,
 		}
 		local ok, encoded = pcall(encodeIIOPProfile, self, profile, minor)
@@ -193,7 +192,8 @@ function IIOPProfiler:decodeurl(data)
 end
 
 function IIOPProfiler:belongsto(profile, accessinfo)
-	if accessinfo.addresses[profile.host] and profile.port == accessinfo.port then
+	local ports = accessinfo.addresses[profile.host]
+	if ports ~= nil and ports[profile.port] ~= nil then
 		return profile.object_key
 	end
 end
@@ -220,8 +220,8 @@ function IIOPProfiler:encodebidir(service_context, address)
 	local encoder = self.codec:encoder(true)
 	local port = address.port
 	local listen_points = {}
-	for index, host in ipairs(address.addresses) do
-		listen_points[index] = {host=host,port=port}
+	for index, address in ipairs(address.addresses) do
+		listen_points[index] = {host=address.host,port=address.port}
 	end
 	encoder:put({listen_points=listen_points}, BiDirIIOPServiceContext)
 	service_context[#service_context+1] = {

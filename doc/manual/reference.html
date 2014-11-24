@@ -27,6 +27,35 @@ return refman{
 	--		},
 	--	},
 	--},
+	addropt = {
+		type = "table",
+		summary = "Object Reference Address Options",
+		fields = {
+			ipaddress = {
+				type = "boolean",
+				default = true,
+				description = [[
+					when is <code>true</code> includes the host IP address information in object references.
+				]],
+			},
+			hostname = {
+				type = "boolean",
+				default = true,
+				description = [[
+					when is <code>true</code> includes the host name (according to the DNS) in object references.
+				]],
+			},
+			additional = {
+				type = "table",
+				description = [[
+					that contains a list of tables in the form <code>{host=<string with IP address or host name>,port=<port number>}</code> to be included in object references.
+				]],
+				eventual = [[
+					no additional information if added to object references.
+				]],
+			},
+		},
+	},
 	tcpopt = {
 		type = "table",
 		summary = "TCP Options Table",
@@ -147,6 +176,14 @@ return refman{
 				description = [[
 					of a network port the ORB must listen when the ORB supports TCP connections.
 					The value <code>0</code> indicates the ORB should choose a free ephemeral port automatically.
+				]],
+			},
+			objrefaddr = {
+				type = "addropt",
+				default = {},
+				summary = "Configuration of object reference addresses",
+				description = [[
+					contains configuration options of the addressing information included in object references.
 				]],
 			},
 			tcpoptions = {
@@ -1161,18 +1198,17 @@ return refman{
 					contains the complete description of the interface of the servant being invoked.
 				]],
 			},
-			operation = {
-				type = "table",
-				description = [[
-					is an object with the complete description of the operation being invoked.
-					To change the operation being invoked on the remote servant, the application must set a new operation description to this field, which can be obtained from the local Interface Repository (see method <#orb:getLIR>)
-				]],
-			},
 			operation_name = {
 				type = "string",
 				readonly = true,
 				description = [[
 					contains the name of the operation being invoked.
+				]],
+			},
+			operation = {
+				type = "table",
+				description = [[
+					is an object with the complete description of the operation being invoked.
 				]],
 			},
 			parameters = {
@@ -1229,9 +1265,23 @@ return refman{
 		]],
 		fields = {
 			servant = {
-				readonly = true,
 				description = [[
 					is the value registered as the servant of the invoked object.
+					If the ORB cannot find a suitable target servant then this field is <code>nil</code>.
+				]],
+			},
+			method = {
+				type = "function",
+				description = [[
+					is invoked during the dispatch of the requested operation and will receive the value of field <code>servant</code> as first parameter (<code>self</code>).
+					If the operation requested is not provided by the servant or if a suitable target servant is not found, this field is <code>nil</code>.
+					To change the function being invoked on the remote servant, the application must set a new function to this field.
+				]],
+			},
+			type = {
+				type = "table",
+				description = [[
+					describes the actual interface of the target servant.
 					If the ORB cannot find a suitable target servant then this field is <code>nil</code>.
 				]],
 			},

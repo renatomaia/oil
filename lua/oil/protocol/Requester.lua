@@ -41,7 +41,6 @@ local WeakTable = class{ __mode = "kv" }
 local Requester = class{ Request = ClientRequest }
 
 function Requester:__init()
-	self.addresses = {}
 	self.sock2channel = memoize(function(socket)
 		return self.Channel{
 			socket = socket,
