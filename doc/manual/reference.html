@@ -48,7 +48,7 @@ return refman{
 			additional = {
 				type = "table",
 				description = [[
-					that contains a list of tables in the form <code>{host=<string with IP address or host name>,port=<port number>}</code> to be included in object references.
+					that contains a list of tables in the form <code>{host=<string with IP address or host name>,port=<port number>,sslport=<ssl port number>}</code> to be included in object references.
 				]],
 				eventual = [[
 					no additional information if added to object references.
@@ -98,6 +98,81 @@ return refman{
 				description = [[
 					defines the timeout in seconds of the sockets related operations invoked by the ORB.
 				]],
+			},
+		},
+	},
+	sslcfg = {
+		type = "table",
+		fields = {
+			key = {
+				type = "string",
+				summary = "Path to file of the private key for SSL authetication",
+				description = [[
+					contains a path to a file containing a private key in PEM format.
+					This private key is used to authenticate all SSL connections performed by the ORB.
+					This private key must correspond to the public key in the certificate indicated by field <code>certificate</code>.
+				]],
+				eventual = "the ORB does not provide authetication for established SSL conections.",
+			},
+			certificate = {
+				type = "string",
+				summary = "Path to file of the certificate for SSL authetication",
+				description = [[
+					contains a path to a file containing a X.509 certificate in PEM format.
+					This certificate is used to authenticate all SSL connections performed by the ORB.
+					The public key contained in this certificate must correspond to the private key in the file indicated by field <code>key</code>.
+				]],
+				eventual = "the ORB does not provide authetication for established SSL conections.",
+			},
+			cafile = {
+				type = "string",
+				summary = "Path to file of the certificate of the CA for SSL authetication",
+				description = [[
+					contains a path to a file containing a X.509 certificate in PEM format of the Certification Authority (CA) to be used to autenticate SSL connections.
+				]],
+				eventual = "the ORB does not autheticate SSL conections.",
+			},
+		},
+	},
+	sckopt = {
+		type = "table",
+		summary = "Connection Configuration Table",
+		description = [[
+			that contains configuration options for the connections established by the ORB.
+			Alternatively this table might contain fields <code>client</code> or <code>server</code> containing specific options for initiated or accepcted connections respectively.
+		]],
+		fields = {
+			tcp = {
+				type = "tcpopt",
+				default = {},
+				summary = "Configuration of TCP connections created by the ORB",
+				description = [[
+					contains configuration options of the TCP connections created by the ORB when the underlying RMI technology creates such connections.
+				]],
+			},
+			ssl = {
+				type = "sslcfg",
+				default = {},
+				summary = "Configuration of SSL connections created by the ORB",
+				description = [[
+					contains configuration options of the SSL connections created by the ORB when the underlying RMI technology creates such connections.
+				]],
+			},
+			security = {
+				type = "string",
+				summary = "Secutiry requirement for connections",
+				description = [[
+					shall be one of the following values:
+					<dl>
+						<dt><code>"required"</code></dt>
+						<dd>indicates the ORB must only establish secure (SSL) connections.</dd>
+						<dt><code>"supported"</code></dt>
+						<dd>indicates the ORB shall establish secure (SSL) connections only when required.</dd>
+						<dt><code>"preferred"</code></dt>
+						<dd>indicates the ORB shall establish secure (SSL) connections whenever possible.</dd>
+					</dl>
+				]],
+				eventual = "disables the SSL support",
 			},
 		},
 	},
@@ -178,6 +253,15 @@ return refman{
 					The value <code>0</code> indicates the ORB should choose a free ephemeral port automatically.
 				]],
 			},
+			sslport = {
+				type = "number",
+				default = 0,
+				summary = "Network port number the ORB must listen for SSL connections",
+				description = [[
+					indicates the network port the ORB must listen for accept SSL connections.
+					The value <code>0</code> indicates the ORB should choose a free ephemeral port automatically.
+				]],
+			},
 			objrefaddr = {
 				type = "addropt",
 				default = {},
@@ -186,12 +270,12 @@ return refman{
 					contains configuration options of the addressing information included in object references.
 				]],
 			},
-			tcpoptions = {
-				type = "tcpopt",
+			options = {
+				type = "sckopt",
 				default = {},
-				summary = "Configuration of TCP connections created by the ORB",
+				summary = "Configuration of connections created by the ORB",
 				description = [[
-					contains configuration options of the TCP connections created by the ORB when the underlying RMI technology creates such connections.
+					contains configuration options of the connections created.
 				]],
 			},
 		},

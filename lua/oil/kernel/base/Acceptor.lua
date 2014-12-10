@@ -102,15 +102,9 @@ end
 
 function AccessPoint:address()
 	local options = self.addropts
-	local ip, port, sslport
-	for socket, kind in pairs(self.ports) do
-		if kind == "tcp" then
-			ip, port = socket:getsockname()
-			if not ip then return nil, port end
-		elseif kind == "ssl" then
-			_, sslport = socket:getsockname()
-		end
-	end
+	local ip = self.hostname
+	local port = self.portno
+	local sslport = self.sslportno
 
 	local dns = self.dns
 	-- find out local host name
@@ -163,7 +157,7 @@ function AccessPoint:address()
 	return {
 		host = host,
 		port = port,
-		sslport = ssl,
+		sslport = sslport,
 		sslcfg = self.sslcfg,
 		addresses = addresses,
 	}
@@ -212,10 +206,10 @@ function Acceptor:newaccess(configs)
 	local sockets = self.sockets
 	local host = configs.host or "*"
 	local port = configs.port or 0
+	local sslport
 	local socket, errmsg = newport(sockets, options, host, port)
 	if socket == nil then return nil, errmsg end
 	local poll = sockets:newpoll()
-	poll:add(socket)
 	if host == "*" or port == 0 then
 		local sckhost, sckport = socket:getsockname()
 		if sckhost == nil then                                                      --[[VERBOSE]] verbose:channels("unable to obtain the actual port orb was binded to (",sckport,")")
@@ -243,11 +237,10 @@ function Acceptor:newaccess(configs)
 			certificate = sslcfg.certificate,
 			cafile = sslcfg.cafile,
 		}
-		local port = sslcfg.port or 0
-		local sslsck = newport(sockets, options, host, port)
-		poll:add(sslsck)
-		ports[sslsck] = "ssl"
-		if port == 0 then
+		sslport = configs.sslport or 0
+		local sslsck, errmsg = newport(sockets, options, host, sslport)
+		if sslsck == nil then return nil, errmsg end
+		if sslport == 0 then
 			local sckhost, sckport = sslsck:getsockname()
 			if sckhost == nil then                                                    --[[VERBOSE]] verbose:channels("unable to obtain the actual secure port orb was binded to: ",sckport)
 				return nil, Exception{ "unable to obtain the actual binded secure port at host '$host' ($errmsg)",
@@ -256,9 +249,12 @@ function Acceptor:newaccess(configs)
 					host = host,
 				}
 			end
-			sslcfg.port = sckport                                                     --[[VERBOSE]] verbose:channels("orb secure port binded to host ",sslcfg.port)
+			sslport, configs.sslport = sckport, sckport                               --[[VERBOSE]] verbose:channels("orb secure port binded to host ",sslport)
 		end
+		poll:add(sslsck)
+		ports[sslsck] = "ssl"
 	end
+	poll:add(socket)
 	return AccessPoint{
 		options = options,
 		addropts = configs.objrefaddr,
@@ -268,6 +264,9 @@ function Acceptor:newaccess(configs)
 		sockets = sockets,
 		dns = self.dns,
 		poll = poll,
+		hostname = host,
+		portno = port,
+		sslportno = sslport,
 	}
 end
 

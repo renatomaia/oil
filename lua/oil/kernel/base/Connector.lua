@@ -91,9 +91,9 @@ function Connector:resolveprofile(profile, configs)
 						error = "badinitialize",
 						errmsg = errmsg,
 					}
-				end                                                                     --[[VERBOSE]] verbose:channels("establish secure connection to ",host,":",port)
+				end
 				ssllocal.context = sslcontext
-			end
+			end                                                                       --[[VERBOSE]] verbose:channels("establish secure connection to ",host,":",port)
 			connid = tuple[host][port][ssllocal]
 		else                                                                        --[[VERBOSE]] verbose:channels("avoiding use secure connection")
 			connid = tuple[host][port]
@@ -118,11 +118,11 @@ function Connector:connectto(connid, host, port, sslctx)
 	if connid == nil then return nil, host end
 	local cache = self.cache
 	local socket, except = cache[connid]
-	if socket ~= nil then
+	if socket ~= nil then                                                         --[[VERBOSE]] verbose:channels("reusing socket")
 		local _, timeout, tmkind = socket:settimeout(0)
 		local success, except = socket:receive(0)
 		socket:settimeout(timeout, tmkind)
-		if not success and except == "closed" then
+		if not success and except == "closed" then                                  --[[VERBOSE]] verbose:channels("reused socket is closed and will be discarded")
 			self:unregister(socket)
 			socket = nil
 		end

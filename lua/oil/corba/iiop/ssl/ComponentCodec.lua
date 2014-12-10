@@ -77,7 +77,7 @@ function SSLIOPComponent:encode(components, entry, config, address)
 		local ok, encoded = pcall(encodeSSLIOPComponent, self, {
 			target_supports = supported,
 			target_requires = required,
-			port = address.sslport or sslcfg.port,
+			port = address.sslport or config.sslport,
 		})
 		if not ok then                                                              --[[VERBOSE]] verbose:references(false, "error in encoding of SSLIOP component of IIOP profile")
 			return nil, encoded
