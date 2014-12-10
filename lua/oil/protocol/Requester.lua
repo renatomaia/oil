@@ -45,6 +45,7 @@ function Requester:__init()
 		return self.Channel{
 			socket = socket,
 			context = self,
+			requester = self,
 		}
 	end)
 end
