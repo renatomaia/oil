@@ -1,0 +1,145 @@
+# -*- coding: iso-8859-1-unix -*-
+
+import os ;
+import modules ;
+
+path-constant here : . ;
+
+local lua-install-path = [ os.environ LUA_INSTALL_PATH ] ;
+if ! $(lua-install-path)
+{
+  lua-install-path = "$(here)/../../install/lua" ;
+}
+
+local loop-root-path = [ os.environ LOOP_ROOT_PATH ] ;
+if ! $(loop-root-path)
+{
+  loop-root-path = "$(here)/../loop" ;
+}
+
+modules.load preloader : : $(loop-root-path) ;
+import preloader ; 
+using preloader ;
+
+project oil
+  : requirements
+    <target-os>windows:<pch>off
+    <target-os>windows,<link>shared:<runtime-link>shared
+    <target-os>windows,<link>static:<runtime-link>static
+    <target-os>windows:<debug-store>database
+    <target-os>windows:<define>_CRT_SECURE_NO_WARNINGS
+    <target-os>windows:<cxxflags>/FS
+    <debug-symbols>on
+  ;
+
+make oil.c
+  :	lua/oil/assert.lua
+    lua/oil/builder.lua
+    lua/oil/component.lua
+    lua/oil/corba/giop/Channel.lua
+    lua/oil/corba/giop/Codec.lua
+    lua/oil/corba/giop/CodecGen.lua
+    lua/oil/corba/giop/Exception.lua
+    lua/oil/corba/giop/Indexer.lua
+    lua/oil/corba/giop/Listener.lua
+    lua/oil/corba/giop/Referrer.lua
+    lua/oil/corba/giop/Requester.lua
+    lua/oil/corba/giop.lua
+    lua/oil/corba/idl/Compiler.lua
+    lua/oil/corba/idl/Importer.lua
+    lua/oil/corba/idl/Indexer.lua
+    lua/oil/corba/idl/ir.lua
+    lua/oil/corba/idl/Registry.lua
+    lua/oil/corba/idl/sysex.lua
+    lua/oil/corba/idl.lua
+    lua/oil/corba/iiop/Profiler.lua
+    lua/oil/corba/intercepted/Listener.lua
+    lua/oil/corba/intercepted/Requester.lua
+    lua/oil/corba/intercepted/servicecontext.lua
+    lua/oil/corba/services/event/ConsumerAdmin.lua
+    lua/oil/corba/services/event/EventFactory.lua
+    lua/oil/corba/services/event/EventQueue.lua
+    lua/oil/corba/services/event/ProxyPushConsumer.lua
+    lua/oil/corba/services/event/ProxyPushSupplier.lua
+    lua/oil/corba/services/event/SingleDeferredDispatcher.lua
+    lua/oil/corba/services/event/SingleSynchronousDispatcher.lua
+    lua/oil/corba/services/event/SupplierAdmin.lua
+    lua/oil/corba/services/event.lua
+    lua/oil/corba/services/naming.lua
+    lua/oil/Exception.lua
+    lua/oil/kernel/base/Acceptor.lua
+    lua/oil/kernel/base/Channels.lua
+    lua/oil/kernel/base/Connector.lua
+    lua/oil/kernel/base/Dispatcher.lua
+    lua/oil/kernel/base/DNS.lua
+    lua/oil/kernel/base/Proxies/asynchronous.lua
+    lua/oil/kernel/base/Proxies/protected.lua
+    lua/oil/kernel/base/Proxies/synchronous.lua
+    lua/oil/kernel/base/Proxies/utils.lua
+    lua/oil/kernel/base/Proxies.lua
+    lua/oil/kernel/base/Receiver.lua
+    lua/oil/kernel/base/Servants.lua
+    lua/oil/kernel/base/Sockets.lua
+    lua/oil/kernel/cooperative/Connector.lua
+    lua/oil/kernel/cooperative/Receiver.lua
+    lua/oil/kernel/cooperative/Sockets.lua
+    lua/oil/kernel/cooperative/Tasks.lua
+    lua/oil/kernel/intercepted/Listener.lua
+    lua/oil/kernel/intercepted/Requester.lua
+    lua/oil/kernel/lua/Dispatcher.lua
+    lua/oil/kernel/lua/Proxies.lua
+    lua/oil/kernel/typed/Dispatcher.lua
+    lua/oil/kernel/typed/Proxies.lua
+    lua/oil/kernel/typed/Servants.lua
+    lua/oil/ludo/Channel.lua
+    lua/oil/ludo/Codec.lua
+    lua/oil/ludo/CodecByRef.lua
+    lua/oil/ludo/Listener.lua
+    lua/oil/ludo/Referrer.lua
+    lua/oil/ludo/Requester.lua
+    lua/oil/oo.lua
+    lua/oil/port.lua
+    lua/oil/properties.lua
+    lua/oil/protocol/Channel.lua
+    lua/oil/protocol/Listener.lua
+    lua/oil/protocol/Request.lua
+    lua/oil/protocol/Requester.lua
+    lua/oil/verbose.lua
+    lua/oil.lua
+  : preloader.pre-compile
+  : <search>$(here)
+  ;
+
+make luaidl.c
+  :	lua/luaidl/lex.lua
+    lua/luaidl/pre.lua
+    lua/luaidl/sin.lua
+    lua/luaidl.lua
+  : preloader.pre-compile
+  : <search>$(here)
+  ;
+
+lib oil
+  : oil.c
+    /lua//lua
+  : <target-os>windows,<link>shared:<linkflags>"/def:$(here)/oil.def"
+    <include>src
+  ;
+explicit oil ;
+
+lib luaidl
+  : luaidl.c
+    oil
+    /lua//lua
+  : <target-os>windows,<link>shared:<linkflags>"/def:$(here)/luaidl.def"
+  :
+  : <include>.
+  ;
+explicit luaidl ;
+
+install stage
+  : oil
+    luaidl
+  : <location>install
+  ;
+  
