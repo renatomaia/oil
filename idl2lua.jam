@@ -28,7 +28,15 @@ rule init ( )
 
 rule compile ( target : sources * : property-set * )
 {
-  local includes = [ MATCH "<include>/(.+)" : $(property-set) ] ;
+  local includes = "" ;
+  if [ os.on-windows ]
+  {
+    includes = [ MATCH "<include>/(.+)" : $(property-set) ] ;
+  }
+  else
+  {
+    includes = [ MATCH "<include>(.+)" : $(property-set) ] ;
+  }
   local .includes = "" ;
   for local inc in $(includes)
   {
@@ -39,5 +47,5 @@ rule compile ( target : sources * : property-set * )
 
 actions compile
 {
-  $(.lua-install-path)/bin/lua52 -e "package.path=package.path..';$(.loop-root-path:T)/lua/?.lua;$(.oil-root-path:T)/lua/?.lua'" $(.oil-root-path)/lua/idl2lua.lua $(includes) -o $(<) $(>)
+  $(.lua-install-path)/bin/lua -e "package.path=package.path..';$(.loop-root-path:T)/lua/?.lua;$(.oil-root-path:T)/lua/?.lua'" $(.oil-root-path)/lua/idl2lua.lua $(includes) -o $(<) $(>)
 }
