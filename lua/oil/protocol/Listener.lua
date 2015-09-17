@@ -37,32 +37,28 @@ function Listener:__init()
 	end)
 end
 
-function Listener:setup(configs)
-	if self.configs == nil then                                                   --[[VERBOSE]] verbose:listen("setting server up with configs ",configs)
-		self.configs = configs -- delay actual initialization (see 'getaccess')
-		return true
+function Listener:setup(configs)                                                --[[VERBOSE]] verbose:listen("setting server up with configs ",configs)
+	if self.access == nil then                                                    --[[VERBOSE]] verbose:listen("creating new access point")
+		local result, except = self.channels:newaccess(configs)
+		if result ~= nil then
+			self.access = result
+			--local address = result:address()
+			--if address then
+			--	self.configs.address = address
+			--end
+			return true
+		end
+		return nil, except
 	end
 	return nil, Exception{ "already started", error = "badsetup" }
 end
 
-function Listener:getaccess(probe)
-	local result, except = self.access
-	if result == nil and not probe then
-		result = self.configs
-		if result == nil then
-			except = Exception{ "setup missing", error = "badsetup" }
-		else                                                                        --[[VERBOSE]] verbose:listen("creating new access point")
-			result, except = self.channels:newaccess(result)
-			if result ~= nil then
-				self.access = result
-				--local address = result:address()
-				--if address then
-				--	self.configs.address = address
-				--end
-			end
-		end
+function Listener:getaccess()
+	local access = self.access
+	if access ~= nil then
+		return access
 	end
-	return result, except
+	return nil, Exception{ "setup missing", error = "badsetup" }
 end
 
 function Listener:getaddress(probe)
