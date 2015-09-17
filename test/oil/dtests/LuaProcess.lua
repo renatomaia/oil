@@ -1,7 +1,8 @@
-local socket = require "socket"
+local socket = require "socket.core"
 local Runner = require "loop.test.Results"
 local Message = "%s\n%d\n%s\n"
-local conn = assert(socket.connect(HOST, PORT))
+local conn = assert(socket.tcp())
+assert(conn:connect(HOST, PORT))
 local runner = Runner()
 local result, errmsg = conn:receive() -- get chunk name
 if result then
