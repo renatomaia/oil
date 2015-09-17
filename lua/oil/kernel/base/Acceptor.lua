@@ -49,7 +49,7 @@ function AccessPoint:accept(timeout)
 						socket = self.sockets:setoptions(self.options, socket)
 						poll:add(socket)
 					else                                                                  --[[VERBOSE]] verbose:channels("error when securing connection (",except,")")
-						basesocket:close()
+						baresock:close()
 						except = Exception{
 							"unable to establish secure connection ($errmsg)",
 							error = "badsecurity",
