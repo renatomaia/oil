@@ -101,7 +101,7 @@ for _, profile in ipairs(ref.profiles) do
 		io.write("    Object Key:")
 		hexastream(io.stdout, profile.object_key, "      ")
 		print()
-		if #profile.components > 0 then
+		if profile.components ~= nil and #profile.components > 0 then
 			print("    Components:")
 			for _, component in ipairs(profile.components) do
 				if component.tag == orb.SSLIOPComponentCodec.tag then
