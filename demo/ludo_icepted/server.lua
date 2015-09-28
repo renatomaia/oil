@@ -1,7 +1,5 @@
-package.loaded["oil.component"] = require "loop.component.wrapped"
-package.loaded["oil.port"]      = require "loop.component.intercepted"
-local Viewer                    = require "loop.debug.Viewer"
-local oil                       = require "oil"
+local Viewer = require "loop.debug.Viewer"
+local oil = require "oil"
 
 oil.main(function()
 	local orb = oil.init{ flavor = "cooperative;ludo" }

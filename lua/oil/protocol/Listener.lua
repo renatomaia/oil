@@ -20,22 +20,9 @@ local class = oo.class
 
 local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
-local Request = require "oil.protocol.Request"
 
 
-
-local Listener = class{ Request = Request }
-
-function Listener:__init()
-	self.sock2channel = memoize(function(socket)
-		return self.Channel{
-			socket = socket,
-			context = self,
-			access = self.access,
-			listener = self,
-		}
-	end)
-end
+local Listener = class()
 
 function Listener:setup(configs)                                                --[[VERBOSE]] verbose:listen("setting server up with configs ",configs)
 	if self.access == nil then                                                    --[[VERBOSE]] verbose:listen("creating new access point")
@@ -76,13 +63,11 @@ function Listener:getaddress(probe)
 	return result, except
 end
 
-function Listener:getchannel(timeout)                                           --[[VERBOSE]] verbose:listen(true, "get channel with new request")
+function Listener:getchannel(acquire, timeout)                                  --[[VERBOSE]] verbose:listen(true, "get channel with new request")
 	local result, except = self:getaccess()
 	if result ~= nil then
-		result, except = result:accept(timeout)
-		if result ~= nil then
-			result, except = self.sock2channel[result], nil
-		end
+		local port = result
+		result, except = port:accept(acquire, timeout)
 	end                                                                           --[[VERBOSE]] verbose:listen(false, "channel retrieval ",result and "succeeded" or "failed")
 	return result, except
 end
@@ -91,19 +76,18 @@ function Listener:shutdown()
 	local access, except = self:getaccess()
 	if not access then
 		return nil, except
-	end                                                                           --[[VERBOSE]] verbose:listen(true, "shutting down server")
-	access:close()
+	end                                                                           --[[VERBOSE]] verbose:listen(true, "shutting down listener")
+	local channels = access:close()
 	local excepts = {}
-	local sock2channel = self.sock2channel
-	for socket, channel in pairs(sock2channel) do                                 --[[VERBOSE]] verbose:listen("closing channel")
-		local closed, except = channel:close()
+	for channel in pairs(channels) do                                             --[[VERBOSE]] verbose:listen("closing channel")
+		local closed, except = channel:close("incoming")
 		if not closed then                                                          --[[VERBOSE]] verbose:listen("shutdown failed while closing channel: ",except)
 			excepts[#excepts+1] = except
 		end
 	end
 	self.access = nil
 	self.address = nil
-	self.configs = nil                                                            --[[VERBOSE]] verbose:listen(false, "shutdown initialized")
+	self.configs = nil                                                            --[[VERBOSE]] verbose:listen(false, "listener shutdown concluded")
 	if #excepts > 0 then
 		return nil, Exception{
 			"unable to close all incoming connections",

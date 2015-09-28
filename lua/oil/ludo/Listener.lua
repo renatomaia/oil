@@ -20,19 +20,20 @@ local class = oo.class
 
 local Exception = require "oil.Exception"                                       --[[VERBOSE]] local verbose = require "oil.verbose"
 
+local Request = require "oil.protocol.Request"
 local Listener = require "oil.protocol.Listener"
 local LuDOChannel = require "oil.ludo.Channel"
 
 
 
-local ServerRequest = class({}, Listener.Request)
+local ServerRequest = class({}, Request)
 
 function ServerRequest:setreply(...)                                            --[[VERBOSE]] verbose:listen("set reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
 	local channel = self.channel
 	channel:trylock("write")
 	local success, except = channel:sendvalues(self.request_id, ...)
 	channel:freelock("write")
-	if not success and except.error ~= "terminated" then
+	if not success and except.error ~= "closed" then
 		return false, except
 	end
 	channel.pending = channel.pending-1
@@ -49,7 +50,7 @@ local ServerChannel = class({ pending = 0 }, LuDOChannel)
 local function makerequest(channel, success, requestid, objkey, operation, ...)
 	if not success then return nil, requestid end
 	channel.pending = channel.pending+1
-	return channel.context.Request{
+	return ServerRequest{
 		channel = channel,
 		request_id = requestid,
 		objectkey = objkey,
@@ -64,9 +65,13 @@ function ServerChannel:getrequest(timeout)
 		result, except = makerequest(self, self:receivevalues(timeout))
 		self:freelock("read")
 	else
-		result, except = nil, Exception{ "terminated", error = "terminated" }
+		result, except = nil, Exception{ "timeout", error = "timeout" }
 	end
 	return result, except
+end
+
+function ServerChannel:idle()
+	return self.pending == 0
 end
 
 function ServerChannel:close()
@@ -80,7 +85,13 @@ end
 
 
 
-return class({
-	Channel = ServerChannel,
-	Request = ServerRequest,
-}, Listener)
+local ChannelFactory = class()
+
+function ChannelFactory:create(socket)
+	return ServerChannel{
+		socket = socket,
+		context = self,
+	}
+end
+
+return ChannelFactory

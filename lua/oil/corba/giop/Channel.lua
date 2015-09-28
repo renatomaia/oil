@@ -46,7 +46,9 @@ local CloseConnectionID = giop.CloseConnectionID
 local MessageErrorID = giop.MessageErrorID
 local FragmentID = giop.FragmentID
 local SystemExceptionIDL = giop.SystemExceptionIDL
+local SystemExceptionIDs = giop.SystemExceptionIDs
 
+local Request = require "oil.protocol.Request"
 local Channel = require "oil.protocol.Channel"
 local Exception = require "oil.corba.giop.Exception"
 
@@ -380,11 +382,129 @@ local function failedGIOP(self, errmsg)
 	}
 end
 
+local function unknownex(self, error)
+	self.unotifiederror = error
+	return Exception{ SystemExceptionIDs.UNKNOWN,
+		minor = 0,
+		completed = "COMPLETED_MAYBE",
+		error = error,
+	}
+end
+
+
+
+local GIOPServerRequest = class({}, Request)
+
+local function noresponse() return true end
+function GIOPServerRequest:__init()
+	if self.sync_scope == "channel" then
+		self.sendreply = noresponse
+	end
+	self.objectkey = self.object_key
+end
+
+function GIOPServerRequest:preinvoke(entry, member)
+	if member ~= nil then
+		local inputs = member.inputs
+		local count = #inputs
+		self.n = count
+		self.outputs = member.outputs
+		self.exceptions = member.exceptions
+		local decoder = self.decoder
+		for i = 1, count do
+			local ok, result = pcall(decoder.get, decoder, inputs[i])
+			if not ok then
+				assert(type(result) == "table", result)
+				self:setreply(false, result)
+				return -- request cancelled
+			end
+			self[i] = result
+		end
+		local object = entry.__servant
+		local method = object[member.name]
+		if method == nil then
+			return entry, member.implementation, "internal"
+		end
+		return object, method
+	end
+end
+
+local UserExTypes = { idl.string, --[[defined later, see below]] }
+local SysExTypes = { idl.string, giop.SystemExceptionIDL }
+local ExMsgBody = {}
+local SystemExceptions = {}
+for _, repID in pairs(SystemExceptionIDs) do
+	SystemExceptions[repID] = true
+end
+local OiLEx2SysEx = {
+	badobjkey = {
+		_repid = SystemExceptionIDs.OBJECT_NOT_EXIST,
+		minor = 1,
+		completed = "COMPLETED_NO",
+	},
+	badobjimpl = {
+		_repid = SystemExceptionIDs.NO_IMPLEMENT,
+		minor = 1,
+		completed = "COMPLETED_NO",
+	},
+	badobjop = {
+		_repid = SystemExceptionIDs.BAD_OPERATION,
+		minor = 1,
+		completed = "COMPLETED_NO",
+	},
+	badsecurity = {
+		_repid = SystemExceptionIDs.NO_PERMISSION,
+		minor = 1,
+		completed = "COMPLETED_NO",
+	},
+}
+function GIOPServerRequest:getreplybody()
+	self.service_context = nil
+	if self.success then                                                        --[[VERBOSE]] verbose:listen("got successful results")
+		self.reply_status = "NO_EXCEPTION"
+		return self.outputs, self
+	end
+	local except = self[1]
+	if type(except) == "table" then
+		local repid = except._repid
+		local excepttype = self.exceptions
+		excepttype = excepttype and excepttype[repid]
+		if excepttype then                                                        --[[VERBOSE]] verbose:listen("got exception ",except)
+			self.reply_status = "USER_EXCEPTION"
+			UserExTypes[2] = excepttype
+			ExMsgBody[1] = repid
+			ExMsgBody[2] = except
+			return UserExTypes, ExMsgBody
+		elseif not SystemExceptions[repid] then                                   --[[VERBOSE]] verbose:listen("got unexpected exception: ",except)
+			except = OiLEx2SysEx[except.error] or unknownex(self, except)           --[[VERBOSE]] else verbose:listen("got system exception: ",except)
+		end
+	else
+		except = unknownex(self, except)
+	end
+	self.reply_status = "SYSTEM_EXCEPTION"
+	ExMsgBody[1] = except._repid
+	ExMsgBody[2] = except
+	return SysExTypes, ExMsgBody
+end
+
+function GIOPServerRequest:setreply(success, ...)
+	local channel = self.channel
+	if channel ~= nil then                                                      --[[VERBOSE]] verbose:listen("set reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
+		Request.setreply(self, success, ...)
+		local success, except = channel:sendreply(self)
+		if not success and except.error ~= "closed" then                          --[[VERBOSE]] verbose:listen("error sending reply for request ",self.request_id," to ",self.objectkey,":",self.operation)
+			return false, except
+		end                                                                       --[[VERBOSE]] else verbose:listen("ignoring reply for cancelled request ",self.request_id," to ",self.objectkey,":",self.operation)
+	end
+	return true
+end
+
 
 local GIOPChannel = class({
 	magictag = MagicTag,
 	headersize = HeaderSize,
 	version = -1,
+	ServerRequest = GIOPServerRequest,
 }, Channel)
 
 function GIOPChannel:__init()
@@ -430,7 +550,7 @@ function GIOPChannel:unregister(requestid, direction)
 			request.request_id = nil
 		end
 		if self.closing then
-			self:close()
+			self:close(self.closing)
 		end
 		return request
 	end
@@ -450,7 +570,7 @@ local AddressingType = {giop.AddressingDisposition}
 local KeyAddrValue = {giop.KeyAddr}
 local MessageHandlers = {
 	[RequestID] = function(channel, header, decoder)
-		if channel.closing then return true end
+		if channel.closing == "incoming" or channel.closing == true then return true end
 		local requestid = header.request_id
 		if channel.incoming[requestid] ~= nil then                                --[[VERBOSE]] verbose:listen("got replicated request id ",requestid)
 			return failedGIOP(channel, "remote ORB issued a request with duplicated ID")
@@ -509,20 +629,22 @@ local MessageHandlers = {
 		return sendmsg(channel, LocateReplyID, reply, types, values)
 	end,
 	[CloseConnectionID] = function(channel)
+		local result, except = channel:close("outgoing")
 		-- notify threads waiting for replies to reissue them in a new connection
 		for requestid in pairs(channel.outgoing) do
 			channel:signal("read", channel:unregister(requestid, "outgoing"))
 		end
-		return channel:close("outgoing")
+		return result, except
 	end,
 	[MessageErrorID] = function(channel, minor)
 		if next(channel.incoming) == nil and minor < channel.version then         --[[VERBOSE]] verbose:invoke("got remote request to use GIOP 1.",minor," instead of GIOP 1.",channel.version)
+			local result, except = channel:close()
 			-- notify threads waiting for replies to reissue them in a new connection
 			for requestid, request in pairs(channel.outgoing) do
-				request.reference.ior_profile_decoded.giop_minor = minor
+				request.reference.ior_profile.decoded.giop_minor = minor
 				channel:signal("read", channel:unregister(requestid, "outgoing"))
 			end
-			return channel:close()
+			return result, except
 		end                                                                       --[[VERBOSE]] verbose:invoke("got remote indication of error in protocol messages")
 		return failedGIOP(channel, "remote ORB reported error in GIOP messages")
 	end,
@@ -558,9 +680,10 @@ function GIOPChannel:sendrequest(request)
 	-- add Bi-Directional GIOP service context
 	local listener
 	if bidir == nil then
-		listener = self.context.listener
+		local context = self.context
+		listener = context.listener
 		if listener ~= nil then
-			local encoder = listener.serviceencoder
+			local encoder = context.bidircodec
 			if encoder ~= nil then
 				local address = listener:getaddress("probe")
 				if address ~= nil then
@@ -582,7 +705,6 @@ function GIOPChannel:sendrequest(request)
 		self:unregister(request.id, "outgoing")
 	elseif bidir ~= nil and listener ~= nil then
 		self.bidir_role = bidir
-		self.listener = listener
 		listener:addbidirchannel(self)
 	end
 	return success, except
@@ -612,10 +734,12 @@ function GIOPChannel:getrequest(timeout)
 			local ok, except
 			repeat
 				ok, except = self:processmessage(timeout)
-			until not ok or not unprocessed:empty()
+			until not ok or not unprocessed:empty() or self.acceptor == nil
 			self:freelock("read")
 			if not ok then                                                          --[[VERBOSE]] verbose:listen(false, "failed to get request")
 				return nil, except
+			elseif self.acceptor == nil then                                        --[[VERBOSE]] verbose:listen(false, "channel closed for incoming request")
+				return nil, Exception{ "closed for incoming request", error = "closed" }
 			end
 		end                                                                       --[[VERBOSE]] verbose:listen(false, "request was successfully read from channel")
 	end
@@ -626,22 +750,19 @@ function GIOPChannel:getrequest(timeout)
 		local context = self.context
 		local requester = context.requester
 		if requester ~= nil then
-			local decoder = context.servicedecoder
+			local decoder = context.bidircodec
 			if decoder ~= nil then
 				local addresses = decoder:decodebidir(request.service_context)
 				if addresses ~= nil then
 					self.bidir_role = "acceptor"
-					self.requester = requester
 					requester:addbidirchannel(self, addresses)                          --[[VERBOSE]] else verbose:listen("no bi-directional GIOP indication found in request received")
 				end
 			end
 		end
 	end
-	return self.context.Request(request)
+	return self.ServerRequest(request)
 end
 
-local SysExTypes = { idl.string, giop.SystemExceptionIDL }
-local SysExBody = { n=2, --[[defined later, see below]] }
 function GIOPChannel:sendreply(request)
 	local success, except = true
 	local requestid = request.request_id                                        --[[VERBOSE]] verbose:listen(true, "replying for request ",request.request_id," for ",request.objectkey,":",request.operation)
@@ -656,7 +777,7 @@ function GIOPChannel:sendreply(request)
 			--	except = {}
 			--end
 			--TODO END
-			if except.error == "terminated" then                                    --[[VERBOSE]] verbose:listen("connection terminated")
+			if except.error == "closed" then                                        --[[VERBOSE]] verbose:listen("connection terminated")
 				success, except = true
 			else
 				if request.reply_status == "SYSTEM_EXCEPTION" then
@@ -665,10 +786,10 @@ function GIOPChannel:sendreply(request)
 					request.reply_status = "SYSTEM_EXCEPTION"
 					except.completed = "COMPLETED_YES"
 				end
-				SysExBody[1], SysExBody[2] = except._repid, except
-				success, except = sendmsg(self, ReplyID, request, SysExTypes, SysExBody)
+				ExMsgBody[1], ExMsgBody[2] = except._repid, except
+				success, except = sendmsg(self, ReplyID, request, SysExTypes, ExMsgBody)
 				if not success then                                                   --[[VERBOSE]] verbose:listen("unable to send exception on reply: ",except)
-					if except.error == "terminated" then                                --[[VERBOSE]] verbose:listen("connection terminated")
+					if except.error == "closed" then                                    --[[VERBOSE]] verbose:listen("connection terminated")
 						success, except = true                                            --[[VERBOSE]] else verbose:listen(false, "unable to send the error on reply as well")
 					end                                                                 --[[VERBOSE]] else verbose:listen(false, "error on reply was sent instead of the original result")
 				end
@@ -680,32 +801,48 @@ function GIOPChannel:sendreply(request)
 	return success, except
 end
 
-function GIOPChannel:close()
+function GIOPChannel:close(direction)
 	local result, except = true
-	local requester = self.requester
-	if requester ~= nil then
-		requester:removechannel(self)
-	end
-	local listener = self.listener
-	if listener ~= nil then
-		listener:removechannel(self)
-	end
-	if next(self.incoming) == nil then
-		if not self.closenotified and (listener ~= nil or self.version >= 2) then   --[[VERBOSE]] verbose:listen("sending channel closing notification")
-			result, except = sendmsg(self, CloseConnectionID)
-			self.closenotified = result
+	if direction ~= "outgoing" then
+		local acceptor = self.acceptor
+		if acceptor then -- might be 'false' or 'nil'
+			acceptor:unregister(self)
+			self.requestclose = true
 		end
-		if result or except.error == "terminated" then
-			if next(self.outgoing) == nil then
-				result, except = Channel.close(self)                                    --[[VERBOSE]] verbose:invoke("channel closed")
-			else
-				self.closing = true                                                     --[[VERBOSE]] verbose:invoke("channel marked for closing after pending outgoing requests are replied")
+		if next(self.incoming) == nil then
+			if self.requestclose then                                                 --[[VERBOSE]] verbose:listen("sending channel closing notification"); local _ =
+				sendmsg(self, CloseConnectionID)                                        --[[VERBOSE]] and verbose:listen("closing notification successfully sent")
+				self.requestclose = nil
+			end
+		elseif self.closing == nil then                                             --[[VERBOSE]] verbose:listen("channel marked for closing (incoming only)")
+			self.closing = "incoming"
+		elseif self.closing ~= "incoming" then                                      --[[VERBOSE]] if self.closing ~= true then verbose:listen("channel marked for closing") end
+			self.closing = true
+		end
+	end
+	if direction ~= "incoming" then
+		local connector = self.connector
+		if connector ~= nil then
+			connector:unregister(self)
+		end
+		if next(self.outgoing) ~= nil then
+			if self.closing == nil then                                               --[[VERBOSE]] verbose:listen("channel marked for closing (outgoing only)")
+				self.closing = "outgoing"
+			elseif self.closing ~= "outgoing" then                                    --[[VERBOSE]] if self.closing ~= true then verbose:listen("channel marked for closing") end
+				self.closing = true
 			end
 		end
-	else
-		self.closing = true                                                         --[[VERBOSE]] verbose:listen("channel marked for closing after pending incoming requests are replied")
+	end
+	if self.acceptor == nil and next(self.incoming) == nil
+	and self.connector == nil and next(self.outgoing) == nil
+	then
+		result, except = Channel.close(self)                                        --[[VERBOSE]] verbose:invoke("channel closed")
 	end
 	return result, except
+end
+
+function GIOPChannel:idle()
+	return next(self.incoming) == nil and next(self.outgoing) == nil
 end
 
 return GIOPChannel

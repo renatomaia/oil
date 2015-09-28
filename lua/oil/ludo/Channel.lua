@@ -92,4 +92,8 @@ function LuDOChannel:processmessage(timeout)
 	return doreply(self, self:receivevalues(timeout))
 end
 
+function LuDOChannel:idle()
+	return #self == 0
+end
+
 return LuDOChannel

@@ -44,13 +44,13 @@ function Receiver:probe(timeout)                                                
 	if result == nil then                                                         --[[VERBOSE]] verbose:acceptor("waiting requests for ",timeout and tostring(timeout).." seconds" or "ever")
 		local listener = self.listener
 		repeat
-			result, except = listener:getchannel(timeout)
+			result, except = listener:getchannel(false, timeout)
 			if result then
 				result, except = result:getrequest(0)
 				if result then                                                          --[[VERBOSE]] verbose:acceptor("new request received")
 					self.pending = result
 				else
-					if except.error ~= "timeout" and except.error ~= "terminated" then
+					if except.error ~= "timeout" and except.error ~= "closed" then
 						self:notifyerror(except, "request")
 					end
 					except = nil

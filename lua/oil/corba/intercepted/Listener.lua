@@ -17,15 +17,17 @@ local servicecontext = require "oil.corba.intercepted.servicecontext"
 local srvctxttab2seq = servicecontext.table2sequence
 local srvctxtseq2tab = servicecontext.sequence2table
 
+local Channel = require "oil.corba.giop.Channel"
+local BaseRequest = Channel.ServerRequest
+
 local Listener = require "oil.corba.giop.Listener"
-local ListenerRequest = Listener.Request
 
 
-local ServerRequest = class({}, ListenerRequest)
+local ServerRequest = class({}, BaseRequest)
 
 local function donothing() end
 function ServerRequest:preinvoke(entry, member)
-	local object, method, internal = ListenerRequest.preinvoke(self, entry, member)
+	local object, method, internal = BaseRequest.preinvoke(self, entry, member)
 	local interceptor = self.interceptor
 	if interceptor ~= nil then
 		local internal = (object==entry)
@@ -103,7 +105,7 @@ local function buildreply(self)
 		self.reply_status = "LOCATION_FORWARD"
 		return LocationForwardTypes, { reference }
 	end
-	return ListenerRequest.getreplybody(self)
+	return BaseRequest.getreplybody(self)
 end
 function ServerRequest:getreplybody()
 	local types, body = buildreply(self)
@@ -158,10 +160,18 @@ end
 local IceptedListener = class({}, Listener)
 
 function IceptedListener:__init()
-	self.Request = function(request)
+	self.makeserverrequest = function(request)
 		request.interceptor = self.interceptor
 		return ServerRequest(request)
 	end
+end
+
+function IceptedListener:getchannel(...)
+	local result, except = Listener.getchannel(self, ...)
+	if result ~= nil then
+		result.ServerRequest = self.makeserverrequest
+	end
+	return result, except
 end
 
 return IceptedListener

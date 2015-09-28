@@ -3,14 +3,14 @@
 LUA=lua
 
 echo "Starting server"
-$LUA server.lua &
+$LUA server.lua ref.ior &
 pid=$!
 trap "kill $pid > /dev/null 2> /dev/null" 0
 
 for((i=0;i<10;++i));do if test -r ref.ior;then break;else sleep 1;fi;done
 
 echo "Starting client"
-$LUA client.lua
+$LUA client.lua ref.ior
 
 echo "Demo finished."
 rm -f ref.ior

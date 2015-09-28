@@ -30,31 +30,44 @@ end
 
 local AccessPoint = class{ addropts = {} }
 
-function AccessPoint:accept(timeout)
+function AccessPoint:__init()
+	self.sock2channel = {}
+end
+
+function AccessPoint:accept(acquire, timeout)
 	local poll = self.poll
-	local socket, except
+	local channel, except
 	repeat
-		socket, except = poll:getready(timeout)
-		if socket ~= nil then
-			local kind = self.ports[socket]
+		channel, except = poll:getready(timeout)
+		if channel ~= nil then
+			local kind = self.ports[channel]
 			if kind ~= nil then
-				local port = socket
-				socket, except = port:accept()
-				if socket ~= nil then
-					local baresock = socket
-					if kind == "ssl" then
-						socket, except = self.sockets:ssl(socket, self.sslctx)
-					end
-					if socket then                                                        --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("new ",kind," connection accepted from ",host,":",port)
-						socket = self.sockets:setoptions(self.options, socket)
-						poll:add(socket)
-					else                                                                  --[[VERBOSE]] verbose:channels("error when securing connection (",except,")")
-						baresock:close()
-						except = Exception{
-							"unable to establish secure connection ($errmsg)",
-							error = "badsecurity",
-							errmsg = except,
-						}
+				local port = channel
+				channel, except = self.context.limiter:reserve() -- implicit yield!
+				if channel ~= nil then
+					local reserved = channel
+					channel, except = port:accept()
+					if channel ~= nil then
+						local socket = channel
+						if kind == "ssl" then
+							channel, except = self.context.sockets:ssl(socket, self.sslctx)
+						end
+						if channel ~= nil then                                               --[[VERBOSE]] local host,port = channel:getpeername(); verbose:channels("new ",kind," connection accepted from ",host,":",port)
+							socket = channel
+							channel = self.context.sockets:setoptions(self.options, socket)
+							channel = self.context.channels:create(channel)
+							reserved:set(channel)
+							channel.acceptor = self
+							self.sock2channel[socket] = channel
+							if not acquire then poll:add(socket) end
+						else                                                                --[[VERBOSE]] verbose:channels("error when securing connection (",except,")")
+							socket:close()
+							except = Exception{
+								"unable to create secure connection ($errmsg)",
+								error = "badsecurity",
+								errmsg = except,
+							}
+						end
 					end
 				else                                                                    --[[VERBOSE]] verbose:channels("error when accepting connection (",except,")")
 					if except == "closed" then poll:remove(port) end
@@ -65,29 +78,34 @@ function AccessPoint:accept(timeout)
 					}
 				end
 			else
-				local _, timeout, tmkind = socket:settimeout(0)
-				local success, errmsg = socket:receive(0)
-				socket:settimeout(timeout, tmkind)
-				if not success and errmsg == "closed" then                              --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("connection from ",host,":",port," was closed")
+				local socket = channel
+				channel = self.sock2channel[socket]
+				if channel:broken() then                                                --[[VERBOSE]] local host,port = socket:getpeername(); verbose:channels("connection from ",host,":",port," was closed")
+					self:unregister(channel)
+					channel = nil
+				elseif acquire then
 					poll:remove(socket)
-					socket = nil                                                          --[[VERBOSE]] else local host,port = socket:getpeername(); verbose:channels("connection from ",host,":",port," is ready to be read",success and "" or " (got error '"..tostring(errmsg).."')")
-				end
+				end                                                                     --[[VERBOSE]] if channel ~= nil then local host,port = socket:getpeername(); verbose:channels("connection from ",host,":",port," is ready to be read") end
 			end
 		elseif except == "timeout" then                                             --[[VERBOSE]] verbose:channels("timeout when accepting connection")
 			except = Exception{ "timeout", error = "timeout" }
 		elseif except == "empty" then                                               --[[VERBOSE]] verbose:channels("accepting connection terminated")
-			except = Exception{ "terminated", error = "terminated" }
+			except = Exception{ "communication failure", error = "closed" }
 		end
-	until socket or except
-	return socket, except
+	until channel ~= nil or except ~= nil
+	return channel, except
 end
 
-function AccessPoint:remove(socket)
-	self.poll:remove(socket)
+function AccessPoint:register(channel, ready)
+	channel.acceptor = self
+	self.sock2channel[channel.socket] = channel
+	self.poll:add(channel.socket)
 end
 
-function AccessPoint:add(socket, ready)
-	self.poll:add(socket, ready)
+function AccessPoint:unregister(channel)
+	channel.acceptor = nil
+	self.sock2channel[channel.socket] = nil
+	self.poll:remove(channel.socket)
 end
 
 function AccessPoint:close()
@@ -97,7 +115,11 @@ function AccessPoint:close()
 		socket:close()
 		self.ports[socket] = nil
 	end
-	return poll:clear()
+	local channels = {}
+	for socket, channel in pairs(self.sock2channel) do
+		channels[channel] = socket
+	end
+	return channels
 end
 
 function AccessPoint:address()
@@ -106,7 +128,7 @@ function AccessPoint:address()
 	local port = self.portno
 	local sslport = self.sslportno
 
-	local dns = self.dns
+	local dns = self.context.dns
 	-- find out local host name
 	local hostname, dnsinfo
 	if ip == "0.0.0.0" then
@@ -114,6 +136,7 @@ function AccessPoint:address()
 		hostname, errmsg = dns:gethostname()
 		if not hostname then return nil, errmsg end
 		ip, dnsinfo = dns:toip(hostname)
+		if not ip then return nil, dnsinfo end
 	end
 
 	-- collect addresses
@@ -239,7 +262,10 @@ function Acceptor:newaccess(configs)
 		}
 		sslport = configs.sslport or 0
 		local sslsck, errmsg = newport(sockets, options, host, sslport)
-		if sslsck == nil then return nil, errmsg end
+		if sslsck == nil then
+			socket:close()
+			return nil, errmsg
+		end
 		if sslport == 0 then
 			local sckhost, sckport = sslsck:getsockname()
 			if sckhost == nil then                                                    --[[VERBOSE]] verbose:channels("unable to obtain the actual secure port orb was binded to: ",sckport)
@@ -256,13 +282,12 @@ function Acceptor:newaccess(configs)
 	end
 	poll:add(socket)
 	return AccessPoint{
+		context = self,
 		options = options,
 		addropts = configs.objrefaddr,
 		sslcfg = sslcfg,
 		sslctx = sslctx,
 		ports = ports,
-		sockets = sockets,
-		dns = self.dns,
 		poll = poll,
 		hostname = host,
 		portno = port,

@@ -32,7 +32,6 @@ Caller:call({ ack = function() called = true end })
 oil.sleep(.1)
 assert(called)
 orb:shutdown()
-Caller:idle()
 --[Client]=====================================================================]
 
 return template:newsuite{ cooperative = true, corba = true }

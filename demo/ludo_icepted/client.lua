@@ -1,7 +1,6 @@
-package.loaded["oil.component"] = require "loop.component.wrapped"
-package.loaded["oil.port"]      = require "loop.component.intercepted"
-local Viewer                    = require "loop.debug.Viewer"
-local oil                       = require "oil"
+local Viewer = require "loop.debug.Viewer"
+local oil = require "oil"
+local cothread = require "cothread"
 
 if select("#", ...) == 0 then
 	io.stderr:write "usage: lua client.lua <time of client 1>, <time of client 2>, ..."
@@ -25,6 +24,8 @@ oil.main(function()
 	end
 	orb:setinterceptor(profiler, "client")
 	
+	local thread = cothread.running()
+	local count = 0
 	local server = orb:newproxy(assert(oil.readfrom("server.ref")))
 	local function showprogress(id, time)
 		print(id, "about to request work for "..time.." seconds")
@@ -32,10 +33,15 @@ oil.main(function()
 			then print(id, "result received successfully")
 			else print(id, "got an unexpected result")
 		end
+		count = count+1
+		if count == #arg then
+			cothread.schedule(thread)
+		end
 	end
 	for id, time in ipairs(arg) do
 		oil.newthread(showprogress, id, tonumber(time))
 	end
 	
+	cothread.suspend()
 	orb:shutdown()
 end)

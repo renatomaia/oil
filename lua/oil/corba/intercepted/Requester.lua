@@ -57,9 +57,12 @@ function IceptedRequester:dorequest(request)                                    
 		end
 		intercepted.request_id = request.request_id or 0
 		intercepted.reference = reference
-		intercepted.profile_tag = reference.ior_profile.tag
-		intercepted.profile_data = reference.ior_profile.profile_data
-		intercepted.profile = reference.ior_profile_decoded
+		local profile = reference.ior_profile
+		if profile ~= nil then
+			intercepted.profile_tag = profile.tag
+			intercepted.profile_data = profile.profile_data
+			intercepted.profile = profile.decoded
+		end
 		intercepted.object_key = reference.object_key
 		intercepted.interface = interface
 		intercepted.operation = operation

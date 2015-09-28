@@ -63,4 +63,4 @@ end
 assert(notified and completed)
 --[Client]=====================================================================]
 
-return template:newsuite{ cooperative = true }
+return template:newsuite{ cooperative = true, corba = true }

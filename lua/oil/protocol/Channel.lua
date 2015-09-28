@@ -57,7 +57,7 @@ function Channel:send(...)
 	local result, except = socket:send(...)
 	if result == nil then
 		if except == "closed" then
-			except = Exception{ "terminated", error = "terminated" }
+			except = Exception{ "communication failure", error = "closed" }
 		elseif except == "timeout" then
 			except = Exception{ "timeout", error = "timeout" }
 		else
@@ -103,7 +103,7 @@ function Channel:receive(count, timeout)
 	end
 	self.bytes = bytes..partial
 	if except == "closed" then
-		except = Exception{ "terminated", error = "terminated" }
+		except = Exception{ "communication failure", error = "closed" }
 	elseif except == "timeout" then
 		except = Exception{ "timeout", error = "timeout" }
 	else
@@ -117,21 +117,29 @@ function Channel:receive(count, timeout)
 	return nil, except
 end
 
-function Channel:close()
+function Channel:broken()
 	local socket = self.socket
-	if socket ~= nil then
-		self.context.sock2channel[socket] = nil
-		socket:close()
+	local _, timeout, tmkind = socket:settimeout(0)
+	local result, except = socket:receive(0)
+	socket:settimeout(timeout, tmkind)
+	return result == nil and except == "closed"
+end
+
+function Channel:close()
+	local acceptor = self.acceptor
+	if acceptor ~= nil then
+		acceptor:unregister(self)
 	end
+	local connector = self.connector
+	if connector ~= nil then
+		connector:unregister(self)
+	end
+	local limiter = self.limiter
+	if limiter ~= nil then
+		limiter:remove(self)
+	end
+	self.socket:close()
 	return true
-end
-
-function Channel:acquire()
-	self.access:remove(self.socket)
-end
-
-function Channel:release()
-	self.access:add(self.socket)
 end
 
 return Channel

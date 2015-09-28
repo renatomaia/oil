@@ -40,35 +40,49 @@ local WeakTable = class{ __mode = "kv" }
 
 local Requester = class{ Request = ClientRequest }
 
-function Requester:__init()
-	self.sock2channel = memoize(function(socket)
-		return self.Channel{
-			socket = socket,
-			context = self,
-			requester = self,
-		}
-	end)
+function Requester:setup()                                                      --[[VERBOSE]] verbose:invoke("set up requester")
+	self.enabled = true
+	return true
 end
 
 function Requester:getchannel(reference, configs)
-	local channels = self.channels
-	local result, except = channels:retrieve(reference, configs)
-	if result then
-		local sock2channel = self.sock2channel
-		result = sock2channel[result]
-		if result:unlocked("read") then --[[channel might be broken]]               --[[VERBOSE]] verbose:invoke(true, "check if channel is valid")
+	local result, except
+	if self.enabled then
+		local channels = self.channels
+		result, except = channels:retrieve(reference, configs)
+		if result and result:unlocked("read") then --[[channel might be broken]]      --[[VERBOSE]] verbose:invoke(true, "check if channel is valid")
 			local ok
 			repeat ok, except = result:processmessage(0) until not ok
-			if except.error == "timeout" then                                         --[[VERBOSE]] verbose:invoke(false, "channel seems OK")
+			if except.error == "timeout" then                                           --[[VERBOSE]] verbose:invoke(false, "channel seems OK")
 				except = nil
-			else                                                                      --[[VERBOSE]] verbose:invoke(false, "channel seems to be broken:", except)
-				result:close()                                                          --[[VERBOSE]] verbose:invoke("get a new channel")
-				result, except = channels:retrieve(reference, configs)
-				if result then result = sock2channel[result] end
+			elseif except.error == "closed" then                                        --[[VERBOSE]] verbose:invoke(false, "channel seems to be broken:", except)
+				channels:unregister(result)                                               --[[VERBOSE]] verbose:invoke(true, "get a new channel")
+				result, except = channels:retrieve(reference, configs)                    --[[VERBOSE]] verbose:invoke(false)
 			end
-		end
-	end                                                                           --[[VERBOSE]] if not result then verbose:invoke("unable to get channel") end
+		end                                                                           --[[VERBOSE]] if not result then verbose:invoke("unable to get channel") end
+	else
+		result, except = nil, Exception{ "setup missing", error = "badsetup" }
+	end
 	return result, except
+end
+
+function Requester:shutdown()                                                   --[[VERBOSE]] verbose:invoke(true, "shutting down requester")
+	local excepts = {}
+	for _, channel in self.channels:iterate() do                                  --[[VERBOSE]] verbose:invoke("closing channel")
+		local closed, except = channel:close("outgoing")
+		if not closed then                                                          --[[VERBOSE]] verbose:invoke("shutdown failed while closing channel: ",except)
+			excepts[#excepts+1] = except
+		end
+	end
+	self.enabled = nil                                                            --[[VERBOSE]] verbose:invoke(false, "requester shutdown concluded")
+	if #excepts > 0 then
+		return nil, Exception{
+			"unable to close all incoming connections",
+			error = "badshutdown",
+			excepts = excepts,
+		}
+	end
+	return true
 end
 
 return Requester

@@ -77,6 +77,16 @@ local Empty = {}
 function newtest(self, infos)
 	if not infos then infos = Empty end
 	return function(checks)
+		repeat
+			local sock = sockets:tcp()
+			local ok, errmsg = sock:bind("*", 2809)
+			if ok or errmsg ~= "address already in use" then
+				assert(sock:close())
+				break
+			end
+			oil.sleep(1)
+		until false
+
 		-- find a free port
 		local first = PortLowerBound + math.random(PortUpperBound - PortLowerBound)
 		local portno = first
@@ -308,7 +318,7 @@ function newsuite(self, required)
 	local corba = seq{
 		""; --alt{"corba.gencode", ""};
 		alt{"corba.intercepted", "corba"};
-		alt{"kernel.ssl;corba.ssl", ""};
+		--alt{"kernel.ssl;corba.ssl", ""};
 	}
 	local flavors = seq{
 		"";

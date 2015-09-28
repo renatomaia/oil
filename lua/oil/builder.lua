@@ -62,16 +62,24 @@ end
 newlayer{
 	name = "kernel.base",
 	define = function (_ENV)
-		template.SocketChannels = component.Template{
-			channels = port.Facet,
+		template.SocketConnector = component.Template{
+			repository = port.Facet,
+			channels = port.Receptacle,
 			sockets = port.Receptacle,
 			dns = port.Receptacle,
+			limiter = port.Receptacle,
+		}
+		template.ResourceManager = component.Template{
+			repository = port.Facet,
 		}
 		template.BasicSystem = component.Template{
 			sockets = port.Facet,
 			dns = port.Facet,
 		}
 
+		factory.ResourceManager = template.ResourceManager{
+			require "oil.kernel.base.Limiter",
+		}
 		factory.BasicSystem = template.BasicSystem{
 			sockets = require "oil.kernel.base.Sockets",
 			dns = require "oil.kernel.base.DNS",
@@ -95,7 +103,7 @@ newlayer{
 			referrer = port.Receptacle,
 		}
 
-		factory.ClientChannels = template.SocketChannels{
+		factory.ClientConnector = template.SocketConnector{
 			require "oil.kernel.base.Connector",
 		}
 		factory.ProxyManager = template.ProxyManager{
@@ -119,8 +127,10 @@ newlayer{
 		end
 
 		function assemble(_ENV)
-			ClientChannels.sockets = BasicSystem.sockets
-			ClientChannels.dns = BasicSystem.dns
+			ClientConnector.channels = ClientChannels.channels
+			ClientConnector.sockets = BasicSystem.sockets
+			ClientConnector.dns = BasicSystem.dns
+			ClientConnector.limiter = ResourceManager.repository
 			for _, kind in ipairs(proxykind) do
 				local ProxyManager = proxykind[kind]
 				ProxyManager.requester = OperationRequester.requests
@@ -146,7 +156,7 @@ newlayer{
 			listener = port.Receptacle,
 		}
 
-		factory.ServerChannels = template.SocketChannels{
+		factory.ServerConnector = template.SocketConnector{
 			require "oil.kernel.base.Acceptor",
 		}
 		factory.ServantManager = template.ServantManager{
@@ -158,8 +168,10 @@ newlayer{
 		}
 
 		function assemble(_ENV)
-			ServerChannels.sockets = BasicSystem.sockets
-			ServerChannels.dns = BasicSystem.dns
+			ServerConnector.channels = ServerChannels.channels
+			ServerConnector.sockets = BasicSystem.sockets
+			ServerConnector.dns = BasicSystem.dns
+			ServerConnector.limiter = ResourceManager.repository
 			ServantManager.referrer = ObjectReferrer.references
 			ServantManager.listener = RequestListener.requests
 			RequestReceiver.dispatcher = ServantManager.dispatcher
@@ -194,7 +206,7 @@ newlayer{
 	name = "cooperative.client",
 	extends = { "cooperative.base", "kernel.client" },
 	define = function (_ENV)
-		factory.ClientChannels = template.SocketChannels{
+		factory.ClientConnector = template.SocketConnector{
 			require "oil.kernel.cooperative.Connector",
 		}
 	end,
@@ -282,6 +294,16 @@ newlayer{
 			proxies = port.Receptacle,
 			servants = port.Receptacle,
 		}
+		-- GIOP messages
+		template.MessageChannels = component.Template{
+			channels = port.Facet,
+			codec = port.Receptacle,
+			referrer = port.Receptacle,
+			servants = port.Receptacle,
+			requester = port.Receptacle,
+			listener = port.Receptacle,
+			bidircodec = port.Receptacle,
+		}
 		-- IOR references
 		template.IORProfiler = component.Template{
 			profiler = port.Facet,
@@ -309,6 +331,9 @@ newlayer{
 		factory.ValueEncoder = template.ValueEncoder{
 			require "oil.corba.giop.Codec",
 		}
+		factory.MessageChannels = template.MessageChannels{
+			require "oil.corba.giop.Channels",
+		}
 		factory.IIOPProfiler = template.IORProfiler{
 			require "oil.corba.iiop.Profiler",
 		}
@@ -320,17 +345,35 @@ newlayer{
 			if Exception == nil then
 				Exception = require "oil.corba.giop.Exception"
 			end
+			if MessageChannels == nil then
+				MessageChannels = factory.MessageChannels()
+			end
+			if ClientChannels == nil then
+				ClientChannels = MessageChannels
+			end
+			if ServerChannels == nil then
+				ServerChannels = MessageChannels
+			end
 		end
 
 		function assemble(_ENV)
 			-- IDL of standard system exceptions
 			TypeRepository.types:register(require "oil.corba.idl.sysex")
-			
+
 			ValueEncoder.references = ObjectReferrer.references
 			ValueEncoder.types = TypeRepository.types
 			ValueEncoder.proxies = ProxyManager.proxies
 			ValueEncoder.servants = ServantManager.servants
-			
+
+			MessageChannels.codec = ValueEncoder.codec
+			MessageChannels.referrer = ObjectReferrer.references -- GIOP 1.2 target
+			MessageChannels.servants = ServantManager.servants -- LocationRequest
+			MessageChannels.requester = OperationRequester.requests -- BiDir registration
+			MessageChannels.listener = RequestListener.requests -- BiDir registration
+			MessageChannels.bidircodec = IIOPProfiler.profiler -- BiDir ServCtxt
+			ClientChannels = MessageChannels
+			ServerChannels = MessageChannels
+
 			IIOPProfiler.codec = ValueEncoder.codec
 
 			ObjectReferrer.codec = ValueEncoder.codec
@@ -369,7 +412,6 @@ newlayer{
 	define = function (_ENV)
 		template.OperationRequester = component.Template{
 			requests = port.Facet,
-			codec = port.Receptacle,
 			channels = port.Receptacle,
 			listener = port.Receptacle,
 		}
@@ -379,8 +421,7 @@ newlayer{
 		}
 
 		function assemble(_ENV)
-			OperationRequester.codec = ValueEncoder.codec
-			OperationRequester.channels = ClientChannels.channels
+			OperationRequester.channels = ClientConnector.repository
 			OperationRequester.listener = RequestListener.requests -- BiDir GIOP
 		end
 	end,
@@ -392,13 +433,8 @@ newlayer{
 	define = function (_ENV)
 		template.RequestListener = component.Template{
 			requests = port.Facet,
-			codec = port.Receptacle,
 			channels = port.Receptacle,
-			servants = port.Receptacle,
 			indexer = port.Receptacle,
-			requester = port.Receptacle, -- BiDir GIOP
-			serviceencoder = port.Receptacle, -- BiDir GIOP
-			servicedecoder = port.Receptacle, -- BiDir GIOP
 		}
 
 		factory.RequestListener = template.RequestListener{
@@ -406,13 +442,8 @@ newlayer{
 		}
 
 		function assemble(_ENV)
-			RequestListener.codec = ValueEncoder.codec
-			RequestListener.channels = ServerChannels.channels
-			RequestListener.servants = ServantManager.servants -- to answer LocateRequest
+			RequestListener.channels = ServerConnector.repository
 			RequestListener.indexer = TypeRepository.indexer -- get interface ops/types
-			RequestListener.requester = OperationRequester.requests -- BiDir GIOP
-			RequestListener.serviceencoder = IIOPProfiler.profiler -- BiDir GIOP
-			RequestListener.servicedecoder = IIOPProfiler.profiler -- BiDir GIOP
 		end
 	end,
 }
@@ -461,6 +492,10 @@ newlayer{
 		template.ValueEncoder = component.Template{
 			codec = port.Facet,
 		}
+		template.MessageChannels = component.Template{
+			channels = port.Facet,
+			codec = port.Receptacle,
+		}
 		template.ObjectReferrer = component.Template{
 			references = port.Facet,
 			codec = port.Receptacle,
@@ -495,12 +530,16 @@ newlayer{
 			codec = port.Receptacle,
 		}
 
+		factory.ClientChannels = template.MessageChannels{
+			require "oil.ludo.Channels",
+		}
 		factory.OperationRequester = template.OperationRequester{
 			require "oil.ludo.Requester",
 		}
 		
 		function assemble(_ENV)
-			OperationRequester.channels = ClientChannels.channels
+			ClientChannels.codec = ValueEncoder.codec
+			OperationRequester.channels = ClientConnector.repository
 			OperationRequester.codec = ValueEncoder.codec
 		end
 	end,
@@ -516,12 +555,16 @@ newlayer{
 			codec = port.Receptacle,
 		}
 
+		factory.ServerChannels = template.MessageChannels{
+			require "oil.ludo.Listener", -- TODO rename it to 'oil.ludo.ServerChannels'
+		}
 		factory.RequestListener = template.RequestListener{
-			require "oil.ludo.Listener",
+			require "oil.protocol.Listener",
 		}
 
 		function assemble(_ENV)
-			RequestListener.channels = ServerChannels.channels
+			ServerChannels.codec = ValueEncoder.codec
+			RequestListener.channels = ServerConnector.repository
 			RequestListener.codec = ValueEncoder.codec
 		end
 	end,

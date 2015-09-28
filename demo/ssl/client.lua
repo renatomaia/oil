@@ -1,9 +1,5 @@
 oil = require "oil"                                     -- Load OiL package
 
---oil.verbose:level(4)
---require("cothread").verbose:flag("socket", true)
---require("cothread").verbose:flag("ssl", true)
-
 iorfile = assert(..., "missing path to IOR file")
 
 oil.main(function()

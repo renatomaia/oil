@@ -39,7 +39,6 @@ local SystemExceptionIDL = giop.SystemExceptionIDL
 local _non_existent = giop.ObjectOperations._non_existent
 
 local Exception = require "oil.corba.giop.Exception"
-local GIOPChannel = require "oil.corba.giop.Channel"
 
 
 local WeakKeys = oo.class{__mode = "k"}
@@ -97,55 +96,51 @@ end
 local GIOPRequester = class({
 	OperationRequester = OperationRequester,
 	OperationReplier = OperationReplier,
-	Channel = GIOPChannel,
 }, Requester)
 
 function GIOPRequester:addbidirchannel(channel, addresses)                      --[[VERBOSE]] verbose:invoke("add bidirectional channel to ",addresses[1].host or "<unknown host>",":",addresses[1].port or "<unknown port>")
-	local socket = channel.socket
-	self.sock2channel[socket] = channel
 	local channels = self.channels
 	for _, address in ipairs(addresses) do
-		channels:register(socket, address)
+		channels:register(channel, address)
 	end
 end
 
-function GIOPRequester:removechannel(channel)                                   --[[VERBOSE]] verbose:invoke("discard channel as outgoing request channel")
-	local socket = channel.socket
-	self.sock2channel[socket] = nil
-	self.channels:unregister(socket)
+local function getchannel(self, reference, profile, configs)
+	local decoded = profile.decoded
+	reference.ior_profile = profile
+	reference.object_key = decoded.object_key
+	local result, except = Requester.getchannel(self, decoded, configs)
+	if result then
+		result:upgradeto(decoded.giop_minor)
+	else
+		except.completed = "COMPLETED_NO"
+		except.profile = profile
+	end
+	return result, except
 end
 
 function GIOPRequester:getchannel(reference, configs)
-	local result, except = reference.ior_profile_data
-	if result ~= nil then                                                         --[[VERBOSE]] verbose:invoke("reusing previous profile with tag ",reference.ior_profile_tag)
-		local giop_minor = result.giop_minor
-		result, except = Requester.getchannel(self, result, configs)
-		if result then
-			result:upgradeto(giop_minor)
-			return result
+	local result, except
+	if self.enabled then
+		local profile = reference.ior_profile
+		if profile ~= nil then                                                      --[[VERBOSE]] verbose:invoke("reusing previous profile with tag ",reference.ior_profile.tag)
+			result, except = getchannel(self, reference, profile, configs)
+			if result ~= nil then return result end
 		end
+		for _, profile in reference:allprofiles() do                                --[[VERBOSE]] verbose:invoke("using IOR profile with tag ",profile.tag)
+			if profile.decoded ~= nil then
+				result, except = getchannel(self, reference, profile, configs)
+				if result ~= nil then return result end                                 --[[VERBOSE]] else verbose:invoke("ignoring unsupported IOR profile (",profile.except,")")
+			end
+		end                                                                         --[[VERBOSE]] verbose:invoke("unable to connect using the provided IOR profiles")
+		result, except = nil, Exception(except or {
+			"no supported IOR profile found",
+			error = "badobjref",
+		})
+	else
+		result, except = nil, Exception{ "setup missing", error = "badsetup" }
 	end
-	for _, profile in reference:allprofiles() do                                  --[[VERBOSE]] verbose:invoke("using IOR profile with tag ",profile.tag)
-		local decoded = profile.decoded
-		if decoded then
-			local channels = self.channels
-			reference.object_key = decoded.object_key
-			reference.ior_profile = profile
-			reference.ior_profile_decoded = decoded
-			result, except = Requester.getchannel(self, decoded, configs)
-			if result then
-				result:upgradeto(decoded.giop_minor)
-				return result
-			else
-				except.completed = "COMPLETED_NO"
-				except.profile = profile
-			end                                                                       --[[VERBOSE]] else verbose:invoke("ignoring unsupported IOR profile (",profile.except,")")
-		end
-	end                                                                           --[[VERBOSE]] verbose:invoke("unable to connect using the provided IOR profiles")
-	return nil, Exception(except or {
-		"no supported IOR profile found",
-		error = "badobjref",
-	})
+	return result, except
 end
 
 function GIOPRequester:endrequest(request, success, result)

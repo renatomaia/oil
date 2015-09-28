@@ -2,23 +2,19 @@ oil = require "oil"
 
 iorfile, killfile = ...
 
---oil.verbose:level(5)
---require("cothread").verbose:flag("socket", true)
---require("cothread").verbose:flag("ssl", true)
-
 oil.main(function()
 	orb = oil.init{
 		flavor = "cooperative;corba;corba.ssl;kernel.ssl",
-		--options = {
-		--	server = {
-		--		security = "required",
-		--		ssl = {
-		--			key = "certs/server.key",
-		--			certificate = "certs/server.crt",
-		--			cafile = "certs/myca.crt",
-		--		},
-		--	},
-		--},
+		options = {
+			server = {
+				security = "required",
+				ssl = {
+					key = "certs/server.key",
+					certificate = "certs/server.crt",
+					cafile = "certs/myca.crt",
+				},
+			},
+		},
 	}
 	
 	orb:loadidl [[

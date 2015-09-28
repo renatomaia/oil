@@ -14,11 +14,10 @@ local unpack = array.unpack
 local oo = require "oil.oo"
 local class = oo.class
 
+local Exception = require "oil.Exception"
 local Requester = require "oil.protocol.Requester"
-local LuDOChannel = require "oil.ludo.Channel"
 
-
-local LuDORequester = class({ Channel = LuDOChannel }, Requester)
+local LuDORequester = class({}, Requester)
 
 function LuDORequester:newrequest(request)
 	request = self.Request(request)
@@ -45,7 +44,21 @@ function LuDORequester:newrequest(request)
 end
 
 function LuDORequester:getreply(request, timeout)
-	return request.channel:processmessage(timeout)
+	local channel = request.channel
+	local granted, expired = channel:trylock("read", timeout, request)
+	if granted then
+		local result, except
+		repeat
+			result, except = channel:processmessage(timeout)
+		until result == nil or result == request
+		channel:freelock("read")
+		if result == nil then                                                     --[[VERBOSE]] verbose:invoke("failed to get reply")
+			return nil, except
+		end
+	elseif expired then --[[timeout of 'trylock' expired]]                      --[[VERBOSE]] verbose:invoke("got no reply before timeout")
+		return nil, Exception{ "timeout", error = "timeout" }
+	end
+	return true
 end
 
 return LuDORequester

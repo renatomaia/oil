@@ -64,7 +64,7 @@ function CoReceiver:dochannel(channel)
 		end
 	until not result
 	channel:close("incoming")
-	if except.error ~= "terminated" then
+	if except.error ~= "closed" then
 		self:notifyerror(except, "request")
 	end
 end
@@ -73,14 +73,13 @@ function CoReceiver:dolistener()
 	local listener = self.listener
 	local result, except
 	repeat
-		result, except = listener:getchannel()
+		result, except = listener:getchannel(true)
 		if result then
-			result:acquire()
 			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] local host,port = result.socket:getpeername(); verbose.viewer.labels[reader] = "Reader("..tostring(host)..":"..tostring(port)..")"
 			yield("last", reader, self, result)
 		end
 	until not result
-	if except.error ~= "terminated" and except.error ~= "badsetup" then
+	if except.error ~= "closed" and except.error ~= "badsetup" then
 		self:notifyerror(except, "connection")
 	end
 end

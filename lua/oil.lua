@@ -79,9 +79,9 @@ function ORB:__new(config)
 			if cltopt.security ~= nil then
 				self:setsecurity(cltopt.security)
 			end
-			if self.ClientChannels ~= nil then
-				self.ClientChannels.options = cltopt.tcp
-				self.ClientChannels.sslcfg = cltopt.ssl
+			if self.ClientConnector ~= nil then
+				self.ClientConnector.options = cltopt.tcp
+				self.ClientConnector.sslcfg = cltopt.ssl
 			end
 		end
 		local srvopt = (options.server==nil and options or options.server or nil)
@@ -89,9 +89,9 @@ function ORB:__new(config)
 			if self.ServantManager ~= nil then
 				self.ServantManager.secured = (srvopt.security == "required")
 			end
-			if self.ServerChannels ~= nil then
-				self.ServerChannels.options = srvopt.tcp
-				self.ServerChannels.sslcfg = srvopt.ssl
+			if self.ServerConnector ~= nil then
+				self.ServerConnector.options = srvopt.tcp
+				self.ServerConnector.sslcfg = srvopt.ssl
 			end
 		end
 	end
@@ -110,10 +110,11 @@ function ORB:__new(config)
 			self.ValueEncoder.localrefs = config.localrefs
 		end
 	end
-	if self.RequestReceiver ~= nil then
-		assert(self.RequestReceiver.acceptor:setup(self))
+	if self.ResourceManager ~= nil then
+		self.ResourceManager.inuse.maxsize = config.maxchannels or 1000
 	end
-	
+
+	self:setup() -- implicit setup
 	return self
 end
 
@@ -206,10 +207,24 @@ function ORB:run()
 	return assert(self.RequestReceiver.acceptor:start())
 end
 
-function ORB:shutdown()
-	local acceptor = self.RequestReceiver.acceptor
-	acceptor:stop()
-	assert(acceptor:shutdown())
+function ORB:setup(side)
+	if side ~= "client" and self.RequestReceiver ~= nil then
+		assert(self.RequestReceiver.acceptor:setup(self))
+	end
+	if side ~= "server" and self.OperationRequester ~= nil then
+		assert(self.OperationRequester.requests:setup(self))
+	end
+end
+
+function ORB:shutdown(side)
+	if side ~= "client" then
+		local acceptor = self.RequestReceiver.acceptor
+		acceptor:stop()
+		assert(acceptor:shutdown())
+	end
+	if side ~= "server" then
+		assert(self.OperationRequester.requests:shutdown())
+	end
 end
 
 function ORB:newencoder()

@@ -17,6 +17,8 @@ return Suite{
 	ServantLocator = require "oil.dtests.kernel.ServantLocator",
 	ServantManager = require "oil.dtests.kernel.ServantManager",
 	AsyncResultsProbe = require "oil.dtests.kernel.AsyncResultsProbe",
+	TooManyServices = require "oil.dtests.kernel.TooManyServices",
+	TooManyClients = require "oil.dtests.kernel.TooManyClients",
 	CORBA = Suite{
 		IDLChanges = require "oil.dtests.corba.IDLChanges",
 		ServantCreation = require "oil.dtests.corba.ServantCreation",
