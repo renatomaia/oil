@@ -26,7 +26,7 @@ function CoReceiver:setup(configs)
 	local result, errmsg = Receiver.setup(self, configs)
 	if result and not self.started then                                           --[[VERBOSE]] verbose:acceptor("setting up processing invocation requests in a new thread")
 		self.started = {}
-		local acceptor = newthread(self.dolistener)                                 --[[VERBOSE]] local address = self.listener:getaddress(); verbose.viewer.labels[acceptor] = "Acceptor("..(address and address.host or "?")..":"..(address and address.port or "?")..")"
+		local acceptor = newthread(self.dolistener)                                 --[[VERBOSE]] local address = self.listener:getaddress(); verbose.viewer.labels[acceptor] = verbose.viewer.labels[acceptor]..":Acceptor("..(address and address.host or "?")..":"..(address and address.port or "?")..")"
 		yield("last", acceptor, self)
 	end
 	return result, errmsg
@@ -59,7 +59,7 @@ function CoReceiver:dochannel(channel)
 	repeat
 		result, except = channel:getrequest()
 		if result then
-			local dispatcher = newthread(self.dorequest)                              --[[VERBOSE]] verbose.viewer.labels[dispatcher] = "Dispatcher("..tostring(result.operation)..")"
+			local dispatcher = newthread(self.dorequest)                              --[[VERBOSE]] verbose.viewer.labels[dispatcher] = verbose.viewer.labels[dispatcher]..":Dispatcher("..tostring(result.operation)..")"
 			yield("last", dispatcher, self, result)
 		end
 	until not result
@@ -75,7 +75,7 @@ function CoReceiver:dolistener()
 	repeat
 		result, except = listener:getchannel(true)
 		if result then
-			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] local host,port = result.socket:getpeername(); verbose.viewer.labels[reader] = "Reader("..tostring(host)..":"..tostring(port)..")"
+			local reader = newthread(self.dochannel)                                  --[[VERBOSE]] local host,port = result.socket:getpeername(); verbose.viewer.labels[reader] = verbose.viewer.labels[reader]..":Reader("..tostring(host)..":"..tostring(port)..")"
 			yield("last", reader, self, result)
 		end
 	until not result

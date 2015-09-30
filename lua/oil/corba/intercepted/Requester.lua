@@ -46,9 +46,16 @@ function IceptedRequester:dorequest(request)                                    
 		local operation = request.operation_desc or request.operation
 		local interface = operation.defined_in
 		local reference = request.reference
+		local sync_scope = request.sync_scope
+		                or (operation.oneway and "channel" or "servant")
 		local channel = self:getchannel(reference, request) -- ignore eventual errors
 		if channel ~= nil then
-			channel:register(request, "outgoing")
+			if sync_scope ~= "channel" then
+				channel:register(request, "outgoing")
+			else
+				request.request_id = (channel.bidir=="acceptor" and 1 or 0)
+				channel = nil -- to avoid 'channel:unregister(request.id,"outgoing")'
+			end
 		end
 		local intercepted = request.intercepted
 		if intercepted == nil then
@@ -67,7 +74,7 @@ function IceptedRequester:dorequest(request)                                    
 		intercepted.interface = interface
 		intercepted.operation = operation
 		intercepted.operation_name = operation.name
-		intercepted.sync_scope = operation.oneway and "channel" or "servant"
+		intercepted.sync_scope = sync_scope
 		intercepted.response_expected = not operation.oneway -- deprecated
 		intercepted.parameters = { n = request.n, unpack(request, 1, request.n) }
 		request.operation_desc = operation

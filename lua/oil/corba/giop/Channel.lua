@@ -666,7 +666,7 @@ end
 
 function GIOPChannel:sendrequest(request)
 	local bidir = self.bidir_role
-	if self.sync_scope ~= "channel" then
+	if request.sync_scope ~= "channel" then
 		self:register(request, "outgoing") -- defines the 'request_id'
 	else
 		request.request_id = (bidir=="acceptor" and 1 or 0)

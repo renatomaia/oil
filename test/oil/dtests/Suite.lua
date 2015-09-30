@@ -28,6 +28,7 @@ return Suite{
 		LocalRef2Servant = require "oil.dtests.corba.LocalRef2Servant",
 		LocalRef2Proxy = require "oil.dtests.corba.LocalRef2Proxy",
 		NonExistentErrors = require "oil.dtests.corba.NonExistentErrors",
+		OneWayCall = require "oil.dtests.corba.OneWayCall",
 		InterceptedGIOP = Suite{
 			InvocationCallInfo = require "oil.dtests.corba.intercepted.InvocationInfo",
 			ServerExceptionInfo = require "oil.dtests.corba.intercepted.ServerExceptionInfo",
