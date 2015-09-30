@@ -1,0 +1,51 @@
+# -*- coding: iso-8859-1-unix -*-
+
+import os ;
+import feature ;
+
+feature.feature generate : idl-include : incidental ;
+
+rule init ( )
+{
+  local idl2lua-path = [ modules.binding $(__name__) ] ;
+  .idl2lua-path = $(idl2lua-path:D) ;
+  .lua-install-path = [ os.environ LUA_INSTALL_PATH ] ;
+  if ! $(.lua-install-path)
+  {
+    .lua-install-path = "$(.idl2lua-path)/../../install/lua" ;
+  }
+  .loop-root-path = [ os.environ LOOP_ROOT_PATH ] ;
+  if ! $(.loop-root-path)
+  {
+    .loop-root-path = "$(.idl2lua-path)/../loop" ;
+  }
+  .oil-root-path = [ os.environ OIL_ROOT_PATH ] ;
+  if ! $(.oil-root-path)
+  {
+    .oil-root-path = "$(.idl2lua-path)/../oil" ;
+  }
+}
+
+rule compile ( target : sources * : property-set * )
+{
+  local includes = "" ;
+  if [ os.on-windows ]
+  {
+    includes = [ MATCH "<include>/(.+)" : $(property-set) ] ;
+  }
+  else
+  {
+    includes = [ MATCH "<include>(.+)" : $(property-set) ] ;
+  }
+  local .includes = "" ;
+  for local inc in $(includes)
+  {
+    .includes += "-I "$(inc) ;
+  }
+  includes on $(target) = $(.includes) ;
+}
+
+actions compile
+{
+  $(.lua-install-path)/bin/lua -e "package.path=package.path..';$(.loop-root-path:T)/lua/?.lua;$(.oil-root-path:T)/lua/?.lua'" $(.oil-root-path)/lua/idl2lua.lua $(includes) -o $(<) $(>)
+}
