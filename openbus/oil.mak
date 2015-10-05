@@ -9,6 +9,7 @@ LUASRC= \
 	$(LUADIR)/oil/builder.lua \
 	$(LUADIR)/oil/component.lua \
 	$(LUADIR)/oil/corba/giop/Channel.lua \
+	$(LUADIR)/oil/corba/giop/Channels.lua \
 	$(LUADIR)/oil/corba/giop/Codec.lua \
 	$(LUADIR)/oil/corba/giop/CodecGen.lua \
 	$(LUADIR)/oil/corba/giop/Exception.lua \
@@ -45,6 +46,7 @@ LUASRC= \
 	$(LUADIR)/oil/kernel/base/Connector.lua \
 	$(LUADIR)/oil/kernel/base/Dispatcher.lua \
 	$(LUADIR)/oil/kernel/base/DNS.lua \
+	$(LUADIR)/oil/kernel/base/Limiter.lua \
 	$(LUADIR)/oil/kernel/base/Proxies/asynchronous.lua \
 	$(LUADIR)/oil/kernel/base/Proxies/protected.lua \
 	$(LUADIR)/oil/kernel/base/Proxies/synchronous.lua \
@@ -66,6 +68,7 @@ LUASRC= \
 	$(LUADIR)/oil/kernel/typed/Proxies.lua \
 	$(LUADIR)/oil/kernel/typed/Servants.lua \
 	$(LUADIR)/oil/ludo/Channel.lua \
+	$(LUADIR)/oil/ludo/Channels.lua \
 	$(LUADIR)/oil/ludo/Codec.lua \
 	$(LUADIR)/oil/ludo/CodecByRef.lua \
 	$(LUADIR)/oil/ludo/Listener.lua \
