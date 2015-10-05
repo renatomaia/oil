@@ -270,6 +270,16 @@ return refman{
 					contains configuration options of the addressing information included in object references.
 				]],
 			},
+			maxchannels = {
+				type = "number",
+				summary = "Maximum number of channels managed by the ORB",
+				description = [[
+					indicates the maximum number of channels managed by the ORB.
+					By setting this limit it is possible to limit the number of file descriptors created by the ORB due to connections with other processes.
+					However, it must be noted that file descriptors created by the ORB for other reasons are not counted for this limitation, in particular, the server sockets created to accept connections.
+				]],
+				eventual = "then no limit is imposed and the ORB maintains as much channels active as required by remote processes.",
+			},
 			options = {
 				type = "sckopt",
 				default = {},
