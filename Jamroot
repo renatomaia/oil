@@ -37,6 +37,7 @@ make oil.c
     lua/oil/builder.lua
     lua/oil/component.lua
     lua/oil/corba/giop/Channel.lua
+    lua/oil/corba/giop/Channels.lua
     lua/oil/corba/giop/Codec.lua
     lua/oil/corba/giop/CodecGen.lua
     lua/oil/corba/giop/Exception.lua
@@ -53,6 +54,7 @@ make oil.c
     lua/oil/corba/idl/sysex.lua
     lua/oil/corba/idl.lua
     lua/oil/corba/iiop/Profiler.lua
+    lua/oil/corba/iiop/ssl/ComponentCodec.lua
     lua/oil/corba/intercepted/Listener.lua
     lua/oil/corba/intercepted/Requester.lua
     lua/oil/corba/intercepted/servicecontext.lua
@@ -76,12 +78,14 @@ make oil.c
     lua/oil/kernel/base/Proxies/protected.lua
     lua/oil/kernel/base/Proxies/synchronous.lua
     lua/oil/kernel/base/Proxies/utils.lua
+    lua/oil/kernel/base/Limiter.lua
     lua/oil/kernel/base/Proxies.lua
     lua/oil/kernel/base/Receiver.lua
     lua/oil/kernel/base/Servants.lua
     lua/oil/kernel/base/Sockets.lua
     lua/oil/kernel/cooperative/Connector.lua
     lua/oil/kernel/cooperative/Receiver.lua
+    lua/oil/kernel/cooperative/SecureSockets.lua
     lua/oil/kernel/cooperative/Sockets.lua
     lua/oil/kernel/cooperative/Tasks.lua
     lua/oil/kernel/intercepted/Listener.lua
