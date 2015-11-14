@@ -5,11 +5,12 @@ import modules ;
 
 path-constant here : . ;
 
-local lua-install-path = [ os.environ LUA_INSTALL_PATH ] ;
-if ! $(lua-install-path)
+local lua-jam-path = [ os.environ LUA_JAM_PATH ] ;
+if ! $(lua-jam-path)
 {
-  lua-install-path = "$(here)/../../install/lua" ;
+  lua-jam-path = "$(here)/../lua.jam" ;
 }
+use-project lua : $(lua-jam-path) ; 
 
 local loop-root-path = [ os.environ LOOP_ROOT_PATH ] ;
 if ! $(loop-root-path)
