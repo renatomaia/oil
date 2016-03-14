@@ -810,8 +810,10 @@ function GIOPChannel:close(direction)
 			self.requestclose = true
 		end
 		if next(self.incoming) == nil then
-			if self.requestclose then                                                 --[[VERBOSE]] verbose:listen("sending channel closing notification"); local _ =
-				sendmsg(self, CloseConnectionID)                                        --[[VERBOSE]] and verbose:listen("closing notification successfully sent")
+			if self.requestclose then                                                 --[[VERBOSE]] verbose:listen("sending channel closing notification")
+				if not sendmsg(self, CloseConnectionID) then                            --[[VERBOSE]] verbose:listen("closing notification failed, closing channel in both directions")
+					direction = "both"                                                    --[[VERBOSE]] else verbose:listen("closing notification successfully sent")
+				end
 				self.requestclose = nil
 			end
 		elseif self.closing == nil then                                             --[[VERBOSE]] verbose:listen("channel marked for closing (incoming only)")

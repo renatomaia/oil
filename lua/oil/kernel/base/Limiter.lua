@@ -18,6 +18,23 @@ function Reservation:set(channel)
 end
 
 
+local function discardOne(self)
+	local found
+	for conn in self.inuse:usedkeys(true) do
+		if conn:idle() then
+			found = conn
+		--	if conn.listener == nil then break end
+		--elseif found ~= nil then
+			break
+		end
+	end
+	if found ~= nil then
+		found:close()
+		return true
+	end
+end
+
+
 local Limiter = class{ reserved = 0 }
 
 function Limiter:__init()
@@ -34,26 +51,10 @@ function Limiter:remove(channel)
 	return self.inuse:remove(channel)
 end
 
-function Limiter:discard()
-	local found
-	for conn in self.inuse:usedkeys(true) do
-		if conn:idle() then
-			found = conn
-		--	if conn.listener == nil then break end
-		--elseif found ~= nil then
-			break
-		end
-	end
-	if found then
-		found:close()
-		return true
-	end
-end
-
 function Limiter:reserve()
 	local inuse = self.inuse
 	if inuse.size + self.reserved == inuse.maxsize then
-		if not self:discard() then
+		if not discardOne(self) then
 			return nil, Exception{
 				"channel limit reached, too many active channels",
 				error = "badsocket",

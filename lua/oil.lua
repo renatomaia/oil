@@ -217,12 +217,12 @@ function ORB:setup(side)
 end
 
 function ORB:shutdown(side)
-	if side ~= "client" then
+	if side ~= "client" and self.RequestReceiver ~= nil then
 		local acceptor = self.RequestReceiver.acceptor
 		acceptor:stop()
 		assert(acceptor:shutdown())
 	end
-	if side ~= "server" then
+	if side ~= "server" and self.OperationRequester ~= nil then
 		assert(self.OperationRequester.requests:shutdown())
 	end
 end

@@ -251,7 +251,7 @@ function Acceptor:newaccess(configs)
 	local ports = {[socket] = "tcp"}
 	local sslcfg, sslctx = self.sslcfg
 	if sslcfg ~= nil then
-		sslctx = sockets:sslcontext{
+		sslctx, errmsg = sockets:sslcontext{
 			mode = "server",
 			protocol = "sslv23",
 			options = DefaultOptions,
@@ -260,6 +260,14 @@ function Acceptor:newaccess(configs)
 			certificate = sslcfg.certificate,
 			cafile = sslcfg.cafile,
 		}
+		if sslctx == nil then
+			socket:close()
+			return nil, Exception{
+				"unable to create SSL context for port ($errmsg)",
+				error = "badinitialize",
+				errmsg = errmsg,
+			}
+		end
 		sslport = configs.sslport or 0
 		local sslsck, errmsg = newport(sockets, options, host, sslport)
 		if sslsck == nil then
