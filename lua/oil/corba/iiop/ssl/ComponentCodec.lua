@@ -62,7 +62,7 @@ function SSLIOPComponent:encode(components, entry, config, address)
 	local sslcfg = config.sslcfg
 	if sslcfg ~= nil then                                                         --[[VERBOSE]] verbose:references(true, "encoding SSLIOP component of IIOP profile")
 		local supported, required = BasicOptions, 0
-		if sslcfg.cafile ~= nil then
+		if sslcfg.cafile ~= nil or sslcfg.capath ~= nil then
 			supported = supported + EstablishTrustInClient
 		end
 		if entry.__security then

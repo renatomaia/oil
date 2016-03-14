@@ -249,16 +249,18 @@ function Acceptor:newaccess(configs)
 		end
 	end
 	local ports = {[socket] = "tcp"}
-	local sslcfg, sslctx = self.sslcfg
+local sslcfg, sslctx = self.sslcfg
 	if sslcfg ~= nil then
+		local hasca = (sslcfg.cafile ~= nil or sslcfg.capath ~= nil)
 		sslctx, errmsg = sockets:sslcontext{
 			mode = "server",
-			protocol = "sslv23",
-			options = DefaultOptions,
-			verify = sslcfg.cafile ~= nil and TargetVerify,
+			protocol = sslcfg.protocol or "sslv23",
+			options = sslcfg.options or DefaultOptions,
+			verify = hasca and TargetVerify,
 			key = sslcfg.key,
 			certificate = sslcfg.certificate,
 			cafile = sslcfg.cafile,
+			capath = sslcfg.capath,
 		}
 		if sslctx == nil then
 			socket:close()

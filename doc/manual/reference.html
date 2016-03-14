@@ -130,7 +130,74 @@ return refman{
 				description = [[
 					contains a path to a file containing a X.509 certificate in PEM format of the Certification Authority (CA) to be used to autenticate SSL connections.
 				]],
-				eventual = "the ORB does not autheticate SSL conections.",
+				eventual = " and option <code>capath</code> is also absent the ORB does not autheticate SSL conections.",
+			},
+			capath = {
+				type = "string",
+				summary = "Path to the directory that constains a set of files of CA certificates for SSL authetication",
+				description = [[
+					contains a path to a directory containing a X.509 certificates in PEM format of the Certification Authority (CA) to be used to autenticate SSL connections.
+				]],
+				eventual = " and option <code>cafile</code> is also absent the ORB does not autheticate SSL conections.",
+			},
+			protocol = {
+				type = "string",
+				summary = "Name of the TLS/SSL version",
+				description = [[
+					contains a name that indicates the version of the TLS/SSL to be used in the communications.
+					These names are defined by operation 'ssl.newcontext' of LuaSec library:
+					<dl>
+						<dt>tlsv1</dt><dd>for TLS version 1</dd>
+						<dt>tlsv1_1</dt><dd>for TLS version 1.1</dd>
+						<dt>tlsv1_2</dt><dd>for TLS version 1.2</dd>
+						<dt>sslv3</dt><dd>for SSL version 3 (if available)</dd>
+						<dt>sslv23</dt><dd>the SSL library selects the protocol (use 'options' to disable the protocols you do not want to use)</dd>
+					</dl>
+				]],
+				default = "sslv23",
+			},
+			options = {
+				type = {"string","table"},
+				summary = "Extra TLS/SSL options",
+				description = [[
+					either a single string or a sequence of strings indicating options for the TLS/SSL to be used in the communications.
+					These option names are defined by operation 'ssl.newcontext' of LuaSec library:
+					<ul>
+						<li>all</li>
+						<li>allow_unsafe_legacy_renegotiation</li>
+						<li>cipher_server_preference</li>
+						<li>cisco_anyconnect</li>
+						<li>cookie_exchange</li>
+						<li>cryptopro_tlsext_bug</li>
+						<li>dont_insert_empty_fragments</li>
+						<li>ephemeral_rsa</li>
+						<li>legacy_server_connect</li>
+						<li>microsoft_big_sslv3_buffer</li>
+						<li>microsoft_sess_id_bug</li>
+						<li>msie_sslv2_rsa_padding</li>
+						<li>netscape_ca_dn_bug</li>
+						<li>netscape_challenge_bug</li>
+						<li>netscape_demo_cipher_change_bug</li>
+						<li>netscape_reuse_cipher_change_bug</li>
+						<li>no_compression</li>
+						<li>no_query_mtu</li>
+						<li>no_session_resumption_on_renegotiation</li>
+						<li>no_sslv2</li>
+						<li>no_sslv3</li>
+						<li>no_ticket</li>
+						<li>no_tlsv1</li>
+						<li>pkcs1_check_1</li>
+						<li>pkcs1_check_2</li>
+						<li>single_dh_use</li>
+						<li>single_ecdh_use</li>
+						<li>ssleay_080_client_dh_bug</li>
+						<li>sslref2_reuse_cert_type_bug</li>
+						<li>tls_block_padding_bug</li>
+						<li>tls_d5_bug</li>
+						<li>tls_rollback_bug</li>
+					</ul>
+				]],
+				default = '{"all", "no_sslv2"}',
 			},
 		},
 	},

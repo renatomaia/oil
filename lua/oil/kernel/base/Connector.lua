@@ -61,8 +61,9 @@ local function resolveprofile(self, profile, configs)
 	local sslremote = profile.ssl
 	local targettrust, clienttrust = false, false
 	if ssllocal ~= nil and sslremote ~= nil then                                  --[[VERBOSE]] verbose:channels("target provides secure connection support")
+		local noca = (ssllocal.cafile == nil and ssllocal.capath == nil)
 		required = required or sslremote.required
-		targettrust = ssllocal.cafile == nil or sslremote.targettrust
+		targettrust = noca or sslremote.targettrust
 		clienttrust = not sslremote.clienttrust or ssllocal.certificate ~= nil
 	end
 	if targettrust and clienttrust then                                           --[[VERBOSE]] verbose:channels("secure connection support matches requirements")
@@ -70,15 +71,17 @@ local function resolveprofile(self, profile, configs)
 			port = sslremote.port
 			sslcontext = ssllocal.context
 			if sslcontext == nil then
+				local hasca = (ssllocal.cafile ~= nil or ssllocal.cafile ~= nil)
 				local errmsg
 				sslcontext, errmsg = self.sockets:sslcontext{
 					mode = "client",
-					protocol = "sslv23",
-					options = DefaultOptions,
-					verify = ssllocal.cafile ~= nil and TargetVerify or nil,
+					protocol = ssllocal.protocol or "sslv23",
+					options = ssllocal.options or DefaultOptions,
+					verify = hasca and TargetVerify or nil,
 					key = ssllocal.key,
 					certificate = ssllocal.certificate,
 					cafile = ssllocal.cafile,
+					capath = ssllocal.capath,
 				}
 				if not sslcontext then
 					return nil, Exception{
