@@ -12,17 +12,17 @@ rule init ( )
   .lua-install-path = [ os.environ LUA_INSTALL_PATH ] ;
   if ! $(.lua-install-path)
   {
-    .lua-install-path = "$(.idl2lua-path)/../../install/lua" ;
+    .lua-install-path = "$(.idl2lua-path)/../../../install/lua" ;
   }
   .loop-root-path = [ os.environ LOOP_ROOT_PATH ] ;
   if ! $(.loop-root-path)
   {
-    .loop-root-path = "$(.idl2lua-path)/../loop" ;
+    .loop-root-path = "$(.idl2lua-path)/../../loop" ;
   }
   .oil-root-path = [ os.environ OIL_ROOT_PATH ] ;
   if ! $(.oil-root-path)
   {
-    .oil-root-path = "$(.idl2lua-path)/../oil" ;
+    .oil-root-path = "$(.idl2lua-path)/../../oil" ;
   }
 }
 
