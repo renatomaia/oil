@@ -5,15 +5,11 @@ import feature ;
 
 feature.feature generate : idl-include : incidental ;
 
-rule init ( )
+rule init ( lua-pkg )
 {
   local idl2lua-path = [ modules.binding $(__name__) ] ;
   .idl2lua-path = $(idl2lua-path:D) ;
-  .lua-install-path = [ os.environ LUA_INSTALL_PATH ] ;
-  if ! $(.lua-install-path)
-  {
-    .lua-install-path = "$(.idl2lua-path)/../../../install/lua" ;
-  }
+  .luai = $(lua-pkg)/bbuild/install/luai ;
   .loop-root-path = [ os.environ LOOP_ROOT_PATH ] ;
   if ! $(.loop-root-path)
   {
@@ -47,5 +43,5 @@ rule compile ( target : sources * : property-set * )
 
 actions compile
 {
-  $(.lua-install-path)/bin/lua -e "package.path=package.path..';$(.loop-root-path:T)/lua/?.lua;$(.oil-root-path:T)/lua/?.lua'" $(.oil-root-path)/lua/idl2lua.lua $(includes) -o $(<) $(>)
+  $(.luai) -e "package.path=package.path..';$(.loop-root-path:T)/lua/?.lua;$(.oil-root-path:T)/lua/?.lua'" $(.oil-root-path)/lua/idl2lua.lua $(includes) -o $(<) $(>)
 }

@@ -7,22 +7,22 @@ path-constant here : . ;
 path-constant root : $(here)/.. ;
 path-constant deps : $(root)/.. ;
 
-local lua-jam-path = [ os.environ LUA_JAM_PATH ] ;
-if ! $(lua-jam-path)
+local lua = [ os.environ LUA ] ;
+if ! $(lua)
 {
-  lua-jam-path = "$(deps)/lua.jam" ;
+  lua = "$(deps)/lua" ;
 }
-use-project lua : $(lua-jam-path) ; 
+use-project lua : $(lua)/bbuild ; 
 
-local loop-root-path = [ os.environ LOOP_ROOT_PATH ] ;
-if ! $(loop-root-path)
+local loop = [ os.environ LOOP ] ;
+if ! $(loop)
 {
-  loop-root-path = "$(deps)/loop" ;
+  loop = "$(deps)/loop" ;
 }
 
-modules.load preloader : : $(loop-root-path)/bbuild ;
+modules.load preloader : : $(loop)/bbuild ;
 import preloader ; 
-using preloader ;
+using preloader : $(lua) ;
 
 project oil
   : requirements
@@ -36,7 +36,7 @@ project oil
   ;
 
 make oil.c
-  :	$(root)/lua/oil/assert.lua
+  : $(root)/lua/oil/assert.lua
     $(root)/lua/oil/builder.lua
     $(root)/lua/oil/component.lua
     $(root)/lua/oil/corba/giop/Channel.lua
@@ -114,17 +114,19 @@ make oil.c
     $(root)/lua/oil/verbose.lua
     $(root)/lua/oil.lua
   : preloader.pre-compile
-  : <search>$(root)
+  : <dependency>/lua//stage
+    <search>$(root)
     <location>$(here)
   ;
 
 make luaidl.c
-  :	$(root)/lua/luaidl/lex.lua
+  : $(root)/lua/luaidl/lex.lua
     $(root)/lua/luaidl/pre.lua
     $(root)/lua/luaidl/sin.lua
     $(root)/lua/luaidl.lua
   : preloader.pre-compile
-  : <search>$(root)
+  : <dependency>/lua//stage
+    <search>$(root)
     <location>$(here)
   ;
 
