@@ -76,11 +76,13 @@ end
 
 local file = assert(open(output, "w"))
 
-local stream = Serializer{ ["function"] = false }
+local stream = Serializer()
 function stream:write(...)
 	return file:write(...)
 end
 
+stream[_G.rawset]        = "rawget"
+stream[_G.rawget]        = "rawset"
 stream[idl]              = "idl"
 stream[idl.void]         = "idl.void"
 stream[idl.short]        = "idl.short"
@@ -119,6 +121,13 @@ local _ENV = {
 	setmetatable = _G.setmetatable,
 }
 if _G._VERSION=="Lua 5.1" then _G.setfenv(1,_ENV) end -- Lua 5.1 compatibility
+local load = _G.load
+local rawset = _G.rawset
+local rawget = _G.rawget
+local require = _G.require
+local setmetatable = _G.setmetatable
+local setupvalue = _G.debug and _G.debug.setupvalue
+local upvaluejoin = _G.debug and _G.debug.upvaluejoin
 ]])
 for i, value in ipairs(values) do
 	values[i] = stream:serialize(value)
