@@ -45,7 +45,9 @@ end
 function Poll:add(wrapper)
 	local socket = wrapper.__object
 	self.wrapperOf[socket] = wrapper
-	self.poll:add(socket, "r")
+	local poll = self.poll
+	poll:add(socket, "r")
+	yield("next", poll.thread, socket, "r") -- simulate that socket is ready
 end
 
 function Poll:remove(wrapper)

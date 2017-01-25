@@ -96,7 +96,7 @@ function AccessPoint:accept(acquire, timeout)
 	return channel, except
 end
 
-function AccessPoint:register(channel, ready)
+function AccessPoint:register(channel)
 	channel.acceptor = self
 	self.sock2channel[channel.socket] = channel
 	self.poll:add(channel.socket)
@@ -249,7 +249,7 @@ function Acceptor:newaccess(configs)
 		end
 	end
 	local ports = {[socket] = "tcp"}
-local sslcfg, sslctx = self.sslcfg
+	local sslcfg, sslctx = self.sslcfg
 	if sslcfg ~= nil then
 		local hasca = (sslcfg.cafile ~= nil or sslcfg.capath ~= nil)
 		sslctx, errmsg = sockets:sslcontext{
