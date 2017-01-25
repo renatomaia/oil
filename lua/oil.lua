@@ -195,7 +195,7 @@ end
 
 function ORB:pending(timeout)
 	if timeout ~= nil then timeout = timeout+currenttime() end
-	return assert(self.RequestReceiver.acceptor:probe(timeout))
+	return self.RequestReceiver.acceptor:probe(timeout) ~= nil
 end
 
 function ORB:step(timeout)

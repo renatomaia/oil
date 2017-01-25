@@ -43,7 +43,7 @@ function AccessPoint:accept(acquire, timeout)
 			local kind = self.ports[channel]
 			if kind ~= nil then
 				local port = channel
-				channel, except = self.context.limiter:reserve() -- implicit yield!
+				channel, except = self.context.limiter:reserve()
 				if channel ~= nil then
 					local reserved = channel
 					channel, except = port:accept()
@@ -94,6 +94,10 @@ function AccessPoint:accept(acquire, timeout)
 		end
 	until channel ~= nil or except ~= nil
 	return channel, except
+end
+
+function AccessPoint:ichannels()
+	return pairs(self.sock2channel)
 end
 
 function AccessPoint:register(channel)

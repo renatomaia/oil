@@ -72,6 +72,15 @@ function Listener:getchannel(acquire, timeout)                                  
 	return result, except
 end
 
+local function dummy() end
+function Listener:ichannels()                                                   --[[VERBOSE]] verbose:listen(true, "get channel with new request")
+	local access = self:getaccess()
+	if access ~= nil then
+		return access:ichannels()
+	end
+	return dummy
+end
+
 function Listener:shutdown()
 	local access, except = self:getaccess()
 	if not access then
