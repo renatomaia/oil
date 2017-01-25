@@ -47,13 +47,21 @@ assert(server == nil)
 if oil.dtests.flavor.corba then
 	ok, ex = pcall(obj._non_existent, obj)
 	assert(ok == false)
-	checks.assert(ex, checks.like{
-		_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
-		completed = "COMPLETED_NO",
-		minor = 2,
-		error = "badconnect",
-		errmsg = "connection refused",
-	})
+	if ex.error == "timeout" then
+		checks.assert(ex, checks.like{
+			_repid = "IDL:omg.org/CORBA/TIMEOUT:1.0",
+			completed = "COMPLETED_NO",
+			errmsg = "timeout",
+		})
+	else
+		checks.assert(ex, checks.like{
+			_repid = "IDL:omg.org/CORBA/TRANSIENT:1.0",
+			completed = "COMPLETED_NO",
+			minor = 2,
+			error = "badconnect",
+			errmsg = "connection refused",
+		})
+	end
 else
 	corba:shutdown()
 	ok, ex = pcall(obj.idle, obj)
