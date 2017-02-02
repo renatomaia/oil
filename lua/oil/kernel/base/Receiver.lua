@@ -43,6 +43,7 @@ local function getrequest(self, channel)
 	local request, except = channel:getrequest(0)
 	if not request then
 		if except.error ~= "timeout" and except.error ~= "closed" then
+			channel:close("incoming")
 			self:notifyerror(except, "request")
 		end
 		except = nil
@@ -53,7 +54,11 @@ function Receiver:probe(timeout)                                                
 	local result, except = self.pending
 	if result == nil then                                                         --[[VERBOSE]] verbose:acceptor("waiting requests for ",timeout and tostring(timeout).." seconds" or "ever")
 		local listener = self.listener
+		local channels = {}
 		for _, channel in listener:ichannels() do
+			channels[#channels+1] = channel
+		end
+		for _, channel in ipairs(channels) do
 			result, except = getrequest(self, channel)
 			if result then
 				break
@@ -62,7 +67,7 @@ function Receiver:probe(timeout)                                                
 		while not result and not except do
 			result, except = listener:getchannel(false, timeout)
 			if result then
-				result, except = getrequest(self, channel)
+				result, except = getrequest(self, result)
 			elseif except.error ~= "timeout" then
 				self:notifyerror(except, "connection")
 			end

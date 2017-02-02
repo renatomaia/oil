@@ -317,9 +317,10 @@ local function receivemsg(self, timeout)                                      --
 			local stream, except = self:receive(size, timeout)
 			if stream == nil then
 				if except.error ~= "timeout" then                                     --[[VERBOSE]] verbose:message(false, "error while reading message body data")
-					self.pending = nil
+					self.pendingmessage = nil
 				elseif pending == nil then                                            --[[VERBOSE]] verbose:message(false, "message body data is not available yet")
-					self.pending = {
+					self.pendingmessage = {
+						minor = minor,
 						kind = kind,
 						size = size,
 						decoder = decoder,
@@ -330,7 +331,7 @@ local function receivemsg(self, timeout)                                      --
 			end
 			decoder:append(stream)
 		end
-		self.pending = nil
+		self.pendingmessage = nil
 		local fragment = (kind == FragmentID) or incomplete
 		if fragment then
 			local cursor
@@ -652,7 +653,8 @@ local MessageHandlers = {
 function GIOPChannel:processmessage(timeout)
 	local msgid, header, decoder = receivemsg(self, timeout)
 	if msgid == nil then
-		if header.error == "badversion" then
+		if header.error == "badversion" or header.error == "badstream" then
+			self:close()
 			sendmsg(self, MessageErrorID)
 		end
 		return nil, header
