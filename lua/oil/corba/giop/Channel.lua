@@ -769,6 +769,7 @@ function GIOPChannel:sendreply(request)
 	local success, except = true
 	local requestid = request.request_id                                        --[[VERBOSE]] verbose:listen(true, "replying for request ",request.request_id," for ",request.objectkey,":",request.operation)
 	if self.incoming[requestid] == request then
+		self:unregister(requestid, "incoming")
 		local types, values = request:getreplybody()
 		local service_context = request.service_context
 		if service_context == nil then request.service_context = Empty end
@@ -797,8 +798,7 @@ function GIOPChannel:sendreply(request)
 				end
 			end
 		end
-		if service_context == nil then request.service_context = nil end
-		self:unregister(requestid, "incoming")                                    --[[VERBOSE]] else verbose:listen("no pending request found with id ",requestid,", reply discarded")
+		if service_context == nil then request.service_context = nil end          --[[VERBOSE]] else verbose:listen("no pending request found with id ",requestid,", reply discarded")
 	end                                                                         --[[VERBOSE]] verbose:listen(false, "reply ", success and "successfully processed" or "failed: ", except or "")
 	return success, except
 end
