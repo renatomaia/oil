@@ -2,7 +2,7 @@ local Template = require "oil.dtests.Template"
 local template = Template{"Client"} -- master process name
 
 Server = [=====================================================================[
-orb = oil.dtests.init{ port = 2809, maxchannels = 20 }
+orb = oil.dtests.init{ port = 2809, maxchannels = 10 }
 if oil.dtests.flavor.corba then
 	orb:loadidl[[ interface Hello { void say(); }; ]]
 end
@@ -23,7 +23,7 @@ orb:shutdown()
 
 orbs = {}
 proxies = {}
-for i = 1, 5e2 do
+for i = 1, 1e2 do -- due to MacOSX file descriptor limit of 256.
 	orbs[i] = oil.dtests.init{}
 	proxies[i] = orbs[i]:newproxy(ref)
 	proxies[i]:say()

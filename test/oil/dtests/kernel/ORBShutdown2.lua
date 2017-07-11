@@ -66,10 +66,16 @@ else
 	corba:shutdown()
 	ok, ex = pcall(obj.idle, obj)
 	assert(ok == false)
-	checks.assert(ex, checks.like{
-		errmsg = "connection refused",
-		error = "badconnect",
-	})
+	if ex.error == "timeout" then
+		checks.assert(ex, checks.like{
+			errmsg = "timeout",
+		})
+	else
+		checks.assert(ex, checks.like{
+			errmsg = "connection refused",
+			error = "badconnect",
+		})
+	end
 end
 
 orb:shutdown()

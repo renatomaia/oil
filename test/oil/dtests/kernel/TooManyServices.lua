@@ -1,7 +1,7 @@
 local Template = require "oil.dtests.Template"
 local _ENV = Template{"Client"} -- master process name
 
-for i = 1, 5e2 do
+for i = 1, 2e2 do -- due to MacOSX file descriptor limit of 256.
 	_ENV["Server"..i] = [[
 		orb = oil.dtests.init{ port = 4809+]]..i..[[ }
 		if oil.dtests.flavor.corba then
@@ -24,7 +24,7 @@ orb = oil.dtests.init{ maxchannels = nil }
 
 objs = {}
 futs = {}
-for i = 1, 5e2 do
+for i = 1, 2e2 do -- due to MacOSX file descriptor limit of 256.
 	local obj = oil.dtests.resolve("Server"..i, 4809+i, "Hello")
 	objs[i] = orb:newproxy(obj, "asynchronous")
 end
