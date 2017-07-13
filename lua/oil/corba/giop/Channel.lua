@@ -520,6 +520,8 @@ function GIOPChannel:__init()
 	self.unprocessed = Queue()
 	self.incoming = {}
 	self.outgoing = {}
+	self[self.incoming] = 0
+	self[self.outgoing] = 0
 	self:upgradeto(0)
 end
 
@@ -536,25 +538,33 @@ function GIOPChannel:register(request, direction)
 			id = request.request_id
 		end
 		set[id] = request
+		self[set] = self[set]+1
 		return true
 	end
 end
 
-function GIOPChannel:unregister(requestid, direction)
+function GIOPChannel:unregister(requestid, direction, sentinel)
 	local set = self[direction]
 	local request = set[requestid]
 	if request ~= nil then
-		set[requestid] = nil
-		request.channel = nil
-		if direction == "outgoing" then
-			request.id = nil
-			request.request_id = nil
+		self[set] = self[set]-1
+		set[requestid] = sentinel
+		if request then
+			request.channel = nil
+			if direction == "outgoing" then
+				request.id = nil
+				request.request_id = nil
+			end
 		end
 		if self.closing then
 			self:close(self.closing)
 		end
 		return request
 	end
+end
+
+function GIOPChannel:regcount(direction)
+	return self[self[direction]]
 end
 
 function GIOPChannel:upgradeto(minor)
@@ -569,6 +579,17 @@ end
 
 local AddressingType = {giop.AddressingDisposition}
 local KeyAddrValue = {giop.KeyAddr}
+local CancelledReply = {
+	reply_status = "SYSTEM_EXCEPTION",
+	service_context = Empty,
+}
+local CancelledSysEx = {
+	SystemExceptionIDs.NO_RESPONSE,
+	{
+		completed = "COMPLETED_MAYBE",
+		minor = 0,
+	},
+}
 local MessageHandlers = {
 	[RequestID] = function(channel, header, decoder)
 		if channel.closing == "incoming" or channel.closing == true then return true end
@@ -602,6 +623,8 @@ local MessageHandlers = {
 		local request = channel:unregister(floor(header.request_id/2), "outgoing")
 		if request == nil then                                                    --[[VERBOSE]] verbose:invoke("got reply for invalid request ID: ",header.request_id)
 			return failedGIOP(channel, "remote ORB issued a reply with unknown ID")
+		elseif not request then -- cancelled request
+			return true
 		end
 		request.reply = header
 		request.decoder = decoder
@@ -609,10 +632,12 @@ local MessageHandlers = {
 		return request
 	end,
 	[CancelRequestID] = function(channel, header, decoder)                      --[[VERBOSE]] verbose:listen("got cancelation of request ",header.requestid)
-		if channel:unregister(header.request_id, "incoming") == nil then          --[[VERBOSE]] verbose:listen("canceled request ",header.requestid," does not exist")
+		local requestid = header.request_id
+		if channel:unregister(requestid, "incoming") == nil then          --[[VERBOSE]] verbose:listen("canceled request ",header.requestid," does not exist")
 			return failedGIOP(channel, "remote ORB canceled a request with unknown ID")
 		end
-		return true
+		CancelledReply.request_id = requestid
+		return sendmsg(self, ReplyID, CancelledReply, SysExTypes, CancelledSysEx)
 	end,
 	[LocateRequestID] = function(channel, header, decoder)
 		local types, values
@@ -633,17 +658,23 @@ local MessageHandlers = {
 		local result, except = channel:close("outgoing")
 		-- notify threads waiting for replies to reissue them in a new connection
 		for requestid in pairs(channel.outgoing) do
-			channel:signal("read", channel:unregister(requestid, "outgoing"))
+			local request = channel:unregister(requestid, "outgoing")
+			if request then
+				channel:signal("read", request)
+			end
 		end
 		return result, except
 	end,
 	[MessageErrorID] = function(channel, minor)
-		if next(channel.incoming) == nil and minor < channel.version then         --[[VERBOSE]] verbose:invoke("got remote request to use GIOP 1.",minor," instead of GIOP 1.",channel.version)
+		if self:regcount("incoming") == 0 and minor < channel.version then         --[[VERBOSE]] verbose:invoke("got remote request to use GIOP 1.",minor," instead of GIOP 1.",channel.version)
 			local result, except = channel:close()
 			-- notify threads waiting for replies to reissue them in a new connection
 			for requestid, request in pairs(channel.outgoing) do
-				request.reference.ior_profile.decoded.giop_minor = minor
-				channel:signal("read", channel:unregister(requestid, "outgoing"))
+				channel:unregister(requestid, "outgoing")
+				if request then
+					request.reference.ior_profile.decoded.giop_minor = minor
+					channel:signal("read", request)
+				end
 			end
 			return result, except
 		end                                                                       --[[VERBOSE]] verbose:invoke("got remote indication of error in protocol messages")
@@ -712,6 +743,16 @@ function GIOPChannel:sendrequest(request)
 	return success, except
 end
 
+local CancelRequest = { request_id = nil }
+function GIOPChannel:cancelrequest(request)
+	local requestid = request.id
+	if self:unregister(requestid, "outgoing", false) == request then            --[[VERBOSE]] verbose:invoke("canceling request ",requestid)
+		CancelRequest.request_id = requestid
+		return sendmsg(self, CancelRequestID, CancelRequest)
+	end
+	return false, Exception{ error = "badinvorder" }
+end
+
 function GIOPChannel:getreply(request, timeout)
 	local granted, expired = self:trylock("read", timeout, request)
 	if granted then
@@ -776,11 +817,6 @@ function GIOPChannel:sendreply(request)
 		if service_context == nil then request.service_context = Empty end
 		success, except = sendmsg(self, ReplyID, request, types, values)
 		if not success then                                                       --[[VERBOSE]] verbose:listen(true, "unable to send reply: ",except)
-			--TODO: test below does not makes sense.
-			--if type(except) ~= "table" then
-			--	except = {}
-			--end
-			--TODO END
 			if except.error == "closed" then                                        --[[VERBOSE]] verbose:listen("connection terminated")
 				success, except = true
 			else
@@ -813,7 +849,7 @@ function GIOPChannel:close(direction)
 			acceptor:unregister(self)
 			self.requestclose = true
 		end
-		if next(self.incoming) == nil then
+		if self:regcount("incoming") == 0 then
 			if self.requestclose then                                                 --[[VERBOSE]] verbose:listen("sending channel closing notification")
 				if not sendmsg(self, CloseConnectionID) then                            --[[VERBOSE]] verbose:listen("closing notification failed, closing channel in both directions")
 					direction = "both"                                                    --[[VERBOSE]] else verbose:listen("closing notification successfully sent")
@@ -831,7 +867,7 @@ function GIOPChannel:close(direction)
 		if connector ~= nil then
 			connector:unregister(self)
 		end
-		if next(self.outgoing) ~= nil then
+		if self:regcount("outgoing") > 0 then
 			if self.closing == nil then                                               --[[VERBOSE]] verbose:listen("channel marked for closing (outgoing only)")
 				self.closing = "outgoing"
 			elseif self.closing ~= "outgoing" then                                    --[[VERBOSE]] if self.closing ~= true then verbose:listen("channel marked for closing") end
@@ -839,8 +875,8 @@ function GIOPChannel:close(direction)
 			end
 		end
 	end
-	if self.acceptor == nil and next(self.incoming) == nil
-	and self.connector == nil and next(self.outgoing) == nil
+	if self.acceptor == nil and self:regcount("incoming") == 0
+	and self.connector == nil and self:regcount("outgoing") == 0
 	then
 		result, except = Channel.close(self)                                        --[[VERBOSE]] verbose:invoke("channel closed")
 	end
@@ -848,7 +884,7 @@ function GIOPChannel:close(direction)
 end
 
 function GIOPChannel:idle()
-	return next(self.incoming) == nil and next(self.outgoing) == nil
+	return self:regcount("incoming") == 0 and self:regcount("outgoing") == 0
 end
 
 return GIOPChannel

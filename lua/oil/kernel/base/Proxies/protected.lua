@@ -6,6 +6,6 @@ local TimeoutKey = utils.keys.timeout
 
 return function(invoker)
 	return function(self, ...)
-		return invoker(self, ...):getreply(self[TimeoutKey])
+		return invoker(self, ...):getreply(self[TimeoutKey], "cancel")
 	end
 end

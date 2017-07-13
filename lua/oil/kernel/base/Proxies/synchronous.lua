@@ -8,6 +8,6 @@ local TimeoutKey = utils.keys.timeout
 return function(invoker, operation)
 	return function(self, ...)
 		local timeout = self[TimeoutKey]
-		return assert(self, operation, invoker(self, ...):getreply(timeout))
+		return assert(self, operation, invoker(self, ...):getreply(timeout, "cancel"))
 	end
 end

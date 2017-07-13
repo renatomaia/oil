@@ -43,6 +43,10 @@ function LuDORequester:newrequest(request)
 	return request
 end
 
+function LuDORequester:cancelrequest(request)
+	return true -- nothing to be done
+end
+
 function LuDORequester:getreply(request, timeout)
 	local channel = request.channel
 	local granted, expired = channel:trylock("read", timeout, request)

@@ -133,6 +133,7 @@ for name, proxy in pairs(proxies) do
 	ok, ex = pcall(future.evaluate, future, .1)
 	assert(not ok)
 	assert(ex.error == "timeout")
+	assert(future:cancel())
 end
 
 orb:shutdown()

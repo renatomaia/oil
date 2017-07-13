@@ -192,6 +192,14 @@ function GIOPRequester:newrequest(request)
 	return requester(self, request)
 end
 
+function GIOPRequester:cancelrequest(request)
+	local channel = request.channel
+	if channel ~= nil then                                                        --[[VERBOSE]] verbose:invoke("cancel request on channel")
+		return channel:cancelrequest(request)
+	end
+	return true
+end
+
 
 
 local SystemExceptionError = {
